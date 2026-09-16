@@ -24,7 +24,7 @@ describe('RecipeVersionStateBadgeComponent', () => {
 
     const styles = getComputedStyle(fixture.nativeElement);
     expect(styles.display).toBe('inline-flex');
-    expect(styles.borderRadius).toBe('8px');
+    expect(styles.borderRadius).toBe('0.5rem');
     expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 

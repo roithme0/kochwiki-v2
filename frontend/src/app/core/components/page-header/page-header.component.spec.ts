@@ -12,57 +12,55 @@ import { User } from '../../models/user';
 const USER: User = { id: 7, username: 'Roi' };
 
 describe('PageHeaderComponent', () => {
-  let fixture: ComponentFixture<PageHeaderComponent>;
-  let activeUserService: Pick<ActiveUserService, 'activeUser' | 'switchUser'>;
+    let fixture: ComponentFixture<PageHeaderComponent>;
+    let activeUserService: Pick<ActiveUserService, 'activeUser' | 'switchUser'>;
 
-  beforeEach(async () => {
-    activeUserService = {
-      activeUser: signal<User | null>(USER),
-      switchUser: jasmine.createSpy('switchUser'),
-    };
+    beforeEach(async () => {
+        activeUserService = {
+            activeUser: signal<User | null>(USER),
+            switchUser: vi.fn().mockName('switchUser'),
+        };
 
-    await TestBed.configureTestingModule({
-      imports: [PageHeaderComponent, NoopAnimationsModule],
-      providers: [
-        {
-          provide: ActiveUserService,
-          useValue: activeUserService,
-        },
-        {
-          provide: PageHeaderService,
-          useValue: {
-            showHome: signal(false),
-            headline: signal('Home'),
-            showBack: signal(false),
-            back: signal(''),
-            showUserOptions: signal(true),
-          },
-        },
-        { provide: BackendMetaService, useValue: {} },
-      ],
-    }).compileComponents();
+        await TestBed.configureTestingModule({
+            imports: [PageHeaderComponent, NoopAnimationsModule],
+            providers: [
+                {
+                    provide: ActiveUserService,
+                    useValue: activeUserService,
+                },
+                {
+                    provide: PageHeaderService,
+                    useValue: {
+                        showHome: signal(false),
+                        headline: signal('Home'),
+                        showBack: signal(false),
+                        back: signal(''),
+                        showUserOptions: signal(true),
+                    },
+                },
+                { provide: BackendMetaService, useValue: {} },
+            ],
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(PageHeaderComponent);
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(PageHeaderComponent);
+        fixture.detectChanges();
+    });
 
-  it('offers the active user and switching action from an accessible options menu', async () => {
-    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector(
-      'button[aria-label="Benutzeroptionen öffnen"]'
-    );
-    expect(trigger).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('[fontIcon="logout"]')).toBeNull();
+    it('offers the active user and switching action from an accessible options menu', async () => {
+        const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Benutzeroptionen öffnen"]');
+        expect(trigger).not.toBeNull();
+        expect(fixture.nativeElement.querySelector('[fontIcon="logout"]')).toBeNull();
 
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const menu = await loader.getHarness(MatMenuHarness);
-    await menu.open();
+        const loader = TestbedHarnessEnvironment.loader(fixture);
+        const menu = await loader.getHarness(MatMenuHarness);
+        await menu.open();
 
-    const items = await menu.getItems();
-    expect(items.length).toBe(1);
-    expect(await items[0].getText()).toBe('Benutzer wechseln');
-    expect(document.body.textContent).toContain('Roi');
+        const items = await menu.getItems();
+        expect(items.length).toBe(1);
+        expect(await items[0].getText()).toBe('Benutzer wechseln');
+        expect(document.body.textContent).toContain('Roi');
 
-    await items[0].click();
-    expect(activeUserService.switchUser).toHaveBeenCalledTimes(1);
-  });
+        await items[0].click();
+        expect(activeUserService.switchUser).toHaveBeenCalledTimes(1);
+    });
 });

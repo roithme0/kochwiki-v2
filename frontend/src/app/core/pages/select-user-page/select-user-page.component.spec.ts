@@ -11,130 +11,130 @@ import { UserCreateDialogComponent } from '../../dialogs/user-create-dialog/user
 import { SelectUserPageComponent } from './select-user-page.component';
 
 describe('SelectUserPageComponent', () => {
-  it('shows an error without the create button and loads users after retry', async () => {
-    const user: User = { id: 7, username: 'Daniel' };
-    const getAllUsers = jasmine.createSpy('getAllUsers').and.returnValues(
-      Promise.reject(new Error('request failed')),
-      Promise.resolve([user])
-    );
-    spyOn(console, 'error');
+    it('shows an error without the create button and loads users after retry', async () => {
+        const user: User = { id: 7, username: 'Daniel' };
+        const getAllUsers = vi.fn().mockName('getAllUsers').mockReturnValueOnce(Promise.reject(new Error('request failed'))).mockReturnValueOnce(Promise.resolve([user]));
+        vi.spyOn(console, 'error').mockReturnValue(undefined);
 
-    TestBed.configureTestingModule({
-      imports: [SelectUserPageComponent],
-      providers: [
-        { provide: MatDialog, useValue: jasmine.createSpyObj('MatDialog', ['open']) },
-        { provide: ActiveUserService, useValue: {} },
-        { provide: Router, useValue: {} },
-        { provide: PageHeaderService, useValue: { updateHeader: () => {} } },
-        { provide: UserBackendService, useValue: { usersChanged$: NEVER, getAllUsers } },
-        { provide: SnackBarService, useValue: {} },
-      ],
+        TestBed.configureTestingModule({
+            imports: [SelectUserPageComponent],
+            providers: [
+                { provide: MatDialog, useValue: {
+                        open: vi.fn().mockName("MatDialog.open")
+                    } },
+                { provide: ActiveUserService, useValue: {} },
+                { provide: Router, useValue: {} },
+                { provide: PageHeaderService, useValue: { updateHeader: () => { } } },
+                { provide: UserBackendService, useValue: { usersChanged$: NEVER, getAllUsers } },
+                { provide: SnackBarService, useValue: {} },
+            ],
+        });
+        const fixture = TestBed.createComponent(SelectUserPageComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const page: HTMLElement = fixture.nativeElement;
+        expect(page.querySelector('[role="alert"]')?.textContent).toContain('Benutzer konnten nicht geladen werden.');
+        expect(page.querySelector('.create-user-button')).toBeNull();
+
+        const retryButton = page.querySelector<HTMLButtonElement>('.error button');
+        retryButton?.click();
+        fixture.detectChanges();
+        expect(page.querySelector('mat-spinner')).not.toBeNull();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(getAllUsers).toHaveBeenCalledTimes(2);
+        expect(page.querySelector('mat-card-title')?.textContent).toContain('Daniel');
+        expect(page.querySelector('.create-user-button')).not.toBeNull();
+        expect(page.querySelector('[role="alert"]')).toBeNull();
     });
-    const fixture = TestBed.createComponent(SelectUserPageComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
 
-    const page: HTMLElement = fixture.nativeElement;
-    expect(page.querySelector('[role="alert"]')?.textContent).toContain(
-      'Benutzer konnten nicht geladen werden.'
-    );
-    expect(page.querySelector('.create-user-button')).toBeNull();
+    it('focuses the username input and selects a newly created user', () => {
+        const createdUser: User = { id: 7, username: 'Daniel' };
+        const afterClosed = new Subject<User | undefined>();
+        const dialogRef = {
+            afterClosed: () => afterClosed.asObservable(),
+        } as MatDialogRef<UserCreateDialogComponent, User>;
+        const dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        };
+        const activeUserService = {
+            selectUser: vi.fn().mockName("ActiveUserService.selectUser")
+        };
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        };
+        dialog.open.mockReturnValue(dialogRef);
+        router.navigate.mockResolvedValue(true);
 
-    const retryButton = page.querySelector<HTMLButtonElement>('.error button');
-    retryButton?.click();
-    fixture.detectChanges();
-    expect(page.querySelector('mat-spinner')).not.toBeNull();
-    await fixture.whenStable();
-    fixture.detectChanges();
+        TestBed.configureTestingModule({
+            imports: [SelectUserPageComponent],
+            providers: [
+                { provide: MatDialog, useValue: dialog },
+                { provide: ActiveUserService, useValue: activeUserService },
+                { provide: Router, useValue: router },
+                { provide: PageHeaderService, useValue: {} },
+                {
+                    provide: UserBackendService,
+                    useValue: { usersChanged$: NEVER },
+                },
+                { provide: SnackBarService, useValue: {} },
+            ],
+        });
+        const component: SelectUserPageComponent = TestBed.createComponent(SelectUserPageComponent).componentInstance;
 
-    expect(getAllUsers).toHaveBeenCalledTimes(2);
-    expect(page.querySelector('mat-card-title')?.textContent).toContain('Daniel');
-    expect(page.querySelector('.create-user-button')).not.toBeNull();
-    expect(page.querySelector('[role="alert"]')).toBeNull();
-  });
+        component.openUserCreateDialog();
 
-  it('focuses the username input and selects a newly created user', () => {
-    const createdUser: User = { id: 7, username: 'Daniel' };
-    const afterClosed = new Subject<User | undefined>();
-    const dialogRef = {
-      afterClosed: () => afterClosed.asObservable(),
-    } as MatDialogRef<UserCreateDialogComponent, User>;
-    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    const activeUserService = jasmine.createSpyObj<ActiveUserService>(
-      'ActiveUserService',
-      ['selectUser']
-    );
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-    dialog.open.and.returnValue(dialogRef);
-    router.navigate.and.resolveTo(true);
+        const dialogConfig = vi.mocked(dialog.open).mock.lastCall![1];
+        expect(dialogConfig?.autoFocus).toBe('input[formControlName="username"]');
 
-    TestBed.configureTestingModule({
-      imports: [SelectUserPageComponent],
-      providers: [
-        { provide: MatDialog, useValue: dialog },
-        { provide: ActiveUserService, useValue: activeUserService },
-        { provide: Router, useValue: router },
-        { provide: PageHeaderService, useValue: {} },
-        {
-          provide: UserBackendService,
-          useValue: { usersChanged$: NEVER },
-        },
-        { provide: SnackBarService, useValue: {} },
-      ],
+        afterClosed.next(createdUser);
+
+        expect(activeUserService.selectUser).toHaveBeenCalledTimes(1);
+
+        expect(activeUserService.selectUser).toHaveBeenCalledWith(createdUser);
+        expect(router.navigate).toHaveBeenCalledTimes(1);
+        expect(router.navigate).toHaveBeenCalledWith(['']);
     });
-    const component: SelectUserPageComponent = TestBed.createComponent(
-      SelectUserPageComponent
-    ).componentInstance;
 
-    component.openUserCreateDialog();
+    it('does not select a user when creation is aborted', () => {
+        const afterClosed = new Subject<User | undefined>();
+        const dialogRef = {
+            afterClosed: () => afterClosed.asObservable(),
+        } as MatDialogRef<UserCreateDialogComponent, User | undefined>;
+        const dialog = {
+            open: vi.fn().mockName("MatDialog.open")
+        };
+        const activeUserService = {
+            selectUser: vi.fn().mockName("ActiveUserService.selectUser")
+        };
+        const router = {
+            navigate: vi.fn().mockName("Router.navigate")
+        };
+        dialog.open.mockReturnValue(dialogRef);
 
-    const dialogConfig = dialog.open.calls.mostRecent().args[1];
-    expect(dialogConfig?.autoFocus).toBe(
-      'input[formControlName="username"]'
-    );
+        TestBed.configureTestingModule({
+            imports: [SelectUserPageComponent],
+            providers: [
+                { provide: MatDialog, useValue: dialog },
+                { provide: ActiveUserService, useValue: activeUserService },
+                { provide: Router, useValue: router },
+                { provide: PageHeaderService, useValue: {} },
+                {
+                    provide: UserBackendService,
+                    useValue: { usersChanged$: NEVER },
+                },
+                { provide: SnackBarService, useValue: {} },
+            ],
+        });
+        const component: SelectUserPageComponent = TestBed.createComponent(SelectUserPageComponent).componentInstance;
 
-    afterClosed.next(createdUser);
+        component.openUserCreateDialog();
+        afterClosed.next(undefined);
 
-    expect(activeUserService.selectUser).toHaveBeenCalledOnceWith(createdUser);
-    expect(router.navigate).toHaveBeenCalledOnceWith(['']);
-  });
-
-  it('does not select a user when creation is aborted', () => {
-    const afterClosed = new Subject<User | undefined>();
-    const dialogRef = {
-      afterClosed: () => afterClosed.asObservable(),
-    } as MatDialogRef<UserCreateDialogComponent, User | undefined>;
-    const dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
-    const activeUserService = jasmine.createSpyObj<ActiveUserService>(
-      'ActiveUserService',
-      ['selectUser']
-    );
-    const router = jasmine.createSpyObj<Router>('Router', ['navigate']);
-    dialog.open.and.returnValue(dialogRef);
-
-    TestBed.configureTestingModule({
-      imports: [SelectUserPageComponent],
-      providers: [
-        { provide: MatDialog, useValue: dialog },
-        { provide: ActiveUserService, useValue: activeUserService },
-        { provide: Router, useValue: router },
-        { provide: PageHeaderService, useValue: {} },
-        {
-          provide: UserBackendService,
-          useValue: { usersChanged$: NEVER },
-        },
-        { provide: SnackBarService, useValue: {} },
-      ],
+        expect(activeUserService.selectUser).not.toHaveBeenCalled();
+        expect(router.navigate).not.toHaveBeenCalled();
     });
-    const component: SelectUserPageComponent = TestBed.createComponent(
-      SelectUserPageComponent
-    ).componentInstance;
-
-    component.openUserCreateDialog();
-    afterClosed.next(undefined);
-
-    expect(activeUserService.selectUser).not.toHaveBeenCalled();
-    expect(router.navigate).not.toHaveBeenCalled();
-  });
 });
