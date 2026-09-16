@@ -9,6 +9,7 @@
     "prebuild": "node generate-version.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
     "test": "ng test"
   },
   "private": true,

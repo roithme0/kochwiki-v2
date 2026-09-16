@@ -33,7 +33,7 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-An authenticated `/chat-ui-demo` route demonstrates the static `@ai-service/chat-ui` banner and a Kochwiki-owned renderer. Its package is installed from a versioned tarball in `frontend/vendor`; the central theme mapping is in `frontend/src/styles/chat-ui-integration.scss`. The AI Service library's README describes the rebuild/pack/copy/reinstall cycle.
+An authenticated `/chat-ui-demo` route demonstrates the static chat UI banner and a Kochwiki-owned renderer. Until the first `@roithme0/chat-ui` GitHub Packages release is available, its package remains installed from the original versioned tarball in `frontend/vendor`. The central theme mapping is in `frontend/src/styles/chat-ui-integration.scss`. After the registry migration, `npm run link:chat-ui` will replace the installed package with a direct link to the sibling AI Service build for interactive development; Docker and CI will continue to install the declared registry version.
 
 Use workflow skills only when explicitly invoked by the user.
 
