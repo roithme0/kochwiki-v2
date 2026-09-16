@@ -32,6 +32,8 @@ services:
       dockerfile: Dockerfile
       args:
         CONFIGURATION: local
+      secrets:
+        - npm_token
     depends_on:
       - backend
 
@@ -47,3 +49,7 @@ services:
 
 volumes:
   postgresql-data:
+
+secrets:
+  npm_token:
+    file: ../frontend/.npm-token

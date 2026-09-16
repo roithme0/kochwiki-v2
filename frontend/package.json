@@ -14,7 +14,7 @@
   },
   "private": true,
   "dependencies": {
-    "@ai-service/chat-ui": "file:vendor/ai-service-chat-ui-0.0.1.tgz",
+    "@roithme0/chat-ui": "0.0.0",
     "@angular/animations": "22.1.6",
     "@angular/cdk": "22.1.6",
     "@angular/common": "22.1.6",

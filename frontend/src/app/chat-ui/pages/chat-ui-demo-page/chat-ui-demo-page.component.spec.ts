@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ChatDemoRendererDirective, ChatUiComponent, IntegrationDemoArtifact } from '@ai-service/chat-ui';
+import { ChatDemoRendererDirective, ChatUiComponent, IntegrationDemoArtifact } from '@roithme0/chat-ui';
 import { ChatUiDemoPageComponent } from './chat-ui-demo-page.component';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 

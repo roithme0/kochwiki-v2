@@ -1,5 +1,5 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { ChatDemoRendererDirective, ChatUiComponent, IntegrationDemoArtifact } from '@ai-service/chat-ui';
+import { ChatDemoRendererDirective, ChatUiComponent, IntegrationDemoArtifact } from '@roithme0/chat-ui';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 
 @Component({
