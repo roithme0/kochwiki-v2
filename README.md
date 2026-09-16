@@ -33,6 +33,8 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
+An authenticated `/chat-ui-demo` route demonstrates the static `@roithme0/chat-ui` banner and a Kochwiki-owned renderer. Docker and CI install version `0.0.0` from GitHub Packages; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. For interactive development, `npm run link:chat-ui` replaces the installed package with a direct link to the sibling AI Service build.
+
 Use workflow skills only when explicitly invoked by the user.
 
 - `$prepare-spec`: pressure-test a scoped change and create or refine its lightweight spec.

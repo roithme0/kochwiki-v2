@@ -1,0 +1,28 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+main {
+  width: 100%;
+  padding: 1rem 0.75rem 2rem;
+}
+
+.demo-recipe {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: var(--app-neutral-container-color);
+  color: var(--app-on-neutral-container-color);
+  overflow-wrap: anywhere;
+}
+
+h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+p {
+  margin-top: 0.75rem;
+  line-height: 1.6;
+}

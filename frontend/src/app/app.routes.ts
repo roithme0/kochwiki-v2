@@ -49,6 +49,15 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'chat-ui-demo',
+    loadComponent: () =>
+      import('./chat-ui/pages/chat-ui-demo-page/chat-ui-demo-page.component').then(
+        ({ ChatUiDemoPageComponent }) => ChatUiDemoPageComponent,
+      ),
+    title: 'Chat-UI Demo',
+    canActivate: [AuthGuard],
+  },
+  {
     path: 'userSelection',
     loadComponent: () =>
       import('./core/pages/select-user-page/select-user-page.component').then(

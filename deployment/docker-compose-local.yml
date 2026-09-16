@@ -19,8 +19,6 @@ services:
   backend:
     build:
       context: "../backend"
-    ports:
-      - 8080:8080
     depends_on:
       db:
         condition: service_healthy
@@ -34,6 +32,8 @@ services:
       dockerfile: Dockerfile
       args:
         CONFIGURATION: local
+      secrets:
+        - npm_token
     depends_on:
       - backend
 
@@ -49,3 +49,7 @@ services:
 
 volumes:
   postgresql-data:
+
+secrets:
+  npm_token:
+    file: ../frontend/.npm-token
