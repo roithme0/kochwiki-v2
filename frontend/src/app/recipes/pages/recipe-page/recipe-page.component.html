@@ -6,9 +6,7 @@
   }@else { @if(recipeVersion; as recipeVersion){
   <article>
     <app-recipe-version-state-badge class="version-state-badge" [state]="recipeVersion.state" />
-    <app-ingredients-grid [recipeVersion]="recipeVersion" />
-    <app-steps-grid [recipeVersion]="recipeVersion" />
-    <app-recipe-macro-chart-card [recipeVersion]="recipeVersion" />
+    <app-recipe-presentation [recipe]="recipeVersion" />
     <div class="spacer"></div>
   </article>
 

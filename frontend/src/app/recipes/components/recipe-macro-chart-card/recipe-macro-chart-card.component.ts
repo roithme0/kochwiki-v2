@@ -1,10 +1,10 @@
 import { Component, WritableSignal, input, signal } from '@angular/core';
 
-import { RecipeVersion } from '../../models/recipe';
 import { ChartLegendElement } from '../../../core/models/chart-legend-element';
 import { MatCardModule } from '@angular/material/card';
 import { ChartLegendElementComponent } from '../../../core/components/chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { RecipePresentation } from '../../models/recipe-presentation';
 
 @Component({
   selector: 'app-recipe-macro-chart-card',
@@ -17,9 +17,9 @@ import { MacroChartComponent } from '../../../core/components/macro-chart/macro-
   styleUrl: './recipe-macro-chart-card.component.scss',
 })
 export class RecipeMacroChartCardComponent {
-  recipeVersion = input.required<RecipeVersion>();
-  showHeader = input<boolean>(true);
-  showLegend = input<boolean>(true);
+  readonly recipe = input.required<RecipePresentation>();
+  readonly showHeader = input<boolean>(true);
+  readonly showLegend = input<boolean>(true);
 
-  legend: WritableSignal<Record<string, ChartLegendElement>> = signal({});
+  readonly legend: WritableSignal<Record<string, ChartLegendElement>> = signal({});
 }

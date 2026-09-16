@@ -1,8 +1,11 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
-import { RecipeVersion } from '../../models/recipe';
 import { MatCardModule } from '@angular/material/card';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import {
+  RecipePresentation,
+  RecipePresentationIngredient,
+} from '../../models/recipe-presentation';
 
 @Component({
   selector: 'app-ingredients-grid',
@@ -14,5 +17,12 @@ import { MacroChartComponent } from '../../../core/components/macro-chart/macro-
   styleUrl: './ingredients-grid.component.scss',
 })
 export class IngredientsGridComponent {
-  recipeVersion = input.required<RecipeVersion>();
+  readonly recipe = input.required<RecipePresentation>();
+
+  readonly ingredientsSorted = computed((): RecipePresentationIngredient[] =>
+    [...this.recipe().ingredients].sort(
+      (a: RecipePresentationIngredient, b: RecipePresentationIngredient) =>
+        a.index - b.index
+    )
+  );
 }

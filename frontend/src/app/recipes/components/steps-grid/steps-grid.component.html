@@ -1,8 +1,8 @@
 <mat-card>
   <mat-card-header>
     <mat-card-title>Zubereitung</mat-card-title>
-    @if(recipeVersion().preptime){
-    <mat-card-subtitle>{{ recipeVersion().preptime }} min</mat-card-subtitle>
+    @if(recipe().preptime){
+    <mat-card-subtitle>{{ recipe().preptime }} min</mat-card-subtitle>
     }
   </mat-card-header>
 

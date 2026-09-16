@@ -1,12 +1,12 @@
 <mat-card>
   <mat-card-header>
     <mat-card-title>Zutaten</mat-card-title>
-    <mat-card-subtitle>{{ recipeVersion().servings }} Portionen</mat-card-subtitle>
+    <mat-card-subtitle>{{ recipe().servings }} Portionen</mat-card-subtitle>
   </mat-card-header>
 
   <mat-card-content>
     <div class="grid">
-      @for(ingredient of recipeVersion().ingredients; track ingredient.id){
+      @for(ingredient of ingredientsSorted(); track ingredient.index){
       <app-macro-chart
         class="macro-chart"
         [nutrition]="ingredient.foodstuff"

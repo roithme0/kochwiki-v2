@@ -1,10 +1,15 @@
 import { MatDialog } from '@angular/material/dialog';
-import { Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { EMPTY } from 'rxjs';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipeVersion } from '../../models/recipe';
 import { RecipePageComponent } from './recipe-page.component';
+import { PageHeaderService } from '../../../core/services/page-header.service';
+import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 
 describe('RecipePageComponent', () => {
   let component: RecipePageComponent;
@@ -147,3 +152,52 @@ const draftRecipeVersion: RecipeVersion = {
   ingredients: [],
   steps: [],
 };
+
+describe('RecipePageComponent presentation integration', () => {
+  it('passes the loaded recipe to the shared presentation', async () => {
+    const pageHeader = {
+      updateHeader: jasmine.createSpy('updateHeader'),
+      set headline(_value: string) {},
+    };
+    TestBed.configureTestingModule({
+      imports: [RecipePageComponent],
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({
+                lineageId: draftRecipeVersion.recipeLineageId,
+              }),
+            },
+          },
+        },
+        {
+          provide: RecipeBackendService,
+          useValue: {
+            recipesChanged$: EMPTY,
+            getActiveRecipeVersion: jasmine
+              .createSpy('getActiveRecipeVersion')
+              .and.resolveTo(draftRecipeVersion),
+          },
+        },
+        { provide: PageHeaderService, useValue: pageHeader },
+        { provide: SnackBarService, useValue: { open: jasmine.createSpy('open') } },
+        { provide: MatDialog, useValue: { open: jasmine.createSpy('open') } },
+        { provide: Router, useValue: { navigate: jasmine.createSpy('navigate') } },
+      ],
+    });
+    const fixture = TestBed.createComponent(RecipePageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const presentation = fixture.debugElement.query(
+      By.directive(RecipePresentationComponent)
+    ).componentInstance as RecipePresentationComponent;
+
+    expect(presentation.recipe()).toBe(draftRecipeVersion);
+    expect(fixture.nativeElement.querySelector('app-recipe-version-state-badge')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.spacer')).not.toBeNull();
+  });
+});
