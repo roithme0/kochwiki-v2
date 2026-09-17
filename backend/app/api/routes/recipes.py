@@ -5,10 +5,24 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db, get_write_db
-from app.schemas.recipe import IngredientOut, RecipeVersionOut, RecipeVersionWrite, StepOut
+from app.schemas.recipe import (
+    IngredientOut,
+    RecipePresentationOut,
+    RecipePresentationResolve,
+    RecipeVersionOut,
+    RecipeVersionWrite,
+    StepOut,
+)
 from app.services import recipes
 
 router = APIRouter()
+
+
+@router.post("/recipe-presentations/resolve", response_model=RecipePresentationOut)
+def resolve_recipe_presentation(
+    payload: RecipePresentationResolve, session: Session = Depends(get_db)
+) -> RecipePresentationOut:
+    return recipes.resolve_recipe_presentation(session, payload)
 
 
 @router.get("/recipes", response_model=list[RecipeVersionOut])
