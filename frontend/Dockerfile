@@ -4,6 +4,9 @@
 FROM node:22 AS build
 
 ARG CONFIGURATION
+ARG VERSION=0.0.0
+
+ENV APP_VERSION=${VERSION}
 
 # add source code
 WORKDIR /usr/local/app

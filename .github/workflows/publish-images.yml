@@ -55,7 +55,9 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            VERSION=${{ github.event_name == 'push' && github.ref_name || '0.0.0' }}
           secrets: |
             npm_token=${{ secrets.GITHUB_TOKEN }}
           push: ${{ github.event_name == 'push' }}

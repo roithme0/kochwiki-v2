@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_version: str = "0.1.0"
+    app_version: str = "0.0.0"
     database_url: str = "postgresql+psycopg://user:password@localhost:5432/kochwiki"
     cors_origins: str = "http://localhost:4200,http://localhost:8000"
 
