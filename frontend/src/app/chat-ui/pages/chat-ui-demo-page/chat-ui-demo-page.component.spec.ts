@@ -1,22 +1,25 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ChatDemoRendererDirective, ChatUiComponent, IntegrationDemoArtifact } from '@roithme0/chat-ui';
+import { ChatUiComponent, artifactRenderer, type ChatArtifact } from '@roithme0/chat-ui';
 import { ChatUiDemoPageComponent } from './chat-ui-demo-page.component';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 
 @Component({
-    imports: [ChatUiComponent, ChatDemoRendererDirective],
+    imports: [ChatUiComponent],
     template: `
-    <ng-template aiChatDemoRenderer #demoRenderer="aiChatDemoRenderer" let-artifact>
-      <p class="host-renderer">{{ artifact.id }}: {{ artifact.payload.name }} / {{ artifact.payload.description }}</p>
+    <ng-template #demoRenderer let-payload let-artifact="artifact">
+      <p class="host-renderer">{{ artifact.id }}: {{ payload.name }} / {{ payload.description }}</p>
     </ng-template>
     <ai-chat-ui bannerTitle="Banner" bannerDescription="Description"
-      [artifact]="artifact" [renderer]="showRenderer ? demoRenderer.template : undefined" />
+      [content]="artifact ? [artifact] : []"
+      [artifactRenderers]="showRenderer ? { 'integration-demo': artifactRenderer(demoRenderer) } : {}" />
   `,
 })
 class RendererTestHost {
-    artifact: IntegrationDemoArtifact | undefined = {
+    readonly artifactRenderer = artifactRenderer;
+    artifact: ChatArtifact<{ name: string; description: string }> | undefined = {
+        kind: 'artifact',
         type: 'integration-demo',
         id: 'host-owned-id',
         headline: 'Host headline',
@@ -37,7 +40,7 @@ describe('Packaged chat UI integration', () => {
         const library = fixture.debugElement.query(By.directive(ChatUiComponent));
         expect(library.query(By.css('.host-renderer')).nativeElement.textContent.trim())
             .toBe('host-owned-id: Host name / Host description');
-        expect(library.query(By.css('h2')).nativeElement.textContent.trim()).toBe('Host headline');
+        expect(library.query(By.css('.artifact h3')).nativeElement.textContent.trim()).toBe('Host headline');
     });
 
     it('keeps the banner and headline with a generic fallback when no renderer is supplied', () => {
@@ -45,10 +48,10 @@ describe('Packaged chat UI integration', () => {
         fixture.componentInstance.showRenderer = false;
         fixture.detectChanges();
 
-        expect(fixture.debugElement.query(By.css('h1')).nativeElement.textContent.trim()).toBe('Banner');
-        expect(fixture.debugElement.query(By.css('h2'))).not.toBeNull();
-        expect(fixture.debugElement.query(By.css('.fallback')).nativeElement.textContent.trim())
-            .toBe('Vorschau nicht verfügbar.');
+        expect(fixture.debugElement.query(By.css('.banner h2')).nativeElement.textContent.trim()).toBe('Banner');
+        expect(fixture.debugElement.query(By.css('.artifact h3'))).not.toBeNull();
+        expect(fixture.debugElement.query(By.css('.json-fallback')).nativeElement.textContent)
+            .toContain('Host name');
         expect(fixture.debugElement.query(By.css('.host-renderer'))).toBeNull();
         expect(fixture.nativeElement.textContent).not.toContain('host-owned-id');
     });
@@ -94,7 +97,7 @@ describe('ChatUiDemoPageComponent', () => {
 
         expect(updateHeader).toHaveBeenCalledWith(true, 'Chat-UI Demo', '', false);
         const library = fixture.debugElement.query(By.directive(ChatUiComponent));
-        expect(library.query(By.css('h3')).nativeElement.textContent.trim())
+        expect(library.query(By.css('.demo-recipe h3')).nativeElement.textContent.trim())
             .toBe(fixture.componentInstance.demoArtifact.payload.name);
         expect(library.query(By.css('.demo-recipe p')).nativeElement.textContent.trim())
             .toBe(fixture.componentInstance.demoArtifact.payload.description);

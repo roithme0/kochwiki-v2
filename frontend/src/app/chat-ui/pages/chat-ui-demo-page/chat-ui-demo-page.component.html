@@ -1,15 +1,15 @@
 <main class="chat-ui-integration">
-  <ng-template aiChatDemoRenderer #demoRenderer="aiChatDemoRenderer" let-artifact>
+  <ng-template #demoRenderer let-payload>
     <article class="demo-recipe">
-      <h3>{{ artifact.payload.name }}</h3>
-      <p>{{ artifact.payload.description }}</p>
+      <h3>{{ payload.name }}</h3>
+      <p>{{ payload.description }}</p>
     </article>
   </ng-template>
 
   <ai-chat-ui
     bannerTitle="Chat-UI Integration"
     bannerDescription="Diese statische Demo zeigt die gemeinsame UI-Bibliothek im Kochwiki-Design mit einer Vorschau aus Kochwiki."
-    [artifact]="demoArtifact"
-    [renderer]="demoRenderer.template"
+    [content]="content"
+    [artifactRenderers]="{ 'integration-demo': artifactRenderer(demoRenderer) }"
   />
 </main>
