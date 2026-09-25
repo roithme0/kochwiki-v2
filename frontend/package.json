@@ -3,9 +3,7 @@
   "version": "v0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "npm run prebuild && ng serve",
-    "start:staging": "npm run prebuild && ng serve --configuration staging",
-    "start:local": "npm run prebuild && ng serve --configuration local",
+    "start": "npm run prebuild && ng serve --port 4202",
     "prebuild": "node generate-version.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
