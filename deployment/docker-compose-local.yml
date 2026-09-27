@@ -24,7 +24,6 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://user:password@db:5432/kochwiki
-      CORS_ORIGINS: http://localhost:8000,http://localhost:4200
 
   frontend:
     build:
