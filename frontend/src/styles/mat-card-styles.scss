@@ -6,7 +6,6 @@ mat-card {
   --mat-card-title-text-size: 18px;
   --mat-card-subtitle-text-line-height: #{tokens.$primary-font-size};
   --mat-card-subtitle-text-size: #{tokens.$primary-font-size};
-  --mdc-elevated-card-container-color: #{tokens.$base-container-color};
   display: flex;
   flex-direction: column;
 }

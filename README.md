@@ -35,7 +35,11 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-The frontend depends on `@roithme0/chat-ui` version `0.1.0` from GitHub Packages. The obsolete demo has been removed; no productive recipe-chat page is implemented yet. Shared theme integration and contract tests for the public `/ui` and `/conversation` entry points remain available for the later recipe-chat integration. Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret.
+The frontend uses `@roithme0/chat-ui` version `0.1.0` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and full foodstuff catalog once, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes; saving proposals is deferred.
+
+Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and catalog/context limits surface as initialization errors rather than silently reducing the catalog.
+
+Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. Contract tests cover the public `/ui` and `/conversation` entry points and controlled request/response flows; these do not establish live-agent or mobile-keyboard readiness.
 
 For interactive development, run `npm run link:chat-ui` in `frontend` to link the sibling AI Service build. To restore the locked registry installation afterward, run `npm ci` in `frontend` with `NPM_TOKEN` supplied through the existing credential setup. Release builds and tests must use that registry installation, not the local link.
 

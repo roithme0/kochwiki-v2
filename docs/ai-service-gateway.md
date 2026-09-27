@@ -46,8 +46,18 @@ explicitly. Restart/recreate the gateway after changing its environment.
 
 ## Angular development
 
-Set the same variable in the shell starting Angular; it is independently
-configured from Compose and is read by `frontend/proxy.conf.cjs`:
+For persistent local configuration, create an untracked `frontend/.env`:
+
+```dotenv
+AI_GATEWAY_URL=http://localhost:8004
+```
+
+`frontend/proxy.conf.cjs` loads this optional file using Node's built-in
+`process.loadEnvFile()`, regardless of the current working directory. Then
+run `npm start` from `frontend`. Existing shell variables take precedence
+over values in the file. This configures Angular independently from Compose.
+
+Alternatively, set the variable in the shell starting Angular:
 
 ```powershell
 $env:AI_GATEWAY_URL = 'http://localhost:8004'
@@ -58,7 +68,7 @@ npm start
 Here `localhost` refers to the developer host. The existing Kochwiki API
 target remains `http://localhost:8002`. No machine-specific AI address is
 stored in tracked configuration. Restart Angular after changing the
-variable. Unset configuration returns 503; connection failures use Angular's
+file or shell variable. Unset configuration returns 503; connection failures use Angular's
 default proxy error handling (normally 502, without a custom JSON body);
 unsupported AI routes return 404 rather than the SPA shell.
 

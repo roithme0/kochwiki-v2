@@ -1,4 +1,10 @@
 // @ts-check
+const { existsSync } = require('node:fs');
+const { join } = require('node:path');
+
+const envPath = join(__dirname, '.env');
+if (existsSync(envPath)) process.loadEnvFile(envPath);
+
 const origin = process.env.AI_GATEWAY_URL || '';
 if (origin) {
   const parsed = new URL(origin);

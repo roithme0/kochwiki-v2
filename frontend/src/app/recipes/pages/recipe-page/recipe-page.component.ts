@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +22,7 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
   selector: 'app-recipe-page',
   imports: [
     RecipePresentationComponent,
+    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinner,

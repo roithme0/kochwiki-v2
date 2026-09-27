@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { HomePageComponent } from './core/pages/home-page/home-page.component';
 import { AuthGuard } from './core/classes/auth-guard';
+import { recipeConversationLeaveGuard } from './recipes/conversation/recipe-conversation-leave.guard';
 
 export const routes: Routes = [
   {
@@ -29,6 +30,15 @@ export const routes: Routes = [
             ({ RecipesPageComponent }) => RecipesPageComponent,
           ),
         title: 'Rezepte',
+      },
+      {
+        path: ':lineageId/versions/:recipeVersionId/improve',
+        loadComponent: () =>
+          import('./recipes/pages/recipe-conversation-page/recipe-conversation-page.component').then(
+            ({ RecipeConversationPageComponent }) => RecipeConversationPageComponent,
+          ),
+        title: 'Rezept verbessern',
+        canDeactivate: [recipeConversationLeaveGuard],
       },
       {
         path: ':lineageId/versions/:recipeVersionId',

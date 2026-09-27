@@ -1,0 +1,299 @@
+import { Component, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
+import { By } from '@angular/platform-browser';
+import { ChatUiComponent } from '@roithme0/chat-ui/ui';
+import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { ActiveUserService } from '../../../core/services/active-user.service';
+import { PageHeaderService } from '../../../core/services/page-header.service';
+import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
+import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
+import { conversationFoodstuff, conversationProposal, conversationRecipe } from '../../conversation/recipe-conversation.fixtures';
+import { RecipeConversationPageComponent } from './recipe-conversation-page.component';
+
+function response(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(complete => { resolve = complete; });
+  return { promise, resolve };
+}
+
+@Component({ template: '' })
+class EmptyPage {}
+
+describe('Recipe conversation page through published controller and HTTP transport', () => {
+  let fixture: ComponentFixture<RecipeConversationPageComponent>;
+  let source: ReturnType<typeof conversationRecipe>;
+  let catalog: ReturnType<typeof conversationFoodstuff>[];
+  const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
+  const getCatalog = vi.fn<FoodstuffBackendService['getAllFoodstuffs']>();
+  const fetchMock = vi.fn<typeof fetch>();
+  const user = signal<{ id: number; username: string } | null>({ id: 1, username: 'Test' });
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    user.set({ id: 1, username: 'Test' });
+    source = conversationRecipe();
+    catalog = [conversationFoodstuff()];
+    params = new BehaviorSubject(convertToParamMap({ lineageId: source.recipeLineageId, recipeVersionId: source.recipeVersionId }));
+    getRecipe.mockResolvedValue(source);
+    getCatalog.mockResolvedValue(catalog);
+    fetchMock.mockImplementation(async () => response({ session_id: 'session-1', expires_at: 'later' }));
+    vi.stubGlobal('fetch', fetchMock);
+    TestBed.configureTestingModule({
+      imports: [RecipeConversationPageComponent],
+      providers: [provideRouter([{ path: '**', component: EmptyPage }]),
+        { provide: ActivatedRoute, useValue: { paramMap: params } },
+        { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe } },
+        { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs: getCatalog } },
+        { provide: ActiveUserService, useValue: { activeUser: user } }],
+    });
+    TestBed.overrideComponent(MacroChartComponent, { set: { template: '' } });
+  });
+
+  afterEach(() => { fixture?.destroy(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+
+  async function open(): Promise<RecipeConversationPageComponent> {
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(fixture.componentInstance.view().status?.kind).not.toBe('loading'));
+    fixture.detectChanges();
+    return fixture.componentInstance;
+  }
+
+  function turn(): Response {
+    return response({ kind: 'completed', turn_id: 'turn-1',
+      message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: 'turn-1' },
+      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: null }],
+    });
+  }
+
+  async function submit(page: RecipeConversationPageComponent): Promise<void> {
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null })).mockResolvedValueOnce(turn());
+    await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
+  }
+
+  it('initializes only, then submits and refines in the same session without recipe writes', async () => {
+    const page = await open();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(getRecipe).toHaveBeenCalledWith(source.recipeLineageId, source.recipeVersionId);
+    expect(fetchMock.mock.calls[0][0]).toBe('/ai/api/v1/agents/kochwiki/sessions');
+    const header = TestBed.inject(PageHeaderService);
+    expect(header.headline()).toBe(source.name);
+    expect(header.subheader()).toBe('Rezept verbessern');
+    expect(header.back()).toBe(`/recipes/${source.recipeLineageId}/versions/${source.recipeVersionId}`);
+    const original = page.original();
+    await submit(page);
+    await submit(page);
+    fixture.detectChanges();
+    expect(page.original()).toBe(original);
+    expect(page.view().status).toBeNull();
+    expect(page.view().content.filter(item => item.kind === 'text')).toHaveLength(4);
+    expect(fixture.debugElement.queryAll(By.directive(RecipePresentationComponent))).toHaveLength(3);
+    expect(fixture.nativeElement.textContent).toContain('Inhalt nicht darstellbar');
+    expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
+      '/ai/api/v1/agents/kochwiki/sessions',
+      '/ai/api/v1/agents/kochwiki/sessions/session-1/messages', '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
+      '/ai/api/v1/agents/kochwiki/sessions/session-1/messages', '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
+    ]);
+  });
+
+  it('reuses detached snapshots on initial session retry', async () => {
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    const page = await open();
+    const initialBody = fetchMock.mock.calls[0][1]?.body;
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    source.name = 'Changed'; source.ingredients[0].foodstuff.name = 'Changed';
+    catalog[0].name = 'Changed'; catalog.push({ ...conversationFoodstuff(), id: 2 });
+    await page.performAction('new-session');
+    expect(fetchMock.mock.calls[1][1]?.body).toBe(initialBody);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(getRecipe).toHaveBeenCalledTimes(1);
+    expect(getCatalog).toHaveBeenCalledTimes(1);
+    expect(page.original()?.headline).toBe('Original: Linsensuppe');
+  });
+
+  it('confirms leave and replacement, preserving protection after failure and clearing it after success', async () => {
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const page = await open();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(page.canLeave()).toBe(true);
+    expect(add.mock.calls.some(call => call[0] === 'beforeunload')).toBe(false);
+    fetchMock.mockResolvedValueOnce(response({ kind: 'expired' }, 410));
+    await page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
+    expect(page.canLeave()).toBe(false);
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await page.performAction('new-session');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    confirm.mockReturnValue(true);
+    expect(page.canLeave()).toBe(true);
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    await page.performAction('new-session');
+    confirm.mockReturnValue(false);
+    expect(page.canLeave()).toBe(false);
+    confirm.mockReturnValue(true);
+    await page.performAction('new-session');
+    confirm.mockClear();
+    expect(page.canLeave()).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(remove.mock.calls.some(call => call[0] === 'beforeunload')).toBe(true);
+    expect(fetchMock.mock.calls[2][1]?.body).toBe(fetchMock.mock.calls[0][1]?.body);
+    expect(fetchMock.mock.calls[3][1]?.body).toBe(fetchMock.mock.calls[0][1]?.body);
+  });
+
+  it('allows user switching to discard a started chat without confirmation', async () => {
+    const page = await open();
+    await submit(page);
+    user.set(null);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    expect(page.canLeave()).toBe(true);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it.each(['historical', 'missing'] as const)('does not initialize an unavailable %s recipe', async mode => {
+    if (mode === 'historical') source.state = 'historical';
+    else getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+    const page = await open();
+    expect(page.phase()).toBe('unavailable');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fixture.debugElement.query(By.directive(ChatUiComponent))).toBeNull();
+  });
+
+  it('retries both initial data reads after a catalog failure without starting partial sessions', async () => {
+    getCatalog.mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }));
+    const page = await open();
+    expect(page.phase()).toBe('error');
+    expect(fetchMock).not.toHaveBeenCalled();
+    await page.load();
+    expect(page.phase()).toBe('ready');
+    expect(getRecipe).toHaveBeenCalledTimes(2);
+    expect(getCatalog).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a retry for non-missing source failures', async () => {
+    getRecipe.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
+    const page = await open();
+    expect(page.phase()).toBe('error');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Erneut versuchen');
+  });
+
+  it('keeps historical sources unavailable even when the catalog also fails', async () => {
+    source.state = 'historical';
+    getCatalog.mockRejectedValueOnce(new Error('Offline'));
+    const page = await open();
+    expect(page.phase()).toBe('unavailable');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fixture.debugElement.query(By.directive(ChatUiComponent))).toBeNull();
+  });
+
+  it('blocks submission while data or session creation is pending', async () => {
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const page = fixture.componentInstance;
+    await page.submit({ text: 'Zu früh', acknowledge: vi.fn() });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await page.submit({ text: 'Noch zu früh', acknowledge: vi.fn() });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    pending.resolve(response({ session_id: 'session-1', expires_at: 'later' }));
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+  });
+
+  it('ignores an old controller after the routed source changes', async () => {
+    const page = await open();
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    const acknowledge = vi.fn();
+    const operation = page.submit({ text: 'Alt', acknowledge });
+    const next = { ...conversationRecipe(), recipeVersionId: '00000000-0000-4000-8000-000000000003', name: 'Neue Version' };
+    getRecipe.mockResolvedValueOnce(next);
+    params.next(convertToParamMap({ lineageId: next.recipeLineageId, recipeVersionId: next.recipeVersionId }));
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    fetchMock.mockResolvedValueOnce(turn());
+    pending.resolve(response({ role: 'user', text: 'Alt', turn_id: null }));
+    await operation;
+    expect(acknowledge).not.toHaveBeenCalled();
+    expect(page.view().content).toEqual([]);
+    expect(page.original()?.headline).toBe('Original: Neue Version');
+  });
+
+  it('suppresses late turn results after leaving', async () => {
+    const page = await open();
+    const pending = deferred<Response>();
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Verbessern', turn_id: null })).mockReturnValueOnce(pending.promise);
+    const acknowledge = vi.fn();
+    const operation = page.submit({ text: 'Verbessern', acknowledge });
+    await vi.waitFor(() => expect(acknowledge).toHaveBeenCalledTimes(1));
+    fixture.destroy();
+    const oldView = page.view();
+    const fresh = await open();
+    pending.resolve(turn());
+    await operation;
+    expect(page.view()).toBe(oldView);
+    expect(fresh.view().content).toEqual([]);
+    expect(fetchMock.mock.calls.filter(call => call[0] === '/ai/api/v1/agents/kochwiki/sessions')).toHaveLength(2);
+  });
+
+  it('suppresses late session creation after leaving', async () => {
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const page = fixture.componentInstance;
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    fixture.destroy();
+    const oldView = page.view();
+    const fresh = await open();
+    pending.resolve(response({ session_id: 'old-session', expires_at: 'later' }));
+    await new Promise<void>(resolve => setTimeout(resolve, 0));
+    await fixture.whenStable();
+    expect(page.view()).toBe(oldView);
+    expect(fresh.view().content).toEqual([]);
+  });
+
+  it('suppresses late loads and starts with fresh data on revisiting', async () => {
+    const pending = deferred<ReturnType<typeof conversationRecipe>>();
+    getRecipe.mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const old = fixture.componentInstance;
+    fixture.destroy();
+    source.name = 'Fresh recipe';
+    const page = await open();
+    pending.resolve(conversationRecipe());
+    await fixture.whenStable();
+    expect(old.original()).toBeNull();
+    expect(page.original()?.headline).toBe('Original: Fresh recipe');
+    expect(TestBed.inject(PageHeaderService).headline()).toBe('Fresh recipe');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('suppresses delayed acknowledgement, state publication, and focus after destruction', async () => {
+    const page = await open();
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(turn());
+    const acknowledge = vi.fn();
+    const operation = page.submit({ text: 'Verbessern', acknowledge });
+    const oldView = page.view();
+    fixture.destroy();
+    const header = TestBed.inject(PageHeaderService);
+    expect(header.subheader()).toBe('');
+    header.updateHeader(true, 'Andere Seite', '/recipes');
+    pending.resolve(response({ role: 'user', text: 'Verbessern', turn_id: null }));
+    await operation;
+    expect(acknowledge).not.toHaveBeenCalled();
+    expect(page.view()).toBe(oldView);
+    expect(header.headline()).toBe('Andere Seite');
+  });
+});

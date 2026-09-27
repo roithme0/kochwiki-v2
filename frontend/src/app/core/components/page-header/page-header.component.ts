@@ -9,6 +9,7 @@ import { environment } from '../../../../environments/environment';
 import { ActiveUserService } from '../../services/active-user.service';
 import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-page-header',
@@ -27,6 +28,7 @@ export class PageHeaderComponent {
   readonly pageHeaderService = inject(PageHeaderService);
   readonly activeUserService = inject(ActiveUserService);
   readonly backendMetaService = inject(BackendMetaService);
+  readonly themeService = inject(ThemeService);
 
   readonly environmentName: string = environment.name;
 }

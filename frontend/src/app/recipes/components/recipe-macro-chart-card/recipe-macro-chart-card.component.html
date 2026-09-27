@@ -16,12 +16,12 @@
           [nutrition]="recipe()"
           (legendUpdated)="legend.set($event)"
         />
-        @if(showLegend()){
+        @if(showLegend() && nutrientLegend().length > 0){
         <div class="spacer"></div>
         <div class="legend">
-          <app-chart-legend-element [legendElement]="legend()['carbs']" />
-          <app-chart-legend-element [legendElement]="legend()['protein']" />
-          <app-chart-legend-element [legendElement]="legend()['fat']" />
+          @for (entry of nutrientLegend(); track entry.displayName) {
+            <app-chart-legend-element [legendElement]="entry" />
+          }
         </div>
         }
       </div>

@@ -1,4 +1,4 @@
-import { Component, WritableSignal, input, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 
 import { ChartLegendElement } from '../../../core/models/chart-legend-element';
 import { MatCardModule } from '@angular/material/card';
@@ -21,5 +21,10 @@ export class RecipeMacroChartCardComponent {
   readonly showHeader = input<boolean>(true);
   readonly showLegend = input<boolean>(true);
 
-  readonly legend: WritableSignal<Record<string, ChartLegendElement>> = signal({});
+  readonly legend = signal<Partial<Record<string, ChartLegendElement>>>({});
+  readonly nutrientLegend = computed((): ChartLegendElement[] =>
+    ['carbs', 'protein', 'fat']
+      .map(key => this.legend()[key])
+      .filter((entry): entry is ChartLegendElement => entry !== undefined)
+  );
 }
