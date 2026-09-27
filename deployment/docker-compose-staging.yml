@@ -25,10 +25,14 @@ services:
 
   gateway:
     image: nginx:1.25
+    environment:
+      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-}
+    entrypoint: ["/bin/sh", "-c", "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
     ports:
       - "${GATEWAY_PORT:-8001}:80"
     volumes:
-      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ./gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
     depends_on:
       - backend
       - frontend
