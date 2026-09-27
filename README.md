@@ -35,7 +35,9 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-An authenticated `/chat-ui-demo` route demonstrates the static `@roithme0/chat-ui` banner and a Kochwiki-owned renderer. Docker and CI install version `0.0.0` from GitHub Packages; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. For interactive development, `npm run link:chat-ui` replaces the installed package with a direct link to the sibling AI Service build.
+The frontend depends on `@roithme0/chat-ui` version `0.1.0` from GitHub Packages. The obsolete demo has been removed; no productive recipe-chat page is implemented yet. Shared theme integration and contract tests for the public `/ui` and `/conversation` entry points remain available for the later recipe-chat integration. Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret.
+
+For interactive development, run `npm run link:chat-ui` in `frontend` to link the sibling AI Service build. To restore the locked registry installation afterward, run `npm ci` in `frontend` with `NPM_TOKEN` supplied through the existing credential setup. Release builds and tests must use that registry installation, not the local link.
 
 Use workflow skills only when explicitly invoked by the user.
 
