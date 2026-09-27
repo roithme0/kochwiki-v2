@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,9 +9,7 @@ import { RecipeVersion } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { IngredientsGridComponent } from '../../components/ingredients-grid/ingredients-grid.component';
-import { StepsGridComponent } from '../../components/steps-grid/steps-grid.component';
-import { RecipeMacroChartCardComponent } from '../../components/recipe-macro-chart-card/recipe-macro-chart-card.component';
+import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 import { RecipePatchDialogComponent } from '../../dialogs/recipe-patch-dialog/recipe-patch-dialog.component';
 import {
   ConfirmationDialogComponent,
@@ -23,9 +21,8 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
 @Component({
   selector: 'app-recipe-page',
   imports: [
-    IngredientsGridComponent,
-    StepsGridComponent,
-    RecipeMacroChartCardComponent,
+    RecipePresentationComponent,
+    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinner,

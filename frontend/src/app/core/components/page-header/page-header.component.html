@@ -13,11 +13,17 @@
   >}
 
   <div class="headline-wrapper">
-    <span class="headline">{{ pageHeaderService.headline() }}</span>
-
-    @if(environmentName != 'prod' ){
-    <span class="environment">{{ environmentName }}</span>
-    }
+    <div class="heading-text">
+      <div class="headline-row">
+        <span class="headline">{{ pageHeaderService.headline() }}</span>
+        @if(environmentName != 'prod' ){
+          <span class="environment">{{ environmentName }}</span>
+        }
+      </div>
+      @if (pageHeaderService.subheader()) {
+        <span class="subheader">{{ pageHeaderService.subheader() }}</span>
+      }
+    </div>
   </div>
 
   <span class="spacer"></span>
@@ -50,8 +56,17 @@
     <div class="user-options-username" aria-label="Aktiver Benutzer">
       {{ activeUserService.activeUser()?.username }}
     </div>
+    <button mat-menu-item (click)="themeService.toggle()">
+      <span class="user-options-action">
+        <span>{{ themeService.isDark() ? 'Helles Design' : 'Dunkles Design' }}</span>
+        <mat-icon aria-hidden="true">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+      </span>
+    </button>
     <button mat-menu-item (click)="activeUserService.switchUser()">
-      Benutzer wechseln
+      <span class="user-options-action">
+        <span>Benutzer wechseln</span>
+        <mat-icon aria-hidden="true">switch_account</mat-icon>
+      </span>
     </button>
   </mat-menu>
   }

@@ -25,6 +25,8 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
+The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
+
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 
 ## Scope
@@ -33,7 +35,13 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-An authenticated `/chat-ui-demo` route demonstrates the static `@roithme0/chat-ui` banner and a Kochwiki-owned renderer. Docker and CI install version `0.0.0` from GitHub Packages; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. For interactive development, `npm run link:chat-ui` replaces the installed package with a direct link to the sibling AI Service build.
+The frontend uses `@roithme0/chat-ui` version `0.1.0` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and full foodstuff catalog once, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each proposal can be saved explicitly as a new draft in the source lineage, preserving the original snapshot attribution. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves create separate drafts; ambiguous failures are not retried automatically.
+
+Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and catalog/context limits surface as initialization errors rather than silently reducing the catalog.
+
+Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. Contract tests cover the public `/ui` and `/conversation` entry points and controlled request/response flows; these do not establish live-agent or mobile-keyboard readiness.
+
+For interactive development, run `npm run link:chat-ui` in `frontend` to link the sibling AI Service build. To restore the locked registry installation afterward, run `npm ci` in `frontend` with `NPM_TOKEN` supplied through the existing credential setup. Release builds and tests must use that registry installation, not the local link.
 
 Use workflow skills only when explicitly invoked by the user.
 

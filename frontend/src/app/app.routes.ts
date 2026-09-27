@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { HomePageComponent } from './core/pages/home-page/home-page.component';
 import { AuthGuard } from './core/classes/auth-guard';
+import { recipeConversationLeaveGuard } from './recipes/conversation/recipe-conversation-leave.guard';
 
 export const routes: Routes = [
   {
@@ -31,6 +32,15 @@ export const routes: Routes = [
         title: 'Rezepte',
       },
       {
+        path: ':lineageId/versions/:recipeVersionId/improve',
+        loadComponent: () =>
+          import('./recipes/pages/recipe-conversation-page/recipe-conversation-page.component').then(
+            ({ RecipeConversationPageComponent }) => RecipeConversationPageComponent,
+          ),
+        title: 'Rezept verbessern',
+        canDeactivate: [recipeConversationLeaveGuard],
+      },
+      {
         path: ':lineageId/versions/:recipeVersionId',
         loadComponent: () =>
           import('./recipes/pages/recipe-page/recipe-page.component').then(
@@ -47,15 +57,6 @@ export const routes: Routes = [
         title: 'Rezept',
       },
     ],
-  },
-  {
-    path: 'chat-ui-demo',
-    loadComponent: () =>
-      import('./chat-ui/pages/chat-ui-demo-page/chat-ui-demo-page.component').then(
-        ({ ChatUiDemoPageComponent }) => ChatUiDemoPageComponent,
-      ),
-    title: 'Chat-UI Demo',
-    canActivate: [AuthGuard],
   },
   {
     path: 'userSelection',

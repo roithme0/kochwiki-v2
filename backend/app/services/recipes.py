@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Literal
@@ -13,6 +14,10 @@ from app.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
 from app.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
+    RecipePresentationIngredientOut,
+    RecipePresentationOut,
+    RecipePresentationResolve,
+    RecipePresentationStepOut,
     RecipeVersionOut,
     RecipeVersionWrite,
     StepOut,
@@ -22,6 +27,12 @@ from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuffs import foodstuff_summary_out
 
 NutritionField = Literal["kcal", "carbs", "protein", "fat"]
+
+
+@dataclass(frozen=True)
+class _NutritionIngredient:
+    amount: Decimal
+    foodstuff: Foodstuff
 
 
 def list_recipe_versions(session: Session) -> Sequence[RecipeVersion]:
@@ -135,10 +146,10 @@ def delete_recipe_lineage(session: Session, lineage_id: UUID) -> None:
 
 
 def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
-    total_kcal = _total_version_nutrition(version, "kcal")
-    total_carbs = _total_version_nutrition(version, "carbs")
-    total_protein = _total_version_nutrition(version, "protein")
-    total_fat = _total_version_nutrition(version, "fat")
+    total_kcal = _total_nutrition(version.ingredients, "kcal")
+    total_carbs = _total_nutrition(version.ingredients, "carbs")
+    total_protein = _total_nutrition(version.ingredients, "protein")
+    total_fat = _total_nutrition(version.ingredients, "fat")
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
@@ -156,6 +167,35 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         fat=_per_serving(total_fat, version.servings),
         ingredients=[ingredient_out(item) for item in sorted(version.ingredients, key=lambda item: item.index)],
         steps=[step_out(item) for item in sorted(version.steps, key=lambda item: item.index)],
+    )
+
+
+def resolve_recipe_presentation(session: Session, payload: RecipePresentationResolve) -> RecipePresentationOut:
+    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    ingredients = [
+        RecipePresentationIngredientOut(
+            index=ingredient.index,
+            amount=ingredient.amount,
+            foodstuff=foodstuff_summary_out(foodstuffs[ingredient.foodstuffId]),
+        )
+        for ingredient in sorted(payload.ingredients, key=lambda item: item.index)
+    ]
+    nutrition_ingredients = [
+        _NutritionIngredient(amount=ingredient.amount, foodstuff=foodstuffs[ingredient.foodstuffId])
+        for ingredient in payload.ingredients
+    ]
+    return RecipePresentationOut(
+        servings=payload.servings,
+        preptime=payload.preptime,
+        kcal=_per_serving(_total_nutrition(nutrition_ingredients, "kcal"), payload.servings),
+        carbs=_per_serving(_total_nutrition(nutrition_ingredients, "carbs"), payload.servings),
+        protein=_per_serving(_total_nutrition(nutrition_ingredients, "protein"), payload.servings),
+        fat=_per_serving(_total_nutrition(nutrition_ingredients, "fat"), payload.servings),
+        ingredients=ingredients,
+        steps=[
+            RecipePresentationStepOut(index=step.index, description=step.description)
+            for step in sorted(payload.steps, key=lambda item: item.index)
+        ],
     )
 
 
@@ -264,7 +304,7 @@ def _apply_version_content(
     version.origin_url = payload.originUrl
 
 
-def _foodstuffs_for_ingredients(session: Session, ingredients: list[IngredientWrite]) -> dict[int, Foodstuff]:
+def _foodstuffs_for_ingredients(session: Session, ingredients: Sequence[IngredientWrite]) -> dict[int, Foodstuff]:
     foodstuff_ids = [ingredient.foodstuffId for ingredient in ingredients]
     if len(foodstuff_ids) != len(set(foodstuff_ids)):
         raise ConflictError("A foodstuff may only occur once per recipe")
@@ -306,11 +346,13 @@ def _new_steps(payloads: list[StepWrite]) -> list[Step]:
     return [Step(index=payload.index, description=payload.description) for payload in payloads]
 
 
-def _total_version_nutrition(version: RecipeVersion, attribute: NutritionField) -> Decimal | None:
-    if not version.ingredients:
+def _total_nutrition(
+    ingredients: Sequence[Ingredient] | list[_NutritionIngredient], attribute: NutritionField
+) -> Decimal | None:
+    if not ingredients:
         return None
     total = Decimal("0")
-    for ingredient in version.ingredients:
+    for ingredient in ingredients:
         value = _nutrition_value(ingredient.foodstuff, attribute)
         if value is None:
             return None

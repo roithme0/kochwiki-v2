@@ -9,6 +9,7 @@
 # Node
 /node_modules
 /.npm-token
+/.env
 npm-debug.log
 yarn-error.log
 

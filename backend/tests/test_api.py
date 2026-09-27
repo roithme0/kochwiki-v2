@@ -43,6 +43,156 @@ def create_recipe(client: TestClient, name: str, foodstuff_id: object | None = N
     return response.json()
 
 
+def recipe_presentation_payload(**overrides: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "servings": 2,
+        "preptime": 20,
+        "ingredients": [],
+        "steps": [{"index": 1, "description": "Cook"}],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_presentation(
+    client: TestClient,
+) -> None:
+    oats = create_foodstuff(client)
+    egg = create_foodstuff(
+        client, name="Egg", brand="Farm", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5
+    )
+
+    response = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[
+                {"index": 2, "amount": 2, "foodstuffId": egg["id"]},
+                {"index": 1, "amount": 50, "foodstuffId": oats["id"]},
+            ],
+            steps=[{"index": 2, "description": "Serve"}, {"index": 1, "description": "Cook"}],
+        ),
+    )
+
+    assert response.status_code == 200
+    presentation = response.json()
+    assert set(presentation) == {
+        "servings", "preptime", "kcal", "carbs", "protein", "fat", "ingredients", "steps"
+    }
+    assert presentation["kcal"] == 170.5
+    assert presentation["carbs"] == 16
+    assert presentation["protein"] == 9.25
+    assert presentation["fat"] == 6.75
+    assert [ingredient["index"] for ingredient in presentation["ingredients"]] == [1, 2]
+    assert [step["index"] for step in presentation["steps"]] == [1, 2]
+    assert set(presentation["ingredients"][0]) == {"index", "amount", "foodstuff"}
+    assert presentation["ingredients"][1]["foodstuff"] == {
+        "id": egg["id"],
+        "name": "Egg",
+        "brand": "Farm",
+        "unit": "PIECE",
+        "unitVerbose": "Stk.",
+        "kcal": 78,
+        "carbs": 1,
+        "protein": 6,
+        "fat": 5,
+    }
+    assert client.get("/recipes").json() == []
+    assert client.get("/ingredients").json() == []
+    assert client.get("/steps").json() == []
+
+    assert client.patch(f"/foodstuffs/{oats['id']}", json={"kcal": 400}).status_code == 200
+    updated = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[{"index": 1, "amount": 50, "foodstuffId": oats["id"]}]
+        ),
+    )
+    assert updated.status_code == 200
+    assert updated.json()["kcal"] == 100
+
+
+def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(client: TestClient) -> None:
+    foodstuff = create_foodstuff(client, kcal=None)
+
+    response = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[{"index": 1, "amount": 100, "foodstuffId": foodstuff["id"]}]
+        ),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["kcal"] is None
+    assert response.json()["carbs"] == 30
+    assert response.json()["protein"] == 6.5
+    assert response.json()["fat"] == 3.5
+
+
+def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(client: TestClient) -> None:
+    foodstuff = create_foodstuff(client)
+    unknown = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[
+                {"index": 1, "amount": 1, "foodstuffId": 999},
+                {"index": 2, "amount": 1, "foodstuffId": 998},
+            ]
+        ),
+    )
+    assert unknown.status_code == 404
+    assert unknown.json()["message"] == "Foodstuff with id 998 not found"
+
+    duplicate_foodstuff = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[
+                {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"]},
+                {"index": 2, "amount": 1, "foodstuffId": foodstuff["id"]},
+            ]
+        ),
+    )
+    assert duplicate_foodstuff.status_code == 422
+    assert client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[
+                {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"]},
+                {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"] + 1},
+            ]
+        ),
+    ).status_code == 422
+    assert client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}]
+        ),
+    ).status_code == 422
+
+
+def test_recipe_presentation_resolver_requires_all_fields_and_enforces_bounds(client: TestClient) -> None:
+    for field in ("servings", "preptime", "ingredients", "steps"):
+        payload = recipe_presentation_payload()
+        del payload[field]
+        assert client.post("/recipe-presentations/resolve", json=payload).status_code == 422
+
+    assert client.post(
+        "/recipe-presentations/resolve", json=recipe_presentation_payload(servings=0)
+    ).status_code == 422
+    assert client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(steps=[{"index": 1, "description": ""}]),
+    ).status_code == 422
+    assert client.post(
+        "/recipe-presentations/resolve", json={**recipe_presentation_payload(), "name": "Not accepted"}
+    ).status_code == 422
+    assert client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[{"index": 1, "amount": 1, "foodstuffId": 1, "kcal": 100}]
+        ),
+    ).status_code == 422
+
+
 def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: TestClient) -> None:
     oats = create_foodstuff(client)
     recipe_version = create_recipe(client, "Oat breakfast", oats["id"])

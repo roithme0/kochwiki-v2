@@ -1,0 +1,32 @@
+@if (phase() === 'ready') {
+  <ng-template #recipeRenderer let-payload>
+    @if (isRecipePresentation(payload)) {
+      @if (isProposalPresentation(payload)) {
+        <button mat-flat-button class="proposal-save" [disabled]="savePending()" (click)="saveProposal(payload)">Als Entwurf speichern</button>
+      }
+      <app-recipe-presentation [recipe]="payload" />
+    }
+  </ng-template>
+  <ai-chat-ui class="chat-ui-integration"
+    bannerTitle="Dein Rezept weiterentwickeln"
+    bannerDescription="Beschreibe, was du verbessern möchtest. Vorschläge verändern dein Rezept nicht. Du kannst sie als neue Entwürfe speichern."
+    composerPlaceholder="Was möchtest du verbessern?"
+    [content]="content()"
+    [artifactRenderers]="{ 'kochwiki-recipe': artifactRenderer(recipeRenderer) }"
+    [composerDisabled]="view().composerDisabled"
+    [conversationStatus]="view().status"
+    (messageSubmitted)="submit($event)"
+    (statusActionTriggered)="performAction($event)" />
+} @else {
+  <div class="initial-state" role="status">
+    @switch (phase()) {
+      @case ('loading') { <p>Rezept und Lebensmittel werden geladen …</p> }
+      @case ('error') {
+        <p>Rezept und Lebensmittel konnten nicht geladen werden.</p>
+        <button mat-button (click)="load()">Erneut versuchen</button>
+      }
+      @case ('unavailable') { <p>Diese Rezeptversion ist nicht zum Verbessern verfügbar.</p> }
+    }
+    <a mat-button [routerLink]="back()">Zurück zum Rezept</a>
+  </div>
+}

@@ -13,6 +13,10 @@
 
 .headline-wrapper {
   min-width: 0;
+}
+
+.headline-row {
+  min-width: 0;
   display: flex;
   flex-direction: row;
   align-items: baseline;
@@ -20,13 +24,25 @@
 }
 
 .headline {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.heading-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.subheader {
+  font-size: 0.875rem;
+  line-height: 1.125rem;
+}
+
 .environment {
-  flex: 0 0;
+  flex: 0 0 auto;
   font-variant: petite-caps;
 }
 
@@ -35,5 +51,20 @@
 }
 
 .user-options-username {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  box-sizing: border-box;
   padding-inline: var(--mat-menu-item-leading-spacing, 12px);
+}
+
+.user-options-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--mat-menu-item-spacing, 12px);
+
+  mat-icon {
+    margin: 0;
+  }
 }
