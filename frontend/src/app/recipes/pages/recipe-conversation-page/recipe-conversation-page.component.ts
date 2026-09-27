@@ -1,7 +1,7 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { AgentConfiguration, ConversationController, ConversationViewState, HttpConversationTransport } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact, ChatSubmission, ChatUiComponent, artifactRenderer } from '@roithme0/chat-ui/ui';
@@ -10,7 +10,10 @@ import { PageHeaderService } from '../../../core/services/page-header.service';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
+import { isProposalPresentation, proposalWrite, isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
+
+import { RecipeVersion } from '../../models/recipe';
+import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-bar.service';
 
 @Component({
   selector: 'app-recipe-conversation-page',
@@ -25,7 +28,15 @@ export class RecipeConversationPageComponent {
   private readonly recipes = inject(RecipeBackendService);
   private readonly foodstuffs = inject(FoodstuffBackendService);
   private readonly activeUser = inject(ActiveUserService);
+  private readonly router = inject(Router);
+  private readonly snackbar = inject(SnackBarService);
   
+  private source: RecipeVersion | null = null;
+  private saveEpoch = 0;
+  private saveFeedback: SnackBarHandle | null = null;
+  readonly savePending = signal(false);
+  readonly isProposalPresentation = isProposalPresentation;
+
   private controller: ConversationController | null = null;
   private generation = 0;
   private submitted = false;
@@ -50,8 +61,17 @@ export class RecipeConversationPageComponent {
   readonly isRecipePresentation = isRecipePresentation;
 
   constructor() {
+    let userId = this.activeUser.activeUser()?.id;
+    effect(() => {
+      const next = this.activeUser.activeUser()?.id;
+      if (next !== userId) {
+        userId = next;
+        this.invalidateSaveFeedback();
+      }
+    });
     this.destroyRef.onDestroy(() => {
       this.generation++;
+      this.invalidateSaveFeedback();
       this.controller = null;
       this.setSubmitted(false);
       this.header.subheader = '';
@@ -66,6 +86,8 @@ export class RecipeConversationPageComponent {
 
   async load(): Promise<void> {
     const generation = ++this.generation;
+    this.invalidateSaveFeedback();
+    this.source = null;
     this.controller = null;
     this.actionPending = false;
     this.setSubmitted(false);
@@ -98,6 +120,7 @@ export class RecipeConversationPageComponent {
         return;
       }
       const catalog = catalogResult.value;
+      this.source = source;
       this.header.headline = source.name;
       this.original.set(recipeArtifact(`original-${source.recipeVersionId}`, `Original: ${source.name}`, source));
       const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.Kochwiki, mapSessionInput(source, catalog));
@@ -129,19 +152,60 @@ export class RecipeConversationPageComponent {
     const generation = this.generation;
     if (!controller || this.actionPending || this.view().status?.action?.id !== action) return;
     if (action === 'new-session' && this.submitted && !window.confirm(
-      'Die bestehende Unterhaltung wird ersetzt und geht verloren. Neue Unterhaltung starten?',
+      'Die bestehende Unterhaltung wird ersetzt und geht verloren. Gespeicherte Entwürfe bleiben verfügbar. Laufende Speichervorgänge werden nicht abgebrochen. Neue Unterhaltung starten?',
     )) return;
     this.actionPending = true;
     await controller.performAction(action);
     if (!this.isCurrent(generation)) return;
-    if (action === 'new-session' && controller.state.status === null) this.setSubmitted(false);
+    if (action === 'new-session' && controller.state.status === null) {
+      this.invalidateSaveFeedback();
+      this.setSubmitted(false);
+    }
     this.actionPending = false;
   }
 
   canLeave(): boolean {
     return !this.submitted || this.activeUser.activeUser() === null || window.confirm(
-      'Beim Verlassen geht diese Unterhaltung verloren. Möchtest du die Seite verlassen?',
+      'Beim Verlassen geht diese Unterhaltung verloren. Gespeicherte Entwürfe bleiben verfügbar. Laufende Speichervorgänge werden nicht abgebrochen. Möchtest du die Seite verlassen?',
     );
+  }
+
+  async saveProposal(payload: unknown): Promise<void> {
+    if (this.savePending() || !this.source || !isProposalPresentation(payload)
+      || this.destroyRef.destroyed || this.activeUser.activeUser() === null) return;
+    const source = this.source;
+    const write = proposalWrite(payload, source);
+    const epoch = this.saveEpoch;
+    const userId = this.activeUser.activeUser()?.id;
+    this.savePending.set(true);
+    const current = (): boolean => !this.destroyRef.destroyed && epoch === this.saveEpoch
+      && userId === this.activeUser.activeUser()?.id;
+    try {
+      const draft = await this.recipes.createRecipeDraft(source.recipeLineageId, write);
+      this.recipes.notifyRecipesChanged();
+      if (!current()) return;
+      this.saveFeedback?.dismiss();
+      this.saveFeedback = this.snackbar.open('Entwurf gespeichert', {
+        label: 'Entwurf öffnen',
+        run: (): void => {
+          if (current()) void this.router.navigate(['/recipes', draft.recipeLineageId, 'versions', draft.recipeVersionId]);
+        },
+      });
+    } catch (error: unknown) {
+      if (!current()) return;
+      this.saveFeedback?.dismiss();
+      this.saveFeedback = this.snackbar.open(error instanceof HttpErrorResponse && error.status === 422
+        ? 'Der Entwurf konnte wegen ungültiger Rezeptdaten nicht gespeichert werden.'
+        : 'Speichern konnte nicht bestätigt werden. Möglicherweise wurde der Entwurf bereits erstellt.');
+    } finally {
+      this.savePending.set(false);
+    }
+  }
+
+  private invalidateSaveFeedback(): void {
+    this.saveEpoch++;
+    this.saveFeedback?.dismiss();
+    this.saveFeedback = null;
   }
 
   private isCurrent(generation: number): boolean {

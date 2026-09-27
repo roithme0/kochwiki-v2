@@ -1,12 +1,15 @@
 @if (phase() === 'ready') {
   <ng-template #recipeRenderer let-payload>
     @if (isRecipePresentation(payload)) {
+      @if (isProposalPresentation(payload)) {
+        <button mat-flat-button class="proposal-save" [disabled]="savePending()" (click)="saveProposal(payload)">Als Entwurf speichern</button>
+      }
       <app-recipe-presentation [recipe]="payload" />
     }
   </ng-template>
   <ai-chat-ui class="chat-ui-integration"
     bannerTitle="Dein Rezept weiterentwickeln"
-    bannerDescription="Beschreibe, was du verbessern möchtest. Vorschläge verändern dein Rezept nicht und können hier noch nicht gespeichert werden."
+    bannerDescription="Beschreibe, was du verbessern möchtest. Vorschläge verändern dein Rezept nicht. Du kannst sie als neue Entwürfe speichern."
     composerPlaceholder="Was möchtest du verbessern?"
     [content]="content()"
     [artifactRenderers]="{ 'kochwiki-recipe': artifactRenderer(recipeRenderer) }"
