@@ -9,7 +9,12 @@ from app.core.config import get_settings
 from app.services.exceptions import DomainError
 
 settings = get_settings()
-app = FastAPI(title="Kochwiki API", version=settings.app_version, root_path="/api/v1")
+app = FastAPI(
+    title="Kochwiki API",
+    version=settings.app_version,
+    docs_url="/api/docs",
+    openapi_url="/api/openapi.json",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
