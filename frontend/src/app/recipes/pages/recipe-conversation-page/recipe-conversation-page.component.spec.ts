@@ -81,7 +81,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   function turn(): Response {
     return response({ kind: 'completed', turn_id: 'turn-1',
       message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: 'turn-1' },
-      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: null }],
+      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: {} }],
     });
   }
 

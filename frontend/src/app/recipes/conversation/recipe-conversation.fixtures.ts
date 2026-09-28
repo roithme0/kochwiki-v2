@@ -1,4 +1,4 @@
-import { ApiArtifact } from '@roithme0/chat-ui/conversation';
+import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { Foodstuff } from '../../foodstuffs/models/foodstuff';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 import { RecipeVersion } from '../models/recipe';
@@ -20,7 +20,7 @@ export function conversationRecipe(): RecipeVersion {
   };
 }
 
-export function conversationProposal(): ApiArtifact {
+export function conversationProposal(): ArtifactResponse {
   const { servings, preptime, kcal, carbs, protein, fat, ingredients, steps } = conversationRecipe();
   return {
     artifact_id: 'proposal-1', type: 'recipe.proposal', created_at: '2026-09-27T00:00:00Z', order: 1, turn_id: 'turn-1',

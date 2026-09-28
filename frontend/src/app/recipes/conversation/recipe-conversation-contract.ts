@@ -1,4 +1,4 @@
-import { ApiArtifact } from '@roithme0/chat-ui/conversation';
+import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
 import { Foodstuff } from '../../foodstuffs/models/foodstuff';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
@@ -155,7 +155,7 @@ export function recipeArtifact(
   };
 }
 
-export function mapProposalArtifact(artifact: ApiArtifact): ChatArtifact {
+export function mapProposalArtifact(artifact: ArtifactResponse): ChatArtifact {
   const payload = artifact.payload;
   if (
     artifact.type === 'recipe.proposal' &&

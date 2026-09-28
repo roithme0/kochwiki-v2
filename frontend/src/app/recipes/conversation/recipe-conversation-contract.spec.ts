@@ -46,7 +46,8 @@ describe('Recipe conversation contract', () => {
     { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), ingredients: [null] } },
     { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), steps: [{}] } },
   ])('contains malformed artifacts locally: %j', payload => {
-    expect(mapProposalArtifact({ ...conversationProposal(), payload }).type).toBe('kochwiki-unsupported');
+    expect(mapProposalArtifact({ ...conversationProposal(), payload: payload as ReturnType<typeof conversationProposal>['payload'] }).type)
+      .toBe('kochwiki-unsupported');
   });
 
   it('does not treat an unknown artifact type as a recipe', () => {

@@ -123,7 +123,7 @@ export class RecipeConversationPageComponent {
       this.source = source;
       this.header.headline = source.name;
       this.original.set(recipeArtifact(`original-${source.recipeVersionId}`, `Original: ${source.name}`, source));
-      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.Kochwiki, mapSessionInput(source, catalog));
+      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source, catalog));
       const controller = new ConversationController(transport, state => {
         if (this.isCurrent(generation)) this.view.set(state);
       }, mapProposalArtifact);
