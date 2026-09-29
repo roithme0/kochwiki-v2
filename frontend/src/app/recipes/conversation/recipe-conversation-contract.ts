@@ -1,7 +1,7 @@
 import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
-import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
+import type { FoodstuffOut } from '../../core/api/generated';
+import type { Unit } from '../../core/api/generated';
 import { RecipeVersion, RecipeVersionWrite } from '../models/recipe';
 import { RecipePresentation } from '../models/recipe-presentation';
 
@@ -26,7 +26,7 @@ export interface RecipeSessionInput {
     external_reference: number;
     name: string;
     brand: string | null;
-    unit: FoodstuffUnit;
+    unit: Unit;
     unit_verbose: string;
     kcal: number | null;
     carbs: number | null;
@@ -37,7 +37,7 @@ export interface RecipeSessionInput {
 
 export function mapSessionInput(
   source: RecipeVersion,
-  foodstuffs: readonly Foodstuff[],
+  foodstuffs: readonly FoodstuffOut[],
 ): RecipeSessionInput {
   return {
     source: {

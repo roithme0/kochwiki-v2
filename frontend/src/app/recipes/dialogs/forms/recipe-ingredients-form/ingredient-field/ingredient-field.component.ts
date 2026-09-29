@@ -18,7 +18,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSelectModule } from '@angular/material/select';
-import { Foodstuff } from '../../../../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../../../../core/api/generated';
 
 @Component({
   selector: 'app-ingredient-field',
@@ -34,7 +34,7 @@ import { Foodstuff } from '../../../../../foodstuffs/models/foodstuff';
   styleUrl: './ingredient-field.component.scss',
 })
 export class IngredientFieldComponent {
-  foodstuffs = input.required<Foodstuff[]>();
+  foodstuffs = input.required<FoodstuffOut[]>();
   index = input.required<number>();
 
   readonly ingredientsFormGroupDirective = inject(FormGroupDirective);
@@ -44,13 +44,13 @@ export class IngredientFieldComponent {
   ingredientControl!: FormControl;
 
   selectedFoodstuffId: WritableSignal<number | undefined> = signal(undefined);
-  selectedFoodstuff = computed((): Foodstuff | undefined =>
+  selectedFoodstuff = computed((): FoodstuffOut | undefined =>
     this.foodstuffs().find(
       (foodstuff) => foodstuff.id === this.selectedFoodstuffId()
     )
   );
   panelTitle = computed((): string => {
-    const selectedFoodstuff: Foodstuff | undefined = this.selectedFoodstuff();
+    const selectedFoodstuff: FoodstuffOut | undefined = this.selectedFoodstuff();
     return selectedFoodstuff == undefined
       ? 'Lebensmittel wählen ...'
       : selectedFoodstuff.name;

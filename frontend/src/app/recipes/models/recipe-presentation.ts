@@ -1,9 +1,9 @@
-import { FoodstuffSummary } from '../../foodstuffs/models/foodstuff-summary';
+import type { FoodstuffSummaryOut } from '../../core/api/generated';
 
 export interface RecipePresentationIngredient {
   readonly index: number;
   readonly amount: number;
-  readonly foodstuff: FoodstuffSummary;
+  readonly foodstuff: FoodstuffSummaryOut;
 }
 
 export interface RecipePresentationStep {

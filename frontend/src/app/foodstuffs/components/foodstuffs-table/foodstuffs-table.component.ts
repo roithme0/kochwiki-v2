@@ -13,7 +13,7 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffVerboseNames } from '../../models/foodstuff-meta-data';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
 import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
@@ -53,7 +53,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
   readonly foodstuffTableControlService = inject(FoodstuffTableControlService);
-  readonly foodstuffs = input<Foodstuff[]>([]);
+  readonly foodstuffs = input<FoodstuffOut[]>([]);
 
   @ViewChild('tableWrapper', { static: true })
   readonly tableWrapper!: ElementRef<HTMLElement>;
@@ -64,13 +64,13 @@ export class FoodstuffsTableComponent implements OnDestroy {
     this.updateTablePageSize()
   );
 
-  displayedFoodstuffs = computed((): Foodstuff[] => {
+  displayedFoodstuffs = computed((): FoodstuffOut[] => {
     let displayedFoodstuffs = this.foodstuffs();
     displayedFoodstuffs =
       this.searchFoodstuffsByNameOrBrand(displayedFoodstuffs);
     return displayedFoodstuffs;
   });
-  tableDataSource = new MatTableDataSource<Foodstuff>(
+  tableDataSource = new MatTableDataSource<FoodstuffOut>(
     this.displayedFoodstuffs()
   );
 
@@ -110,7 +110,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     });
   }
 
-  openEditFoodstuffDialog(foodstuff: Foodstuff): void {
+  openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
     this.dialog.open(FoodstuffPatchDialogComponent, {
       data: { id: foodstuff.id },
       minWidth: 'calc(100vw - 1rem)',
@@ -122,7 +122,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     });
   }
 
-  openDeleteFoodstuffDialog(foodstuff: Foodstuff): void {
+  openDeleteFoodstuffDialog(foodstuff: FoodstuffOut): void {
     const data: ConfirmationDialogData = {
       title: 'Lebensmittel löschen?',
       confirmLabel: 'Ja',
@@ -150,7 +150,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     }
   }
 
-  private searchFoodstuffsByNameOrBrand(foodstuffs: Foodstuff[]): Foodstuff[] {
+  private searchFoodstuffsByNameOrBrand(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
     const searchBy: string = this.foodstuffTableControlService.searchBy();
     return searchBy === ''
       ? foodstuffs

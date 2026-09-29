@@ -6,6 +6,8 @@
     "start": "npm run prebuild && ng serve --port 4202",
     "prebuild": "node generate-version.js",
     "build": "ng build",
+    "generate:kochwiki-contract": "node scripts/kochwiki-contract.mjs",
+    "check:kochwiki-contract": "node scripts/kochwiki-contract.mjs --check",
     "watch": "ng build --watch --configuration development",
     "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
     "test": "ng test"
@@ -33,6 +35,7 @@
     "@angular/build": "22.1.8",
     "@angular/cli": "22.1.8",
     "@angular/compiler-cli": "22.1.6",
+    "@hey-api/openapi-ts": "0.99.0",
     "@types/node": "24.10.1",
     "jsdom": "^30.0.1",
     "typescript": "6.0.2",

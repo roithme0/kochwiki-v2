@@ -1,9 +1,9 @@
 import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 import { RecipeVersion } from '../models/recipe';
 
-export function conversationFoodstuff(): Foodstuff {
+export function conversationFoodstuff(): FoodstuffOut {
   return { id: 1, name: 'Linsen', brand: null, unit: FoodstuffUnit.Gram, unitVerbose: 'g',
     kcal: 120, carbs: 20, protein: 8, fat: null, recipeVersionIds: [] };
 }

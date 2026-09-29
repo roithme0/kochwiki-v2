@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Subject } from 'rxjs';
-import { Foodstuff } from '../models/foodstuff';
+import type { FoodstuffCreate, FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
 import {
   FoodstuffVerboseNames,
   FoodstuffUnitChoices,
@@ -21,25 +21,25 @@ export class FoodstuffBackendService {
     this._foodstuffsChanged$.next();
   }
 
-  getAllFoodstuffs = (): Promise<Foodstuff[]> =>
-    firstValueFrom(this.httpClient.get<Foodstuff[]>(backendUrl + '/foodstuffs'));
+  getAllFoodstuffs = (): Promise<FoodstuffOut[]> =>
+    firstValueFrom(this.httpClient.get<FoodstuffOut[]>(backendUrl + '/foodstuffs'));
 
-  getFoodstuffById = (id: number): Promise<Foodstuff> =>
+  getFoodstuffById = (id: number): Promise<FoodstuffOut> =>
     firstValueFrom(
-      this.httpClient.get<Foodstuff>(backendUrl + '/foodstuffs/' + id)
+      this.httpClient.get<FoodstuffOut>(backendUrl + '/foodstuffs/' + id)
     );
 
   patchFoodstuff = (
     id: number,
-    updates: Partial<Foodstuff>
-  ): Promise<Foodstuff> =>
+    updates: FoodstuffUpdate
+  ): Promise<FoodstuffOut> =>
     firstValueFrom(
-      this.httpClient.patch<Foodstuff>(backendUrl + '/foodstuffs/' + id, updates)
+      this.httpClient.patch<FoodstuffOut>(backendUrl + '/foodstuffs/' + id, updates)
     );
 
-  postFoodstuff = (foodstuff: Partial<Foodstuff>): Promise<Foodstuff> =>
+  postFoodstuff = (foodstuff: FoodstuffCreate): Promise<FoodstuffOut> =>
     firstValueFrom(
-      this.httpClient.post<Foodstuff>(backendUrl + '/foodstuffs', foodstuff)
+      this.httpClient.post<FoodstuffOut>(backendUrl + '/foodstuffs', foodstuff)
     );
 
   deleteFoodstuff = (id: number): Promise<void> =>

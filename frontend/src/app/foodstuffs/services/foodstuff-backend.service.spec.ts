@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FoodstuffBackendService } from './foodstuff-backend.service';
-import { Foodstuff } from '../models/foodstuff';
+import type { FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
 import { FoodstuffUnit } from '../models/foodstuff-unit';
 import { backendUrl } from '../../core/constants/api';
 
@@ -23,8 +23,8 @@ describe('FoodstuffBackendService', () => {
     });
 
     it('sends foodstuff updates to the matching patch endpoint', async () => {
-        const updates: Partial<Foodstuff> = { name: 'Updated foodstuff' };
-        const foodstuff: Foodstuff = {
+        const updates: FoodstuffUpdate = { name: 'Updated foodstuff' };
+        const foodstuff: FoodstuffOut = {
             id: 7,
             name: 'Updated foodstuff',
             brand: null,

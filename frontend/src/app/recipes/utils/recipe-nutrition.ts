@@ -1,4 +1,4 @@
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 export interface DraftIngredientNutrition {
@@ -30,7 +30,7 @@ const NUTRITION_FIELDS: NutritionField[] = [
 export function calculateDraftNutrition(
   ingredients: DraftIngredientNutrition[],
   servings: number | null,
-  foodstuffs: Foodstuff[]
+  foodstuffs: FoodstuffOut[]
 ): DraftNutritionState {
   const selectedIngredients = ingredients.filter(hasFoodstuffId);
   if (selectedIngredients.length === 0) return { status: 'empty' };

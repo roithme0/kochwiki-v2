@@ -16,7 +16,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Foodstuff } from '../../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeVersion, RecipeVersionWrite } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
@@ -108,7 +108,7 @@ export class RecipeEditorComponent {
   readonly submitting = input(false);
   readonly submitted = output<RecipeEditorSubmission>();
   readonly state = signal<RecipeEditorState>({ status: 'loading' });
-  readonly foodstuffs = signal<Foodstuff[]>([]);
+  readonly foodstuffs = signal<FoodstuffOut[]>([]);
   readonly recipeVersion = signal<RecipeVersion | null>(null);
   readonly sectionNavItems: readonly SectionNavItem[] = [
     { id: 'basics', label: 'Basis' },
@@ -299,7 +299,7 @@ export class RecipeEditorComponent {
     this.applyInitialResults(foodstuffResult, recipeVersionResult);
   }
 
-  private async loadFoodstuffs(): Promise<LoadResult<Foodstuff[]>> {
+  private async loadFoodstuffs(): Promise<LoadResult<FoodstuffOut[]>> {
     try {
       return {
         status: 'success',
@@ -328,7 +328,7 @@ export class RecipeEditorComponent {
   }
 
   private applyInitialResults(
-    foodstuffResult: LoadResult<Foodstuff[]>,
+    foodstuffResult: LoadResult<FoodstuffOut[]>,
     recipeVersionResult?: LoadResult<RecipeVersion>
   ): void {
     if (foodstuffResult.status === 'error') {
@@ -361,7 +361,7 @@ export class RecipeEditorComponent {
     }
   }
 
-  private sortFoodstuffs(foodstuffs: Foodstuff[]): Foodstuff[] {
+  private sortFoodstuffs(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
     return [...foodstuffs].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );

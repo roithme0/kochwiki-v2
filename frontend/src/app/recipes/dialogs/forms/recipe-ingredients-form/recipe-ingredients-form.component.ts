@@ -18,7 +18,7 @@ import {
   Validators,
   FormBuilder,
 } from '@angular/forms';
-import { Foodstuff } from '../../../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../../../core/api/generated';
 import { Ingredient } from '../../../models/ingredient';
 import { RecipeVersion } from '../../../models/recipe';
 import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
@@ -58,7 +58,7 @@ import {
   styleUrl: './recipe-ingredients-form.component.scss',
 })
 export class RecipeIngredientsFormComponent {
-  foodstuffs = input.required<Foodstuff[]>();
+  foodstuffs = input.required<FoodstuffOut[]>();
   recipeVersion = input<RecipeVersion>();
 
   readonly recipeFormDirective = inject(FormGroupDirective);

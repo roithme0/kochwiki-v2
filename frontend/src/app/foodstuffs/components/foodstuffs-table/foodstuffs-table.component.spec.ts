@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffsTableComponent } from './foodstuffs-table.component';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
@@ -13,7 +13,7 @@ import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.serv
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 
 describe('FoodstuffsTableComponent', () => {
-    const foodstuff: Foodstuff = {
+    const foodstuff: FoodstuffOut = {
         id: 42,
         name: 'Tomate',
         brand: null,

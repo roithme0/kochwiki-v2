@@ -1,10 +1,10 @@
-import { FoodstuffSummary } from '../../foodstuffs/models/foodstuff-summary';
+import type { FoodstuffSummaryOut } from '../../core/api/generated';
 
 export interface Ingredient {
   id: number;
   index: number;
   amount: number;
-  foodstuff: FoodstuffSummary;
+  foodstuff: FoodstuffSummaryOut;
   recipeVersionId: string;
 }
 

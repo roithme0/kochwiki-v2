@@ -5,7 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ChartLegendElementComponent } from '../../../../core/components/chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../../../../core/components/macro-chart/macro-chart.component';
 import { ChartLegendElement } from '../../../../core/models/chart-legend-element';
-import { Foodstuff } from '../../../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffUnit } from '../../../../foodstuffs/models/foodstuff-unit';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.component';
@@ -23,14 +23,14 @@ class ChartLegendElementStubComponent {
 
 @Component({ selector: 'app-ingredient-field', template: '' })
 class IngredientFieldStubComponent {
-    readonly foodstuffs = input.required<Foodstuff[]>();
+    readonly foodstuffs = input.required<FoodstuffOut[]>();
     readonly index = input.required<number>();
 }
 
 describe('RecipeIngredientsFormComponent', () => {
     let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
 
-    const foodstuff: Foodstuff = {
+    const foodstuff: FoodstuffOut = {
         id: 1,
         name: 'Haferflocken',
         brand: null,
