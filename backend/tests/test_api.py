@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 
 from app.models.enums import Unit
-from app.schemas.errors import RequestValidationErrorResponse
+from app.schemas.errors import ErrorResponse
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -141,7 +141,7 @@ def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(c
         ),
     )
     assert unknown.status_code == 404
-    assert unknown.json() == {"message": "Foodstuff with id 998 not found"}
+    assert unknown.json() == {"detail": "Foodstuff with id 998 not found"}
 
     duplicate_foodstuff = client.post(
         "/recipe-presentations/resolve",
@@ -282,7 +282,7 @@ def test_duplicate_names_and_foodstuff_references_across_history_and_drafts(clie
     assert draft_version_response.status_code == 201
     blocked_delete = client.delete(f"/foodstuffs/{foodstuff['id']}")
     assert blocked_delete.status_code == 409
-    assert blocked_delete.json() == {"message": "Foodstuff cannot be deleted while it is used by a recipe"}
+    assert blocked_delete.json() == {"detail": "Foodstuff cannot be deleted while it is used by a recipe"}
 
     assert client.delete(f"/recipes/{first_recipe_version['recipeLineageId']}/drafts/{draft_version_response.json()['recipeVersionId']}").status_code == 204
     assert client.delete(f"/recipes/{first_recipe_version['recipeLineageId']}").status_code == 204
@@ -311,10 +311,10 @@ def test_foodstuff_lists_all_referencing_recipe_versions(client: TestClient) -> 
 def test_validation_and_metadata_contracts(client: TestClient) -> None:
     invalid = client.post("/foodstuffs", json={"name": "Missing required values"})
     assert invalid.status_code == 422
-    validation_error = RequestValidationErrorResponse.model_validate(invalid.json())
-    assert validation_error.message == "Validation failed"
-    assert validation_error.details
-    assert set(invalid.json()) == {"message", "details"}
+    assert set(invalid.json()) == {"detail"}
+    assert invalid.json()["detail"][0]["loc"] == ["body", "unit"]
+    assert invalid.json()["detail"][0]["type"] == "missing"
+    assert invalid.json()["detail"][0]["input"] == {"name": "Missing required values"}
     assert client.post("/recipes", json={"name": "Incomplete"}).status_code == 422
     assert client.post("/recipes", json=recipe_version_payload("Bad index", steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}])).status_code == 422
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
@@ -322,17 +322,64 @@ def test_validation_and_metadata_contracts(client: TestClient) -> None:
     assert client.post("/recipes", json=recipe_version_payload("Invalid origin", originUrl="not a valid URL")).status_code == 422
     openapi = client.get("/api/openapi.json").json()
     recipe_paths = openapi["paths"]
-    validation_schema = {"$ref": "#/components/schemas/RequestValidationErrorResponse"}
-    assert set(openapi["components"]["schemas"]["RequestValidationErrorResponse"]["properties"]) == {"message", "details"}
+    validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
+    assert set(openapi["components"]["schemas"]["HTTPValidationError"]["properties"]) == {"detail"}
+    assert set(openapi["components"]["schemas"]["ValidationError"]["properties"]) == {"loc", "msg", "type", "input", "ctx"}
     assert recipe_paths["/foodstuffs"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
     assert recipe_paths["/recipes"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
     assert recipe_paths["/recipe-presentations/resolve"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
-    assert "HTTPValidationError" not in openapi["components"]["schemas"]
+    assert "RequestValidationErrorResponse" not in openapi["components"]["schemas"]
     assert "/recipes/{lineage_id}" in recipe_paths
     assert "/recipes/{lineage_id}/versions/{version_id}" in recipe_paths
     assert "/recipes/{recipe_id}" not in recipe_paths
     assert client.get("/foodstuffs-meta-data/unit-choices").json() == {unit.value: unit.verbose_name for unit in Unit}
     assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
+
+
+def test_domain_error_responses_match_openapi(client: TestClient) -> None:
+    missing = client.get("/users/999")
+    assert missing.status_code == 404
+    assert missing.json() == {"detail": "User with id 999 not found"}
+    assert ErrorResponse.model_validate(missing.json()).detail == missing.json()["detail"]
+
+    create_foodstuff(client, brand="Mill")
+    duplicate = client.post("/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"})
+    assert duplicate.status_code == 409
+    assert duplicate.json() == {"detail": "A foodstuff with the same name and brand already exists"}
+    assert ErrorResponse.model_validate(duplicate.json()).detail == duplicate.json()["detail"]
+
+    assert client.get("/missing-route").json() == {"detail": "Not Found"}
+
+    openapi = client.get("/api/openapi.json").json()
+    error_schema = {"$ref": "#/components/schemas/ErrorResponse"}
+    assert openapi["components"]["schemas"]["ErrorResponse"]["properties"] == {
+        "detail": {"type": "string", "title": "Detail"}
+    }
+    expected_responses = {
+        ("/recipe-presentations/resolve", "post"): {404},
+        ("/recipes/{lineage_id}", "get"): {404},
+        ("/recipes/{lineage_id}/versions/{version_id}", "get"): {404},
+        ("/recipes/{lineage_id}/history", "get"): {404},
+        ("/recipes", "post"): {404},
+        ("/recipes/{lineage_id}/publish", "post"): {404},
+        ("/recipes/{lineage_id}/drafts", "post"): {404},
+        ("/recipes/{lineage_id}/drafts/{version_id}", "put"): {404, 409},
+        ("/recipes/{lineage_id}/drafts/{version_id}/publish", "post"): {404, 409},
+        ("/recipes/{lineage_id}/drafts/{version_id}", "delete"): {404, 409},
+        ("/recipes/{lineage_id}", "delete"): {404},
+        ("/foodstuffs/{foodstuff_id}", "get"): {404},
+        ("/foodstuffs", "post"): {409},
+        ("/foodstuffs/{foodstuff_id}", "patch"): {404, 409},
+        ("/foodstuffs/{foodstuff_id}", "delete"): {404, 409},
+        ("/users/{user_id}", "get"): {404},
+        ("/users", "post"): {409},
+        ("/users/{user_id}", "patch"): {404, 409},
+        ("/users/{user_id}", "delete"): {404},
+    }
+    for (path, method), statuses in expected_responses.items():
+        responses = openapi["paths"][path][method]["responses"]
+        for status in statuses:
+            assert responses[str(status)]["content"]["application/json"]["schema"] == error_schema
 
 
 def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:
@@ -404,8 +451,8 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
         ),
     )
     assert duplicate_foodstuff.status_code == 422
-    assert duplicate_foodstuff.json()["details"][0]["loc"] == ["body", "ingredients"]
-    assert "foodstuffs must be unique per recipe" in duplicate_foodstuff.json()["details"][0]["msg"]
+    assert duplicate_foodstuff.json()["detail"][0]["loc"] == ["body", "ingredients"]
+    assert "foodstuffs must be unique per recipe" in duplicate_foodstuff.json()["detail"][0]["msg"]
     duplicate_ingredient_position = client.post(
         "/recipes",
         json=recipe_version_payload(

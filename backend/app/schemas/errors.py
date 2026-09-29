@@ -1,11 +1,12 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class RequestValidationErrorResponse(BaseModel):
+class ErrorResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    message: str
-    details: list[dict[str, object]]
+    detail: str
 
 
-VALIDATION_ERROR_RESPONSE = {422: {"model": RequestValidationErrorResponse}}
+NOT_FOUND_RESPONSE = {404: {"model": ErrorResponse}}
+CONFLICT_RESPONSE = {409: {"model": ErrorResponse}}
+NOT_FOUND_AND_CONFLICT_RESPONSES = {**NOT_FOUND_RESPONSE, **CONFLICT_RESPONSE}
