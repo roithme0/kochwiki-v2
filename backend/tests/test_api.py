@@ -382,6 +382,70 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
             assert responses[str(status)]["content"]["application/json"]["schema"] == error_schema
 
 
+def test_success_response_media_types_and_bodies_match_openapi(client: TestClient) -> None:
+    paths = client.get("/api/openapi.json").json()["paths"]
+
+    version = client.get("/meta/version")
+    assert version.status_code == 200
+    assert version.headers["content-type"].startswith("text/plain")
+    assert paths["/meta/version"]["get"]["responses"]["200"]["content"] == {
+        "text/plain": {"schema": {"type": "string"}}
+    }
+
+    delete_routes = (
+        ("/foodstuffs/{foodstuff_id}", "delete"),
+        ("/users/{user_id}", "delete"),
+        ("/recipes/{lineage_id}/drafts/{version_id}", "delete"),
+        ("/recipes/{lineage_id}", "delete"),
+    )
+    for path, method in delete_routes:
+        assert "content" not in paths[path][method]["responses"]["204"]
+
+    recipe = create_recipe(client, "To delete")
+    lineage_id = recipe["recipeLineageId"]
+    draft = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft"))
+    assert draft.status_code == 201
+    foodstuff = create_foodstuff(client)
+    user = client.post("/users", json={"username": "To delete"})
+    assert user.status_code == 201
+
+    for response in (
+        client.delete(f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"),
+        client.delete(f"/recipes/{lineage_id}"),
+        client.delete(f"/foodstuffs/{foodstuff['id']}"),
+        client.delete(f"/users/{user.json()['id']}"),
+    ):
+        assert response.status_code == 204
+        assert response.content == b""
+
+
+def test_numeric_success_schema_matches_json_responses(client: TestClient) -> None:
+    openapi = client.get("/api/openapi.json").json()
+    schemas = openapi["components"]["schemas"]
+    paths = openapi["paths"]
+    assert paths["/recipe-presentations/resolve"]["post"]["responses"]["200"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/RecipePresentationOut"
+    }
+    for schema_name in ("FoodstuffOut", "RecipeVersionOut", "RecipePresentationOut"):
+        assert schemas[schema_name]["properties"]["kcal"]["anyOf"] == [
+            {"type": "number"}, {"type": "null"}
+        ]
+    assert schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"] == "number"
+
+    foodstuff = create_foodstuff(client, kcal=370.5)
+    assert isinstance(foodstuff["kcal"], (int, float))
+    response = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            ingredients=[{"index": 1, "amount": 25.5, "foodstuffId": foodstuff["id"]}]
+        ),
+    )
+    assert response.status_code == 200
+    presentation = response.json()
+    assert isinstance(presentation["kcal"], (int, float))
+    assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
+
+
 def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:
     response = client.options(
         "/recipes/1/drafts/00000000-0000-0000-0000-000000000001",

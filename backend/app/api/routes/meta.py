@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter
+from fastapi.responses import PlainTextResponse
 
 from app.core.config import get_settings
 
 router = APIRouter()
 
 
-@router.get("/meta/version", response_class=Response)
-def get_version() -> Response:
-    return Response(content=get_settings().app_version, media_type="text/plain")
+@router.get("/meta/version", response_class=PlainTextResponse)
+def get_version() -> str:
+    return get_settings().app_version

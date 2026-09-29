@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft under discussion. Agreed scope: every Kochwiki-owned FastAPI endpoint, including routes Angular does not currently call and the recipe-presentation resolver used by AI Service. Every Kochwiki JSON response consumed by Angular receives generated runtime validation. Fixed response objects reject undocumented fields, assuming coordinated backend and frontend rollout. The AI Service's conversation API contract concept is the baseline for the contract strategy, not an implementation dependency. FastAPI's default 422 shape is restored, domain 404/409 errors use `detail` and are declared in OpenAPI, and foodstuff delete represents its bodyless 204; broader generation and validation remain proposed work.
+Draft under discussion. Agreed scope: every Kochwiki-owned FastAPI endpoint, including routes Angular does not currently call and the recipe-presentation resolver used by AI Service. Every Kochwiki JSON response consumed by Angular receives generated runtime validation. Fixed response objects reject undocumented fields, assuming coordinated backend and frontend rollout. The AI Service's conversation API contract concept is the baseline for the contract strategy, not an implementation dependency. FastAPI's default 422 shape is restored, domain 404/409 errors use `detail` and are declared in OpenAPI, `/meta/version` declares its plain-text response, and delete routes declare bodyless 204 responses. Generation and Angular validation remain proposed work.
 
 ## Context
 
@@ -43,7 +43,7 @@ Use generated runtime validators for every Kochwiki JSON response consumed by An
 
 ## Integration Impact
 
-FastAPI now owns the 422 response body and OpenAPI schema. Kochwiki's domain error handler validates its shared `{ detail: string }` model, and routes declare applicable 404/409 responses. The foodstuff delete service represents its bodyless 204 as `void`. Remaining OpenAPI work includes checking response media types and bodyless status codes in generated output. The current Pydantic `JsonDecimal` serializes decimals as JSON numbers; generated output needs to be checked in response mode against actual JSON.
+FastAPI now owns the 422 response body and OpenAPI schema. Kochwiki's domain error handler validates its shared `{ detail: string }` model, and routes declare applicable 404/409 responses. The foodstuff delete service represents its bodyless 204 as `void`. Contract tests cover `/meta/version` as `text/plain`, all delete routes as bodyless 204, and representative decimal and resolver JSON against OpenAPI response schemas. Generated output still needs a trial to confirm those shapes survive generation.
 
 The Angular service boundary is the natural place to consume generated types and validators. The complete backend contract should be generated even for routes Angular does not currently call; runtime validation applies wherever Angular actually consumes Kochwiki JSON. Foodstuff create/update inputs should follow the backend's distinct models, and delete methods should represent 204 as `void`. Recipe and presentation consumers can retain narrow adapters where a UI-only shape is useful. Generation and drift checks would touch build or tooling configuration during implementation and require the repository's separate confirmation gate.
 
