@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db, get_write_db
+from app.schemas.errors import VALIDATION_ERROR_RESPONSE
 from app.schemas.recipe import (
     IngredientOut,
     RecipePresentationOut,
@@ -18,7 +19,7 @@ from app.services import recipes
 router = APIRouter()
 
 
-@router.post("/recipe-presentations/resolve", response_model=RecipePresentationOut)
+@router.post("/recipe-presentations/resolve", response_model=RecipePresentationOut, responses=VALIDATION_ERROR_RESPONSE)
 def resolve_recipe_presentation(
     payload: RecipePresentationResolve, session: Session = Depends(get_db)
 ) -> RecipePresentationOut:
@@ -30,27 +31,27 @@ def list_recipe_versions(session: Session = Depends(get_db)) -> Sequence[RecipeV
     return [recipes.recipe_version_out(version) for version in recipes.list_recipe_versions(session)]
 
 
-@router.get("/recipes/{lineage_id}", response_model=RecipeVersionOut)
+@router.get("/recipes/{lineage_id}", response_model=RecipeVersionOut, responses=VALIDATION_ERROR_RESPONSE)
 def get_active_recipe_version(lineage_id: UUID, session: Session = Depends(get_db)) -> RecipeVersionOut:
     return recipes.recipe_version_out(recipes.get_active_recipe_version(session, lineage_id))
 
 
-@router.get("/recipes/{lineage_id}/versions/{version_id}", response_model=RecipeVersionOut)
+@router.get("/recipes/{lineage_id}/versions/{version_id}", response_model=RecipeVersionOut, responses=VALIDATION_ERROR_RESPONSE)
 def get_recipe_version_by_id(lineage_id: UUID, version_id: UUID, session: Session = Depends(get_db)) -> RecipeVersionOut:
     return recipes.recipe_version_out(recipes.get_recipe_version_by_id(session, lineage_id, version_id))
 
 
-@router.get("/recipes/{lineage_id}/history", response_model=list[RecipeVersionOut])
+@router.get("/recipes/{lineage_id}/history", response_model=list[RecipeVersionOut], responses=VALIDATION_ERROR_RESPONSE)
 def list_historical_recipe_versions(lineage_id: UUID, session: Session = Depends(get_db)) -> Sequence[RecipeVersionOut]:
     return [recipes.recipe_version_out(version) for version in recipes.list_historical_recipe_versions(session, lineage_id)]
 
 
-@router.post("/recipes", response_model=RecipeVersionOut, status_code=status.HTTP_201_CREATED)
+@router.post("/recipes", response_model=RecipeVersionOut, status_code=status.HTTP_201_CREATED, responses=VALIDATION_ERROR_RESPONSE)
 def create_recipe(payload: RecipeVersionWrite, session: Session = Depends(get_write_db, scope="function")) -> RecipeVersionOut:
     return recipes.recipe_version_out(recipes.create_recipe(session, payload))
 
 
-@router.post("/recipes/{lineage_id}/publish", response_model=RecipeVersionOut)
+@router.post("/recipes/{lineage_id}/publish", response_model=RecipeVersionOut, responses=VALIDATION_ERROR_RESPONSE)
 def publish_active_recipe_edit(
     lineage_id: UUID,
     payload: RecipeVersionWrite,
@@ -59,7 +60,7 @@ def publish_active_recipe_edit(
     return recipes.recipe_version_out(recipes.publish_active_recipe_edit(session, lineage_id, payload))
 
 
-@router.post("/recipes/{lineage_id}/drafts", response_model=RecipeVersionOut, status_code=status.HTTP_201_CREATED)
+@router.post("/recipes/{lineage_id}/drafts", response_model=RecipeVersionOut, status_code=status.HTTP_201_CREATED, responses=VALIDATION_ERROR_RESPONSE)
 def create_recipe_draft(
     lineage_id: UUID,
     payload: RecipeVersionWrite,
@@ -68,7 +69,7 @@ def create_recipe_draft(
     return recipes.recipe_version_out(recipes.create_recipe_draft(session, lineage_id, payload))
 
 
-@router.put("/recipes/{lineage_id}/drafts/{version_id}", response_model=RecipeVersionOut)
+@router.put("/recipes/{lineage_id}/drafts/{version_id}", response_model=RecipeVersionOut, responses=VALIDATION_ERROR_RESPONSE)
 def update_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
@@ -78,7 +79,7 @@ def update_recipe_draft(
     return recipes.recipe_version_out(recipes.update_recipe_draft(session, lineage_id, version_id, payload))
 
 
-@router.post("/recipes/{lineage_id}/drafts/{version_id}/publish", response_model=RecipeVersionOut)
+@router.post("/recipes/{lineage_id}/drafts/{version_id}/publish", response_model=RecipeVersionOut, responses=VALIDATION_ERROR_RESPONSE)
 def publish_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
@@ -87,7 +88,7 @@ def publish_recipe_draft(
     return recipes.recipe_version_out(recipes.publish_recipe_draft(session, lineage_id, version_id))
 
 
-@router.delete("/recipes/{lineage_id}/drafts/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/recipes/{lineage_id}/drafts/{version_id}", status_code=status.HTTP_204_NO_CONTENT, responses=VALIDATION_ERROR_RESPONSE)
 def discard_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
@@ -97,7 +98,7 @@ def discard_recipe_draft(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.delete("/recipes/{lineage_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/recipes/{lineage_id}", status_code=status.HTTP_204_NO_CONTENT, responses=VALIDATION_ERROR_RESPONSE)
 def delete_recipe_lineage(lineage_id: UUID, session: Session = Depends(get_write_db, scope="function")) -> Response:
     recipes.delete_recipe_lineage(session, lineage_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

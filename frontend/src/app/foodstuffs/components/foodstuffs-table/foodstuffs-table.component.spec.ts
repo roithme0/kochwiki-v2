@@ -73,7 +73,7 @@ describe('FoodstuffsTableComponent', () => {
     });
 
     it('executes the foodstuff deletion and success side effects through the dialog action', async () => {
-        deleteFoodstuff.mockResolvedValue(foodstuff.id);
+        deleteFoodstuff.mockResolvedValue(undefined);
 
         const action: () => Promise<void> = openConfirmationAction();
         await action();

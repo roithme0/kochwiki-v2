@@ -42,9 +42,9 @@ export class FoodstuffBackendService {
       this.httpClient.post<Foodstuff>(backendUrl + '/foodstuffs', foodstuff)
     );
 
-  deleteFoodstuff = (id: number): Promise<number> =>
+  deleteFoodstuff = (id: number): Promise<void> =>
     firstValueFrom(
-      this.httpClient.delete<number>(backendUrl + '/foodstuffs/' + id)
+      this.httpClient.delete<void>(backendUrl + '/foodstuffs/' + id)
     );
 
   fetchFoodstuffVerboseNames = (): Promise<FoodstuffVerboseNames> =>

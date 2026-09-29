@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.router import router
 from app.core.config import get_settings
+from app.schemas.errors import RequestValidationErrorResponse
 from app.services.exceptions import DomainError
 
 settings = get_settings()
@@ -28,7 +29,7 @@ app.add_middleware(
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
     return JSONResponse(
         status_code=error.status_code,
-        content={"statusCode": error.status_code, "message": error.message},
+        content={"message": error.message},
     )
 
 
@@ -36,13 +37,13 @@ async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
 async def handle_validation_error(
     _: Request, error: RequestValidationError
 ) -> JSONResponse:
+    body = RequestValidationErrorResponse(
+        message="Validation failed",
+        details=jsonable_encoder(error.errors()),
+    )
     return JSONResponse(
-        status_code=422,
-        content={
-            "statusCode": 422,
-            "message": "Validation failed",
-            "details": jsonable_encoder(error.errors()),
-        },
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content=body.model_dump(mode="json"),
     )
 
 

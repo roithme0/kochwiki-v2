@@ -46,4 +46,14 @@ describe('FoodstuffBackendService', () => {
 
         await expect(responsePromise).resolves.toEqual(foodstuff);
     });
+
+    it('accepts a bodyless delete response', async () => {
+        const responsePromise: Promise<void> = service.deleteFoodstuff(7);
+
+        const request = httpTesting.expectOne(`${backendUrl}/foodstuffs/7`);
+        expect(request.request.method).toBe('DELETE');
+        request.flush(null, { status: 204, statusText: 'No Content' });
+
+        await expect(responsePromise).resolves.toBeNull();
+    });
 });
