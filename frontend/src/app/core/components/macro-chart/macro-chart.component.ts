@@ -8,6 +8,7 @@ import {
   output,
   ViewChild,
 } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { Chart, DoughnutController, ArcElement } from 'chart.js';
 import { FoodstuffSummary } from '../../../foodstuffs/models/foodstuff-summary';
 import { ChartLegendElement } from '../../models/chart-legend-element';
@@ -29,6 +30,7 @@ const PLACEHOLDER_LEGEND: Record<string, ChartLegendElement> = {
 
 @Component({
   selector: 'app-macro-chart',
+  imports: [DecimalPipe],
   templateUrl: './macro-chart.component.html',
   styleUrl: './macro-chart.component.scss',
 })
