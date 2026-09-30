@@ -25,7 +25,7 @@ describe('Version-specific conversation routing', () => {
     snackbar.mockReset().mockReturnValue({ dismiss: vi.fn() });
     getRecipe.mockReset().mockImplementation(async (_lineageId, versionId) => ({ ...conversationRecipe(), recipeVersionId: versionId }));
     vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (url) => {
-      const payload = String(url).endsWith('/messages') ? { kind: 'expired' } : { session_id: 'test', expires_at: 'later' };
+      const payload = String(url).endsWith('/messages') ? { kind: 'expired', detail: 'Session expired' } : { session_id: 'test', expires_at: 'later' };
       return new Response(JSON.stringify(payload), { status: String(url).endsWith('/messages') ? 410 : 200 });
     }));
     TestBed.configureTestingModule({ providers: [

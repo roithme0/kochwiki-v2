@@ -198,7 +198,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'expired' }, 410));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'expired', detail: 'Session expired' }, 410));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await page.performAction('new-session');
@@ -219,10 +219,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'expired' }, 410));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'expired', detail: 'Session expired' }, 410));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503));
     await page.performAction('new-session');
     await page.saveProposal(payload);
     expect(save).toHaveBeenCalledTimes(1);
@@ -237,10 +237,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     await submit(page);
     await page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'expired' }, 410));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'expired', detail: 'Session expired' }, 410));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503));
     await page.performAction('new-session');
     expect(dismiss).not.toHaveBeenCalled();
     vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -276,7 +276,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   });
 
   it('reuses detached snapshots on initial session retry', async () => {
-    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503));
     const page = await open();
     const initialBody = fetchMock.mock.calls[0][1]?.body;
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -297,7 +297,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     expect(page.canLeave()).toBe(true);
     expect(add.mock.calls.some(call => call[0] === 'beforeunload')).toBe(false);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'expired' }, 410));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'expired', detail: 'Session expired' }, 410));
     await page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
     expect(page.canLeave()).toBe(false);
     const event = new Event('beforeunload', { cancelable: true });
@@ -307,7 +307,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock).toHaveBeenCalledTimes(2);
     confirm.mockReturnValue(true);
     expect(page.canLeave()).toBe(true);
-    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable' }, 503));
+    fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503));
     await page.performAction('new-session');
     confirm.mockReturnValue(false);
     expect(page.canLeave()).toBe(false);
