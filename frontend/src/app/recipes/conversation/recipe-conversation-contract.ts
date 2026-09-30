@@ -3,7 +3,7 @@ import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
 import type { FoodstuffOut } from '../../core/api/generated';
 import type { Unit } from '../../core/api/generated';
-import { RecipeVersionWrite } from '../models/recipe';
+import type { RecipeVersionWrite } from '../../core/api/generated';
 import { RecipePresentation } from '../models/recipe-presentation';
 
 export interface RecipeSessionInput {

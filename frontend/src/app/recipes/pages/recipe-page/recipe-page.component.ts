@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { isUnconfirmedRecipeWrite } from '../../services/recipe-write-error';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -178,7 +179,9 @@ export class RecipePageComponent {
       await this.recipeBackendService.publishRecipeDraft(recipeVersion.recipeLineageId, recipeVersion.recipeVersionId);
     } catch (error: unknown) {
       console.error('failed to publish draft: ', error);
-      this.snackBarService.open('Entwurf konnte nicht übernommen werden');
+      this.snackBarService.open(isUnconfirmedRecipeWrite(error)
+        ? 'Übernehmen konnte nicht bestätigt werden. Möglicherweise ist der Entwurf bereits die aktive Version. Bitte das Rezept neu laden.'
+        : 'Entwurf konnte nicht übernommen werden');
       throw error;
     }
 

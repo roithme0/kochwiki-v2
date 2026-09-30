@@ -192,8 +192,13 @@ describe('RecipeEditorComponent', () => {
         scrollArea.remove();
     });
 
-    it('submits step indexes derived from visible form order', () => {
+    it('submits a complete numeric write payload with step indexes derived from visible form order', () => {
         component.recipeForm.controls.metaFormGroup.controls.name.setValue('Linsensuppe');
+        component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.push(new FormGroup({
+            index: new FormControl<number | null>(1),
+            amount: new FormControl<number | null>(12.5),
+            foodstuffId: new FormControl<number | null>(1),
+        }));
         component.recipeForm.controls.preparationFormGroup.controls.steps.push(new FormGroup({ description: new FormControl('Servieren', Validators.required) }));
         component.recipeForm.controls.preparationFormGroup.controls.steps.push(new FormGroup({ description: new FormControl('Kochen', Validators.required) }));
         const emitted = vi.fn().mockName('emitted');
@@ -203,15 +208,17 @@ describe('RecipeEditorComponent', () => {
 
         expect(emitted).toHaveBeenCalledTimes(1);
 
-        expect(emitted).toHaveBeenCalledWith(expect.objectContaining({
+        expect(emitted).toHaveBeenCalledWith({
             action: 'publish',
-            recipeVersion: expect.objectContaining({
+            recipeVersion: {
+                name: 'Linsensuppe', servings: 2, preptime: null, originName: null, originUrl: null,
+                ingredients: [{ index: 1, amount: 12.5, foodstuffId: 1 }],
                 steps: [
                     { index: 1, description: 'Servieren' },
                     { index: 2, description: 'Kochen' },
                 ],
-            }),
-        }));
+            },
+        });
     });
 
     it('does not submit an invalid step description', () => {

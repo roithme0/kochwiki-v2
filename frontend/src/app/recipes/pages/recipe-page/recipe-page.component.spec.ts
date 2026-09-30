@@ -1,6 +1,6 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ApiContractError } from '../../../core/api/api-contract-error';
 import { backendUrl } from '../../../core/constants/api';
@@ -117,6 +117,24 @@ describe('RecipePageComponent', () => {
         expect(openSnackBar).toHaveBeenCalledTimes(1);
         expect(openSnackBar).toHaveBeenCalledWith('Entwurf als aktive Version übernommen');
         expect(logError).toHaveBeenCalledWith('failed to navigate after publishing draft: ', error);
+    });
+
+    it.each([new ApiContractError('POST /publish', new Error('invalid response')),
+        new HttpErrorResponse({ status: 0 }), new HttpErrorResponse({ status: 503 }),
+        new HttpErrorResponse({ status: 409 })])('withholds publication success after %s', async error => {
+        publishRecipeDraft.mockRejectedValue(error);
+        vi.spyOn(console, 'error').mockReturnValue(undefined);
+        component.openPublishDraftDialog();
+        const config = openDialog.mock.lastCall![1] as { data: ConfirmationDialogData };
+        await expect(config.data.action()).rejects.toBe(error);
+        expect(publishRecipeDraft).toHaveBeenCalledTimes(1);
+        expect(navigate).not.toHaveBeenCalled();
+        expect(notifyRecipesChanged).not.toHaveBeenCalled();
+        expect(component.recipeVersion).toBe(draftRecipeVersion);
+        expect(openSnackBar).toHaveBeenCalledTimes(1);
+        if (error instanceof HttpErrorResponse && error.status === 409) {
+            expect(openSnackBar).toHaveBeenCalledWith('Entwurf konnte nicht übernommen werden');
+        } else expect(openSnackBar.mock.lastCall![0]).toContain('Möglicherweise ist der Entwurf bereits die aktive Version');
     });
 
     it('keeps draft discard successful when navigation fails after deletion', async () => {

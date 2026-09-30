@@ -19,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
-import { RecipeVersionWrite } from '../../models/recipe';
+import type { RecipeVersionWrite } from '../../../core/api/generated';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { SectionNavComponent, SectionNavItem } from '../../../core/components/section-nav/section-nav.component';
