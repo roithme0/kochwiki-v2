@@ -1,6 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { backendUrl } from '../../../core/constants/api';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { By } from '@angular/platform-browser';
@@ -81,7 +83,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   function turn(): Response {
     return response({ kind: 'completed', turn_id: 'turn-1',
       message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: 'turn-1' },
-      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: null }],
+      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: {} }],
     });
   }
 
@@ -137,6 +139,38 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(snackbar.mock.calls[1][0]).toContain('Möglicherweise');
     expect(page.savePending()).toBe(false);
     expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a malformed successful draft response as unconfirmed without retry or open action', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.overrideProvider(RecipeBackendService, { useFactory: () => {
+      const service = new RecipeBackendService();
+      service.getRecipeVersion = getRecipe;
+      service.notifyRecipesChanged = notify;
+      return service;
+    } });
+    const page = await open();
+    await submit(page);
+    const original = page.original();
+    const content = page.view().content;
+    const operation = page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    const http = TestBed.inject(HttpTestingController);
+    const url = `${backendUrl}/recipes/${source.recipeLineageId}/drafts`;
+    const request = http.expectOne(url);
+    expect(request.request.body).toEqual({
+      name: 'Neue Linsensuppe', servings: 2, preptime: 30, originName: null, originUrl: null,
+      ingredients: [{ index: 1, amount: 100, foodstuffId: 1 }], steps: [{ index: 1, description: 'Linsen kochen.' }],
+    });
+    request.flush({ recipeLineageId: source.recipeLineageId, recipeVersionId: 'invalid' }, { status: 201, statusText: 'Created' });
+    await operation;
+    expect(notify).not.toHaveBeenCalled();
+    expect(snackbar).toHaveBeenCalledTimes(1);
+    expect(snackbar).toHaveBeenCalledWith('Speichern konnte nicht bestätigt werden. Möglicherweise wurde der Entwurf bereits erstellt.');
+    expect(page.original()).toBe(original);
+    expect(page.view().content).toBe(content);
+    expect(page.savePending()).toBe(false);
+    http.expectNone(url);
+    http.verify();
   });
 
   it.each(['destroy', 'route', 'user'] as const)('suppresses deferred save feedback after %s', async boundary => {

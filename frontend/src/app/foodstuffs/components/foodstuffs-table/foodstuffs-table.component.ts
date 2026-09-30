@@ -13,10 +13,9 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { Foodstuff } from '../../models/foodstuff';
-import { FoodstuffVerboseNames } from '../../models/foodstuff-meta-data';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
+import { foodstuffFieldLabels, foodstuffUnitLabel } from '../../models/foodstuff-labels';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
@@ -39,8 +38,8 @@ const DEFAULT_PAGE_SIZE: number = 12;
     MatButtonModule,
     MatIconModule,
     MacroChartComponent,
-    MatPaginatorModule
-],
+    MatPaginatorModule,
+  ],
   templateUrl: './foodstuffs-table.component.html',
   styleUrl: './foodstuffs-table.component.scss',
 })
@@ -48,12 +47,15 @@ export class FoodstuffsTableComponent implements OnDestroy {
   readonly displayedFieldsService = inject(
     FoodstuffTableDisplayedFieldsService
   );
-  readonly foodstuffMetadataService = inject(FoodstuffMetadataService);
   readonly foodstuffBackendService = inject(FoodstuffBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
   readonly foodstuffTableControlService = inject(FoodstuffTableControlService);
-  readonly foodstuffs = input<Foodstuff[]>([]);
+
+  readonly foodstuffs = input<FoodstuffOut[]>([]);
+
+  readonly unitLabel = foodstuffUnitLabel;
+  readonly fieldLabels = foodstuffFieldLabels;
 
   @ViewChild('tableWrapper', { static: true })
   readonly tableWrapper!: ElementRef<HTMLElement>;
@@ -64,31 +66,15 @@ export class FoodstuffsTableComponent implements OnDestroy {
     this.updateTablePageSize()
   );
 
-  displayedFoodstuffs = computed((): Foodstuff[] => {
+  displayedFoodstuffs = computed((): FoodstuffOut[] => {
     let displayedFoodstuffs = this.foodstuffs();
     displayedFoodstuffs =
       this.searchFoodstuffsByNameOrBrand(displayedFoodstuffs);
     return displayedFoodstuffs;
   });
-  tableDataSource = new MatTableDataSource<Foodstuff>(
+  tableDataSource = new MatTableDataSource<FoodstuffOut>(
     this.displayedFoodstuffs()
   );
-
-  displayedVerboseNames = computed((): FoodstuffVerboseNames => {
-    const verboseNames: FoodstuffVerboseNames | null =
-      this.foodstuffMetadataService.verboseNames();
-    return verboseNames == null
-      ? {
-          name: 'Name',
-          brand: 'Marke',
-          unit: 'Einheit',
-          kcal: 'Kalorien',
-          carbs: 'Kohlenhydrate',
-          protein: 'Protein',
-          fat: 'Fett',
-        }
-      : verboseNames;
-  });
 
   constructor() {
     effect(() => (this.tableDataSource.data = this.displayedFoodstuffs()));
@@ -110,7 +96,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     });
   }
 
-  openEditFoodstuffDialog(foodstuff: Foodstuff): void {
+  openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
     this.dialog.open(FoodstuffPatchDialogComponent, {
       data: { id: foodstuff.id },
       minWidth: 'calc(100vw - 1rem)',
@@ -122,7 +108,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     });
   }
 
-  openDeleteFoodstuffDialog(foodstuff: Foodstuff): void {
+  openDeleteFoodstuffDialog(foodstuff: FoodstuffOut): void {
     const data: ConfirmationDialogData = {
       title: 'Lebensmittel löschen?',
       confirmLabel: 'Ja',
@@ -150,7 +136,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     }
   }
 
-  private searchFoodstuffsByNameOrBrand(foodstuffs: Foodstuff[]): Foodstuff[] {
+  private searchFoodstuffsByNameOrBrand(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
     const searchBy: string = this.foodstuffTableControlService.searchBy();
     return searchBy === ''
       ? foodstuffs

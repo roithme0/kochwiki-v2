@@ -6,7 +6,7 @@
         floatLabel="always"
         class="name-field"
       >
-        <mat-label>{{ verboseNames()?.name }}</mat-label>
+        <mat-label>{{ fieldLabels.name }}</mat-label>
         <input matInput formControlName="name" />
       </mat-form-field>
       <mat-form-field
@@ -14,39 +14,37 @@
         floatLabel="always"
         class="unit-select"
       >
-        <mat-label>{{ verboseNames()?.unit }}</mat-label>
+        <mat-label>{{ fieldLabels.unit }}</mat-label>
         <mat-select formControlName="unit">
-          @if (unitChoices(); as choices) {
-            @for (choice of getKeys(choices); track choice) {
-              <mat-option [value]="choice">{{ choices[choice] }}</mat-option>
-            }
+          @for (choice of unitChoices; track choice.value) {
+            <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
     </div>
     <mat-form-field appearance="outline" floatLabel="always">
-      <mat-label>{{ verboseNames()?.brand }}</mat-label>
+      <mat-label>{{ fieldLabels.brand }}</mat-label>
       <input matInput formControlName="brand" />
     </mat-form-field>
     <div class="nutrition-wrapper">
       <mat-form-field appearance="outline" floatLabel="always">
-        <mat-label>{{ verboseNames()?.kcal }}</mat-label>
+        <mat-label>{{ fieldLabels.kcal }}</mat-label>
         <input matInput type="number" formControlName="kcal" />
         <span matTextSuffix>kcal</span>
       </mat-form-field>
       <div class="macros-wrapper">
         <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ verboseNames()?.carbs }}</mat-label>
+          <mat-label>{{ fieldLabels.carbs }}</mat-label>
           <input matInput type="number" formControlName="carbs" />
           <span matTextSuffix>g</span>
         </mat-form-field>
         <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ verboseNames()?.protein }}</mat-label>
+          <mat-label>{{ fieldLabels.protein }}</mat-label>
           <input matInput type="number" formControlName="protein" />
           <span matTextSuffix>g</span>
         </mat-form-field>
         <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ verboseNames()?.fat }}</mat-label>
+          <mat-label>{{ fieldLabels.fat }}</mat-label>
           <input matInput type="number" formControlName="fat" />
           <span matTextSuffix>g</span>
         </mat-form-field>

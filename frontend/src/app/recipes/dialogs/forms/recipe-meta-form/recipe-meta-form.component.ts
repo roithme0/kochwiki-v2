@@ -1,3 +1,4 @@
+import type { RecipeVersionOut } from '../../../../core/api/generated';
 import { Component, inject, input } from '@angular/core';
 
 import {
@@ -5,7 +6,6 @@ import {
   FormGroupDirective,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { RecipeVersion } from '../../../models/recipe';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 
@@ -20,7 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
   styleUrl: './recipe-meta-form.component.scss',
 })
 export class RecipeMetaFormComponent {
-  recipeVersion = input<RecipeVersion>();
+  recipeVersion = input<RecipeVersionOut>();
 
   recipeForm!: FormGroup;
   metaFormGroup!: FormGroup;
@@ -31,7 +31,7 @@ export class RecipeMetaFormComponent {
     this.recipeForm = this.recipeFormDirective.control;
     this.metaFormGroup = this.recipeForm.get('metaFormGroup') as FormGroup;
 
-    const recipeVersion: RecipeVersion | undefined = this.recipeVersion();
+    const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
     if (recipeVersion !== undefined) {
       this.recipeForm.get('metaFormGroup')?.setValue({
         name: recipeVersion.name,

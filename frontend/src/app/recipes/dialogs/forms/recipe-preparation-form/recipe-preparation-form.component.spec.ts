@@ -1,6 +1,7 @@
+import type { RecipeVersionOut } from '../../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AbstractControl, FormArray, FormControl, FormGroup, FormGroupDirective, } from '@angular/forms';
-import { RecipeVersion } from '../../../models/recipe';
+
 import { RecipePreparationFormComponent } from './recipe-preparation-form.component';
 import { CdkDragDrop } from '@angular/cdk/drag-drop';
 
@@ -96,7 +97,7 @@ function createRecipeForm(): FormGroup {
     });
 }
 
-function recipeVersionWithSteps(): RecipeVersion {
+function recipeVersionWithSteps(): RecipeVersionOut {
     return {
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId: '00000000-0000-0000-0000-000000000001',

@@ -7,7 +7,7 @@ $medium-emphasis-font-color: color-mix(
   transparent
 );
 
-$base-container-color: rgba(128, 128, 128, 0.1);
+$base-container-color: var(--mat-card-elevated-container-color, var(--mat-sys-surface-container-low));
 $accent-container-color: var(--app-accent-container-color);
 $on-accent-container-color: var(--app-on-accent-container-color);
 $neutral-container-color: var(--app-neutral-container-color);

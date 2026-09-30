@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { isUnconfirmedRecipeWrite } from '../../services/recipe-write-error';
 import { RecipeEditorComponent, RecipeEditorSubmission } from '../recipe-editor/recipe-editor.component';
 
 @Component({
@@ -27,7 +28,9 @@ export class RecipeCreateDialogComponent {
       createdRecipeLineageId = (await this.recipeBackendService.createRecipe(submission.recipeVersion)).recipeLineageId;
     } catch (error: unknown) {
       console.error('failed to create recipe: ', error);
-      this.snackBarService.open('Rezept konnte nicht erstellt werden');
+      this.snackBarService.open(isUnconfirmedRecipeWrite(error)
+        ? 'Erstellen konnte nicht bestätigt werden. Möglicherweise wurde das Rezept bereits erstellt. Bitte vor erneutem Speichern die Rezeptliste prüfen.'
+        : 'Rezept konnte nicht erstellt werden');
       this.isSubmitting.set(false);
       return;
     }

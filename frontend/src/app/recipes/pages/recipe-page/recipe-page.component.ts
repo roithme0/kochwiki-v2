@@ -1,12 +1,12 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { RecipeVersion } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { isUnconfirmedRecipeWrite } from '../../services/recipe-write-error';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -42,7 +42,7 @@ export class RecipePageComponent {
 
   recipeLineageId: string | undefined;
   recipeVersionId: string | null;
-  recipeVersion: RecipeVersion | undefined;
+  recipeVersion: RecipeVersionOut | undefined;
   recipeVersionIsLoading: WritableSignal<boolean> = signal(true);
 
   constructor() {
@@ -174,12 +174,14 @@ export class RecipePageComponent {
     this.snackBarService.open('Rezeptlinie gelöscht');
   }
 
-  private async publishRecipeDraft(recipeVersion: RecipeVersion): Promise<void> {
+  private async publishRecipeDraft(recipeVersion: RecipeVersionOut): Promise<void> {
     try {
       await this.recipeBackendService.publishRecipeDraft(recipeVersion.recipeLineageId, recipeVersion.recipeVersionId);
     } catch (error: unknown) {
       console.error('failed to publish draft: ', error);
-      this.snackBarService.open('Entwurf konnte nicht übernommen werden');
+      this.snackBarService.open(isUnconfirmedRecipeWrite(error)
+        ? 'Übernehmen konnte nicht bestätigt werden. Möglicherweise ist der Entwurf bereits die aktive Version. Bitte das Rezept neu laden.'
+        : 'Entwurf konnte nicht übernommen werden');
       throw error;
     }
 
@@ -192,7 +194,7 @@ export class RecipePageComponent {
     this.snackBarService.open('Entwurf als aktive Version übernommen');
   }
 
-  private async discardRecipeDraft(recipeVersion: RecipeVersion): Promise<void> {
+  private async discardRecipeDraft(recipeVersion: RecipeVersionOut): Promise<void> {
     try {
       await this.recipeBackendService.discardRecipeDraft(recipeVersion.recipeLineageId, recipeVersion.recipeVersionId);
     } catch (error: unknown) {

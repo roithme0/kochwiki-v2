@@ -1,3 +1,4 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 
 import { Component, computed, inject, input } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -11,7 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 import { Router } from '@angular/router';
-import { RecipeVersion } from '../../models/recipe';
+
 
 @Component({
   selector: 'app-recipes-search',
@@ -30,7 +31,7 @@ import { RecipeVersion } from '../../models/recipe';
 export class RecipesSearchComponent {
   readonly recipesGridControlsService = inject(RecipesGridControlsService);
   readonly router = inject(Router);
-  readonly recipeVersions = input<RecipeVersion[]>([]);
+  readonly recipeVersions = input<RecipeVersionOut[]>([]);
 
   readonly nameOptionsGroupLabel: string = 'Namen';
   readonly originOptionsGroupLabel: string = 'Ersteller*innen';
@@ -43,7 +44,7 @@ export class RecipesSearchComponent {
       }, new Map<string, string>())
   );
   readonly recipeVersionsById = computed(
-    (): Map<string, RecipeVersion> => new Map(this.recipeVersions().map((recipeVersion) => [recipeVersion.recipeVersionId, recipeVersion]))
+    (): Map<string, RecipeVersionOut> => new Map(this.recipeVersions().map((recipeVersion) => [recipeVersion.recipeVersionId, recipeVersion]))
   );
   origins = computed((): string[] =>
     this.recipeVersions()

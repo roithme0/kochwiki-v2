@@ -1,5 +1,9 @@
-import { createEnvironmentInjector, EnvironmentInjector, runInInjectionContext, } from '@angular/core';
+import { ApplicationRef, createEnvironmentInjector, EnvironmentInjector, runInInjectionContext, } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ApiContractError } from '../../../core/api/api-contract-error';
+import { backendUrl } from '../../../core/constants/api';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { PageHeaderService } from '../../../core/services/page-header.service';
@@ -38,6 +42,36 @@ function createDeferred<T>(): Deferred<T> {
     });
     return { promise, resolve };
 }
+
+describe('RecipesPageComponent contract validation', () => {
+    it('retains validated recipes when a refreshed list contains malformed data', async () => {
+        const snackBarOpen = vi.fn();
+        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+        TestBed.configureTestingModule({
+            providers: [
+                provideHttpClient(), provideHttpClientTesting(),
+                { provide: PageHeaderService, useValue: { updateHeader: vi.fn() } },
+                { provide: SnackBarService, useValue: { open: snackBarOpen } },
+                { provide: MatDialog, useValue: { open: vi.fn() } },
+            ],
+        });
+        const component = TestBed.runInInjectionContext(() => new RecipesPageComponent());
+        const http = TestBed.inject(HttpTestingController);
+        const validRecipe = { ...recipeVersion(1, 'Suppe'), recipeVersionId: '00000000-0000-4000-8000-000000000002' };
+        component.ngOnInit();
+        http.expectOne(backendUrl + '/recipes').flush([validRecipe]);
+        await TestBed.inject(ApplicationRef).whenStable();
+        expect(component.recipeVersionsState()).toEqual({ status: 'success', data: [validRecipe] });
+
+        TestBed.inject(RecipeBackendService).notifyRecipesChanged();
+        http.expectOne(backendUrl + '/recipes').flush([validRecipe, { ...validRecipe, unexpected: true }]);
+        await TestBed.inject(ApplicationRef).whenStable();
+        expect(component.recipeVersionsState()).toEqual({ status: 'error', data: [validRecipe] });
+        expect(snackBarOpen).toHaveBeenCalledWith('Rezepte konnten nicht geladen werden');
+        expect(logError).toHaveBeenCalledWith('failed to fetch recipe versions: ', expect.any(ApiContractError));
+        http.verify();
+    });
+});
 
 describe('RecipesPageComponent', () => {
     let recipesChanged$: Subject<void>;

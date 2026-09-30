@@ -6,7 +6,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { User } from '../../models/user';
+import type { UserCreate, UserOut } from '../../api/generated';
 import { UserBackendService } from '../../services/user-backend.service';
 import { SnackBarService } from '../../services/snack-bar.service';
 
@@ -24,22 +24,22 @@ import { SnackBarService } from '../../services/snack-bar.service';
   styleUrl: './user-create-dialog.component.scss',
 })
 export class UserCreateDialogComponent {
-  readonly dialogRef = inject<MatDialogRef<UserCreateDialogComponent, User>>(
+  readonly dialogRef = inject<MatDialogRef<UserCreateDialogComponent, UserOut>>(
     MatDialogRef
   );
   readonly userBackendService = inject(UserBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly fb = inject(FormBuilder);
 
-  userForm = this.fb.group({
+  userForm = this.fb.nonNullable.group({
     username: ['', Validators.required],
   });
 
   async onSubmit(): Promise<void> {
-    const user: Partial<User> = this.userForm.value as User;
+    const user: UserCreate = this.userForm.getRawValue();
 
     try {
-      const createdUser: User = await this.userBackendService.postUser(user);
+      const createdUser: UserOut = await this.userBackendService.postUser(user);
       this.snackBarService.open('Benutzer erstellt');
       this.userBackendService.notifyUsersChanged();
       this.dialogRef.close(createdUser);

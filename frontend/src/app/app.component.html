@@ -1,2 +1,15 @@
-<app-page-header />
-<router-outlet />
+@if (activeUserService.restorationState() === 'idle') {
+  <app-page-header />
+  <router-outlet />
+} @else {
+  <main class="user-restoration">
+    @if (activeUserService.restorationState() === 'loading') {
+      <mat-spinner diameter="40" aria-label="Benutzer wird geladen" />
+      <p role="status">Benutzer wird geladen …</p>
+    } @else {
+      <p role="alert">Der zuletzt ausgewählte Benutzer konnte nicht geladen werden.</p>
+      <button mat-flat-button type="button" (click)="activeUserService.retryRestoration()">Erneut versuchen</button>
+    }
+    <button mat-button type="button" (click)="activeUserService.switchUser()">Anderen Benutzer auswählen</button>
+  </main>
+}

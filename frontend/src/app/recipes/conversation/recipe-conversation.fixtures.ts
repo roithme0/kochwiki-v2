@@ -1,14 +1,15 @@
-import { ApiArtifact } from '@roithme0/chat-ui/conversation';
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
+import type { RecipeVersionOut } from '../../core/api/generated';
+import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
+import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
-import { RecipeVersion } from '../models/recipe';
 
-export function conversationFoodstuff(): Foodstuff {
+
+export function conversationFoodstuff(): FoodstuffOut {
   return { id: 1, name: 'Linsen', brand: null, unit: FoodstuffUnit.Gram, unitVerbose: 'g',
     kcal: 120, carbs: 20, protein: 8, fat: null, recipeVersionIds: [] };
 }
 
-export function conversationRecipe(): RecipeVersion {
+export function conversationRecipe(): RecipeVersionOut {
   return {
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002', state: 'active',
@@ -20,7 +21,7 @@ export function conversationRecipe(): RecipeVersion {
   };
 }
 
-export function conversationProposal(): ApiArtifact {
+export function conversationProposal(): ArtifactResponse {
   const { servings, preptime, kcal, carbs, protein, fat, ingredients, steps } = conversationRecipe();
   return {
     artifact_id: 'proposal-1', type: 'recipe.proposal', created_at: '2026-09-27T00:00:00Z', order: 1, turn_id: 'turn-1',

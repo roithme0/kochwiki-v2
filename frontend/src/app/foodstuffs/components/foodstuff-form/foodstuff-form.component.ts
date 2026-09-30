@@ -5,9 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { Foodstuff } from '../../models/foodstuff';
-import { FoodstuffUnit } from '../../models/foodstuff-unit';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
+import type { FoodstuffCreate, FoodstuffOut, Unit } from '../../../core/api/generated';
+import { foodstuffFieldLabels, foodstuffUnitChoices } from '../../models/foodstuff-labels';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
@@ -18,26 +17,25 @@ import { MatIconModule } from '@angular/material/icon';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatIconModule
-],
+    MatIconModule,
+  ],
   templateUrl: './foodstuff-form.component.html',
   styleUrl: './foodstuff-form.component.scss',
 })
 export class FoodstuffFormComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly foodstuffMetadataService = inject(FoodstuffMetadataService);
 
-  readonly foodstuff = input<Partial<Foodstuff> | null>(null);
+  readonly foodstuff = input<Partial<FoodstuffOut> | null>(null);
   readonly submitLabel = input.required<string>();
-  readonly submitted = output<Partial<Foodstuff>>();
+  readonly submitted = output<FoodstuffCreate>();
 
-  readonly verboseNames = this.foodstuffMetadataService.verboseNames;
-  readonly unitChoices = this.foodstuffMetadataService.unitChoices;
+  readonly unitChoices = foodstuffUnitChoices;
+  readonly fieldLabels = foodstuffFieldLabels;
 
   readonly form = this.fb.group({
     name: this.fb.nonNullable.control('', Validators.required),
     brand: this.fb.control<string | null>(''),
-    unit: this.fb.control<FoodstuffUnit | null>(null, Validators.required),
+    unit: this.fb.control<Unit | null>(null, Validators.required),
     kcal: this.fb.control<number | null>(null),
     carbs: this.fb.control<number | null>(null),
     protein: this.fb.control<number | null>(null),
@@ -58,7 +56,4 @@ export class FoodstuffFormComponent {
     this.submitted.emit({ name, brand, unit, kcal, carbs, protein, fat });
   }
 
-  getKeys(obj: Readonly<Record<string, string>>): string[] {
-    return Object.keys(obj);
-  }
 }

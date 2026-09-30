@@ -5,15 +5,14 @@ import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffsTableComponent } from './foodstuffs-table.component';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 
 describe('FoodstuffsTableComponent', () => {
-    const foodstuff: Foodstuff = {
+    const foodstuff: FoodstuffOut = {
         id: 42,
         name: 'Tomate',
         brand: null,
@@ -40,11 +39,7 @@ describe('FoodstuffsTableComponent', () => {
 
         TestBed.configureTestingModule({
             providers: [
-                {
-                    provide: FoodstuffMetadataService,
-                    useValue: { verboseNames: signal(null) },
-                },
-                { provide: FoodstuffTableDisplayedFieldsService, useValue: {} },
+                { provide: FoodstuffTableDisplayedFieldsService, useValue: { displayedFields: signal(['unit']) } },
                 { provide: FoodstuffTableControlService, useValue: { searchBy: signal('') } },
                 { provide: MatDialog, useValue: { open: openDialog } },
                 {
@@ -72,8 +67,18 @@ describe('FoodstuffsTableComponent', () => {
         expect(resizeObserver.disconnect).toHaveBeenCalledWith();
     });
 
+    it('renders frontend labels instead of the backend unit display text', () => {
+        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+        fixture.componentRef.setInput('foodstuffs', [{ ...foodstuff, unitVerbose: 'Backend label' }]);
+        fixture.detectChanges();
+        const element: HTMLElement = fixture.nativeElement;
+        expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
+        expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
+        expect(element.textContent).not.toContain('Backend label');
+    });
+
     it('executes the foodstuff deletion and success side effects through the dialog action', async () => {
-        deleteFoodstuff.mockResolvedValue(foodstuff.id);
+        deleteFoodstuff.mockResolvedValue(undefined);
 
         const action: () => Promise<void> = openConfirmationAction();
         await action();

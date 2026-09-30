@@ -1,6 +1,6 @@
 <canvas #canvas class="canvas"></canvas>
 @if(nutrition().kcal != null && showKcal()){
 <div class="kcal-wrapper">
-  <p class="kcal">{{ nutrition().kcal }} kcal</p>
+  <p class="kcal">{{ nutrition().kcal | number:'1.0-0' }} kcal</p>
 </div>
 }

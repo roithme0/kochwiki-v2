@@ -2,7 +2,7 @@ import { NEVER, Subject } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
-import { User } from '../../models/user';
+import type { UserOut } from '../../api/generated';
 import { ActiveUserService } from '../../services/active-user.service';
 import { PageHeaderService } from '../../services/page-header.service';
 import { SnackBarService } from '../../services/snack-bar.service';
@@ -12,7 +12,7 @@ import { SelectUserPageComponent } from './select-user-page.component';
 
 describe('SelectUserPageComponent', () => {
     it('shows an error without the create button and loads users after retry', async () => {
-        const user: User = { id: 7, username: 'Daniel' };
+        const user: UserOut = { id: 7, username: 'Daniel' };
         const getAllUsers = vi.fn().mockName('getAllUsers').mockReturnValueOnce(Promise.reject(new Error('request failed'))).mockReturnValueOnce(Promise.resolve([user]));
         vi.spyOn(console, 'error').mockReturnValue(undefined);
 
@@ -52,11 +52,11 @@ describe('SelectUserPageComponent', () => {
     });
 
     it('focuses the username input and selects a newly created user', () => {
-        const createdUser: User = { id: 7, username: 'Daniel' };
-        const afterClosed = new Subject<User | undefined>();
+        const createdUser: UserOut = { id: 7, username: 'Daniel' };
+        const afterClosed = new Subject<UserOut | undefined>();
         const dialogRef = {
             afterClosed: () => afterClosed.asObservable(),
-        } as MatDialogRef<UserCreateDialogComponent, User>;
+        } as MatDialogRef<UserCreateDialogComponent, UserOut>;
         const dialog = {
             open: vi.fn().mockName("MatDialog.open")
         };
@@ -100,10 +100,10 @@ describe('SelectUserPageComponent', () => {
     });
 
     it('does not select a user when creation is aborted', () => {
-        const afterClosed = new Subject<User | undefined>();
+        const afterClosed = new Subject<UserOut | undefined>();
         const dialogRef = {
             afterClosed: () => afterClosed.asObservable(),
-        } as MatDialogRef<UserCreateDialogComponent, User | undefined>;
+        } as MatDialogRef<UserCreateDialogComponent, UserOut | undefined>;
         const dialog = {
             open: vi.fn().mockName("MatDialog.open")
         };

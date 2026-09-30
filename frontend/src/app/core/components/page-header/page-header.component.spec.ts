@@ -7,9 +7,9 @@ import { PageHeaderComponent } from './page-header.component';
 import { ActiveUserService } from '../../services/active-user.service';
 import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
-import { User } from '../../models/user';
+import type { UserOut } from '../../api/generated';
 
-const USER: User = { id: 7, username: 'Roi' };
+const USER: UserOut = { id: 7, username: 'Roi' };
 
 describe('PageHeaderComponent', () => {
     let fixture: ComponentFixture<PageHeaderComponent>;
@@ -17,7 +17,7 @@ describe('PageHeaderComponent', () => {
 
     beforeEach(async () => {
         activeUserService = {
-            activeUser: signal<User | null>(USER),
+            activeUser: signal<UserOut | null>(USER),
             switchUser: vi.fn().mockName('switchUser'),
         };
 

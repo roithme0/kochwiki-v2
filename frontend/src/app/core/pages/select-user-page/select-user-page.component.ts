@@ -5,7 +5,7 @@ import { UserBackendService } from '../../services/user-backend.service';
 import { ActiveUserService } from '../../services/active-user.service';
 import { SnackBarService } from '../../services/snack-bar.service';
 import { UserCreateDialogComponent } from '../../dialogs/user-create-dialog/user-create-dialog.component';
-import { User } from '../../models/user';
+import type { UserOut } from '../../api/generated';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,7 +31,7 @@ export class SelectUserPageComponent {
   isLoading: WritableSignal<boolean> = signal(false);
   hasError: WritableSignal<boolean> = signal(false);
 
-  users: WritableSignal<User[]> = signal([]);
+  users: WritableSignal<UserOut[]> = signal([]);
 
   ngOnInit(): void {
     this.pageHeaderService.updateHeader(false, 'Benutzer auswählen', '', false);
@@ -41,7 +41,7 @@ export class SelectUserPageComponent {
 
   //#region Event Handlers
 
-  onUserSelected(selectedUser: User | undefined): void {
+  onUserSelected(selectedUser: UserOut | undefined): void {
     if (selectedUser === undefined) {
       return;
     }
@@ -57,8 +57,8 @@ export class SelectUserPageComponent {
   openUserCreateDialog(): void {
     const dialogRef: MatDialogRef<
       UserCreateDialogComponent,
-      User | undefined
-    > = this.dialog.open<UserCreateDialogComponent, unknown, User | undefined>(
+      UserOut | undefined
+    > = this.dialog.open<UserCreateDialogComponent, unknown, UserOut | undefined>(
         UserCreateDialogComponent,
         {
           minWidth: 'calc(100vw - 1rem)',
@@ -73,7 +73,7 @@ export class SelectUserPageComponent {
     dialogRef
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((createdUser: User | undefined) => {
+      .subscribe((createdUser: UserOut | undefined) => {
         if (createdUser === undefined) {
           return;
         }

@@ -1,3 +1,4 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 
 import { Component, DestroyRef, ElementRef, QueryList, Renderer2, ViewChild, ViewChildren, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -16,9 +17,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Foodstuff } from '../../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
-import { RecipeVersion, RecipeVersionWrite } from '../../models/recipe';
+import type { RecipeVersionWrite } from '../../../core/api/generated';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { SectionNavComponent, SectionNavItem } from '../../../core/components/section-nav/section-nav.component';
@@ -108,8 +109,8 @@ export class RecipeEditorComponent {
   readonly submitting = input(false);
   readonly submitted = output<RecipeEditorSubmission>();
   readonly state = signal<RecipeEditorState>({ status: 'loading' });
-  readonly foodstuffs = signal<Foodstuff[]>([]);
-  readonly recipeVersion = signal<RecipeVersion | null>(null);
+  readonly foodstuffs = signal<FoodstuffOut[]>([]);
+  readonly recipeVersion = signal<RecipeVersionOut | null>(null);
   readonly sectionNavItems: readonly SectionNavItem[] = [
     { id: 'basics', label: 'Basis' },
     { id: 'ingredients', label: 'Zutaten' },
@@ -299,7 +300,7 @@ export class RecipeEditorComponent {
     this.applyInitialResults(foodstuffResult, recipeVersionResult);
   }
 
-  private async loadFoodstuffs(): Promise<LoadResult<Foodstuff[]>> {
+  private async loadFoodstuffs(): Promise<LoadResult<FoodstuffOut[]>> {
     try {
       return {
         status: 'success',
@@ -313,7 +314,7 @@ export class RecipeEditorComponent {
     }
   }
 
-  private async loadRecipeVersion(recipeLineageId: string, recipeVersionId: string | null): Promise<LoadResult<RecipeVersion>> {
+  private async loadRecipeVersion(recipeLineageId: string, recipeVersionId: string | null): Promise<LoadResult<RecipeVersionOut>> {
     try {
       return {
         status: 'success',
@@ -328,8 +329,8 @@ export class RecipeEditorComponent {
   }
 
   private applyInitialResults(
-    foodstuffResult: LoadResult<Foodstuff[]>,
-    recipeVersionResult?: LoadResult<RecipeVersion>
+    foodstuffResult: LoadResult<FoodstuffOut[]>,
+    recipeVersionResult?: LoadResult<RecipeVersionOut>
   ): void {
     if (foodstuffResult.status === 'error') {
       this.state.set({ status: 'error', source: 'foodstuffs' });
@@ -361,7 +362,7 @@ export class RecipeEditorComponent {
     }
   }
 
-  private sortFoodstuffs(foodstuffs: Foodstuff[]): Foodstuff[] {
+  private sortFoodstuffs(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
     return [...foodstuffs].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
     );

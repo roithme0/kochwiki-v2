@@ -1,8 +1,11 @@
+import type { RecipeVersionOut, RecipeVersionWrite } from '../../core/api/generated';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { RecipeVersion, RecipeVersionWrite } from '../models/recipe';
 import { firstValueFrom, Subject } from 'rxjs';
 import { backendUrl } from '../../core/constants/api';
+import { array } from 'zod/mini';
+import { zRecipeVersionOut } from '../../core/api/generated/zod.gen';
+import { requestApiResponse } from '../../core/api/request-api-response';
 
 @Injectable({
   providedIn: 'root',
@@ -17,31 +20,31 @@ export class RecipeBackendService {
     this._recipesChanged$.next();
   }
 
-  getAllRecipeVersions = (): Promise<RecipeVersion[]> =>
-    firstValueFrom(this.httpClient.get<RecipeVersion[]>(backendUrl + '/recipes'));
+  getAllRecipeVersions = (): Promise<RecipeVersionOut[]> =>
+    requestApiResponse(this.httpClient, 'GET', backendUrl + '/recipes', array(zRecipeVersionOut));
 
-  getActiveRecipeVersion = (recipeLineageId: string): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.get<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId));
+  getActiveRecipeVersion = (recipeLineageId: string): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'GET', backendUrl + '/recipes/' + recipeLineageId, zRecipeVersionOut);
 
-  getRecipeVersion = (recipeLineageId: string, recipeVersionId: string): Promise<RecipeVersion> =>
-    firstValueFrom(
-      this.httpClient.get<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId + '/versions/' + recipeVersionId)
+  getRecipeVersion = (recipeLineageId: string, recipeVersionId: string): Promise<RecipeVersionOut> =>
+    requestApiResponse(
+      this.httpClient, 'GET', backendUrl + '/recipes/' + recipeLineageId + '/versions/' + recipeVersionId, zRecipeVersionOut
     );
 
-  createRecipe = (recipeVersion: RecipeVersionWrite): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.post<RecipeVersion>(backendUrl + '/recipes', recipeVersion));
+  createRecipe = (recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipes', zRecipeVersionOut, { body: recipeVersion });
 
-  publishActiveRecipeEdit = (recipeLineageId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.post<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId + '/publish', recipeVersion));
+  publishActiveRecipeEdit = (recipeLineageId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipes/' + recipeLineageId + '/publish', zRecipeVersionOut, { body: recipeVersion });
 
-  createRecipeDraft = (recipeLineageId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.post<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId + '/drafts', recipeVersion));
+  createRecipeDraft = (recipeLineageId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipes/' + recipeLineageId + '/drafts', zRecipeVersionOut, { body: recipeVersion });
 
-  updateRecipeDraft = (recipeLineageId: string, recipeVersionId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.put<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId, recipeVersion));
+  updateRecipeDraft = (recipeLineageId: string, recipeVersionId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'PUT', backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId, zRecipeVersionOut, { body: recipeVersion });
 
-  publishRecipeDraft = (recipeLineageId: string, recipeVersionId: string): Promise<RecipeVersion> =>
-    firstValueFrom(this.httpClient.post<RecipeVersion>(backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId + '/publish', {}));
+  publishRecipeDraft = (recipeLineageId: string, recipeVersionId: string): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId + '/publish', zRecipeVersionOut, { body: {} });
 
   discardRecipeDraft = (recipeLineageId: string, recipeVersionId: string): Promise<void> =>
     firstValueFrom(this.httpClient.delete<void>(backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId));

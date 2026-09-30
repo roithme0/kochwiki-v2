@@ -1,3 +1,4 @@
+import type { IngredientOut, RecipeVersionOut } from '../../../../core/api/generated';
 import {
   Component,
   DestroyRef,
@@ -18,9 +19,7 @@ import {
   Validators,
   FormBuilder,
 } from '@angular/forms';
-import { Foodstuff } from '../../../../foodstuffs/models/foodstuff';
-import { Ingredient } from '../../../models/ingredient';
-import { RecipeVersion } from '../../../models/recipe';
+import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -58,8 +57,8 @@ import {
   styleUrl: './recipe-ingredients-form.component.scss',
 })
 export class RecipeIngredientsFormComponent {
-  foodstuffs = input.required<Foodstuff[]>();
-  recipeVersion = input<RecipeVersion>();
+  foodstuffs = input.required<FoodstuffOut[]>();
+  recipeVersion = input<RecipeVersionOut>();
 
   readonly recipeFormDirective = inject(FormGroupDirective);
   readonly fb: FormBuilder = inject(FormBuilder);
@@ -118,12 +117,12 @@ export class RecipeIngredientsFormComponent {
       'ingredientsFormGroup'
     ) as FormGroup;
 
-    const recipeVersion: RecipeVersion | undefined = this.recipeVersion();
+    const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
     if (recipeVersion != undefined) {
       this.recipeForm.get('ingredientsFormGroup')?.patchValue({
         servings: recipeVersion.servings,
       });
-      recipeVersion.ingredients.forEach((ingredient: Ingredient) =>
+      recipeVersion.ingredients.forEach((ingredient: IngredientOut) =>
         this.addIngredient(ingredient)
       );
     }
@@ -139,7 +138,7 @@ export class RecipeIngredientsFormComponent {
     return this.recipeForm.get('ingredientsFormGroup.ingredients') as FormArray;
   }
 
-  addIngredient(ingredient?: Ingredient): void {
+  addIngredient(ingredient?: IngredientOut): void {
     this.ingredients.push(
       this.fb.group({
         index: [this.ingredients.length + 1, Validators.required],

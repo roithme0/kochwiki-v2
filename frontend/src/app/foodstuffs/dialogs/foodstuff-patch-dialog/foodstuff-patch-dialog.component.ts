@@ -3,7 +3,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffFormComponent } from '../../components/foodstuff-form/foodstuff-form.component';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut, FoodstuffUpdate } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 
 interface FoodstuffPatchDialogData { id: number; }
@@ -20,13 +20,13 @@ export class FoodstuffPatchDialogComponent {
   private readonly snackBarService = inject(SnackBarService);
   private readonly data = inject<FoodstuffPatchDialogData>(MAT_DIALOG_DATA);
 
-  readonly foodstuff = signal<Foodstuff | null>(null);
+  readonly foodstuff = signal<FoodstuffOut | null>(null);
 
   ngOnInit(): void {
     void this.fetchFoodstuff();
   }
 
-  async onSubmit(updates: Partial<Foodstuff>): Promise<void> {
+  async onSubmit(updates: FoodstuffUpdate): Promise<void> {
     try {
       await this.foodstuffBackendService.patchFoodstuff(this.data.id, updates);
       this.foodstuffBackendService.notifyFoodstuffsChanged();

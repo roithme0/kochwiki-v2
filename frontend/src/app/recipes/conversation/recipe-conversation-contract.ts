@@ -1,8 +1,9 @@
-import { ApiArtifact } from '@roithme0/chat-ui/conversation';
+import type { RecipeVersionOut } from '../../core/api/generated';
+import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
-import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
-import { RecipeVersion, RecipeVersionWrite } from '../models/recipe';
+import type { FoodstuffOut } from '../../core/api/generated';
+import type { Unit } from '../../core/api/generated';
+import type { RecipeVersionWrite } from '../../core/api/generated';
 import { RecipePresentation } from '../models/recipe-presentation';
 
 export interface RecipeSessionInput {
@@ -26,7 +27,7 @@ export interface RecipeSessionInput {
     external_reference: number;
     name: string;
     brand: string | null;
-    unit: FoodstuffUnit;
+    unit: Unit;
     unit_verbose: string;
     kcal: number | null;
     carbs: number | null;
@@ -36,8 +37,8 @@ export interface RecipeSessionInput {
 }
 
 export function mapSessionInput(
-  source: RecipeVersion,
-  foodstuffs: readonly Foodstuff[],
+  source: RecipeVersionOut,
+  foodstuffs: readonly FoodstuffOut[],
 ): RecipeSessionInput {
   return {
     source: {
@@ -100,7 +101,7 @@ export function isProposalPresentation(
 
 export function proposalWrite(
   proposal: ProposalPresentation,
-  source: Pick<RecipeVersion, 'originName' | 'originUrl'>,
+  source: Pick<RecipeVersionOut, 'originName' | 'originUrl'>,
 ): RecipeVersionWrite {
   return {
     name: proposal.name,
@@ -155,7 +156,7 @@ export function recipeArtifact(
   };
 }
 
-export function mapProposalArtifact(artifact: ApiArtifact): ChatArtifact {
+export function mapProposalArtifact(artifact: ArtifactResponse): ChatArtifact {
   const payload = artifact.payload;
   if (
     artifact.type === 'recipe.proposal' &&

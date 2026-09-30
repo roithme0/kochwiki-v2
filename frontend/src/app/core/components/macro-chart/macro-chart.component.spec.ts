@@ -16,10 +16,10 @@ describe('MacroChartComponent', () => {
       protein: 20,
       fat: 10,
     });
-    fixture.detectChanges();
   });
 
   it('centers the kcal overlay across the full chart area', () => {
+    fixture.detectChanges();
     const kcalWrapper = fixture.nativeElement.querySelector(
       '.kcal-wrapper'
     ) as HTMLElement;
@@ -27,5 +27,18 @@ describe('MacroChartComponent', () => {
 
     expect(styles.inset).toBe('0px');
     expect(styles.placeItems).toBe('center');
+  });
+
+  it('displays kcal rounded to a whole number', () => {
+    fixture.componentRef.setInput('nutrition', {
+      kcal: 420.6,
+      carbs: 40,
+      protein: 20,
+      fat: 10,
+    });
+    fixture.detectChanges();
+
+    const kcal = fixture.nativeElement.querySelector('.kcal') as HTMLElement;
+    expect(kcal.textContent?.trim()).toBe('421 kcal');
   });
 });

@@ -1,12 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Subject } from 'rxjs';
-import { Foodstuff } from '../models/foodstuff';
-import {
-  FoodstuffVerboseNames,
-  FoodstuffUnitChoices,
-} from '../models/foodstuff-meta-data';
+import type { FoodstuffCreate, FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
+import { array } from 'zod/mini';
+import { zFoodstuffOut } from '../../core/api/generated/zod.gen';
+import { requestApiResponse } from '../../core/api/request-api-response';
 import { backendUrl } from '../../core/constants/api';
+
+const foodstuffListSchema = array(zFoodstuffOut);
 
 @Injectable({
   providedIn: 'root',
@@ -21,43 +22,32 @@ export class FoodstuffBackendService {
     this._foodstuffsChanged$.next();
   }
 
-  getAllFoodstuffs = (): Promise<Foodstuff[]> =>
-    firstValueFrom(this.httpClient.get<Foodstuff[]>(backendUrl + '/foodstuffs'));
+  getAllFoodstuffs = (): Promise<FoodstuffOut[]> =>
+    requestApiResponse(this.httpClient, 'GET', backendUrl + '/foodstuffs', foodstuffListSchema);
 
-  getFoodstuffById = (id: number): Promise<Foodstuff> =>
-    firstValueFrom(
-      this.httpClient.get<Foodstuff>(backendUrl + '/foodstuffs/' + id)
+  getFoodstuffById = (id: number): Promise<FoodstuffOut> =>
+    requestApiResponse(
+      this.httpClient, 'GET', `${backendUrl}/foodstuffs/${id}`, zFoodstuffOut
     );
 
   patchFoodstuff = (
     id: number,
-    updates: Partial<Foodstuff>
-  ): Promise<Foodstuff> =>
-    firstValueFrom(
-      this.httpClient.patch<Foodstuff>(backendUrl + '/foodstuffs/' + id, updates)
+    updates: FoodstuffUpdate
+  ): Promise<FoodstuffOut> =>
+    requestApiResponse(
+      this.httpClient, 'PATCH', `${backendUrl}/foodstuffs/${id}`, zFoodstuffOut,
+      { body: updates }
     );
 
-  postFoodstuff = (foodstuff: Partial<Foodstuff>): Promise<Foodstuff> =>
-    firstValueFrom(
-      this.httpClient.post<Foodstuff>(backendUrl + '/foodstuffs', foodstuff)
+  postFoodstuff = (foodstuff: FoodstuffCreate): Promise<FoodstuffOut> =>
+    requestApiResponse(
+      this.httpClient, 'POST', backendUrl + '/foodstuffs', zFoodstuffOut,
+      { body: foodstuff }
     );
 
-  deleteFoodstuff = (id: number): Promise<number> =>
+  deleteFoodstuff = (id: number): Promise<void> =>
     firstValueFrom(
-      this.httpClient.delete<number>(backendUrl + '/foodstuffs/' + id)
+      this.httpClient.delete<void>(backendUrl + '/foodstuffs/' + id)
     );
 
-  fetchFoodstuffVerboseNames = (): Promise<FoodstuffVerboseNames> =>
-    firstValueFrom(
-      this.httpClient.get<FoodstuffVerboseNames>(
-        backendUrl + '/foodstuffs-meta-data/verbose-names'
-      )
-    );
-
-  fetchFoodstuffUnitChoices = (): Promise<FoodstuffUnitChoices> =>
-    firstValueFrom(
-      this.httpClient.get<FoodstuffUnitChoices>(
-        backendUrl + '/foodstuffs-meta-data/unit-choices'
-      )
-    );
 }
