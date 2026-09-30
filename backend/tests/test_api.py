@@ -174,12 +174,41 @@ def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(c
     ).status_code == 422
 
 
-def test_recipe_presentation_resolver_requires_all_fields_and_enforces_bounds(client: TestClient) -> None:
+def test_recipe_presentation_resolver_requires_all_fields(client: TestClient) -> None:
     for field in ("servings", "preptime", "ingredients", "steps"):
         payload = recipe_presentation_payload()
         del payload[field]
         assert client.post("/recipe-presentations/resolve", json=payload).status_code == 422
 
+
+@pytest.mark.parametrize("amount", ["12.5", True, None])
+def test_resolver_and_recipe_writes_reject_non_numeric_amounts(
+    client: TestClient, amount: object
+) -> None:
+    foodstuff = create_foodstuff(client)
+    ingredients = [{"index": 1, "amount": amount, "foodstuffId": foodstuff["id"]}]
+    for path, payload in (
+        ("/recipe-presentations/resolve", recipe_presentation_payload(ingredients=ingredients)),
+        ("/recipes", recipe_version_payload("Invalid amount", ingredients=ingredients)),
+    ):
+        response = client.post(path, json=payload)
+        assert response.status_code == 422
+        assert response.json()["detail"][0]["loc"] == ["body", "ingredients", 0, "amount"]
+    assert client.get("/recipes").json() == []
+
+
+@pytest.mark.parametrize("field,value", [("servings", "2"), ("servings", True), ("preptime", "10")])
+def test_resolver_rejects_coerced_integer_fields(
+    client: TestClient, field: str, value: object
+) -> None:
+    response = client.post(
+        "/recipe-presentations/resolve", json=recipe_presentation_payload(**{field: value})
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", field]
+
+
+def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(client: TestClient) -> None:
     assert client.post(
         "/recipe-presentations/resolve", json=recipe_presentation_payload(servings=0)
     ).status_code == 422

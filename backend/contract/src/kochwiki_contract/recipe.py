@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .common import JsonDecimal
@@ -7,26 +5,30 @@ from .foodstuff import FoodstuffSummaryOut
 
 
 class IngredientWrite(BaseModel):
+    model_config = ConfigDict(strict=True)
+
     index: int = Field(ge=1, le=99)
-    amount: Decimal = Field(gt=0, le=9999)
+    amount: JsonDecimal = Field(gt=0, le=9999)
     foodstuffId: int = Field(gt=0)
 
 
 class StepWrite(BaseModel):
+    model_config = ConfigDict(strict=True)
+
     index: int = Field(ge=1, le=99)
     description: str = Field(min_length=1, max_length=200)
 
 
 class RecipePresentationIngredientResolve(IngredientWrite):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class RecipePresentationStepResolve(StepWrite):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class RecipePresentationResolve(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     servings: int = Field(ge=1, le=99)
     preptime: int | None = Field(ge=1, le=999)
@@ -53,7 +55,7 @@ class RecipePresentationResolve(BaseModel):
 
 
 class RecipePresentationIngredientOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     index: int
     amount: JsonDecimal
@@ -61,14 +63,14 @@ class RecipePresentationIngredientOut(BaseModel):
 
 
 class RecipePresentationStepOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     index: int
     description: str
 
 
 class RecipePresentationOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     servings: int
     preptime: int | None

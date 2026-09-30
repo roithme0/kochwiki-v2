@@ -13,10 +13,7 @@ export const zErrorResponse = z.strictObject({
  * IngredientWrite
  */
 export const zIngredientWrite = z.object({
-    amount: z.union([
-        z.number().check(z.gt(0), z.lte(9999)),
-        z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
-    ]),
+    amount: z.number().check(z.gt(0), z.lte(9999)),
     foodstuffId: z.int().check(z.gt(0)),
     index: z.int().check(z.gte(1), z.lte(99))
 });
@@ -25,10 +22,7 @@ export const zIngredientWrite = z.object({
  * RecipePresentationIngredientResolve
  */
 export const zRecipePresentationIngredientResolve = z.strictObject({
-    amount: z.union([
-        z.number().check(z.gt(0), z.lte(9999)),
-        z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
-    ]),
+    amount: z.number().check(z.gt(0), z.lte(9999)),
     foodstuffId: z.int().check(z.gt(0)),
     index: z.int().check(z.gte(1), z.lte(99))
 });

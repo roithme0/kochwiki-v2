@@ -34,7 +34,16 @@ release. Python 3.13 and Pydantic 2.13 are the initial baseline; the supported
 version matrix and release versioning will be established before distribution.
 `py.typed` is included for consumer type checkers.
 
-This extraction preserves existing validation, including decimal-string
-coercion and backend `Decimal` construction. JSON output still contains numeric
-decimals. Stricter consumer parsing and GitHub Release distribution are separate
-follow-up slices.
+The shared models validate both JSON and decoded dictionaries without coercing
+numeric strings or booleans into numbers. Integer fields require integers;
+collections require lists. Decimal fields accept finite JSON numbers and Python
+`Decimal` values, and serialize as JSON numbers in both requests and responses.
+Units accept their documented string values and Python `Unit` instances;
+backend attribute-based foodstuff construction remains supported. Nullable
+fields remain required where declared, and resolver objects reject extra fields.
+
+Ingredient amounts in resolver requests and recipe writes now require numbers;
+previously accepted decimal strings return HTTP 422. Their shared index and
+foodstuff ID fields also reject coercion. OpenAPI and Angular's generated
+contract reflect numeric amount acceptance. GitHub Release distribution remains
+a follow-up slice.

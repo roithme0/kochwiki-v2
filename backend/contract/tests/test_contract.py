@@ -5,9 +5,10 @@ import unittest
 from copy import deepcopy
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import kochwiki_contract
-from kochwiki_contract import RecipePresentationOut, RecipePresentationResolve, Unit
+from kochwiki_contract import FoodstuffSummaryOut, RecipePresentationOut, RecipePresentationResolve, Unit
 from pydantic import ValidationError
 
 
@@ -90,14 +91,16 @@ class ContractTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     RecipePresentationOut.model_validate(body)
 
-    def test_request_validation_and_existing_decimal_coercion(self) -> None:
-        for amount in (12, 12.5, "12.5", Decimal("12.5")):
+    def test_request_validation_and_numeric_decimal_construction(self) -> None:
+        for amount in (12, 12.5, Decimal("12.5")):
             with self.subTest(amount=amount):
                 body = request()
                 body["ingredients"] = [{"index": 1, "amount": amount, "foodstuffId": 7}]
                 parsed = RecipePresentationResolve.model_validate(body)
                 self.assertEqual(parsed.ingredients[0].amount, Decimal(str(amount)))
-        for amount in (0, -1, 10000, "not-a-number"):
+                self.assertIsInstance(json.loads(parsed.model_dump_json())["ingredients"][0]["amount"], (int, float))
+                self.assertEqual(RecipePresentationResolve.model_validate_json(parsed.model_dump_json()), parsed)
+        for amount in (0, -1, 10000, "12.5", "not-a-number", True, float("inf"), Decimal("NaN")):
             with self.subTest(invalid_amount=amount):
                 body = request()
                 body["ingredients"] = [{"index": 1, "amount": amount, "foodstuffId": 7}]
@@ -134,6 +137,82 @@ class ContractTests(unittest.TestCase):
                 item["unexpected"] = True
                 with self.assertRaises(ValidationError):
                     RecipePresentationResolve.model_validate(body)
+
+    def test_malformed_wire_types_are_rejected(self) -> None:
+        cases = [
+            (RecipePresentationResolve, request, ("servings",), ("2", True, 2.5)),
+            (RecipePresentationResolve, request, ("preptime",), ("2", True, 2.5)),
+            (RecipePresentationResolve, request, ("ingredients", 0, "index"), ("1", True, 1.5)),
+            (RecipePresentationResolve, request, ("ingredients", 0, "foodstuffId"), ("7", True, 7.5)),
+            (RecipePresentationResolve, request, ("ingredients", 0, "amount"), ("12.5", True, None)),
+            (RecipePresentationResolve, request, ("steps", 0, "description"), (1, True, None)),
+            (RecipePresentationOut, presentation, ("servings",), ("2", True, 2.5)),
+            (RecipePresentationOut, presentation, ("preptime",), ("2", True, 2.5)),
+            (RecipePresentationOut, presentation, ("ingredients", 0, "index"), ("1", True, 1.5)),
+            (RecipePresentationOut, presentation, ("ingredients", 0, "amount"), ("12.5", True, None)),
+            (RecipePresentationOut, presentation, ("steps", 0, "index"), ("1", True, 1.5)),
+            (RecipePresentationOut, presentation, ("steps", 0, "description"), (1, True, None)),
+            (RecipePresentationOut, presentation, ("ingredients", 0, "foodstuff", "id"), ("7", True, 7.5)),
+            (RecipePresentationOut, presentation, ("ingredients", 0, "foodstuff", "unit"), ("unknown", 1, True)),
+        ]
+        for path in (("kcal",), ("carbs",), ("protein",), ("fat",)):
+            cases.append((RecipePresentationOut, presentation, path, ("12.5", True)))
+            cases.append((RecipePresentationOut, presentation, ("ingredients", 0, "foodstuff", *path), ("12.5", True)))
+        for field in ("name", "brand", "unitVerbose"):
+            cases.append((RecipePresentationOut, presentation, ("ingredients", 0, "foodstuff", field), (1, True)))
+        for model, factory, path, values in cases:
+            for value in values:
+                body = factory()
+                target: object = body
+                for key in path[:-1]:
+                    if isinstance(key, int):
+                        assert isinstance(target, list)
+                    else:
+                        assert isinstance(target, dict)
+                    target = target[key]
+                assert isinstance(target, dict)
+                target[path[-1]] = value
+                with self.subTest(model=model.__name__, path=path, value=value):
+                    with self.assertRaises(ValidationError):
+                        model.model_validate(body)
+                    with self.assertRaises(ValidationError):
+                        model.model_validate_json(json.dumps(body))
+        for field in ("kcal", "carbs", "protein", "fat"):
+            for value in ("12.5", True, float("inf"), float("nan")):
+                body = presentation()
+                body[field] = value
+                body["ingredients"] = [{
+                    "index": 1, "amount": 1,
+                    "foodstuff": {**presentation()["ingredients"][0]["foodstuff"], field: value},
+                }]
+                with self.subTest(field=field, value=value):
+                    with self.assertRaises(ValidationError):
+                        RecipePresentationOut.model_validate_json(json.dumps(body))
+        for model, factory in ((RecipePresentationResolve, request), (RecipePresentationOut, presentation)):
+            for field in ("ingredients", "steps"):
+                for value in ({}, "[]", None):
+                    with self.subTest(model=model.__name__, field=field, value=value):
+                        with self.assertRaises(ValidationError):
+                            model.model_validate_json(json.dumps({**factory(), field: value}))
+                with self.assertRaises(ValidationError):
+                    model.model_validate({**factory(), field: tuple(factory()[field])})
+
+    def test_backend_construction_and_numeric_request_schema(self) -> None:
+        parsed = RecipePresentationOut.model_validate(presentation())
+        constructed = RecipePresentationOut.model_validate(parsed.model_dump())
+        self.assertEqual(constructed.ingredients[0].amount, Decimal("12.5"))
+        self.assertIs(constructed.ingredients[0].foodstuff.unit, Unit.G)
+        self.assertEqual(json.loads(constructed.model_dump_json()), presentation())
+        foodstuff = constructed.ingredients[0].foodstuff
+        self.assertEqual(FoodstuffSummaryOut.model_validate(SimpleNamespace(**foodstuff.model_dump())), foodstuff)
+        with self.assertRaises(ValidationError):
+            FoodstuffSummaryOut.model_validate({**foodstuff.model_dump(), "unit": b"G"})
+        schema = RecipePresentationResolve.model_json_schema()
+        amount = schema["$defs"]["RecipePresentationIngredientResolve"]["properties"]["amount"]
+        self.assertEqual(amount["type"], "number")
+        self.assertEqual(amount["exclusiveMinimum"], 0)
+        self.assertEqual(amount["maximum"], 9999)
+        self.assertNotIn("anyOf", amount)
 
 
 if __name__ == "__main__":

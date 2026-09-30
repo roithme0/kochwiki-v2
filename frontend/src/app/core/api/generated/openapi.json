@@ -450,18 +450,10 @@
       "IngredientWrite": {
         "properties": {
           "amount": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "maximum": 9999.0,
-                "type": "number"
-              },
-              {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
-              }
-            ],
-            "title": "Amount"
+            "exclusiveMinimum": 0.0,
+            "maximum": 9999.0,
+            "title": "Amount",
+            "type": "number"
           },
           "foodstuffId": {
             "exclusiveMinimum": 0.0,
@@ -510,18 +502,10 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "maximum": 9999.0,
-                "type": "number"
-              },
-              {
-                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-                "type": "string"
-              }
-            ],
-            "title": "Amount"
+            "exclusiveMinimum": 0.0,
+            "maximum": 9999.0,
+            "title": "Amount",
+            "type": "number"
           },
           "foodstuffId": {
             "exclusiveMinimum": 0.0,

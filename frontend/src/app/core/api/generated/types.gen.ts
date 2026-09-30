@@ -198,7 +198,7 @@ export type IngredientWrite = {
     /**
      * Amount
      */
-    amount: number | string;
+    amount: number;
     /**
      * Foodstuffid
      */
@@ -231,7 +231,7 @@ export type RecipePresentationIngredientResolve = {
     /**
      * Amount
      */
-    amount: number | string;
+    amount: number;
     /**
      * Foodstuffid
      */
