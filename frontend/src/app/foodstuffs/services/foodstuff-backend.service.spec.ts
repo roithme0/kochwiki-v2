@@ -35,6 +35,8 @@ const operations: {
 const malformedResponses = [
     { reason: 'missing nullable field', body: Object.fromEntries(Object.entries(foodstuff).filter(([key]) => key !== 'protein')) },
     { reason: 'string nutrition', body: { ...foodstuff, kcal: '370.5' } },
+    { reason: 'negative nutrition', body: { ...foodstuff, kcal: -1 } },
+    { reason: 'nonpositive ID', body: { ...foodstuff, id: 0 } },
     { reason: 'null required field', body: { ...foodstuff, name: null } },
     { reason: 'unknown unit', body: { ...foodstuff, unit: 'KG' } },
     { reason: 'invalid recipe UUID', body: { ...foodstuff, recipeVersionIds: ['invalid'] } },

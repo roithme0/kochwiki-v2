@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import kochwiki_contract
 from kochwiki_contract import FoodstuffSummaryOut, RecipePresentationOut, RecipePresentationResolve, Unit
 from pydantic import ValidationError
+from pydantic_core import PydanticSerializationError
 
 
 def presentation() -> dict[str, object]:
@@ -42,6 +43,93 @@ def request() -> dict[str, object]:
 
 
 class ContractTests(unittest.TestCase):
+    def test_response_invariants_in_python_and_json(self) -> None:
+        cases: list[tuple[tuple[str | int, ...], tuple[object, ...]]] = [
+            (("servings",), (0, -1)),
+            (("preptime",), (0, -1)),
+            (("ingredients", 0, "index"), (0, -1)),
+            (("ingredients", 0, "amount"), (0, -1)),
+            (("ingredients", 0, "foodstuff", "id"), (0, -1)),
+            (("steps", 0, "index"), (0, -1)),
+            (("steps", 0, "description"), ("", "x" * 201)),
+        ]
+        for field in ("kcal", "carbs", "protein", "fat"):
+            cases.extend([
+                ((field,), (-1,)),
+                (("ingredients", 0, "foodstuff", field), (-1,)),
+            ])
+        for path, values in cases:
+            for value in values:
+                body = presentation()
+                target: object = body
+                for key in path[:-1]:
+                    if isinstance(key, int):
+                        assert isinstance(target, list)
+                    else:
+                        assert isinstance(target, dict)
+                    target = target[key]
+                assert isinstance(target, dict)
+                target[path[-1]] = value
+                with self.subTest(path=path, value=value):
+                    with self.assertRaises(ValidationError):
+                        RecipePresentationOut.model_validate(body)
+                    with self.assertRaises(ValidationError):
+                        RecipePresentationOut.model_validate_json(json.dumps(body))
+
+    def test_responses_do_not_inherit_request_upper_limits(self) -> None:
+        parsed = RecipePresentationOut.model_validate(presentation())
+        body = parsed.model_dump()
+        body.update(servings=100, preptime=1000, kcal=Decimal("1000000"))
+        body["ingredients"][0].update(index=100, amount=Decimal("10000"))
+        body["steps"][0].update(index=100, description="x" * 200)
+        result = RecipePresentationOut.model_validate(body)
+        self.assertEqual(result.servings, 100)
+        self.assertEqual(result.ingredients[0].amount, Decimal("10000"))
+        self.assertEqual(RecipePresentationOut.model_validate_json(result.model_dump_json()), result)
+
+    def test_decimal_bounds_are_expressed_in_both_schema_modes(self) -> None:
+        for mode in ("validation", "serialization"):
+            with self.subTest(mode=mode):
+                schema = RecipePresentationOut.model_json_schema(mode=mode)
+                self.assertEqual(schema["properties"]["kcal"]["anyOf"], [
+                    {"type": "number", "minimum": 0}, {"type": "null"},
+                ])
+                self.assertEqual(schema["$defs"]["FoodstuffSummaryOut"]["properties"]["fat"]["anyOf"], [
+                    {"type": "number", "minimum": 0}, {"type": "null"},
+                ])
+                amount = schema["$defs"]["RecipePresentationIngredientOut"]["properties"]["amount"]
+                self.assertEqual(amount["type"], "number")
+                self.assertEqual(amount["exclusiveMinimum"], 0)
+                self.assertNotIn("maximum", amount)
+
+    def test_decimal_serialization_range_and_rounding(self) -> None:
+        for value in (Decimal("1e309"), Decimal("-1e309"), Decimal("1e-400"),
+                      Decimal("NaN"), Decimal("Infinity")):
+            with self.subTest(value=value):
+                with self.assertRaises(ValidationError):
+                    RecipePresentationOut.model_validate({**presentation(), "kcal": value})
+        for literal in ("1e309",):
+            body = json.dumps(presentation()).replace('"kcal": 12.5', f'"kcal": {literal}')
+            with self.subTest(json_number=literal):
+                with self.assertRaises(ValidationError):
+                    RecipePresentationOut.model_validate_json(body)
+        body = json.dumps(presentation()).replace('"kcal": 12.5', '"kcal": 1e-400')
+        self.assertEqual(RecipePresentationOut.model_validate_json(body).kcal, Decimal("0"))
+        with self.assertRaises(ValidationError):
+            RecipePresentationOut.model_validate(json.loads(body, parse_float=Decimal))
+        for value in (Decimal("0"), Decimal("5e-324"), Decimal.from_float(sys.float_info.max),
+                      Decimal("0.12345678901234567890123456789")):
+            with self.subTest(value=value):
+                parsed = RecipePresentationOut.model_validate({**presentation(), "kcal": value})
+                self.assertEqual(parsed.kcal, value)
+                self.assertEqual(json.loads(parsed.model_dump_json())["kcal"], float(value))
+                self.assertEqual(parsed.model_dump(mode="json")["kcal"], float(value))
+        parsed = RecipePresentationOut.model_validate(presentation())
+        parsed.ingredients[0].amount = Decimal("1e-400")
+        for dump in (parsed.model_dump_json, lambda: parsed.model_dump(mode="json")):
+            with self.assertRaises(PydanticSerializationError):
+                dump()
+
     @unittest.skipUnless(sys.flags.isolated, "Run the wheel isolation check with python -I")
     def test_package_is_independent_and_typed(self) -> None:
         for module in ("app", "fastapi", "sqlalchemy"):

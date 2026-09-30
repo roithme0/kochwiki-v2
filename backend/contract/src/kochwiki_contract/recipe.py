@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .common import JsonDecimal
+from .common import JsonDecimal, NonnegativeJsonDecimal, PositiveJsonDecimal
 from .foodstuff import FoodstuffSummaryOut
 
 
@@ -57,27 +57,27 @@ class RecipePresentationResolve(BaseModel):
 class RecipePresentationIngredientOut(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int
-    amount: JsonDecimal
+    index: int = Field(ge=1)
+    amount: PositiveJsonDecimal
     foodstuff: FoodstuffSummaryOut
 
 
 class RecipePresentationStepOut(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int
-    description: str
+    index: int = Field(ge=1)
+    description: str = Field(min_length=1, max_length=200)
 
 
 class RecipePresentationOut(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    servings: int
-    preptime: int | None
-    kcal: JsonDecimal | None
-    carbs: JsonDecimal | None
-    protein: JsonDecimal | None
-    fat: JsonDecimal | None
+    servings: int = Field(ge=1)
+    preptime: int | None = Field(ge=1)
+    kcal: NonnegativeJsonDecimal | None
+    carbs: NonnegativeJsonDecimal | None
+    protein: NonnegativeJsonDecimal | None
+    fat: NonnegativeJsonDecimal | None
     ingredients: list[RecipePresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
 

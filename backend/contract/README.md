@@ -39,9 +39,18 @@ The shared models validate both JSON and decoded dictionaries without coercing
 numeric strings or booleans into numbers. Integer fields require integers;
 collections require lists. Decimal fields accept finite JSON numbers and Python
 `Decimal` values, and serialize as JSON numbers in both requests and responses.
+Values that would serialize as infinity or turn a nonzero decimal into zero are
+rejected. Serialization may otherwise round to floating-point precision.
+JSON parsers can lose precision or underflow before field validation; consumers
+that need to retain decimal values should decode with
+`json.loads(payload, parse_float=Decimal)` before calling `model_validate`.
 Units accept their documented string values and Python `Unit` instances;
 backend attribute-based foodstuff construction remains supported. Nullable
 fields remain required where declared, and resolver objects reject extra fields.
+Responses require positive IDs, indexes, servings, preparation times and amounts,
+nonnegative nutrition, and step descriptions of 1–200 characters. Nullable
+preparation times and nutrition remain supported. Request upper limits do not
+apply to responses or calculated nutrition.
 
 Ingredient amounts in resolver requests and recipe writes now require numbers;
 previously accepted decimal strings return HTTP 422. Their shared index and

@@ -127,6 +127,7 @@
           "carbs": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -138,6 +139,7 @@
           "fat": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -147,12 +149,14 @@
             "title": "Fat"
           },
           "id": {
+            "exclusiveMinimum": 0.0,
             "title": "Id",
             "type": "integer"
           },
           "kcal": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -168,6 +172,7 @@
           "protein": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -224,6 +229,7 @@
           "carbs": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -235,6 +241,7 @@
           "fat": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -244,12 +251,14 @@
             "title": "Fat"
           },
           "id": {
+            "exclusiveMinimum": 0.0,
             "title": "Id",
             "type": "integer"
           },
           "kcal": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -265,6 +274,7 @@
           "protein": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -479,6 +489,7 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
+            "exclusiveMinimum": 0.0,
             "title": "Amount",
             "type": "number"
           },
@@ -486,6 +497,7 @@
             "$ref": "#/components/schemas/FoodstuffSummaryOut"
           },
           "index": {
+            "minimum": 1.0,
             "title": "Index",
             "type": "integer"
           }
@@ -533,6 +545,7 @@
           "carbs": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -544,6 +557,7 @@
           "fat": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -562,6 +576,7 @@
           "kcal": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -573,6 +588,7 @@
           "preptime": {
             "anyOf": [
               {
+                "minimum": 1.0,
                 "type": "integer"
               },
               {
@@ -584,6 +600,7 @@
           "protein": {
             "anyOf": [
               {
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -593,6 +610,7 @@
             "title": "Protein"
           },
           "servings": {
+            "minimum": 1.0,
             "title": "Servings",
             "type": "integer"
           },
@@ -667,10 +685,13 @@
         "additionalProperties": false,
         "properties": {
           "description": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Description",
             "type": "string"
           },
           "index": {
+            "minimum": 1.0,
             "title": "Index",
             "type": "integer"
           }

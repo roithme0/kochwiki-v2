@@ -133,6 +133,26 @@ def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(cli
     assert response.json()["fat"] == 3.5
 
 
+def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestClient) -> None:
+    foodstuff = create_foodstuff(client, unit="PIECE", kcal=9999, carbs=0, protein=None, fat=0)
+    response = client.post(
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(
+            servings=1, preptime=None,
+            ingredients=[{"index": 1, "amount": 9999, "foodstuffId": foodstuff["id"]}],
+            steps=[{"index": 1, "description": "x" * 200}],
+        ),
+    )
+    assert response.status_code == 200
+    body = response.json()
+    RecipePresentationOut.model_validate(body)
+    assert body["kcal"] == 99980001
+    assert body["carbs"] == 0
+    assert body["protein"] is None
+    assert body["fat"] == 0
+    assert body["preptime"] is None
+
+
 def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     unknown = client.post(
@@ -460,7 +480,8 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     }
     for schema_name in ("FoodstuffOut", "RecipeVersionOut", "RecipePresentationOut"):
         assert schemas[schema_name]["properties"]["kcal"]["anyOf"] == [
-            {"type": "number"}, {"type": "null"}
+            ({"type": "number"} if schema_name == "RecipeVersionOut" else {"type": "number", "minimum": 0}),
+            {"type": "null"},
         ]
     assert schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"] == "number"
     for name in (

@@ -1,21 +1,21 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .common import JsonDecimal
+from .common import NonnegativeJsonDecimal
 from .enums import Unit
 
 
 class FoodstuffSummaryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="forbid", strict=True)
 
-    id: int
+    id: int = Field(gt=0)
     name: str
     brand: str | None
     unit: Unit = Field(strict=False)
     unitVerbose: str
-    kcal: JsonDecimal | None
-    carbs: JsonDecimal | None
-    protein: JsonDecimal | None
-    fat: JsonDecimal | None
+    kcal: NonnegativeJsonDecimal | None
+    carbs: NonnegativeJsonDecimal | None
+    protein: NonnegativeJsonDecimal | None
+    fat: NonnegativeJsonDecimal | None
 
     @field_validator("unit", mode="before")
     @classmethod

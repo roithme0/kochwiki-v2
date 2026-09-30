@@ -31,8 +31,8 @@ export const zRecipePresentationIngredientResolve = z.strictObject({
  * RecipePresentationStepOut
  */
 export const zRecipePresentationStepOut = z.strictObject({
-    description: z.string(),
-    index: z.int()
+    description: z.string().check(z.minLength(1), z.maxLength(200)),
+    index: z.int().check(z.gte(1))
 });
 
 /**
@@ -132,12 +132,12 @@ export const zFoodstuffCreate = z.object({
  */
 export const zFoodstuffOut = z.strictObject({
     brand: z.nullable(z.string()),
-    carbs: z.nullable(z.number()),
-    fat: z.nullable(z.number()),
-    id: z.int(),
-    kcal: z.nullable(z.number()),
+    carbs: z.nullable(z.number().check(z.gte(0))),
+    fat: z.nullable(z.number().check(z.gte(0))),
+    id: z.int().check(z.gt(0)),
+    kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
-    protein: z.nullable(z.number()),
+    protein: z.nullable(z.number().check(z.gte(0))),
     recipeVersionIds: z.array(z.uuid()),
     unit: zUnit,
     unitVerbose: z.string()
@@ -148,12 +148,12 @@ export const zFoodstuffOut = z.strictObject({
  */
 export const zFoodstuffSummaryOut = z.strictObject({
     brand: z.nullable(z.string()),
-    carbs: z.nullable(z.number()),
-    fat: z.nullable(z.number()),
-    id: z.int(),
-    kcal: z.nullable(z.number()),
+    carbs: z.nullable(z.number().check(z.gte(0))),
+    fat: z.nullable(z.number().check(z.gte(0))),
+    id: z.int().check(z.gt(0)),
+    kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
-    protein: z.nullable(z.number()),
+    protein: z.nullable(z.number().check(z.gte(0))),
     unit: zUnit,
     unitVerbose: z.string()
 });
@@ -198,22 +198,22 @@ export const zIngredientOut = z.strictObject({
  * RecipePresentationIngredientOut
  */
 export const zRecipePresentationIngredientOut = z.strictObject({
-    amount: z.number(),
+    amount: z.number().check(z.gt(0)),
     foodstuff: zFoodstuffSummaryOut,
-    index: z.int()
+    index: z.int().check(z.gte(1))
 });
 
 /**
  * RecipePresentationOut
  */
 export const zRecipePresentationOut = z.strictObject({
-    carbs: z.nullable(z.number()),
-    fat: z.nullable(z.number()),
+    carbs: z.nullable(z.number().check(z.gte(0))),
+    fat: z.nullable(z.number().check(z.gte(0))),
     ingredients: z.array(zRecipePresentationIngredientOut),
-    kcal: z.nullable(z.number()),
-    preptime: z.nullable(z.int()),
-    protein: z.nullable(z.number()),
-    servings: z.int(),
+    kcal: z.nullable(z.number().check(z.gte(0))),
+    preptime: z.nullable(z.int().check(z.gte(1))),
+    protein: z.nullable(z.number().check(z.gte(0))),
+    servings: z.int().check(z.gte(1)),
     steps: z.array(zRecipePresentationStepOut)
 });
 
