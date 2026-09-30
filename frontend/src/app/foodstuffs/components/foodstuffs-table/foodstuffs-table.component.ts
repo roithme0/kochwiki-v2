@@ -13,8 +13,7 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import type { FoodstuffOut } from '../../../core/api/generated';
-import { FoodstuffVerboseNames } from '../../models/foodstuff-meta-data';
+import type { FoodstuffOut, FoodstuffVerboseNames } from '../../../core/api/generated';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
 import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
@@ -82,6 +81,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
           name: 'Name',
           brand: 'Marke',
           unit: 'Einheit',
+          unitVerbose: 'Einheit',
           kcal: 'Kalorien',
           carbs: 'Kohlenhydrate',
           protein: 'Protein',

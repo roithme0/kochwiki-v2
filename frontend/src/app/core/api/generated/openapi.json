@@ -295,6 +295,30 @@
         "title": "FoodstuffSummaryOut",
         "type": "object"
       },
+      "FoodstuffUnitChoices": {
+        "additionalProperties": false,
+        "properties": {
+          "G": {
+            "type": "string"
+          },
+          "ML": {
+            "type": "string"
+          },
+          "PIECE": {
+            "type": "string"
+          }
+        },
+        "propertyNames": {
+          "$ref": "#/components/schemas/Unit"
+        },
+        "required": [
+          "G",
+          "ML",
+          "PIECE"
+        ],
+        "title": "FoodstuffUnitChoices",
+        "type": "object"
+      },
       "FoodstuffUpdate": {
         "properties": {
           "brand": {
@@ -398,6 +422,55 @@
           }
         },
         "title": "FoodstuffUpdate",
+        "type": "object"
+      },
+      "FoodstuffVerboseNames": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "title": "Brand",
+            "type": "string"
+          },
+          "carbs": {
+            "title": "Carbs",
+            "type": "string"
+          },
+          "fat": {
+            "title": "Fat",
+            "type": "string"
+          },
+          "kcal": {
+            "title": "Kcal",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "protein": {
+            "title": "Protein",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "unitVerbose": {
+            "title": "Unitverbose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "brand",
+          "unit",
+          "unitVerbose",
+          "kcal",
+          "carbs",
+          "protein",
+          "fat"
+        ],
+        "title": "FoodstuffVerboseNames",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1203,11 +1276,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Get Foodstuff Unit Choices Foodstuffs Meta Data Unit Choices Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FoodstuffUnitChoices"
                 }
               }
             },
@@ -1225,11 +1294,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "title": "Response Get Foodstuff Verbose Names Foodstuffs Meta Data Verbose Names Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/FoodstuffVerboseNames"
                 }
               }
             },

@@ -16,10 +16,10 @@ describe('FoodstuffFormComponent', () => {
                     provide: FoodstuffMetadataService,
                     useValue: {
                         verboseNames: signal({
-                            name: 'Name', brand: 'Marke', unit: 'Einheit', kcal: 'Kalorien',
+                            name: 'Name', brand: 'Marke', unit: 'Einheit', unitVerbose: 'Einheit', kcal: 'Kalorien',
                             carbs: 'Kohlenhydrate', protein: 'Protein', fat: 'Fett',
                         }),
-                        unitChoices: signal({ [FoodstuffUnit.Gram]: 'Gramm' }),
+                        unitChoices: signal({ G: 'Gramm', ML: 'Milliliter', PIECE: 'Stück' }),
                     },
                 },
             ],
@@ -41,7 +41,7 @@ describe('FoodstuffFormComponent', () => {
         component.onSubmit();
 
         expect(component.verboseNames()?.name).toBe('Name');
-        expect(component.unitChoices()).toEqual({ [FoodstuffUnit.Gram]: 'Gramm' });
+        expect(component.unitChoices()).toEqual({ G: 'Gramm', ML: 'Milliliter', PIECE: 'Stück' });
         expect(submitted).toHaveBeenCalledTimes(1);
         expect(submitted).toHaveBeenCalledWith({
             name: 'Linsen', brand: null, unit: FoodstuffUnit.Gram, kcal: 100, carbs: 12, protein: 8, fat: 1,

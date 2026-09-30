@@ -1,5 +1,8 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { WindowWidthService } from '../../core/services/window-width.service';
+import type { FoodstuffVerboseNames } from '../../core/api/generated';
+
+type DisplayedField = keyof FoodstuffVerboseNames | 'chart' | 'edit' | 'delete';
 
 @Injectable({
   providedIn: 'root',
@@ -7,9 +10,9 @@ import { WindowWidthService } from '../../core/services/window-width.service';
 export class FoodstuffTableDisplayedFieldsService {
   private readonly windowWidthService = inject(WindowWidthService);
 
-  displayedFields = computed((): string[] => {
+  displayedFields = computed((): DisplayedField[] => {
     const windowInnerWidth = this.windowWidthService.getWindowInnerWidth()();
-    const displayedFields: string[] = ['chart', 'name'];
+    const displayedFields: DisplayedField[] = ['chart', 'name'];
     if (windowInnerWidth > 500) {
       displayedFields.push('brand');
     }

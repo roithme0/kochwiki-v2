@@ -57,7 +57,7 @@ export class FoodstuffFormComponent {
     this.submitted.emit({ name, brand, unit, kcal, carbs, protein, fat });
   }
 
-  getKeys(obj: Readonly<Record<string, string>>): string[] {
-    return Object.keys(obj);
+  getChoices(obj: Readonly<Record<Unit, string>>): [string, string][] {
+    return Object.entries(obj);
   }
 }

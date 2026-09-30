@@ -128,6 +128,15 @@ export type FoodstuffSummaryOut = {
 };
 
 /**
+ * FoodstuffUnitChoices
+ */
+export type FoodstuffUnitChoices = {
+    G: string;
+    ML: string;
+    PIECE: string;
+};
+
+/**
  * FoodstuffUpdate
  */
 export type FoodstuffUpdate = {
@@ -156,6 +165,44 @@ export type FoodstuffUpdate = {
      */
     protein?: number | string | null;
     unit?: Unit | null;
+};
+
+/**
+ * FoodstuffVerboseNames
+ */
+export type FoodstuffVerboseNames = {
+    /**
+     * Brand
+     */
+    brand: string;
+    /**
+     * Carbs
+     */
+    carbs: string;
+    /**
+     * Fat
+     */
+    fat: string;
+    /**
+     * Kcal
+     */
+    kcal: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Protein
+     */
+    protein: string;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * Unitverbose
+     */
+    unitVerbose: string;
 };
 
 /**
@@ -615,13 +662,9 @@ export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetData = {
 
 export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses = {
     /**
-     * Response Get Foodstuff Unit Choices Foodstuffs Meta Data Unit Choices Get
-     *
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: FoodstuffUnitChoices;
 };
 
 export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponse = GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses[keyof GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses];
@@ -635,13 +678,9 @@ export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetData = {
 
 export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses = {
     /**
-     * Response Get Foodstuff Verbose Names Foodstuffs Meta Data Verbose Names Get
-     *
      * Successful Response
      */
-    200: {
-        [key: string]: string;
-    };
+    200: FoodstuffVerboseNames;
 };
 
 export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponse = GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses[keyof GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses];

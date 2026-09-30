@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db, get_write_db
 from app.models.enums import Unit
 from app.schemas.errors import CONFLICT_RESPONSE, NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffUpdate
+from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffUnitChoices, FoodstuffUpdate, FoodstuffVerboseNames
 from app.services import foodstuffs
 
 router = APIRouter()
@@ -42,20 +42,20 @@ def delete_foodstuff(foodstuff_id: int, session: Session = Depends(get_write_db,
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.get("/foodstuffs-meta-data/verbose-names")
-def get_foodstuff_verbose_names() -> dict[str, str]:
-    return {
-        "name": "Name",
-        "brand": "Marke",
-        "unit": "Einheit",
-        "unitVerbose": "Einheit",
-        "kcal": "Kalorien",
-        "carbs": "Kohlenhydrate",
-        "protein": "Proteine",
-        "fat": "Fett",
-    }
+@router.get("/foodstuffs-meta-data/verbose-names", response_model=FoodstuffVerboseNames)
+def get_foodstuff_verbose_names() -> FoodstuffVerboseNames:
+    return FoodstuffVerboseNames(
+        name="Name",
+        brand="Marke",
+        unit="Einheit",
+        unitVerbose="Einheit",
+        kcal="Kalorien",
+        carbs="Kohlenhydrate",
+        protein="Proteine",
+        fat="Fett",
+    )
 
 
-@router.get("/foodstuffs-meta-data/unit-choices")
-def get_foodstuff_unit_choices() -> dict[str, str]:
-    return {unit.value: unit.verbose_name for unit in Unit}
+@router.get("/foodstuffs-meta-data/unit-choices", response_model=FoodstuffUnitChoices)
+def get_foodstuff_unit_choices() -> FoodstuffUnitChoices:
+    return FoodstuffUnitChoices({unit: unit.verbose_name for unit in Unit})

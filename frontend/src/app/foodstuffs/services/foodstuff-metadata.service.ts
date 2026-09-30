@@ -6,10 +6,10 @@ import {
   signal,
 } from '@angular/core';
 import { SnackBarService } from '../../core/services/snack-bar.service';
-import {
+import type {
   FoodstuffUnitChoices,
   FoodstuffVerboseNames,
-} from '../models/foodstuff-meta-data';
+} from '../../core/api/generated';
 import { FoodstuffBackendService } from './foodstuff-backend.service';
 
 @Injectable({ providedIn: 'root' })

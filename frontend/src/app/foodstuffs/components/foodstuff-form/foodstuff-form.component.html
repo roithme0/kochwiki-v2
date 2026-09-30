@@ -17,8 +17,8 @@
         <mat-label>{{ verboseNames()?.unit }}</mat-label>
         <mat-select formControlName="unit">
           @if (unitChoices(); as choices) {
-            @for (choice of getKeys(choices); track choice) {
-              <mat-option [value]="choice">{{ choices[choice] }}</mat-option>
+            @for (choice of getChoices(choices); track choice[0]) {
+              <mat-option [value]="choice[0]">{{ choice[1] }}</mat-option>
             }
           }
         </mat-select>

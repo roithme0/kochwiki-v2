@@ -2,7 +2,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FoodstuffBackendService } from './foodstuff-backend.service';
-import type { FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
+import type { FoodstuffOut, FoodstuffUpdate, FoodstuffVerboseNames, FoodstuffUnitChoices } from '../../core/api/generated';
 import { FoodstuffUnit } from '../models/foodstuff-unit';
 import { backendUrl } from '../../core/constants/api';
 import { ApiContractError } from '../../core/api/api-contract-error';
@@ -41,6 +41,18 @@ const malformedResponses = [
     { reason: 'undocumented field', body: { ...foodstuff, unexpected: true } },
 ];
 
+const verboseNames: FoodstuffVerboseNames = {
+    name: 'Name', brand: 'Marke', unit: 'Einheit', unitVerbose: 'Einheit',
+    kcal: 'Kalorien', carbs: 'Kohlenhydrate', protein: 'Proteine', fat: 'Fett',
+};
+const unitChoices: FoodstuffUnitChoices = { G: 'g', ML: 'ml', PIECE: 'Stk.' };
+const metadataOperations = [
+    { path: '/foodstuffs-meta-data/verbose-names', body: verboseNames,
+        run: (service: FoodstuffBackendService) => service.fetchFoodstuffVerboseNames() },
+    { path: '/foodstuffs-meta-data/unit-choices', body: unitChoices,
+        run: (service: FoodstuffBackendService) => service.fetchFoodstuffUnitChoices() },
+];
+
 describe('FoodstuffBackendService', () => {
     let service: FoodstuffBackendService;
     let httpTesting: HttpTestingController;
@@ -57,6 +69,52 @@ describe('FoodstuffBackendService', () => {
         httpTesting.verify();
     });
 
+    describe.each(metadataOperations)('GET $path', ({ path, body, run }) => {
+        it('accepts the complete metadata', async () => {
+            const response = run(service);
+            const request = httpTesting.expectOne(backendUrl + path);
+            expect(request.request.method).toBe('GET');
+            request.flush(body);
+            await expect(response).resolves.toEqual(body);
+        });
+
+        it.each(Object.keys(body))('rejects missing required key %s', async (key) => {
+            const response = run(service);
+            const rejection = expect(response).rejects.toBeInstanceOf(ApiContractError);
+            httpTesting.expectOne(backendUrl + path).flush(
+                Object.fromEntries(Object.entries(body).filter(([entry]) => entry !== key))
+            );
+            await rejection;
+        });
+
+        it.each([
+            { reason: 'unknown key', value: { ...body, unknown: 'Label' } },
+            { reason: 'non-string label', value: Object.fromEntries(Object.keys(body).map((key) => [key, 123])) },
+            { reason: 'null label', value: Object.fromEntries(Object.keys(body).map((key) => [key, null])) },
+            { reason: 'array body', value: [] },
+        ])('rejects $reason', async ({ value }) => {
+            const response = run(service);
+            const request = httpTesting.expectOne(backendUrl + path);
+            const endpoint = `${request.request.method} ${request.request.url}`;
+            const rejection = expect(response).rejects.toMatchObject({
+                name: 'ApiContractError', endpoint,
+                message: `Invalid response from ${endpoint}`,
+                cause: expect.objectContaining({ issues: expect.any(Array) }),
+            });
+            request.flush(value);
+            await rejection;
+        });
+
+        it('preserves HTTP failures', async () => {
+            const response = run(service);
+            const rejection = expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
+            httpTesting.expectOne(backendUrl + path).flush({ detail: 'Unavailable' }, {
+                status: 503, statusText: 'Service Unavailable',
+            });
+            await rejection;
+        });
+    });
+
     describe.each(operations)('$method $path', (operation) => {
         it('accepts numeric nutrition, nulls, and recipe UUIDs', async () => {
             const response = operation.run(service);
@@ -69,12 +127,16 @@ describe('FoodstuffBackendService', () => {
 
         it.each(malformedResponses)('rejects $reason', async ({ body }) => {
             const response = operation.run(service);
+            const request = httpTesting.expectOne(backendUrl + operation.path);
+            expect(request.request.method).toBe(operation.method);
+            const endpoint = `${request.request.method} ${request.request.url}`;
             const rejection = expect(response).rejects.toMatchObject({
                 name: 'ApiContractError',
-                endpoint: `${operation.method} ${operation.path}`,
+                endpoint,
+                message: `Invalid response from ${endpoint}`,
                 cause: expect.objectContaining({ issues: expect.any(Array) }),
             });
-            httpTesting.expectOne(backendUrl + operation.path).flush(operation.list ? [foodstuff, body] : body);
+            request.flush(operation.list ? [foodstuff, body] : body);
             await rejection;
         });
     });
