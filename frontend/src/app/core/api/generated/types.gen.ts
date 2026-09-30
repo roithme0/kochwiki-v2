@@ -128,15 +128,6 @@ export type FoodstuffSummaryOut = {
 };
 
 /**
- * FoodstuffUnitChoices
- */
-export type FoodstuffUnitChoices = {
-    G: string;
-    ML: string;
-    PIECE: string;
-};
-
-/**
  * FoodstuffUpdate
  */
 export type FoodstuffUpdate = {
@@ -165,44 +156,6 @@ export type FoodstuffUpdate = {
      */
     protein?: number | string | null;
     unit?: Unit | null;
-};
-
-/**
- * FoodstuffVerboseNames
- */
-export type FoodstuffVerboseNames = {
-    /**
-     * Brand
-     */
-    brand: string;
-    /**
-     * Carbs
-     */
-    carbs: string;
-    /**
-     * Fat
-     */
-    fat: string;
-    /**
-     * Kcal
-     */
-    kcal: string;
-    /**
-     * Name
-     */
-    name: string;
-    /**
-     * Protein
-     */
-    protein: string;
-    /**
-     * Unit
-     */
-    unit: string;
-    /**
-     * Unitverbose
-     */
-    unitVerbose: string;
 };
 
 /**
@@ -652,38 +605,6 @@ export type PostFoodstuffFoodstuffsPostResponses = {
 };
 
 export type PostFoodstuffFoodstuffsPostResponse = PostFoodstuffFoodstuffsPostResponses[keyof PostFoodstuffFoodstuffsPostResponses];
-
-export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/foodstuffs-meta-data/unit-choices';
-};
-
-export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: FoodstuffUnitChoices;
-};
-
-export type GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponse = GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses[keyof GetFoodstuffUnitChoicesFoodstuffsMetaDataUnitChoicesGetResponses];
-
-export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/foodstuffs-meta-data/verbose-names';
-};
-
-export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: FoodstuffVerboseNames;
-};
-
-export type GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponse = GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses[keyof GetFoodstuffVerboseNamesFoodstuffsMetaDataVerboseNamesGetResponses];
 
 export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteData = {
     body?: never;

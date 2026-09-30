@@ -295,30 +295,6 @@
         "title": "FoodstuffSummaryOut",
         "type": "object"
       },
-      "FoodstuffUnitChoices": {
-        "additionalProperties": false,
-        "properties": {
-          "G": {
-            "type": "string"
-          },
-          "ML": {
-            "type": "string"
-          },
-          "PIECE": {
-            "type": "string"
-          }
-        },
-        "propertyNames": {
-          "$ref": "#/components/schemas/Unit"
-        },
-        "required": [
-          "G",
-          "ML",
-          "PIECE"
-        ],
-        "title": "FoodstuffUnitChoices",
-        "type": "object"
-      },
       "FoodstuffUpdate": {
         "properties": {
           "brand": {
@@ -422,55 +398,6 @@
           }
         },
         "title": "FoodstuffUpdate",
-        "type": "object"
-      },
-      "FoodstuffVerboseNames": {
-        "additionalProperties": false,
-        "properties": {
-          "brand": {
-            "title": "Brand",
-            "type": "string"
-          },
-          "carbs": {
-            "title": "Carbs",
-            "type": "string"
-          },
-          "fat": {
-            "title": "Fat",
-            "type": "string"
-          },
-          "kcal": {
-            "title": "Kcal",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "protein": {
-            "title": "Protein",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          },
-          "unitVerbose": {
-            "title": "Unitverbose",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "brand",
-          "unit",
-          "unitVerbose",
-          "kcal",
-          "carbs",
-          "protein",
-          "fat"
-        ],
-        "title": "FoodstuffVerboseNames",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1266,42 +1193,6 @@
           }
         },
         "summary": "Post Foodstuff"
-      }
-    },
-    "/foodstuffs-meta-data/unit-choices": {
-      "get": {
-        "operationId": "get_foodstuff_unit_choices_foodstuffs_meta_data_unit_choices_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodstuffUnitChoices"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Foodstuff Unit Choices"
-      }
-    },
-    "/foodstuffs-meta-data/verbose-names": {
-      "get": {
-        "operationId": "get_foodstuff_verbose_names_foodstuffs_meta_data_verbose_names_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FoodstuffVerboseNames"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Foodstuff Verbose Names"
       }
     },
     "/foodstuffs/{foodstuff_id}": {

@@ -10,20 +10,6 @@ export const zErrorResponse = z.strictObject({
 });
 
 /**
- * FoodstuffVerboseNames
- */
-export const zFoodstuffVerboseNames = z.strictObject({
-    brand: z.string(),
-    carbs: z.string(),
-    fat: z.string(),
-    kcal: z.string(),
-    name: z.string(),
-    protein: z.string(),
-    unit: z.string(),
-    unitVerbose: z.string()
-});
-
-/**
  * IngredientWrite
  */
 export const zIngredientWrite = z.object({
@@ -176,15 +162,6 @@ export const zFoodstuffSummaryOut = z.strictObject({
     protein: z.nullable(z.number()),
     unit: zUnit,
     unitVerbose: z.string()
-});
-
-/**
- * FoodstuffUnitChoices
- */
-export const zFoodstuffUnitChoices = z.strictObject({
-    G: z.string(),
-    ML: z.string(),
-    PIECE: z.string()
 });
 
 /**

@@ -9,7 +9,6 @@ import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffsTableComponent } from './foodstuffs-table.component';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 
 describe('FoodstuffsTableComponent', () => {
@@ -40,11 +39,7 @@ describe('FoodstuffsTableComponent', () => {
 
         TestBed.configureTestingModule({
             providers: [
-                {
-                    provide: FoodstuffMetadataService,
-                    useValue: { verboseNames: signal(null) },
-                },
-                { provide: FoodstuffTableDisplayedFieldsService, useValue: {} },
+                { provide: FoodstuffTableDisplayedFieldsService, useValue: { displayedFields: signal(['unit']) } },
                 { provide: FoodstuffTableControlService, useValue: { searchBy: signal('') } },
                 { provide: MatDialog, useValue: { open: openDialog } },
                 {
@@ -70,6 +65,16 @@ describe('FoodstuffsTableComponent', () => {
         expect(resizeObserver.disconnect).toHaveBeenCalledTimes(1);
 
         expect(resizeObserver.disconnect).toHaveBeenCalledWith();
+    });
+
+    it('renders frontend labels instead of the backend unit display text', () => {
+        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+        fixture.componentRef.setInput('foodstuffs', [{ ...foodstuff, unitVerbose: 'Backend label' }]);
+        fixture.detectChanges();
+        const element: HTMLElement = fixture.nativeElement;
+        expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
+        expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
+        expect(element.textContent).not.toContain('Backend label');
     });
 
     it('executes the foodstuff deletion and success side effects through the dialog action', async () => {

@@ -1,8 +1,8 @@
 import { Injectable, inject, computed } from '@angular/core';
 import { WindowWidthService } from '../../core/services/window-width.service';
-import type { FoodstuffVerboseNames } from '../../core/api/generated';
+import type { FoodstuffField } from '../models/foodstuff-labels';
 
-type DisplayedField = keyof FoodstuffVerboseNames | 'chart' | 'edit' | 'delete';
+type DisplayedField = FoodstuffField | 'chart' | 'edit' | 'delete';
 
 @Injectable({
   providedIn: 'root',
@@ -23,7 +23,7 @@ export class FoodstuffTableDisplayedFieldsService {
       displayedFields.push('carbs', 'protein', 'fat');
     }
     if (windowInnerWidth > 1200) {
-      displayedFields.push('unitVerbose');
+      displayedFields.push('unit');
     }
     displayedFields.push('edit', 'delete');
     return displayedFields;

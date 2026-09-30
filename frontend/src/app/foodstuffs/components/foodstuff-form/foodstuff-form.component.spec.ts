@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffFormComponent } from './foodstuff-form.component';
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
+import { MatSelectHarness } from '@angular/material/select/testing';
 
 describe('FoodstuffFormComponent', () => {
     let component: FoodstuffFormComponent;
@@ -11,18 +11,6 @@ describe('FoodstuffFormComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [FoodstuffFormComponent],
-            providers: [
-                {
-                    provide: FoodstuffMetadataService,
-                    useValue: {
-                        verboseNames: signal({
-                            name: 'Name', brand: 'Marke', unit: 'Einheit', unitVerbose: 'Einheit', kcal: 'Kalorien',
-                            carbs: 'Kohlenhydrate', protein: 'Protein', fat: 'Fett',
-                        }),
-                        unitChoices: signal({ G: 'Gramm', ML: 'Milliliter', PIECE: 'Stück' }),
-                    },
-                },
-            ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(FoodstuffFormComponent);
@@ -30,7 +18,7 @@ describe('FoodstuffFormComponent', () => {
         fixture.componentRef.setInput('submitLabel', 'Speichern');
     });
 
-    it('uses metadata and emits the typed foodstuff updates', () => {
+    it('renders local labels and emits the typed foodstuff updates', () => {
         const submitted = vi.fn().mockName('submitted');
         component.submitted.subscribe(submitted);
 
@@ -40,8 +28,10 @@ describe('FoodstuffFormComponent', () => {
         });
         component.onSubmit();
 
-        expect(component.verboseNames()?.name).toBe('Name');
-        expect(component.unitChoices()).toEqual({ G: 'Gramm', ML: 'Milliliter', PIECE: 'Stück' });
+        const labels: NodeListOf<Element> = fixture.nativeElement.querySelectorAll('mat-label');
+        expect(Array.from(labels, label => label.textContent?.trim())).toEqual(
+            ['Name', 'Einheit', 'Marke', 'Kalorien', 'Kohlenhydrate', 'Proteine', 'Fett']
+        );
         expect(submitted).toHaveBeenCalledTimes(1);
         expect(submitted).toHaveBeenCalledWith({
             name: 'Linsen', brand: null, unit: FoodstuffUnit.Gram, kcal: 100, carbs: 12, protein: 8, fat: 1,
@@ -57,5 +47,26 @@ describe('FoodstuffFormComponent', () => {
         expect(component.form.getRawValue()).toEqual({
             name: 'Bohnen', brand: 'Bio', unit: FoodstuffUnit.Gram, kcal: 110, carbs: 15, protein: 7, fat: 1,
         });
+    });
+
+    it('offers local labels and submits the matching unit wire values', async () => {
+        fixture.detectChanges();
+        component.form.controls.name.setValue('Oats');
+        const submitted = vi.fn();
+        component.submitted.subscribe(submitted);
+        const select = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatSelectHarness);
+        await select.open();
+        const options = await select.getOptions();
+        expect(await Promise.all(options.map(option => option.getText()))).toEqual(
+            ['Gramm', 'Milliliter', 'Stück']
+        );
+        await select.close();
+        for (const [label, unit] of [
+            ['Gramm', 'G'], ['Milliliter', 'ML'], ['Stück', 'PIECE'],
+        ]) {
+            await select.clickOptions({ text: label });
+            component.onSubmit();
+            expect(submitted).toHaveBeenLastCalledWith(expect.objectContaining({ unit }));
+        }
     });
 });

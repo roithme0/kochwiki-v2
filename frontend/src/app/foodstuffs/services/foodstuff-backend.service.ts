@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Subject } from 'rxjs';
-import type { FoodstuffCreate, FoodstuffOut, FoodstuffUpdate, FoodstuffVerboseNames, FoodstuffUnitChoices } from '../../core/api/generated';
+import type { FoodstuffCreate, FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
 import { array } from 'zod/mini';
-import { zFoodstuffOut, zFoodstuffVerboseNames, zFoodstuffUnitChoices } from '../../core/api/generated/zod.gen';
+import { zFoodstuffOut } from '../../core/api/generated/zod.gen';
 import { requestApiResponse } from '../../core/api/request-api-response';
 import { backendUrl } from '../../core/constants/api';
 
@@ -50,13 +50,4 @@ export class FoodstuffBackendService {
       this.httpClient.delete<void>(backendUrl + '/foodstuffs/' + id)
     );
 
-  fetchFoodstuffVerboseNames = (): Promise<FoodstuffVerboseNames> =>
-    requestApiResponse(
-      this.httpClient, 'GET', backendUrl + '/foodstuffs-meta-data/verbose-names', zFoodstuffVerboseNames
-    );
-
-  fetchFoodstuffUnitChoices = (): Promise<FoodstuffUnitChoices> =>
-    requestApiResponse(
-      this.httpClient, 'GET', backendUrl + '/foodstuffs-meta-data/unit-choices', zFoodstuffUnitChoices
-    );
 }

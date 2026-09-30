@@ -6,7 +6,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import type { FoodstuffCreate, FoodstuffOut, Unit } from '../../../core/api/generated';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
+import { foodstuffFieldLabels, foodstuffUnitChoices } from '../../models/foodstuff-labels';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
@@ -17,21 +17,20 @@ import { MatIconModule } from '@angular/material/icon';
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatIconModule
-],
+    MatIconModule,
+  ],
   templateUrl: './foodstuff-form.component.html',
   styleUrl: './foodstuff-form.component.scss',
 })
 export class FoodstuffFormComponent {
   private readonly fb = inject(FormBuilder);
-  private readonly foodstuffMetadataService = inject(FoodstuffMetadataService);
 
   readonly foodstuff = input<Partial<FoodstuffOut> | null>(null);
   readonly submitLabel = input.required<string>();
   readonly submitted = output<FoodstuffCreate>();
 
-  readonly verboseNames = this.foodstuffMetadataService.verboseNames;
-  readonly unitChoices = this.foodstuffMetadataService.unitChoices;
+  readonly unitChoices = foodstuffUnitChoices;
+  readonly fieldLabels = foodstuffFieldLabels;
 
   readonly form = this.fb.group({
     name: this.fb.nonNullable.control('', Validators.required),
@@ -57,7 +56,4 @@ export class FoodstuffFormComponent {
     this.submitted.emit({ name, brand, unit, kcal, carbs, protein, fat });
   }
 
-  getChoices(obj: Readonly<Record<Unit, string>>): [string, string][] {
-    return Object.entries(obj);
-  }
 }

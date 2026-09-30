@@ -4,38 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.models.enums import Unit
 from app.schemas.errors import ErrorResponse
-from app.schemas.foodstuff import FoodstuffOut, FoodstuffUnitChoices, FoodstuffVerboseNames
-
-
-def test_foodstuff_metadata_matches_closed_complete_contract(client: TestClient) -> None:
-    schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
-    for path, model in (
-        ("verbose-names", FoodstuffVerboseNames),
-        ("unit-choices", FoodstuffUnitChoices),
-    ):
-        response = client.get(f"/foodstuffs-meta-data/{path}")
-        assert response.status_code == 200
-        schema = schemas[model.__name__]
-        assert schema["additionalProperties"] is False
-        assert set(schema["required"]) == set(schema["properties"]) == set(response.json())
-        assert model.model_validate(response.json()).model_dump(mode="json") == response.json()
-        for key in response.json():
-            incomplete = response.json()
-            del incomplete[key]
-            with pytest.raises(ValidationError):
-                model.model_validate(incomplete)
-        with pytest.raises(ValidationError):
-            model.model_validate({**response.json(), "unexpected": "Label"})
-        with pytest.raises(ValidationError):
-            model.model_validate({key: 123 for key in response.json()})
-
-    unit_schema = schemas["FoodstuffUnitChoices"]
-    assert set(unit_schema["required"]) == {unit.value for unit in Unit}
-    assert client.get("/foodstuffs-meta-data/unit-choices").json() == {
-        unit.value: unit.verbose_name for unit in Unit
-    }
+from app.schemas.foodstuff import FoodstuffOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -340,7 +310,7 @@ def test_foodstuff_lists_all_referencing_recipe_versions(client: TestClient) -> 
     )
 
 
-def test_validation_and_metadata_contracts(client: TestClient) -> None:
+def test_validation_and_version_contracts(client: TestClient) -> None:
     invalid = client.post("/foodstuffs", json={"name": "Missing required values"})
     assert invalid.status_code == 422
     assert set(invalid.json()) == {"detail"}
@@ -364,7 +334,6 @@ def test_validation_and_metadata_contracts(client: TestClient) -> None:
     assert "/recipes/{lineage_id}" in recipe_paths
     assert "/recipes/{lineage_id}/versions/{version_id}" in recipe_paths
     assert "/recipes/{recipe_id}" not in recipe_paths
-    assert client.get("/foodstuffs-meta-data/unit-choices").json() == {unit.value: unit.verbose_name for unit in Unit}
     assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
 
 

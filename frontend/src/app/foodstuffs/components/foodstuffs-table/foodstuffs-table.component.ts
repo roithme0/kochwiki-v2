@@ -13,9 +13,9 @@ import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import type { FoodstuffOut, FoodstuffVerboseNames } from '../../../core/api/generated';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { FoodstuffMetadataService } from '../../services/foodstuff-metadata.service';
+import { foodstuffFieldLabels, foodstuffUnitLabel } from '../../models/foodstuff-labels';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
@@ -38,8 +38,8 @@ const DEFAULT_PAGE_SIZE: number = 12;
     MatButtonModule,
     MatIconModule,
     MacroChartComponent,
-    MatPaginatorModule
-],
+    MatPaginatorModule,
+  ],
   templateUrl: './foodstuffs-table.component.html',
   styleUrl: './foodstuffs-table.component.scss',
 })
@@ -47,12 +47,15 @@ export class FoodstuffsTableComponent implements OnDestroy {
   readonly displayedFieldsService = inject(
     FoodstuffTableDisplayedFieldsService
   );
-  readonly foodstuffMetadataService = inject(FoodstuffMetadataService);
   readonly foodstuffBackendService = inject(FoodstuffBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
   readonly foodstuffTableControlService = inject(FoodstuffTableControlService);
+
   readonly foodstuffs = input<FoodstuffOut[]>([]);
+
+  readonly unitLabel = foodstuffUnitLabel;
+  readonly fieldLabels = foodstuffFieldLabels;
 
   @ViewChild('tableWrapper', { static: true })
   readonly tableWrapper!: ElementRef<HTMLElement>;
@@ -72,23 +75,6 @@ export class FoodstuffsTableComponent implements OnDestroy {
   tableDataSource = new MatTableDataSource<FoodstuffOut>(
     this.displayedFoodstuffs()
   );
-
-  displayedVerboseNames = computed((): FoodstuffVerboseNames => {
-    const verboseNames: FoodstuffVerboseNames | null =
-      this.foodstuffMetadataService.verboseNames();
-    return verboseNames == null
-      ? {
-          name: 'Name',
-          brand: 'Marke',
-          unit: 'Einheit',
-          unitVerbose: 'Einheit',
-          kcal: 'Kalorien',
-          carbs: 'Kohlenhydrate',
-          protein: 'Protein',
-          fat: 'Fett',
-        }
-      : verboseNames;
-  });
 
   constructor() {
     effect(() => (this.tableDataSource.data = this.displayedFoodstuffs()));
