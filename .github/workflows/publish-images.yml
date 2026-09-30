@@ -33,7 +33,14 @@ jobs:
           python-version: '3.13'
 
       - name: Install backend contract dependencies
-        run: python -m pip install -r ../backend/requirements.txt
+        run: python -m pip install -r ../backend/requirements.txt ../backend/contract
+
+      - name: Verify standalone contract wheel
+        run: |
+          python -m pip wheel --no-deps ../backend/contract --wheel-dir "$RUNNER_TEMP/contract-wheel"
+          python -m venv "$RUNNER_TEMP/contract-venv"
+          "$RUNNER_TEMP/contract-venv/bin/python" -m pip install "$RUNNER_TEMP"/contract-wheel/*.whl
+          "$RUNNER_TEMP/contract-venv/bin/python" -I -m unittest discover -s ../backend/contract/tests
 
       - name: Install frontend dependencies
         env:

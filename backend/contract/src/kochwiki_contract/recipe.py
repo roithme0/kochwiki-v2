@@ -1,0 +1,85 @@
+from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from .common import JsonDecimal
+from .foodstuff import FoodstuffSummaryOut
+
+
+class IngredientWrite(BaseModel):
+    index: int = Field(ge=1, le=99)
+    amount: Decimal = Field(gt=0, le=9999)
+    foodstuffId: int = Field(gt=0)
+
+
+class StepWrite(BaseModel):
+    index: int = Field(ge=1, le=99)
+    description: str = Field(min_length=1, max_length=200)
+
+
+class RecipePresentationIngredientResolve(IngredientWrite):
+    model_config = ConfigDict(extra="forbid")
+
+
+class RecipePresentationStepResolve(StepWrite):
+    model_config = ConfigDict(extra="forbid")
+
+
+class RecipePresentationResolve(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    servings: int = Field(ge=1, le=99)
+    preptime: int | None = Field(ge=1, le=999)
+    ingredients: list[RecipePresentationIngredientResolve]
+    steps: list[RecipePresentationStepResolve]
+
+    @field_validator("ingredients")
+    @classmethod
+    def validate_unique_ingredients(
+        cls, value: list[RecipePresentationIngredientResolve]
+    ) -> list[RecipePresentationIngredientResolve]:
+        _validate_unique_indexes([ingredient.index for ingredient in value], "ingredient")
+        if len({ingredient.foodstuffId for ingredient in value}) != len(value):
+            raise ValueError("foodstuffs must be unique per recipe")
+        return value
+
+    @field_validator("steps")
+    @classmethod
+    def validate_unique_step_indexes(
+        cls, value: list[RecipePresentationStepResolve]
+    ) -> list[RecipePresentationStepResolve]:
+        _validate_unique_indexes([step.index for step in value], "step")
+        return value
+
+
+class RecipePresentationIngredientOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    index: int
+    amount: JsonDecimal
+    foodstuff: FoodstuffSummaryOut
+
+
+class RecipePresentationStepOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    index: int
+    description: str
+
+
+class RecipePresentationOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    servings: int
+    preptime: int | None
+    kcal: JsonDecimal | None
+    carbs: JsonDecimal | None
+    protein: JsonDecimal | None
+    fat: JsonDecimal | None
+    ingredients: list[RecipePresentationIngredientOut]
+    steps: list[RecipePresentationStepOut]
+
+
+def _validate_unique_indexes(indexes: list[int], item_name: str) -> None:
+    if len(indexes) != len(set(indexes)):
+        raise ValueError(f"{item_name} indexes must be unique per recipe")
