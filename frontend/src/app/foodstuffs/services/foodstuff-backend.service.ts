@@ -2,11 +2,16 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Subject } from 'rxjs';
 import type { FoodstuffCreate, FoodstuffOut, FoodstuffUpdate } from '../../core/api/generated';
+import { array } from 'zod/mini';
+import { zFoodstuffOut } from '../../core/api/generated/zod.gen';
+import { parseApiResponse } from '../../core/api/api-contract-error';
 import {
   FoodstuffVerboseNames,
   FoodstuffUnitChoices,
 } from '../models/foodstuff-meta-data';
 import { backendUrl } from '../../core/constants/api';
+
+const foodstuffListSchema = array(zFoodstuffOut);
 
 @Injectable({
   providedIn: 'root',
@@ -21,26 +26,34 @@ export class FoodstuffBackendService {
     this._foodstuffsChanged$.next();
   }
 
-  getAllFoodstuffs = (): Promise<FoodstuffOut[]> =>
-    firstValueFrom(this.httpClient.get<FoodstuffOut[]>(backendUrl + '/foodstuffs'));
+  getAllFoodstuffs = async (): Promise<FoodstuffOut[]> => {
+    const body = await firstValueFrom(this.httpClient.get<unknown>(backendUrl + '/foodstuffs'));
+    return parseApiResponse(foodstuffListSchema, body, 'GET /foodstuffs');
+  };
 
-  getFoodstuffById = (id: number): Promise<FoodstuffOut> =>
-    firstValueFrom(
-      this.httpClient.get<FoodstuffOut>(backendUrl + '/foodstuffs/' + id)
+  getFoodstuffById = async (id: number): Promise<FoodstuffOut> => {
+    const body = await firstValueFrom(
+      this.httpClient.get<unknown>(backendUrl + '/foodstuffs/' + id)
     );
+    return parseApiResponse(zFoodstuffOut, body, `GET /foodstuffs/${id}`);
+  };
 
-  patchFoodstuff = (
+  patchFoodstuff = async (
     id: number,
     updates: FoodstuffUpdate
-  ): Promise<FoodstuffOut> =>
-    firstValueFrom(
-      this.httpClient.patch<FoodstuffOut>(backendUrl + '/foodstuffs/' + id, updates)
+  ): Promise<FoodstuffOut> => {
+    const body = await firstValueFrom(
+      this.httpClient.patch<unknown>(backendUrl + '/foodstuffs/' + id, updates)
     );
+    return parseApiResponse(zFoodstuffOut, body, `PATCH /foodstuffs/${id}`);
+  };
 
-  postFoodstuff = (foodstuff: FoodstuffCreate): Promise<FoodstuffOut> =>
-    firstValueFrom(
-      this.httpClient.post<FoodstuffOut>(backendUrl + '/foodstuffs', foodstuff)
+  postFoodstuff = async (foodstuff: FoodstuffCreate): Promise<FoodstuffOut> => {
+    const body = await firstValueFrom(
+      this.httpClient.post<unknown>(backendUrl + '/foodstuffs', foodstuff)
     );
+    return parseApiResponse(zFoodstuffOut, body, 'POST /foodstuffs');
+  };
 
   deleteFoodstuff = (id: number): Promise<void> =>
     firstValueFrom(

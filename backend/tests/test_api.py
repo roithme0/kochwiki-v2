@@ -1,9 +1,12 @@
 from uuid import UUID
 
+import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.models.enums import Unit
 from app.schemas.errors import ErrorResponse
+from app.schemas.foodstuff import FoodstuffOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -444,6 +447,32 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     presentation = response.json()
     assert isinstance(presentation["kcal"], (int, float))
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
+
+
+def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) -> None:
+    schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
+    for name in ("FoodstuffOut", "FoodstuffSummaryOut"):
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
+
+    created = create_foodstuff(client, kcal=370.5, protein=None)
+    foodstuff_id = created["id"]
+    patched = client.patch(f"/foodstuffs/{foodstuff_id}", json={"brand": "Updated"})
+    assert patched.status_code == 200
+    for body in (
+        created,
+        client.get("/foodstuffs").json()[0],
+        client.get(f"/foodstuffs/{foodstuff_id}").json(),
+        patched.json(),
+    ):
+        assert set(body) == set(schemas["FoodstuffOut"]["properties"])
+        assert body["kcal"] == 370.5
+        assert body["protein"] is None
+        FoodstuffOut.model_validate(body)
+
+    with pytest.raises(ValidationError) as error:
+        FoodstuffOut.model_validate({**created, "unexpected": True})
+    assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
 def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:

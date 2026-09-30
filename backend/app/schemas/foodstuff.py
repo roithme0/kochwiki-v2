@@ -46,7 +46,7 @@ class FoodstuffUpdate(FoodstuffFields):
 
 
 class FoodstuffSummaryOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, extra="forbid")
 
     id: int
     name: str

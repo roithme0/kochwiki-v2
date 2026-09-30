@@ -9,7 +9,7 @@ import { createClient } from '@hey-api/openapi-ts';
 const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const backend = resolve(frontend, '..', 'backend');
 const contract = join(frontend, 'src', 'app', 'core', 'api', 'generated');
-const files = ['openapi.json', 'index.ts', 'types.gen.ts'];
+const files = ['openapi.json', 'index.ts', 'types.gen.ts', 'zod.gen.ts'];
 const check = process.argv[2] === '--check';
 
 if (process.argv.length > 3 || (process.argv[2] && !check)) {
@@ -29,7 +29,27 @@ try {
   const input = join(temporary, 'openapi.json');
   const output = join(temporary, 'generated');
   await writeFile(input, document);
-  await createClient({ input, output, plugins: ['@hey-api/typescript'] });
+  await createClient({
+    input,
+    output,
+    plugins: [
+      '@hey-api/typescript',
+      {
+        name: 'zod',
+        compatibilityVersion: 'mini',
+        requests: false,
+        responses: false,
+        $resolvers: {
+          object: (ctx) => {
+            // Hey API 0.99.0's default Zod resolver ignores additionalProperties: false.
+            if (ctx.schema.additionalProperties?.type === 'never') {
+              return ctx.$(ctx.symbols.z).attr('strictObject').call(ctx.nodes.shape(ctx));
+            }
+          },
+        },
+      },
+    ],
+  });
 
   for (const name of files) {
     const generated = await readFile(name === 'openapi.json' ? input : join(output, name));
