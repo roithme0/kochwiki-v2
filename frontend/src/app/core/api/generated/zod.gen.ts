@@ -36,7 +36,7 @@ export const zRecipePresentationIngredientResolve = z.strictObject({
 /**
  * RecipePresentationStepOut
  */
-export const zRecipePresentationStepOut = z.object({
+export const zRecipePresentationStepOut = z.strictObject({
     description: z.string(),
     index: z.int()
 });
@@ -203,7 +203,7 @@ export const zIngredientOut = z.strictObject({
 /**
  * RecipePresentationIngredientOut
  */
-export const zRecipePresentationIngredientOut = z.object({
+export const zRecipePresentationIngredientOut = z.strictObject({
     amount: z.number(),
     foodstuff: zFoodstuffSummaryOut,
     index: z.int()
@@ -212,7 +212,7 @@ export const zRecipePresentationIngredientOut = z.object({
 /**
  * RecipePresentationOut
  */
-export const zRecipePresentationOut = z.object({
+export const zRecipePresentationOut = z.strictObject({
     carbs: z.nullable(z.number()),
     fat: z.nullable(z.number()),
     ingredients: z.array(zRecipePresentationIngredientOut),

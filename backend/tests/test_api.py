@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from app.schemas.errors import ErrorResponse
 from app.schemas.foodstuff import FoodstuffOut
 from app.schemas.user import UserOut
-from app.schemas.recipe import RecipeVersionOut
+from app.schemas.recipe import RecipePresentationOut, RecipeVersionOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -434,6 +434,12 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
             {"type": "number"}, {"type": "null"}
         ]
     assert schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"] == "number"
+    for name in (
+        "RecipePresentationOut", "RecipePresentationIngredientOut",
+        "RecipePresentationStepOut", "FoodstuffSummaryOut",
+    ):
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
 
     foodstuff = create_foodstuff(client, kcal=370.5)
     assert isinstance(foodstuff["kcal"], (int, float))
@@ -445,6 +451,11 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     )
     assert response.status_code == 200
     presentation = response.json()
+    RecipePresentationOut.model_validate(presentation)
+    assert set(presentation) == set(schemas["RecipePresentationOut"]["properties"])
+    assert set(presentation["ingredients"][0]) == set(schemas["RecipePresentationIngredientOut"]["properties"])
+    assert set(presentation["ingredients"][0]["foodstuff"]) == set(schemas["FoodstuffSummaryOut"]["properties"])
+    assert set(presentation["steps"][0]) == set(schemas["RecipePresentationStepOut"]["properties"])
     assert isinstance(presentation["kcal"], (int, float))
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
 

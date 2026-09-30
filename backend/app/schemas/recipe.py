@@ -134,17 +134,23 @@ class RecipeVersionOut(BaseModel):
 
 
 class RecipePresentationIngredientOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index: int
     amount: JsonDecimal
     foodstuff: FoodstuffSummaryOut
 
 
 class RecipePresentationStepOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     index: int
     description: str
 
 
 class RecipePresentationOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     servings: int
     preptime: int | None
     kcal: JsonDecimal | None
