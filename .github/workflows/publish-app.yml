@@ -43,7 +43,7 @@ jobs:
           done < "$RUNNER_TEMP/pydantic-constraints"
 
       - name: Preserve verified release assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: contract-release
           path: ${{ runner.temp }}/contract-wheel/*
