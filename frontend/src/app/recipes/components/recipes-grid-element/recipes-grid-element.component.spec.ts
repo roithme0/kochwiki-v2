@@ -1,7 +1,8 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
-import { RecipeVersion } from '../../models/recipe';
+
 import { RecipesGridElementComponent } from './recipes-grid-element.component';
 
 @Component({ selector: 'app-macro-chart', template: '' })
@@ -42,7 +43,7 @@ describe('RecipesGridElementComponent', () => {
   });
 });
 
-const draftRecipeVersion: RecipeVersion = {
+const draftRecipeVersion: RecipeVersionOut = {
   recipeLineageId: '00000000-0000-4000-8000-000000000001',
   recipeVersionId: '00000000-0000-4000-8000-000000000002',
   state: 'draft',

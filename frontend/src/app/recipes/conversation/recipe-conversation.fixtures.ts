@@ -1,14 +1,15 @@
+import type { RecipeVersionOut } from '../../core/api/generated';
 import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
-import { RecipeVersion } from '../models/recipe';
+
 
 export function conversationFoodstuff(): FoodstuffOut {
   return { id: 1, name: 'Linsen', brand: null, unit: FoodstuffUnit.Gram, unitVerbose: 'g',
     kcal: 120, carbs: 20, protein: 8, fat: null, recipeVersionIds: [] };
 }
 
-export function conversationRecipe(): RecipeVersion {
+export function conversationRecipe(): RecipeVersionOut {
   return {
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002', state: 'active',

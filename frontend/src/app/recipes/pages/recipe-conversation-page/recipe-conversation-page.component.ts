@@ -1,3 +1,4 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,8 +12,6 @@ import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 import { isProposalPresentation, proposalWrite, isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
-
-import { RecipeVersion } from '../../models/recipe';
 import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-bar.service';
 
 @Component({
@@ -31,7 +30,7 @@ export class RecipeConversationPageComponent {
   private readonly router = inject(Router);
   private readonly snackbar = inject(SnackBarService);
   
-  private source: RecipeVersion | null = null;
+  private source: RecipeVersionOut | null = null;
   private saveEpoch = 0;
   private saveFeedback: SnackBarHandle | null = null;
   readonly savePending = signal(false);

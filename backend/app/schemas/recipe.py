@@ -94,6 +94,8 @@ class RecipePresentationResolve(BaseModel):
 
 
 class IngredientOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: int
     index: int
     amount: JsonDecimal
@@ -102,6 +104,8 @@ class IngredientOut(BaseModel):
 
 
 class StepOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: int
     index: int
     description: str
@@ -109,6 +113,8 @@ class StepOut(BaseModel):
 
 
 class RecipeVersionOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     recipeLineageId: UUID
     recipeVersionId: UUID
     state: RecipeVersionState

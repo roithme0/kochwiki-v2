@@ -1,3 +1,4 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,7 +10,6 @@ import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { LoadState } from '../../../core/utils/load-state';
 import { RecipeCreateDialogComponent } from '../../dialogs/recipe-create-dialog/recipe-create-dialog.component';
-import { RecipeVersion } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipesGridComponent } from '../../components/recipes-grid/recipes-grid.component';
 import { RecipesSearchComponent } from '../../components/recipes-search/recipes-search.component';
@@ -36,7 +36,7 @@ export class RecipesPageComponent {
   readonly pageHeaderService = inject(PageHeaderService);
 
   readonly showSearch = signal(false);
-  readonly recipeVersionsState = signal<LoadState<RecipeVersion[]>>({
+  readonly recipeVersionsState = signal<LoadState<RecipeVersionOut[]>>({
     status: 'loading',
     data: [],
   });

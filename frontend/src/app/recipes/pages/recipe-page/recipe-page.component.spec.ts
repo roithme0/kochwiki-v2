@@ -1,4 +1,9 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ApiContractError } from '../../../core/api/api-contract-error';
+import { backendUrl } from '../../../core/constants/api';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
@@ -7,7 +12,7 @@ import { EMPTY } from 'rxjs';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
-import { RecipeVersion } from '../../models/recipe';
+
 import { RecipePageComponent } from './recipe-page.component';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -133,7 +138,7 @@ describe('RecipePageComponent', () => {
     });
 });
 
-const draftRecipeVersion: RecipeVersion = {
+const draftRecipeVersion: RecipeVersionOut = {
     recipeLineageId: '00000000-0000-4000-8000-000000000007',
     recipeVersionId: '00000000-0000-0000-0000-000000000007',
     state: 'draft',
@@ -153,6 +158,43 @@ const draftRecipeVersion: RecipeVersion = {
 };
 
 describe('RecipePageComponent presentation integration', () => {
+    it.each([false, true])('handles a malformed response through the existing error state (specific version: %s)', async (specificVersion) => {
+        const snackBarOpen = vi.fn();
+        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+        const pageHeader = { updateHeader: vi.fn(), headline: '' };
+        const versionId = '00000000-0000-4000-8000-000000000008';
+        TestBed.configureTestingModule({
+            imports: [RecipePageComponent],
+            providers: [
+                provideHttpClient(), provideHttpClientTesting(),
+                { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({
+                    lineageId: draftRecipeVersion.recipeLineageId,
+                    ...(specificVersion ? { recipeVersionId: versionId } : {}),
+                }) } } },
+                { provide: PageHeaderService, useValue: pageHeader },
+                { provide: SnackBarService, useValue: { open: snackBarOpen } },
+                { provide: MatDialog, useValue: { open: vi.fn() } },
+                { provide: Router, useValue: { navigate: vi.fn() } },
+            ],
+        });
+        const fixture = TestBed.createComponent(RecipePageComponent);
+        fixture.detectChanges();
+        const http = TestBed.inject(HttpTestingController);
+        const path = `/recipes/${draftRecipeVersion.recipeLineageId}` + (specificVersion ? `/versions/${versionId}` : '');
+        http.expectOne(backendUrl + path).flush({ ...draftRecipeVersion, recipeVersionId: versionId, unexpected: true });
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.recipeVersion).toBeUndefined();
+        expect(fixture.componentInstance.recipeVersionIsLoading()).toBe(false);
+        expect(fixture.debugElement.query(By.directive(RecipePresentationComponent))).toBeNull();
+        expect(fixture.nativeElement.querySelector('.recipe-not-found-placeholder')).not.toBeNull();
+        expect(pageHeader.headline).toBe('Fehler');
+        expect(snackBarOpen).toHaveBeenCalledWith('Rezept konnte nicht geladen werden');
+        expect(logError).toHaveBeenCalledWith('failed to fetch recipe version: ', expect.any(ApiContractError));
+        http.verify();
+    });
+
     it('passes the loaded recipe to the shared presentation', async () => {
         const pageHeader = {
             updateHeader: vi.fn().mockName('updateHeader'),

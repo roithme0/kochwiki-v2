@@ -71,7 +71,7 @@ export const zRecipeVersionState = z.enum([
 /**
  * StepOut
  */
-export const zStepOut = z.object({
+export const zStepOut = z.strictObject({
     description: z.string(),
     id: z.int(),
     index: z.int(),
@@ -192,7 +192,7 @@ export const zFoodstuffUpdate = z.object({
 /**
  * IngredientOut
  */
-export const zIngredientOut = z.object({
+export const zIngredientOut = z.strictObject({
     amount: z.number(),
     foodstuff: zFoodstuffSummaryOut,
     id: z.int(),
@@ -226,7 +226,7 @@ export const zRecipePresentationOut = z.object({
 /**
  * RecipeVersionOut
  */
-export const zRecipeVersionOut = z.object({
+export const zRecipeVersionOut = z.strictObject({
     carbs: z.nullable(z.number()),
     createdAt: z.iso.datetime(),
     fat: z.nullable(z.number()),

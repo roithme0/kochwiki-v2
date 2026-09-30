@@ -1,9 +1,10 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
 import { MatDialogRef } from '@angular/material/dialog';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { RecipeVersion, RecipeVersionWrite } from '../../models/recipe';
+import { RecipeVersionWrite } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipeEditorSubmission } from '../recipe-editor/recipe-editor.component';
 import { RecipePatchDialogComponent } from './recipe-patch-dialog.component';
@@ -92,10 +93,10 @@ const recipeVersionWrite: RecipeVersionWrite = {
     steps: [],
 };
 
-const activeRecipeVersion: RecipeVersion = createRecipeVersion('active', '00000000-0000-0000-0000-000000000001');
-const draftRecipeVersion: RecipeVersion = createRecipeVersion('draft', '00000000-0000-0000-0000-000000000002');
+const activeRecipeVersion: RecipeVersionOut = createRecipeVersion('active', '00000000-0000-0000-0000-000000000001');
+const draftRecipeVersion: RecipeVersionOut = createRecipeVersion('draft', '00000000-0000-0000-0000-000000000002');
 
-function createRecipeVersion(state: RecipeVersion['state'], recipeVersionId: string): RecipeVersion {
+function createRecipeVersion(state: RecipeVersionOut['state'], recipeVersionId: string): RecipeVersionOut {
     return {
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId,

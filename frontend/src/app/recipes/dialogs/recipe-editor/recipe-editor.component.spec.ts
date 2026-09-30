@@ -1,10 +1,11 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
-import { RecipeVersion } from '../../models/recipe';
+
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeEditorComponent } from './recipe-editor.component';
@@ -21,7 +22,7 @@ describe('RecipeEditorComponent', () => {
         getRecipeVersion: Mock;
     };
 
-    const recipeVersion: RecipeVersion = {
+    const recipeVersion: RecipeVersionOut = {
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId: '00000000-0000-0000-0000-000000000001',
         state: 'active',

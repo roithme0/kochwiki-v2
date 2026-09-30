@@ -1,8 +1,9 @@
+import type { RecipeVersionOut } from '../../core/api/generated';
 import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
 import type { FoodstuffOut } from '../../core/api/generated';
 import type { Unit } from '../../core/api/generated';
-import { RecipeVersion, RecipeVersionWrite } from '../models/recipe';
+import { RecipeVersionWrite } from '../models/recipe';
 import { RecipePresentation } from '../models/recipe-presentation';
 
 export interface RecipeSessionInput {
@@ -36,7 +37,7 @@ export interface RecipeSessionInput {
 }
 
 export function mapSessionInput(
-  source: RecipeVersion,
+  source: RecipeVersionOut,
   foodstuffs: readonly FoodstuffOut[],
 ): RecipeSessionInput {
   return {
@@ -100,7 +101,7 @@ export function isProposalPresentation(
 
 export function proposalWrite(
   proposal: ProposalPresentation,
-  source: Pick<RecipeVersion, 'originName' | 'originUrl'>,
+  source: Pick<RecipeVersionOut, 'originName' | 'originUrl'>,
 ): RecipeVersionWrite {
   return {
     name: proposal.name,

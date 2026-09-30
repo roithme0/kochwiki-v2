@@ -1,13 +1,13 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { RecipeVersion } from '../../models/recipe';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipeEditorComponent, RecipeEditorSubmission } from '../recipe-editor/recipe-editor.component';
 
-interface RecipePatchDialogData { recipeVersion: RecipeVersion; }
+interface RecipePatchDialogData { recipeVersion: RecipeVersionOut; }
 
 @Component({
   selector: 'app-recipe-patch-dialog',
@@ -26,7 +26,7 @@ export class RecipePatchDialogComponent {
   async onSubmit(submission: RecipeEditorSubmission): Promise<void> {
     if (this.isSubmitting()) return;
     this.isSubmitting.set(true);
-    let savedRecipeVersion: RecipeVersion;
+    let savedRecipeVersion: RecipeVersionOut;
     try {
       savedRecipeVersion = this.data.recipeVersion.state === 'draft'
         ? await this.recipeBackendService.updateRecipeDraft(

@@ -414,6 +414,7 @@
         "type": "object"
       },
       "IngredientOut": {
+        "additionalProperties": false,
         "properties": {
           "amount": {
             "title": "Amount",
@@ -718,6 +719,7 @@
         "type": "object"
       },
       "RecipeVersionOut": {
+        "additionalProperties": false,
         "properties": {
           "carbs": {
             "anyOf": [
@@ -946,6 +948,7 @@
         "type": "object"
       },
       "StepOut": {
+        "additionalProperties": false,
         "properties": {
           "description": {
             "title": "Description",

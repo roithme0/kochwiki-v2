@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.schemas.errors import ErrorResponse
 from app.schemas.foodstuff import FoodstuffOut
 from app.schemas.user import UserOut
+from app.schemas.recipe import RecipeVersionOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -496,6 +497,48 @@ def test_user_success_responses_follow_closed_schema(client: TestClient) -> None
     with pytest.raises(ValidationError) as error:
         UserOut.model_validate({**created.json(), "unexpected": True})
     assert error.value.errors()[0]["type"] == "extra_forbidden"
+
+
+def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
+    schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
+    for name in ("RecipeVersionOut", "IngredientOut", "StepOut", "FoodstuffSummaryOut"):
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
+
+    oats = create_foodstuff(client)
+    created = client.post("/recipes", json=recipe_version_payload(
+        "Decimal recipe", ingredients=[{"index": 1, "amount": 12.5, "foodstuffId": oats["id"]}],
+        preptime=None, originName=None, originUrl=None,
+    ))
+    assert created.status_code == 201
+    recipe = created.json()
+    lineage_id = recipe["recipeLineageId"]
+    version_id = recipe["recipeVersionId"]
+    for path, is_list in (
+        ("/recipes", True),
+        (f"/recipes/{lineage_id}", False),
+        (f"/recipes/{lineage_id}/versions/{version_id}", False),
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        body = response.json()[0] if is_list else response.json()
+        RecipeVersionOut.model_validate(body)
+        assert body["ingredients"][0]["amount"] == 12.5
+        assert body["preptime"] is None
+        assert set(body) == set(schemas["RecipeVersionOut"]["properties"])
+
+    malformed = [
+        {**recipe, "unexpected": True},
+        {**recipe, "ingredients": [{**recipe["ingredients"][0], "unexpected": True}]},
+        {**recipe, "steps": [{**recipe["steps"][0], "unexpected": True}]},
+        {**recipe, "ingredients": [{**recipe["ingredients"][0], "foodstuff": {
+            **recipe["ingredients"][0]["foodstuff"], "unexpected": True,
+        }}]},
+    ]
+    for body in malformed:
+        with pytest.raises(ValidationError) as error:
+            RecipeVersionOut.model_validate(body)
+        assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
 def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:

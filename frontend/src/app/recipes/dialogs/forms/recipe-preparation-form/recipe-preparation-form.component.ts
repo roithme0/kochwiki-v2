@@ -1,3 +1,4 @@
+import type { StepOut, RecipeVersionOut } from '../../../../core/api/generated';
 import { Component, NgZone, ViewChild, inject, input } from '@angular/core';
 
 import {
@@ -12,8 +13,6 @@ import {
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { take } from 'rxjs';
-import { Step } from '../../../models/step';
-import { RecipeVersion } from '../../../models/recipe';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -33,7 +32,7 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './recipe-preparation-form.component.scss',
 })
 export class RecipePreparationFormComponent {
-  recipeVersion = input<RecipeVersion>();
+  recipeVersion = input<RecipeVersionOut>();
 
   readonly recipeFormDirective = inject(FormGroupDirective);
   readonly fb = inject(FormBuilder);
@@ -50,7 +49,7 @@ export class RecipePreparationFormComponent {
       'preparationFormGroup'
     ) as FormGroup;
 
-    const recipeVersion: RecipeVersion | undefined = this.recipeVersion();
+    const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
     if (recipeVersion !== undefined) {
       this.recipeForm.get('preparationFormGroup')?.patchValue({
         preptime: recipeVersion.preptime,
@@ -66,7 +65,7 @@ export class RecipePreparationFormComponent {
     return this.recipeForm.get('preparationFormGroup.steps') as FormArray;
   }
 
-  addStep(step?: Step): void {
+  addStep(step?: StepOut): void {
     if (this.steps.length >= 99) return;
 
     this.steps.push(

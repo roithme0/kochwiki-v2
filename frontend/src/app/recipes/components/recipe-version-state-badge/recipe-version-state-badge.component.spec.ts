@@ -1,5 +1,6 @@
+import type { RecipeVersionState } from '../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { RecipeVersionState } from '../../models/recipe';
+
 import { RecipeVersionStateBadgeComponent } from './recipe-version-state-badge.component';
 
 describe('RecipeVersionStateBadgeComponent', () => {
