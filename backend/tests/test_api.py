@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from app.schemas.errors import ErrorResponse
 from app.schemas.foodstuff import FoodstuffOut
+from app.schemas.user import UserOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:
@@ -470,6 +471,30 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
 
     with pytest.raises(ValidationError) as error:
         FoodstuffOut.model_validate({**created, "unexpected": True})
+    assert error.value.errors()[0]["type"] == "extra_forbidden"
+
+
+def test_user_success_responses_follow_closed_schema(client: TestClient) -> None:
+    schema = client.get("/api/openapi.json").json()["components"]["schemas"]["UserOut"]
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == set(schema["properties"])
+
+    created = client.post("/users", json={"username": "Roi"})
+    assert created.status_code == 201
+    user_id = created.json()["id"]
+    patched = client.patch(f"/users/{user_id}", json={"username": "Renamed Roi"})
+    assert patched.status_code == 200
+    for body in (
+        created.json(),
+        client.get("/users").json()[0],
+        client.get(f"/users/{user_id}").json(),
+        patched.json(),
+    ):
+        assert set(body) == set(schema["properties"])
+        UserOut.model_validate(body)
+
+    with pytest.raises(ValidationError) as error:
+        UserOut.model_validate({**created.json(), "unexpected": True})
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 

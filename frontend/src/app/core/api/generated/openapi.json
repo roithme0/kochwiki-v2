@@ -1021,6 +1021,7 @@
         "type": "object"
       },
       "UserOut": {
+        "additionalProperties": false,
         "properties": {
           "id": {
             "title": "Id",

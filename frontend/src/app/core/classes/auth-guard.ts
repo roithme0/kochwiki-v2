@@ -1,7 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { CanActivate, Router } from '@angular/router';
+import type { UrlTree } from '@angular/router';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { filter, map, Observable, take } from 'rxjs';
 import { ActiveUserService } from '../services/active-user.service';
-import { User } from '../models/user';
 
 @Injectable({
   providedIn: 'root',
@@ -9,14 +11,14 @@ import { User } from '../models/user';
 export class AuthGuard implements CanActivate {
   readonly activeUserService = inject(ActiveUserService);
   readonly router = inject(Router);
+  private readonly restorationState = toObservable(this.activeUserService.restorationState);
 
-  canActivate(): boolean {
-    const user: User | null = this.activeUserService.activeUser();
-    if (user != null) {
-      return true;
-    } else {
-      this.router.navigate(['/userSelection']);
-      return false;
-    }
+  canActivate(): Observable<boolean | UrlTree> {
+    return this.restorationState.pipe(
+      filter((state) => state === 'idle'),
+      take(1),
+      map(() => this.activeUserService.activeUser() !== null
+        ? true : this.router.createUrlTree(['/userSelection']))
+    );
   }
 }

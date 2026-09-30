@@ -255,7 +255,7 @@ export const zUserCreate = z.object({
 /**
  * UserOut
  */
-export const zUserOut = z.object({
+export const zUserOut = z.strictObject({
     id: z.int(),
     username: z.string()
 });

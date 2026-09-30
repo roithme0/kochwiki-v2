@@ -30,7 +30,7 @@ describe('Version-specific conversation routing', () => {
     }));
     TestBed.configureTestingModule({ providers: [
       provideRouter(routes),
-      { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }) } },
+      { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }), restorationState: signal('idle') } },
       { provide: SnackBarService, useValue: { open: snackbar } },
       { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, createRecipeDraft: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
       { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs: async () => [] } },
