@@ -6,6 +6,10 @@ from fastapi.responses import JSONResponse
 
 from app.api.router import router
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.services.embeddings import EmbeddingClient
+from app.services.foodstuff_embeddings import FoodstuffEmbeddingService
+from app.services.foodstuff_refresh import RefreshWorker
 from app.mcp_server import create_mcp_server
 from app.schemas.errors import ErrorResponse
 from app.services import greeting
@@ -30,8 +34,20 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        async with server.session_manager.run():
-            yield
+        embeddings = EmbeddingClient.from_settings(settings)
+        refresh = FoodstuffEmbeddingService(SessionLocal, embeddings)
+        worker: RefreshWorker | None = None
+        if embeddings.available:
+            worker = RefreshWorker(refresh.refresh_one, lambda: refresh.refresh_all(worker.is_stopping if worker else lambda: True))
+        if worker:
+            worker.start()
+        try:
+            async with server.session_manager.run():
+                yield
+        finally:
+            if worker:
+                worker.stop()
+            embeddings.close()
 
     application = FastAPI(
         title="Kochwiki API",

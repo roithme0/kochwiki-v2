@@ -7,6 +7,7 @@ from app.models.foodstuff import Foodstuff
 from app.models.recipe import Ingredient
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.services.exceptions import ConflictError, NotFoundError
+from app.services.foodstuff_refresh import mark_foodstuff_refresh
 from app.services.integrity import flush_for_unique_conflict
 
 
@@ -61,14 +62,18 @@ def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
     foodstuff = Foodstuff(**payload.model_dump())
     session.add(foodstuff)
     flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
+    mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
 
 
 def update_foodstuff(session: Session, foodstuff_id: int, payload: FoodstuffUpdate) -> Foodstuff:
     foodstuff = get_foodstuff(session, foodstuff_id)
+    previous_input = (foodstuff.name, foodstuff.brand or "")
     for field_name, value in payload.model_dump(exclude_unset=True).items():
         setattr(foodstuff, field_name, value)
     flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
+    if previous_input != (foodstuff.name, foodstuff.brand or ""):
+        mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
 
 

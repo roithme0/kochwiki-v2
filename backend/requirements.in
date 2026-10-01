@@ -5,3 +5,6 @@ psycopg[binary]
 pydantic-settings
 sqlalchemy
 uvicorn[standard]
+openai
+pgvector
+tzdata

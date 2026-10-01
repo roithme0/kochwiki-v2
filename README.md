@@ -25,6 +25,8 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
+The optional backend foodstuff alias search uses OpenAI embeddings and PostgreSQL pgvector. See [configuration, initial refresh/search commands, lifecycle and verification](docs/foodstuff-semantic-search.md).
+
 The backend also hosts a minimal Streamable HTTP MCP endpoint with a hello-world
 tool. See [MCP integration and local verification](docs/mcp.md).
 

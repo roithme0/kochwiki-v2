@@ -45,7 +45,7 @@ Results should support later selective presentation without requiring recipe-awa
 Each slice should have a narrow specification and independently verifiable behavior. Split these boundaries further when needed.
 
 1. **MCP integration:** use the official Python MCP SDK with Streamable HTTP inside the existing backend, and expose one deterministic hello-world tool sharing its service implementation with the existing HTTP hello-world endpoint. Verify client initialization, tool discovery, invocation, and linked server lifecycle. Explore the technology without domain instructions, foodstuff reads, database access, or AI Service changes.
-2. **Foodstuff discovery:** introduce domain instructions, authoritative foodstuff reads, and bounded semantic search with representative relevance examples. Split into narrower slices when specified.
+2. **Foodstuff semantic search:** establish alias/name discovery through a shared backend service and operational commands, without MCP integration. Expose search and authoritative reads through MCP in a subsequent narrow slice; domain instructions remain separately scoped.
 3. **Reference recipes:** add semantic discovery and detailed reference retrieval.
 4. **Stored proposals:** establish source context, proposal identity/storage, and preparation/retrieval using existing foodstuffs.
 5. **Temporary foodstuffs:** extend proposals and preview to unsaved ingredient definitions without catalogue writes.
@@ -71,6 +71,29 @@ Domain and MCP behavior can be verified without migrating the existing chat or r
 - Write-operation identity, result recovery, and concurrent-call behavior.
 
 ## Implementation Record
+
+### Slice 2: foodstuff semantic search
+
+Specification: [Foodstuff Semantic Search](../specs/2026-10-01-foodstuff-semantic-search.md)
+(local, gitignored specification).
+
+Use cloud OpenAI `text-embedding-3-large` with default 3,072 dimensions,
+PostgreSQL/pgvector, and exact cosine nearest-neighbour search. Focus on aliases
+and alternative ingredient names. Embed deterministic name/brand text and retain
+the model identifier and exact input text with each vector.
+
+Refresh missing or mismatched model/text embeddings after committed creation or
+input-affecting edits, and nightly at 03:00 Europe/Berlin inside the single-worker
+backend. Initial population is manual; no startup sweep. Log and skip failures
+without immediate retries. Missing credentials disable semantic capability while
+ordinary backend operations remain usable.
+
+Implemented in the shared search/refresh services and `python -m app.foodstuff_semantic` commands. See [configuration, lifecycle and verified alias rankings](../foodstuff-semantic-search.md). A dependent cascading table stores current vectors. Post-commit/savepoint hooks and one lifecycle worker maintain freshness without tying catalogue writes to provider availability.
+
+Defer HTTP/MCP
+search endpoints, artifacts, broader category/nutrition queries, and AI Service
+changes. Search excludes stale embeddings and returns candidates rather than
+identity decisions.
 
 ### Slice 1: MCP integration
 
