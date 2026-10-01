@@ -159,6 +159,26 @@ suite passed (12 tests, one skipped). The SDK probe also succeeded against a
 live Uvicorn TCP endpoint. The generated HTTP contract check passed after
 regeneration, with no semantic changes to generated files.
 
+### Recipe search MCP tool
+
+Expose `search_recipes(query, limit=5)` using the existing recipe search service.
+Return ranked, complete `RecipeVersionOut` objects without similarity scores;
+limits are 1–20. Active and draft versions with current name embeddings are
+eligible, and historical versions stay excluded. Each version remains a separate
+candidate. Search is a prefilter for interpretation in conversation.
+
+Both search services are bound and unbound by the application lifespan and
+share its embedding client. Invalid inputs, unavailable capability and provider
+failures produce tool errors; an empty eligible catalogue succeeds. Retrieval
+does not create proposals or automatically render artifacts. Writes, artifact
+integration, instructions and AI Service migration remain deferred.
+See [tool contract and manual usage](../mcp.md#recipe-search).
+
+Verification: all 109 backend tests pass, including MCP discovery, complete
+active/draft serialization, ranking and limits, validation, unavailable search,
+provider errors, empty results and both search bindings' cleanup. Tests use fake
+embeddings without cloud calls.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:

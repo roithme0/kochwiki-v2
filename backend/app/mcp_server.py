@@ -9,7 +9,9 @@ from starlette.applications import Starlette
 from app.core.config import get_settings
 from app.services import greeting
 from app.schemas.foodstuff import FoodstuffSummaryOut
+from app.schemas.recipe import RecipeVersionOut
 from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.services.recipe_search import RecipeSemanticSearch
 from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 
 
@@ -21,6 +23,7 @@ def hello_world() -> dict[str, str]:
 class MCPServices:
     def __init__(self) -> None:
         self._foodstuff_search: FoodstuffSemanticSearch | None = None
+        self._recipe_search: RecipeSemanticSearch | None = None
 
     def bind_foodstuff_search(self, search: FoodstuffSemanticSearch | None) -> None:
         self._foodstuff_search = search
@@ -29,6 +32,14 @@ class MCPServices:
         if self._foodstuff_search is None:
             raise SemanticSearchUnavailable("Semantic search unavailable: backend is not running")
         return self._foodstuff_search
+
+    def bind_recipe_search(self, search: RecipeSemanticSearch | None) -> None:
+        self._recipe_search = search
+
+    def get_recipe_search(self) -> RecipeSemanticSearch:
+        if self._recipe_search is None:
+            raise SemanticSearchUnavailable("Semantic search unavailable: backend is not running")
+        return self._recipe_search
 
 
 def create_mcp_server(
@@ -54,6 +65,25 @@ def create_mcp_server(
         except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
             raise ToolError(str(error)) from None
         return [candidate.foodstuff for candidate in candidates]
+
+    @server.tool()
+    def search_recipes(
+        query: Annotated[str, Field(min_length=1, description="Recipe name to search for")],
+        limit: Annotated[int, Field(strict=True, ge=1, le=20)] = 5,
+    ) -> list[RecipeVersionOut]:
+        """Find a bounded, ranked shortlist of existing recipes by name.
+
+        Results include complete active versions and drafts; historical versions
+        are excluded. Search is a prefilter, not an identity decision. Use the
+        returned recipes and conversation to assess matches and clarify ambiguity.
+        Multiple versions of one recipe may appear. Only versions with current
+        embeddings can be returned. Retrieval does not create or save a proposal.
+        """
+        try:
+            candidates = services.get_recipe_search().search(query, limit)
+        except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
+            raise ToolError(str(error)) from None
+        return [candidate.recipe for candidate in candidates]
 
     mcp_app = server.streamable_http_app(
         streamable_http_path="/",

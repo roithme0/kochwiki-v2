@@ -26,6 +26,25 @@ The search service shares the application-owned embedding client with background
 refresh work. The SDK executes the synchronous tool in a worker thread, keeping
 database and cloud calls off the application's event loop.
 
+## Recipe search
+
+`search_recipes` accepts a recipe name in `query`, and an optional integer
+`limit` (default 5, range 1–20). It calls the existing `RecipeSemanticSearch`
+service and returns ranked, complete `RecipeVersionOut` objects in structured
+content as `{"result": [...]}`. Results include version and lineage IDs, state,
+ingredients with foodstuff summaries, steps and nutrition. Similarity scores
+stay internal. Active versions and drafts with current name embeddings are
+eligible; historical versions are excluded. Multiple versions of a lineage
+can appear independently.
+
+As with foodstuff search, results are candidates for the agent to assess in
+conversation. Retrieval neither creates a proposal nor displays an artifact.
+Blank queries, invalid limits, missing credentials and query embedding failures
+produce tool errors; an empty eligible catalogue succeeds with an empty list.
+The tool remains discoverable without credentials. Both search services share
+the lifespan-owned embedding client and are unbound during shutdown.
+See [recipe embedding setup and initial refresh](recipe-semantic-search.md).
+
 ## Endpoint and lifecycle
 
 The Streamable HTTP endpoint is `/mcp/` on both the backend and gateway.
@@ -90,6 +109,10 @@ To exercise foodstuff search, select `search_foodstuffs` and enter, for example,
 embeddings, verify that the ranked summaries contain no similarity scores.
 Without credentials, expect a semantic-search-unavailable tool error.
 
+To exercise recipe search, select `search_recipes` and enter, for example,
+`{"query": "Spaghetti Bolognese", "limit": 5}`. Populate recipe embeddings first;
+the result contains full recipe versions without similarity scores.
+
 In an already open Inspector, add a **Streamable HTTP** server with that URL.
 For a directly running backend, use `http://localhost:8080/mcp/` instead.
 Keep the trailing slash. Inspector proxies the connection through its Node
@@ -108,11 +131,11 @@ Run the backend regression suite with the existing test PostgreSQL available:
 `tests/test_mcp.py` exercises the SDK client over Streamable HTTP through the
 ASGI transport, application startup/shutdown across fresh instances, the
 existing greeting/OpenAPI routes, and rejection of an unconfigured Host.
-It also verifies foodstuff search schemas, ranked summary serialization, limits,
+It also verifies both search schemas, ranked summary/full-recipe serialization, limits,
 invalid inputs, unavailable capability, provider failures, empty results, and
 embedding-client cleanup using a fake provider and the test database; it makes
 no paid OpenAI calls.
 The client probe separately permits verification over a listening TCP server.
 
-Artifacts, foodstuff writes, recipe search, proposal behavior, domain instruction
+Artifacts, writes, proposal behavior, domain instruction
 resources, and AI Service integration remain outside this slice.

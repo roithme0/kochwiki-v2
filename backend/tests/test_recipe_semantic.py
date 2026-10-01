@@ -291,7 +291,7 @@ def test_lifespan_refresh_failure_does_not_fail_write(monkeypatch: pytest.Monkey
         return outcome
     monkeypatch.setattr(refresh, "refresh_one", refresh_one)
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: embeddings)
-    monkeypatch.setattr("app.main.RecipeEmbeddingService", lambda sessions, client: refresh)
+    monkeypatch.setattr("app.semantic_lifecycle.RecipeEmbeddingService", lambda sessions, client: refresh)
     with TestClient(create_app()) as client:
         assert client.post("/recipes", json={"name": "Bad", "servings": 2}).status_code == 201
         assert attempted.wait(2)

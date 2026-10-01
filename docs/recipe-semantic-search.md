@@ -6,8 +6,9 @@ Ingredients, foodstuff summaries, steps, nutrition, version and lineage IDs, and
 state are returned together. Multiple versions of a lineage remain separate
 candidates. Search is a prefilter, not an identity decision.
 
-This slice provides backend services and commands. MCP/HTTP search endpoints,
-artifacts and AI Service changes follow separately.
+The service is available through backend commands and the MCP `search_recipes`
+tool. See [MCP contract and Inspector usage](mcp.md#recipe-search). HTTP search
+endpoints, artifacts and AI Service changes remain deferred.
 
 ## Storage and configuration
 
@@ -67,9 +68,12 @@ startup population or durable queue. Deploy a single backend process/worker.
 Sweeps remove leftover historical embeddings and refresh only missing or stale
 active/draft embeddings. Initial population is manual.
 
-The lifespan registers cleanup as each resource is acquired. Partial worker
+`app/semantic_lifecycle.py` separates search-service/client setup from refresh-worker
+setup into two context managers. The application lifespan nests search services,
+refresh workers and the MCP session manager; shutdown reverses that order.
+Each context registers cleanup as resources are acquired. Partial worker
 construction/startup failure stops previously started workers, clears the MCP
-binding and closes the client. A failed thread start also removes its coordinator
+search bindings and closes the client. A failed thread start also removes its coordinator
 subscription. Cleanup continues if another cleanup callback raises.
 
 Provider failures log the version ID and exception type, skip the record and

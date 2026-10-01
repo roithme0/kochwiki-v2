@@ -11,6 +11,7 @@ from app.services import embedding_refresh
 from app.services.embeddings import EmbeddingClient
 from app.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
 from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.services.recipe_search import RecipeSemanticSearch
 
 
 class Provider:
@@ -44,15 +45,21 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
         monkeypatch: pytest.MonkeyPatch) -> None:
     provider = Provider()
     bindings: list[FoodstuffSemanticSearch | None] = []
+    recipe_bindings: list[RecipeSemanticSearch | None] = []
     threads: list[Thread] = []
     original_start = Thread.start
     original_nightly = embedding_refresh.next_nightly
     original_bind = MCPServices.bind_foodstuff_search
+    original_recipe_bind = MCPServices.bind_recipe_search
     nightly_calls = 0
 
     def bind(services: MCPServices, search: FoodstuffSemanticSearch | None) -> None:
         bindings.append(search)
         original_bind(services, search)
+
+    def bind_recipe(services: MCPServices, search: RecipeSemanticSearch | None) -> None:
+        recipe_bindings.append(search)
+        original_recipe_bind(services, search)
 
     def start(thread: Thread) -> None:
         if thread.name == "embedding-refresh":
@@ -83,6 +90,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
 
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider))
     monkeypatch.setattr(MCPServices, "bind_foodstuff_search", bind)
+    monkeypatch.setattr(MCPServices, "bind_recipe_search", bind_recipe)
     monkeypatch.setattr(Thread, "start", start)
     monkeypatch.setattr(embedding_refresh, "next_nightly", nightly)
     with pytest.raises(RuntimeError, match=f"worker {failure} failed"):
@@ -90,4 +98,5 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
             pass
     assert provider.closed
     assert bindings[0] is not None and bindings[-1] is None
+    assert recipe_bindings[0] is not None and recipe_bindings[-1] is None
     assert threads and all(not thread.is_alive() for thread in threads)
