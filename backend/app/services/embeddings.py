@@ -3,15 +3,19 @@ import math
 from typing import Protocol
 
 from openai import OpenAI
-from sqlalchemy import case, literal
-from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.config import Settings
-from app.models.foodstuff import Foodstuff
+from app.core.embedding import DIMENSIONS, MODEL
 
-MODEL = "text-embedding-3-large"
-DIMENSIONS = 3072
 logger = logging.getLogger(__name__)
+
+
+class SemanticSearchUnavailable(RuntimeError):
+    pass
+
+
+class QueryEmbeddingError(RuntimeError):
+    pass
 
 
 class EmbeddingProvider(Protocol):
@@ -33,20 +37,9 @@ class OpenAIEmbeddingProvider:
         self.client.close()
 
 
-def source_text(name: str, brand: str | None) -> str:
-    return name + ("\nBrand: " + brand if brand else "")
-
-
 def validate_vector(vector: list[float]) -> None:
     if len(vector) != DIMENSIONS or not all(math.isfinite(value) for value in vector) or not any(vector):
         raise ValueError("Expected a finite nonzero 3072-dimensional embedding")
-
-
-def current_source_text() -> ColumnElement[str]:
-    return Foodstuff.name + case(
-        ((Foodstuff.brand.is_not(None)) & (Foodstuff.brand != ""), literal("\nBrand: ") + Foodstuff.brand),
-        else_=literal(""),
-    )
 
 
 class EmbeddingClient:
@@ -61,8 +54,8 @@ class EmbeddingClient:
         key = settings.openai_api_key
         provider = OpenAIEmbeddingProvider(key.get_secret_value()) if key and key.get_secret_value() else None
         if provider is None:
-            logger.warning("Foodstuff embedding refresh disabled: OPENAI_API_KEY is missing; semantic search unavailable")
-        return cls(provider, settings.foodstuff_embedding_model)
+            logger.warning("Embedding refresh disabled: OPENAI_API_KEY is missing; semantic search unavailable")
+        return cls(provider, settings.embedding_model)
 
     @property
     def available(self) -> bool:

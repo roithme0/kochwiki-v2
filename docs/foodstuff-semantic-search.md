@@ -14,6 +14,11 @@ Official API reference: [OpenAI vector embeddings](https://developers.openai.com
 
 ## Manual initial population and search
 
+The module commands use the shared `app.semantic_commands` runner for argument
+parsing, client lifecycle, errors, refresh reporting and exit codes. Domain entry
+points supply service factories and result formatting; foodstuff search keeps its
+ranked summary/distance output, while recipe search prints full recipe JSON.
+
 Run from `backend` after installing `requirements.txt` and `./contract` into the same Python environment. Set `DATABASE_URL` and `OPENAI_API_KEY` through your existing environment or `.env`. The web server is not required.
 
 ```powershell
@@ -34,9 +39,20 @@ Search defaults to five results and accepts limits 1?20. Blank queries, invalid 
 
 ## Service responsibilities
 
-`foodstuff_embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `foodstuff_search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `embeddings.EmbeddingClient` and source-text definition. The application or command owns and closes the client; neither domain service owns its lifecycle.
+`semantic_search.SemanticSearch` shares query/limit validation, availability
+checks, query embedding and sanitized provider errors. The foodstuff and recipe
+search services retain their domain SQL, filtering before ranking/limiting,
+relationship loading and candidate conversion.
 
-`foodstuff_refresh.RefreshWorker` only coordinates triggers, scheduling and shutdown, delegating refresh work to the embedding service. The backend creates the embedding service for background maintenance. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
+The typed `embedding_service.EmbeddingService` base shares the refresh algorithm
+between foodstuffs and recipes: freshness checks, generation outside database
+transactions, locked revalidation, persistence, error handling and sweep counting.
+The domain implementations supply eligible source text, embedding records and
+IDs to refresh. Recipe-only historical cleanup remains in the recipe service.
+
+`foodstuff_embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `foodstuff_search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `embeddings.EmbeddingClient`; foodstuff text generation and its SQL freshness expression live in `foodstuff_embedding_text`. The shared model setting is `EMBEDDING_MODEL` (formerly `FOODSTUFF_EMBEDDING_MODEL`); update that name if explicitly configured. The application or command owns and closes the client; neither domain service owns its lifecycle.
+
+`foodstuff_refresh.foodstuff_refresh` is a typed instance of the shared `embedding_refresh.RefreshCoordinator`, which handles committed transaction triggers and savepoint/rollback behavior. `mark_foodstuff_refresh` is a thin domain wrapper. The backend binds the coordinator to `EmbeddingRefreshWorker`, which schedules and delegates refresh work to the embedding service. Recipe refresh uses a separate UUID coordinator and queue with the same implementation. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
 
 ## Freshness and lifecycle
 

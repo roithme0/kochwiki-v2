@@ -1,81 +1,27 @@
-from collections.abc import Callable
-from dataclasses import dataclass
-import logging
-from threading import Lock
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.foodstuff import Foodstuff
 from app.models.foodstuff_embedding import FoodstuffEmbedding
-from app.services.embeddings import EmbeddingClient, source_text
-
-logger = logging.getLogger(__name__)
-
-
-@dataclass
-class RefreshReport:
-    refreshed: int = 0
-    skipped: int = 0
-    failed: int = 0
+from app.services.embedding_service import EmbeddingService
+from app.services.foodstuff_embedding_text import source_text
 
 
-class FoodstuffEmbeddingService:
-    def __init__(self, sessions: Callable[[], Session], embeddings: EmbeddingClient) -> None:
-        self.sessions = sessions
-        self.embeddings = embeddings
-        self.model = embeddings.model
-        self.refresh_lock = Lock()
+class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
+    label = "Foodstuff"
 
-    def refresh_one(self, foodstuff_id: int) -> str:
-        if not self.embeddings.available:
-            return "disabled"
-        with self.refresh_lock:
-            try:
-                return self._refresh_one(foodstuff_id)
-            except Exception as error:
-                logger.error("Foodstuff %s embedding refresh failed (%s); skipped", foodstuff_id, type(error).__name__)
-                return "failed"
+    def _load_source_text(self, session: Session, record_id: int, *, for_update: bool) -> str | None:
+        statement = select(Foodstuff).where(Foodstuff.id == record_id)
+        if for_update:
+            statement = statement.with_for_update()
+        foodstuff = session.scalar(statement)
+        return source_text(foodstuff.name, foodstuff.brand) if foodstuff is not None else None
 
-    def _refresh_one(self, foodstuff_id: int) -> str:
-        with self.sessions() as session:
-            foodstuff = session.get(Foodstuff, foodstuff_id)
-            if foodstuff is None:
-                return "skipped"
-            requested_text = source_text(foodstuff.name, foodstuff.brand)
-            requested_model = self.model
-            existing = session.get(FoodstuffEmbedding, foodstuff_id)
-            if existing and existing.model == requested_model and existing.source_text == requested_text:
-                return "skipped"
-        vector = self.embeddings.embed(requested_text, requested_model)
-        with self.sessions() as session, session.begin():
-            foodstuff = session.scalar(select(Foodstuff).where(Foodstuff.id == foodstuff_id).with_for_update())
-            if foodstuff is None or source_text(foodstuff.name, foodstuff.brand) != requested_text or self.model != requested_model:
-                return "skipped"
-            existing = session.get(FoodstuffEmbedding, foodstuff_id)
-            if existing is None:
-                session.add(FoodstuffEmbedding(foodstuff_id=foodstuff_id, model=requested_model, source_text=requested_text, vector=vector))
-            else:
-                existing.model = requested_model
-                existing.source_text = requested_text
-                existing.vector = vector
-        return "refreshed"
+    def _load_embedding(self, session: Session, record_id: int) -> FoodstuffEmbedding | None:
+        return session.get(FoodstuffEmbedding, record_id)
 
-    def refresh_all(self, stop_requested: Callable[[], bool] = lambda: False) -> RefreshReport:
-        report = RefreshReport()
-        if not self.embeddings.available:
-            logger.warning("Foodstuff embedding refresh disabled: OPENAI_API_KEY is missing")
-            return report
-        with self.sessions() as session:
-            ids = list(session.scalars(select(Foodstuff.id).order_by(Foodstuff.id)))
-        for foodstuff_id in ids:
-            if stop_requested():
-                break
-            outcome = self.refresh_one(foodstuff_id)
-            if outcome == "refreshed":
-                report.refreshed += 1
-            elif outcome == "failed":
-                report.failed += 1
-            else:
-                report.skipped += 1
-        return report
+    def _new_embedding(self, record_id: int, model: str, text: str, vector: list[float]) -> FoodstuffEmbedding:
+        return FoodstuffEmbedding(foodstuff_id=record_id, model=model, source_text=text, vector=vector)
+
+    def _refresh_ids(self, session: Session) -> list[int]:
+        return list(session.scalars(select(Foodstuff.id).order_by(Foodstuff.id)))

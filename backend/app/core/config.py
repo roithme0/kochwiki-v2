@@ -3,10 +3,12 @@ from functools import lru_cache
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.embedding import MODEL
+
 
 class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
-    foodstuff_embedding_model: str = "text-embedding-3-large"
+    embedding_model: str = MODEL
     app_version: str = "0.0.0"
     database_url: str = "postgresql+psycopg://user:password@localhost:5432/kochwiki"
     mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"

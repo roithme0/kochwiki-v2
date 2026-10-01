@@ -25,6 +25,8 @@ from app.schemas.recipe import (
 )
 from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuffs import foodstuff_summary_out
+from app.services.recipe_embeddings import remove_recipe_embedding
+from app.services.recipe_refresh import mark_recipe_refresh
 
 NutritionField = Literal["kcal", "carbs", "protein", "fat"]
 
@@ -83,6 +85,7 @@ def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersio
     version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
     session.add(lineage)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage.id, version.version_id)
 
 
@@ -91,10 +94,12 @@ def publish_active_recipe_edit(session: Session, lineage_id: UUID, payload: Reci
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
     now = _now()
     active_version.state = RecipeVersionState.HISTORICAL
+    remove_recipe_embedding(session, active_version.version_id)
     session.flush()
     version = _new_recipe_version(active_version.lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
     session.add(version)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
@@ -104,6 +109,7 @@ def create_recipe_draft(session: Session, lineage_id: UUID, payload: RecipeVersi
     version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now())
     session.add(version)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
@@ -112,9 +118,12 @@ def update_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID, pa
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be updated")
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    previous_name = draft_version.name
     _apply_version_content(session, draft_version, payload, foodstuffs)
     draft_version.last_modified = _now()
     session.flush()
+    if previous_name != draft_version.name:
+        mark_recipe_refresh(session, version_id)
     return get_recipe_version_by_id(session, lineage_id, version_id)
 
 
@@ -124,10 +133,12 @@ def publish_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID) -
         raise ConflictError("Only draft recipe versions can be published")
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
     active_version.state = RecipeVersionState.HISTORICAL
+    remove_recipe_embedding(session, active_version.version_id)
     session.flush()
     draft_version.state = RecipeVersionState.ACTIVE
     draft_version.last_modified = _now()
     session.flush()
+    mark_recipe_refresh(session, version_id)
     return get_recipe_version_by_id(session, lineage_id, version_id)
 
 

@@ -72,6 +72,34 @@ Domain and MCP behavior can be verified without migrating the existing chat or r
 
 ## Implementation Record
 
+### Slice 3 foundation: recipe semantic searchability
+
+Embed recipe version names only using the existing OpenAI/pgvector foundation.
+Search active versions and drafts, excluding historical versions before ranking
+and limiting. Return complete `RecipeVersionOut` candidates in one request;
+multiple versions of a lineage remain distinct. Similarity scores stay internal.
+
+Refresh after committed creation/name edits and publication, plus nightly at
+03:00 Europe/Berlin; initial population remains manual. Delete embeddings
+atomically when versions become historical, and recheck eligibility before
+storing in-flight results. Sweeps skip historical versions and remove leftover
+historical embeddings. Reuse the embedding client and shared scheduling loop.
+
+Delivered as backend services and `python -m app.recipe_semantic` commands.
+MCP exposure, artifacts and AI Service integration remain separate slices.
+See [recipe semantic search](../recipe-semantic-search.md).
+
+Verification: all 89 backend tests passed with deterministic providers and
+PostgreSQL/pgvector. Focused type checking found no new errors; the existing
+`main.py` domain exception handler typing issue remains.
+
+Follow-up consolidation shares embedding columns/constants, transaction refresh
+coordination, refresh/search base services and operational command handling.
+Domain source text, eligibility, queries and output formatting remain explicit.
+Independent Sol review prompted partial-startup cleanup protection, explicit
+foodstuff candidate naming and a shared model-level recipe eligibility policy.
+Re-review found no remaining actionable findings; all 107 backend tests passed.
+
 ### Slice 2 follow-up: foodstuff search through MCP
 
 Expose `search_foodstuffs(query, limit=5)` through the existing MCP server.

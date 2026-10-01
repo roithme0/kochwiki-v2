@@ -14,11 +14,11 @@ from app.db.session import SessionLocal
 from app.models.foodstuff import Foodstuff
 from app.models.foodstuff_embedding import FoodstuffEmbedding
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.services.foodstuff_refresh import RefreshWorker, next_nightly
-from app.services.foodstuff_search import (
-    FoodstuffSemanticSearch, QueryEmbeddingError, SemanticSearchUnavailable,
-)
-from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, source_text
+from app.services.embedding_refresh import EmbeddingRefreshWorker, next_nightly
+from app.services.foodstuff_refresh import foodstuff_refresh
+from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable
+from app.services.foodstuff_embedding_text import source_text
 from app.services.foodstuff_embeddings import FoodstuffEmbeddingService
 from app.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 
@@ -206,9 +206,7 @@ def test_sdk_retries_disabled() -> None:
 def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:
     captured: list[int] = []
     # Keep enqueue synchronous to assert the transaction boundary directly.
-    from app.services.foodstuff_refresh import _subscribers, _subscriber_lock
-    with _subscriber_lock:
-        _subscribers.add(captured.append)
+    foodstuff_refresh.subscribe(captured.append)
     try:
         with SessionLocal() as session:
             foodstuff = create_foodstuff(session, FoodstuffCreate(name="created", unit=Unit.G))
@@ -233,15 +231,12 @@ def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:
             session.rollback()
         assert captured == [foodstuff_id] * 3
     finally:
-        with _subscriber_lock:
-            _subscribers.discard(captured.append)
+        foodstuff_refresh.unsubscribe(captured.append)
 
 
 def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() -> None:
     captured: list[int] = []
-    from app.services.foodstuff_refresh import _subscribers, _subscriber_lock
-    with _subscriber_lock:
-        _subscribers.add(captured.append)
+    foodstuff_refresh.subscribe(captured.append)
     try:
         with SessionLocal() as session:
             outer = create_foodstuff(session, FoodstuffCreate(name="outer", unit=Unit.G))
@@ -260,8 +255,7 @@ def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() 
             session.rollback()
         assert captured == []
     finally:
-        with _subscriber_lock:
-            _subscribers.discard(captured.append)
+        foodstuff_refresh.unsubscribe(captured.append)
 
 
 @pytest.mark.parametrize("now,expected", [
@@ -285,7 +279,7 @@ def test_worker_controlled_clock_no_startup_sweep_and_shutdown() -> None:
     def sweep() -> None:
         calls.append("sweep")
         swept.set()
-    worker = RefreshWorker(refresh, sweep, lambda: now[0])
+    worker = EmbeddingRefreshWorker(refresh, sweep, lambda: now[0])
     worker.start()
     assert not swept.is_set()
     worker.enqueue(42)
@@ -311,7 +305,7 @@ def test_stop_during_sweep_finishes_current_call_and_skips_remaining() -> None:
     provider.before_return = block
     search = service(provider)
     now = [datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)]
-    worker = RefreshWorker(search.refresh_one, lambda: search.refresh_all(worker.is_stopping), lambda: now[0])
+    worker = EmbeddingRefreshWorker(search.refresh_one, lambda: search.refresh_all(worker.is_stopping), lambda: now[0])
     worker.start()
     now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=timezone.utc)
     worker.wake()

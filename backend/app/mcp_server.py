@@ -9,9 +9,8 @@ from starlette.applications import Starlette
 from app.core.config import get_settings
 from app.services import greeting
 from app.schemas.foodstuff import FoodstuffSummaryOut
-from app.services.foodstuff_search import (
-    FoodstuffSemanticSearch, QueryEmbeddingError, SemanticSearchUnavailable,
-)
+from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 
 
 def hello_world() -> dict[str, str]:
