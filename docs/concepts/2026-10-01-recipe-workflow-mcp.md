@@ -179,6 +179,25 @@ active/draft serialization, ranking and limits, validation, unavailable search,
 provider errors, empty results and both search bindings' cleanup. Tests use fake
 embeddings without cloud calls.
 
+### Kochwiki-owned MCP instructions
+
+Provide domain guidance through MCP connection metadata, with the text maintained
+in `app/mcp_instructions.py`. Cover supplied snapshots, additional foodstuff and
+recipe searches, candidate interpretation, clear matches and natural-language
+clarification. Discuss or display references selectively when supported by the
+host; keep retrieved recipes distinct from proposals. Describe only the current
+read capabilities, including incomplete search coverage and retrieval failures.
+
+No new tool, prompt, resource, artifact interface or write capability is added.
+AI Service's existing recipe instructions remain until its later MCP consumption
+and domain migration slice. Generic orchestration and artifact transport guidance
+belongs to AI Service. See [instruction delivery](../mcp.md#domain-instructions).
+
+Verification: all 110 backend tests pass. The SDK client receives the exact
+instructions through both default discovery and the explicit initialization
+handshake across fresh application instances. The client probe checks that
+instructions are present. Focused type checking passes without diagnostics.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:

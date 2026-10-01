@@ -7,6 +7,7 @@ from pydantic import Field
 from starlette.applications import Starlette
 
 from app.core.config import get_settings
+from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.services import greeting
 from app.schemas.foodstuff import FoodstuffSummaryOut
 from app.schemas.recipe import RecipeVersionOut
@@ -46,7 +47,9 @@ def create_mcp_server(
     services: MCPServices,
 ) -> tuple[MCPServer, Starlette]:
     settings = get_settings()
-    server = MCPServer("Kochwiki", version=settings.app_version)
+    server = MCPServer(
+        "Kochwiki", version=settings.app_version, instructions=KOCHWIKI_INSTRUCTIONS,
+    )
     server.tool()(hello_world)
 
     @server.tool()

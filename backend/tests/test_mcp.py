@@ -1,5 +1,6 @@
 import asyncio
 from decimal import Decimal
+from typing import Literal
 
 import httpx2
 import pytest
@@ -10,6 +11,7 @@ from mcp.types import TextContent
 
 from app.db.session import SessionLocal
 from app.main import create_app
+from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.models.foodstuff_embedding import FoodstuffEmbedding
 from app.models.recipe_embedding import RecipeEmbedding
 from app.schemas.foodstuff import FoodstuffCreate
@@ -19,7 +21,8 @@ from app.services.foodstuffs import create_foodstuff, foodstuff_summary_out
 from app.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
 
 
-def test_mcp_http_discovery_invocation_and_lifecycle() -> None:
+@pytest.mark.parametrize("mode", ["auto", "legacy"])
+def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "legacy"]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
@@ -29,8 +32,14 @@ def test_mcp_http_discovery_invocation_and_lifecycle() -> None:
                 assert (await http.get("/")).json() == {"message": "Hello World"}
                 assert (await http.get("/api/openapi.json")).status_code == 200
                 async with Client(
-                    streamable_http_client("http://localhost/mcp/", http_client=http)
+                    streamable_http_client("http://localhost/mcp/", http_client=http),
+                    mode=mode,
                 ) as client:
+                    assert client.instructions == KOCHWIKI_INSTRUCTIONS
+                    if mode == "legacy":
+                        initialization = client.session.initialize_result
+                        assert initialization is not None
+                        assert initialization.instructions == KOCHWIKI_INSTRUCTIONS
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == ["hello_world", "search_foodstuffs", "search_recipes"]
                     result = await client.call_tool("hello_world", {})

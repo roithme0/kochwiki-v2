@@ -5,6 +5,29 @@ Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
 `{"message": "Hello World"}` as structured content. It and the existing HTTP
 `GET /` endpoint call `app/services/greeting.py` directly.
 
+## Domain instructions
+
+Kochwiki provides domain guidance as MCP server instructions in connection
+metadata (`instructions` in the initialization response, also available through
+SDK discovery). The text lives in `backend/app/mcp_instructions.py`; it is not
+a separate tool, prompt or resource. An SDK client can read `client.instructions`
+after connecting. The consuming service must include it in the agent's context;
+delivery through MCP alone does not cause a model to follow it.
+
+The guidance covers supplied recipe/foodstuff snapshots, additional searches,
+candidate interpretation and natural-language clarification. Clear matches need
+no extra confirmation. Retrieved references should be discussed or displayed
+selectively when the host supports that presentation. Retrieved recipes are
+distinct from proposals, and the currently available tools cannot create or save
+anything. Empty results and retrieval failures must not be treated as proof that
+an item is absent.
+
+This establishes Kochwiki's ownership of domain guidance. The existing recipe
+instructions in AI Service remain in use until a later migration consumes MCP
+instructions and replaces the existing domain capabilities. Generic conversation,
+tool execution and artifact delivery guidance remains the consuming service's
+responsibility. Proposal tools and artifact integration are outside this slice.
+
 ## Foodstuff search
 
 `search_foodstuffs` accepts a foodstuff name or alias in `query`, and an optional
@@ -86,8 +109,9 @@ In another terminal, from `backend`, run the official SDK client probe:
 .venv\Scripts\python.exe tests/verify_mcp.py http://localhost:8080/mcp/
 ```
 
-The probe connects, discovers the tool, invokes it, and checks its structured
-result. It requires neither an AI model nor database queries. Normal deployment
+The probe connects, checks that server instructions are present, discovers the
+tools, invokes hello-world, and checks its structured result. It requires neither
+an AI model nor database queries. Normal deployment
 startup still runs the existing database migrations.
 
 ## Verification
@@ -131,11 +155,13 @@ Run the backend regression suite with the existing test PostgreSQL available:
 `tests/test_mcp.py` exercises the SDK client over Streamable HTTP through the
 ASGI transport, application startup/shutdown across fresh instances, the
 existing greeting/OpenAPI routes, and rejection of an unconfigured Host.
+It verifies instruction delivery through both the default SDK connection mode
+and the explicit initialization handshake.
 It also verifies both search schemas, ranked summary/full-recipe serialization, limits,
 invalid inputs, unavailable capability, provider failures, empty results, and
 embedding-client cleanup using a fake provider and the test database; it makes
 no paid OpenAI calls.
 The client probe separately permits verification over a listening TCP server.
 
-Artifacts, writes, proposal behavior, domain instruction
-resources, and AI Service integration remain outside this slice.
+Artifacts, writes, proposal behavior, separate instruction resources, and
+AI Service integration remain outside this slice.
