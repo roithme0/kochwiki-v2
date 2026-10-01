@@ -18,8 +18,8 @@ The guidance covers supplied recipe/foodstuff snapshots, additional searches,
 candidate interpretation and natural-language clarification. Clear matches need
 no extra confirmation. Retrieved references should be discussed or displayed
 selectively when the host supports that presentation. Retrieved recipes are
-distinct from proposals. Dedicated foodstuff creation requires an explicit user
-request; missing ingredients in recipe proposals remain separate. Empty results
+distinct from proposals. Dedicated foodstuff creation and updates require explicit
+user requests; missing ingredients in recipe proposals remain separate. Empty results
 and retrieval failures must not be treated as proof that an item is absent.
 
 This establishes Kochwiki's ownership of domain guidance. The existing recipe
@@ -73,6 +73,37 @@ requires a unit, but cannot establish whether it came from the user.
 
 This tool immediately persists a catalogue entry for a dedicated user request.
 It does not create recipe proposals, temporary ingredients or recipe drafts.
+
+## Foodstuff updates and saved results
+
+`update_foodstuff` accepts `foodstuff_id` (a positive integer) and `changes`
+using the REST `FoodstuffUpdate` schema. Omitted fields remain unchanged;
+explicit `null` clears brand or nutrition. Name and unit cannot be cleared.
+The shared update service runs in a transaction and returns complete
+`FoodstuffOut` structured content after commit, including recipe version IDs.
+Missing targets, name/brand conflicts and invalid inputs produce tool errors.
+Database failures roll back and return a generic error. The tool is marked as a
+potentially destructive, idempotent write. Name/brand changes schedule embedding
+refresh after commit; nutrition and unit changes alone do not.
+
+Instructions require explicit update requests and an unambiguously identified
+target, presented before updating through an artifact when supported or through
+its concrete details in text. Clarify uncertainty rather than guessing. A precise
+request for a clearly identified target needs no additional confirmation. Updates
+affect all recipes using the shared entry. For name/brand changes, search for
+duplicates of the proposed identity, excluding the target, and clarify plausible
+matches.
+
+If a unit change retains existing kcal or macro values, the agent warns about
+their changed nutritional basis and confirms intent. The backend permits the
+change; warnings, target clarification and duplicate searches are instruction
+policies rather than programmatic checks. Nutrition updates may use the existing
+unit when their basis is clear.
+
+After either creation or update, present the saved foodstuff returned by the tool
+as a foodstuff artifact when supported, with a concise textual fallback. Foodstuff
+artifact rendering and AI Service integration remain deferred; these tools return
+data and do not themselves render artifacts.
 
 ## Recipe search
 
@@ -174,6 +205,11 @@ To exercise creation, select `create_foodstuff` and submit
 This writes a real catalogue entry. Use the regular foodstuff UI to delete the
 test entry afterwards if desired.
 
+To exercise updating, use that returned ID as `foodstuff_id`:
+`{"foodstuff_id": 123, "changes": {"brand": "Inspector test", "protein": 0}}`.
+Replace `123` with the actual ID. This changes the real catalogue entry and
+returns its complete saved representation.
+
 ### Automated checks
 
 Run the backend regression suite with the existing test PostgreSQL available:
@@ -194,6 +230,9 @@ no paid OpenAI calls.
 Creation checks cover the required name/unit contract (including omitted units
 with zero nutrition values), saved output, persistence, post-commit refresh,
 name/brand conflicts, invalid inputs and rollback without refresh on failure.
+Update checks cover partial changes and explicit nulls, retained nutrition on
+unit changes, recipe version references, identity-only refresh, missing targets,
+conflicts, validation and rollback without refresh on database failure.
 The client probe separately permits verification over a listening TCP server.
 
 Artifacts, recipe writes, proposal behavior, separate instruction resources, and

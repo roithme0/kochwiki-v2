@@ -16,7 +16,7 @@ from app.main import create_app
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.models.foodstuff_embedding import FoodstuffEmbedding
 from app.models.recipe_embedding import RecipeEmbedding
-from app.schemas.foodstuff import FoodstuffCreate
+from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.models.foodstuff import Foodstuff
 from app.services import foodstuffs
 from app.services.foodstuff_refresh import foodstuff_refresh
@@ -48,6 +48,7 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
                         "hello_world", "search_foodstuffs", "search_recipes", "create_foodstuff",
+                        "update_foodstuff",
                     ]
                     result = await client.call_tool("hello_world", {})
                     assert not result.is_error
@@ -145,6 +146,97 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: 
         with SessionLocal() as session:
             assert not foodstuffs.list_foodstuffs(session)
         assert refreshed == []
+
+    foodstuff_refresh.subscribe(subscriber)
+    try:
+        asyncio.run(exercise())
+    finally:
+        foodstuff_refresh.unsubscribe(subscriber)
+
+
+def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with SessionLocal.begin() as session:
+        target = create_foodstuff(session, FoodstuffCreate(
+            name="Milk", brand="Test", unit=Unit.ML, kcal=Decimal(40), protein=Decimal(3),
+        ))
+        target_id = target.id
+        create_foodstuff(session, FoodstuffCreate(name="Other", brand="Test", unit=Unit.G))
+        recipe = create_recipe(session, RecipeVersionWrite.model_validate({
+            "name": "Milk recipe", "servings": 1,
+            "ingredients": [{"index": 1, "foodstuffId": target_id, "amount": 100}],
+            "steps": [],
+        }))
+        recipe_id = str(recipe.version_id)
+    refreshed: list[int] = []
+    subscriber = refreshed.append
+    original_update = foodstuffs.update_foodstuff
+
+    def fail_after_flush(session: Session, foodstuff_id: int, payload: FoodstuffUpdate) -> Foodstuff:
+        original_update(session, foodstuff_id, payload)
+        raise SQLAlchemyError("secret database diagnostic")
+
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+            ) as http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+                    tool = next(tool for tool in (await client.list_tools()).tools if tool.name == "update_foodstuff")
+                    assert tool.input_schema["required"] == ["foodstuff_id", "changes"]
+                    assert tool.annotations is not None
+                    assert tool.annotations.read_only_hint is False
+                    assert tool.annotations.destructive_hint is True
+                    for changes, expected_refresh in [
+                        ({"protein": 0}, []),
+                        ({"unit": "PIECE"}, []),
+                        ({"name": "Whole milk"}, [target_id]),
+                        ({"brand": None, "kcal": None}, [target_id, target_id]),
+                    ]:
+                        result = await client.call_tool("update_foodstuff", {
+                            "foodstuff_id": target_id, "changes": changes,
+                        })
+                        assert not result.is_error
+                        saved = result.structured_content
+                        assert saved is not None
+                        assert saved["recipeVersionIds"] == [recipe_id]
+                        with SessionLocal() as session:
+                            persisted = foodstuffs.get_foodstuff(session, target_id)
+                            assert saved == foodstuffs.foodstuff_out(persisted).model_dump(mode="json")
+                            assert persisted.protein == Decimal(0)
+                            if "unit" in changes:
+                                assert persisted.unit == Unit.PIECE
+                                assert persisted.kcal == Decimal(40)
+                            for field, value in FoodstuffUpdate.model_validate(changes).model_dump(exclude_unset=True).items():
+                                assert getattr(persisted, field) == value
+                        assert refreshed == expected_refresh
+                    with SessionLocal() as session:
+                        before = foodstuffs.foodstuff_out(foodstuffs.get_foodstuff(session, target_id)).model_dump(mode="json")
+                    for arguments, message in [
+                        ({"foodstuff_id": 999999, "changes": {"name": "Missing"}}, "not found"),
+                        ({"foodstuff_id": target_id, "changes": {"name": "Other", "brand": "Test"}}, "same name and brand"),
+                        ({"foodstuff_id": target_id, "changes": {"name": None}}, "name cannot be null"),
+                        ({"foodstuff_id": target_id, "changes": {"unit": None}}, "unit cannot be null"),
+                        ({"foodstuff_id": target_id, "changes": {"fat": -1}}, "greater than or equal"),
+                        ({"foodstuff_id": target_id, "changes": {"unit": "KG"}}, "Input should be"),
+                        ({"foodstuff_id": True, "changes": {"name": "Invalid"}}, "valid integer"),
+                        ({"foodstuff_id": 0, "changes": {"name": "Invalid"}}, "greater than or equal"),
+                    ]:
+                        failed = await client.call_tool("update_foodstuff", arguments)
+                        assert failed.is_error
+                        assert message in str(failed)
+                    monkeypatch.setattr(foodstuffs, "update_foodstuff", fail_after_flush)
+                    failed = await client.call_tool("update_foodstuff", {
+                        "foodstuff_id": target_id, "changes": {"name": "Rollback"},
+                    })
+                    assert failed.is_error
+                    assert "Foodstuff update failed" in str(failed)
+                    assert "secret database diagnostic" not in str(failed)
+                    with SessionLocal() as session:
+                        assert foodstuffs.foodstuff_out(foodstuffs.get_foodstuff(session, target_id)).model_dump(mode="json") == before
+                    assert refreshed == [target_id, target_id]
 
     foodstuff_refresh.subscribe(subscriber)
     try:

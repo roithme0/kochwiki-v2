@@ -1,4 +1,6 @@
 import logging
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Annotated
 
 from mcp.server import MCPServer
@@ -7,13 +9,14 @@ from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
 from pydantic import Field
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 from starlette.applications import Starlette
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.services import foodstuffs, greeting
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut
+from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.schemas.recipe import RecipeVersionOut
 from app.services.foodstuff_search import FoodstuffSemanticSearch
 from app.services.recipe_search import RecipeSemanticSearch
@@ -21,6 +24,18 @@ from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailab
 from app.services.exceptions import DomainError
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def foodstuff_write_transaction(operation: str) -> Iterator[Session]:
+    try:
+        with SessionLocal.begin() as session:
+            yield session
+    except DomainError as error:
+        raise ToolError(error.message) from None
+    except SQLAlchemyError as error:
+        logger.error("MCP foodstuff %s failed (%s)", operation, type(error).__name__)
+        raise ToolError(f"Foodstuff {operation} failed") from None
 
 
 def hello_world() -> dict[str, str]:
@@ -105,18 +120,33 @@ def create_mcp_server(
         Name and unit are required. If any nutrition value is supplied (including
         zero), ask the user for the unit if they have not specified it. Otherwise
         choose a suitable unit and mention it in the response. Nutrition values
-        apply per 100 g/ml or per piece. Returns the saved foodstuff with its ID.
+        apply per 100 g/ml or per piece. Returns the saved foodstuff with its ID;
+        present that result as an artifact when supported, otherwise in text.
         """
-        try:
-            with SessionLocal.begin() as session:
-                created = foodstuffs.create_foodstuff(session, foodstuff)
-                result = foodstuffs.foodstuff_out(created)
-            return result
-        except DomainError as error:
-            raise ToolError(error.message) from None
-        except SQLAlchemyError as error:
-            logger.error("MCP foodstuff creation failed (%s)", type(error).__name__)
-            raise ToolError("Foodstuff creation failed") from None
+        with foodstuff_write_transaction("creation") as session:
+            created = foodstuffs.create_foodstuff(session, foodstuff)
+            result = foodstuffs.foodstuff_out(created)
+        return result
+
+    @server.tool(annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=True, idempotent_hint=True, open_world_hint=False,
+    ))
+    def update_foodstuff(
+        foodstuff_id: Annotated[int, Field(strict=True, ge=1, description="ID of the unambiguously identified foodstuff")],
+        changes: FoodstuffUpdate,
+    ) -> FoodstuffOut:
+        """Update a shared catalogue entry only on explicit user request.
+
+        Present the target and clarify any ambiguity before updating. Search for
+        duplicates when changing name or brand, excluding the target. If a unit
+        change retains nutrition values, warn about their changed basis and clarify
+        intent. Omitted fields stay unchanged; null clears optional fields. Return
+        and present the complete saved foodstuff, as an artifact when supported.
+        """
+        with foodstuff_write_transaction("update") as session:
+            updated = foodstuffs.update_foodstuff(session, foodstuff_id, changes)
+            result = foodstuffs.foodstuff_out(updated)
+        return result
 
     mcp_app = server.streamable_http_app(
         streamable_http_path="/",

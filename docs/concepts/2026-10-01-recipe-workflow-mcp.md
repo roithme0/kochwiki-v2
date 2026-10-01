@@ -222,6 +222,31 @@ persistence, required units with zero nutrition values, invalid inputs, duplicat
 conflicts, post-commit refresh and rollback without refresh on failure. Focused
 type checking passes. Tests make no paid OpenAI calls.
 
+### Dedicated foodstuff update MCP tool
+
+Expose `update_foodstuff(foodstuff_id, changes)` through the existing partial
+update schema and shared service. Omitted fields stay unchanged; null clears
+optional fields. Return complete `FoodstuffOut` after commit, including recipe
+references. Name/brand changes retain the post-commit embedding refresh trigger.
+Creation and update share MCP transaction/error handling; database failures roll
+back and return sanitized tool errors.
+
+Instructions restrict updates to explicit requests for an unambiguously identified
+target. Present the concrete target before updating and clarify uncertainty.
+Search for duplicates when changing name/brand, excluding the target. Warn and
+confirm intent when a unit change retains existing nutrition; the backend permits
+it. Shared entry changes affect all recipes using it.
+
+After both creation and update, present the returned saved record as a foodstuff
+artifact when supported, otherwise in text. Actual artifact rendering, AI Service
+integration and proposal workflows remain deferred.
+See [tool contract and saved-result presentation](../mcp.md#foodstuff-updates-and-saved-results).
+
+Verification: all 113 backend tests pass, including MCP partial updates, explicit
+nulls, unit changes retaining nutrition, recipe references, refresh scheduling,
+missing targets, conflicts, validation and rollback without refresh on failure.
+Tests make no paid OpenAI calls.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:
