@@ -5,7 +5,7 @@ from .foodstuff import FoodstuffSummaryOut
 
 
 class IngredientWrite(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     index: int = Field(ge=1, le=99)
     amount: JsonDecimal = Field(gt=0, le=9999)
@@ -13,7 +13,7 @@ class IngredientWrite(BaseModel):
 
 
 class StepWrite(BaseModel):
-    model_config = ConfigDict(strict=True)
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     index: int = Field(ge=1, le=99)
     description: str = Field(min_length=1, max_length=200)

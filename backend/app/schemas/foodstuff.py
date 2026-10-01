@@ -3,10 +3,12 @@ from typing import Self
 from uuid import UUID
 
 from kochwiki_contract import FoodstuffSummaryOut, Unit
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class FoodstuffFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=50)
     brand: str | None = Field(default=None, max_length=100)
     unit: Unit

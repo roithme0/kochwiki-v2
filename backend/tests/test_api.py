@@ -368,7 +368,34 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert invalid.json()["detail"][0]["loc"] == ["body", "unit"]
     assert invalid.json()["detail"][0]["type"] == "missing"
     assert invalid.json()["detail"][0]["input"] == {"name": "Missing required values"}
+    unknown_field = client.post("/foodstuffs", json={"name": "Oats", "unit": "G", "unexpected": True})
+    assert unknown_field.status_code == 422
+    assert unknown_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_field.json()["detail"][0]["type"] == "extra_forbidden"
     assert client.post("/recipes", json={"name": "Incomplete"}).status_code == 422
+    unknown_recipe_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown recipe field", unexpected=True,
+    ))
+    assert unknown_recipe_field.status_code == 422
+    assert unknown_recipe_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_recipe_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_step_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown step field", steps=[{"index": 1, "description": "Cook", "unexpected": True}],
+    ))
+    assert unknown_step_field.status_code == 422
+    assert unknown_step_field.json()["detail"][0]["loc"] == ["body", "steps", 0, "unexpected"]
+    assert unknown_step_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_ingredient_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown ingredient field",
+        ingredients=[{"index": 1, "amount": 100, "foodstuffId": 1, "unexpected": True}],
+    ))
+    assert unknown_ingredient_field.status_code == 422
+    assert unknown_ingredient_field.json()["detail"][0]["loc"] == ["body", "ingredients", 0, "unexpected"]
+    assert unknown_ingredient_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_update_field = client.patch("/foodstuffs/1", json={"unexpected": True})
+    assert unknown_update_field.status_code == 422
+    assert unknown_update_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_update_field.json()["detail"][0]["type"] == "extra_forbidden"
     assert client.post("/recipes", json=recipe_version_payload("Bad index", steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}])).status_code == 422
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
     assert client.patch("/foodstuffs/1", json={"unit": None}).status_code == 422

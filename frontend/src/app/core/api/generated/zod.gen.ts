@@ -12,7 +12,7 @@ export const zErrorResponse = z.strictObject({
 /**
  * IngredientWrite
  */
-export const zIngredientWrite = z.object({
+export const zIngredientWrite = z.strictObject({
     amount: z.number().check(z.gt(0), z.lte(9999)),
     foodstuffId: z.int().check(z.gt(0)),
     index: z.int().check(z.gte(1), z.lte(99))
@@ -75,7 +75,7 @@ export const zStepOut = z.strictObject({
 /**
  * StepWrite
  */
-export const zStepWrite = z.object({
+export const zStepWrite = z.strictObject({
     description: z.string().check(z.minLength(1), z.maxLength(200)),
     index: z.int().check(z.gte(1), z.lte(99))
 });
@@ -83,7 +83,7 @@ export const zStepWrite = z.object({
 /**
  * RecipeVersionWrite
  */
-export const zRecipeVersionWrite = z.object({
+export const zRecipeVersionWrite = z.strictObject({
     ingredients: z.optional(z.array(zIngredientWrite)),
     name: z.string().check(z.minLength(1), z.maxLength(200)),
     originName: z.nullish(z.string().check(z.maxLength(200))),
@@ -105,7 +105,7 @@ export const zUnit = z.enum([
 /**
  * FoodstuffCreate
  */
-export const zFoodstuffCreate = z.object({
+export const zFoodstuffCreate = z.strictObject({
     brand: z.nullish(z.string().check(z.maxLength(100))),
     carbs: z.nullish(z.union([
         z.number().check(z.gte(0)),
@@ -161,7 +161,7 @@ export const zFoodstuffSummaryOut = z.strictObject({
 /**
  * FoodstuffUpdate
  */
-export const zFoodstuffUpdate = z.object({
+export const zFoodstuffUpdate = z.strictObject({
     brand: z.nullish(z.string().check(z.maxLength(100))),
     carbs: z.nullish(z.union([
         z.number().check(z.gte(0)),

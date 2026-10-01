@@ -247,6 +247,50 @@ nulls, unit changes retaining nutrition, recipe references, refresh scheduling,
 missing targets, conflicts, validation and rollback without refresh on failure.
 Tests make no paid OpenAI calls.
 
+### In-memory recipe proposal storage
+
+Specification: [Recipe Proposal Storage](../specs/2026-10-01-recipe-proposal-storage.md)
+(local, gitignored specification).
+
+Implemented typed creation and exact retrieval through backend services only.
+Retain complete immutable proposed recipes in an application-owned in-memory
+store, with issued proposal UUIDs and UTC creation timestamps. Backend restart
+loses proposals; durable storage, expiry/cleanup and conversation integration
+remain deferred. No database migration is needed.
+
+Each proposal references its original source recipe version and optionally a
+base proposal being refined. Refinements create new complete proposals and
+retain the original source. Ingredients contain index/amount and an explicit
+existing-foodstuff-ID or inline temporary-definition variant. Temporary
+definitions follow foodstuff creation validation and create no catalogue rows.
+Reject repeated existing IDs, duplicate indexes and repeated temporary
+name/brand pairs after existing schema normalization, without semantic matching.
+
+Store source and existing foodstuff references only, accepting changes until
+saving; no snapshots. Validate references at creation. Later dependency deletion
+does not block deletion or remove the retained proposal: raw retrieval still
+returns its references, while future preview/save must handle missing records.
+
+This slice adds no MCP/HTTP endpoint, artifact rendering, calculated preview,
+recipe saving or AI Service integration. Proposal identity remains independent
+of artifact identity. These decisions refine the provisional stored-proposal and
+temporary-foodstuff slices above and the earlier cross-project outline.
+
+Models live in `app/schemas/recipe_proposal.py`; `RecipeProposalStore` in
+`app/services/recipe_proposals.py` provides `create(session, payload)` and
+`get(proposal_id)`. Each application owns `app.state.recipe_proposals` and clears
+it on shutdown. Creation revalidates and detaches submitted content, verifies
+references with read-only queries without autoflush, and inserts only after
+validation and output construction. Retrieval returns a detached model without
+database or provider access. This memory insertion is independent of database
+transaction rollback.
+
+Verification: all 158 backend tests pass, including strict nested validation,
+mixed variants, temporary identity normalization, source/refinement attribution,
+application isolation and shutdown cleanup, detached input/output, no records or
+embedding refresh work, failure atomicity and retention after dependency edits
+or deletion. Focused type checking passes; tests make no paid provider calls.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:

@@ -11,6 +11,7 @@ from app.schemas.errors import ErrorResponse
 from app.semantic_lifecycle import embedding_refresh_workers, semantic_search_services
 from app.services import greeting
 from app.services.exceptions import DomainError
+from app.services.recipe_proposals import RecipeProposalStore
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
@@ -29,13 +30,17 @@ def create_app() -> FastAPI:
     settings = get_settings()
     mcp_services = MCPServices()
     server, mcp_app = create_mcp_server(mcp_services)
+    recipe_proposals = RecipeProposalStore()
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        with semantic_search_services(settings, mcp_services) as embeddings:
-            with embedding_refresh_workers(embeddings):
-                async with server.session_manager.run():
-                    yield
+        try:
+            with semantic_search_services(settings, mcp_services) as embeddings:
+                with embedding_refresh_workers(embeddings):
+                    async with server.session_manager.run():
+                        yield
+        finally:
+            recipe_proposals.clear()
 
     application = FastAPI(
         title="Kochwiki API",
@@ -45,6 +50,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     application.add_exception_handler(DomainError, handle_domain_error)
+    application.state.recipe_proposals = recipe_proposals
     application.include_router(router)
     application.get("/")(hello_world)
     application.mount("/mcp", mcp_app)

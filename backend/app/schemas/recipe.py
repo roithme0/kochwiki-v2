@@ -21,6 +21,8 @@ from app.schemas.foodstuff import FoodstuffSummaryOut
 
 
 class RecipeVersionFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=200)
     servings: int = Field(ge=1, le=99)
     preptime: int | None = Field(default=None, ge=1, le=999)

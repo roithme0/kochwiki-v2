@@ -106,6 +106,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                         {"name": "Null unit", "unit": None, "protein": 1},
                         {"name": "Invalid unit", "unit": "KG"},
                         {"name": "Negative", "unit": "G", "kcal": -1},
+                        {"name": "Unknown field", "unit": "G", "unexpected": True},
                     ]:
                         assert (await client.call_tool("create_foodstuff", {"foodstuff": payload})).is_error
                     with SessionLocal() as session:
