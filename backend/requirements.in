@@ -1,5 +1,6 @@
 alembic
 fastapi
+mcp==2.2.0
 psycopg[binary]
 pydantic-settings
 sqlalchemy

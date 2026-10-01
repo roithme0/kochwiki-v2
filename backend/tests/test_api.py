@@ -602,20 +602,6 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
-def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:
-    response = client.options(
-        "/recipes/1/drafts/00000000-0000-0000-0000-000000000001",
-        headers={
-            "Origin": "http://localhost:4200",
-            "Access-Control-Request-Method": "PUT",
-            "Access-Control-Request-Headers": "content-type",
-        },
-    )
-
-    assert response.status_code == 200
-    assert "PUT" in response.headers["access-control-allow-methods"]
-
-
 def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
     oats = create_foodstuff(client)
     egg = create_foodstuff(client, name="Egg", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5)

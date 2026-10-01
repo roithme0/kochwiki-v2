@@ -25,12 +25,19 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
+The backend also hosts a minimal Streamable HTTP MCP endpoint with a hello-world
+tool. See [MCP integration and local verification](docs/mcp.md).
+
 The backend consumes the local `kochwiki-contract` package containing shared
 resolver API models. After installing backend requirements, install
 `backend/contract` into the same environment before running the backend or
 OpenAPI generation. See [contract package development and wheel verification](backend/contract/README.md).
 
 The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
+
+Browser API access is same-origin through the gateway or Angular development
+proxy, so the backend has no CORS middleware. Server-to-server requests require
+no browser CORS permissions. MCP validates Host and Origin headers separately.
 
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 
