@@ -72,6 +72,23 @@ Domain and MCP behavior can be verified without migrating the existing chat or r
 
 ## Implementation Record
 
+### Slice 2 follow-up: foodstuff search through MCP
+
+Expose `search_foodstuffs(query, limit=5)` through the existing MCP server.
+Return ranked foodstuff summaries, without similarity scores, using the shared
+search service and application-owned embedding client. Search is a bounded
+prefilter; the agent interprets the summaries in conversation rather than treating
+ranking as an identity decision. Limits are 1–20.
+
+Unavailable search and failed query embeddings produce tool errors; an empty
+eligible catalogue returns an empty list successfully. Keep artifacts, writes,
+recipe search, domain instruction resources and AI Service migration deferred.
+See [tool contract and Inspector usage](../mcp.md#foodstuff-search).
+
+Verification: all 70 backend tests passed, including MCP client discovery,
+serialization without scores, limits, validation, error/empty-result distinctions,
+and lifecycle cleanup. Tests use deterministic embeddings without cloud calls.
+
 ### Slice 2: foodstuff semantic search
 
 Specification: [Foodstuff Semantic Search](../specs/2026-10-01-foodstuff-semantic-search.md)

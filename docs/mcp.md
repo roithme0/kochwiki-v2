@@ -1,9 +1,30 @@
 # MCP integration
 
 Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
-The first slice exposes only `hello_world`, with no arguments, returning
+`hello_world` takes no arguments, returning
 `{"message": "Hello World"}` as structured content. It and the existing HTTP
 `GET /` endpoint call `app/services/greeting.py` directly.
+
+## Foodstuff search
+
+`search_foodstuffs` accepts a foodstuff name or alias in `query`, and an optional
+integer `limit` (default 5, range 1–20). It calls the shared semantic search
+service directly and returns ranked `FoodstuffSummaryOut` objects, including IDs,
+names, brands, units and nutrition values. Similarity scores stay internal.
+The SDK wraps the list in structured content as `{"result": [...]}`; an empty
+eligible catalogue returns `{"result": []}` successfully.
+
+Search is a prefilter for the agent, not an identity decision. The agent uses
+the summaries and conversation to select an item or clarify ambiguity. Only
+records with current embeddings are eligible. Configure `OPENAI_API_KEY` and
+populate embeddings before use; see [semantic search setup](foodstuff-semantic-search.md).
+Blank queries and invalid limits produce MCP tool errors. Missing credentials
+report semantic search unavailable; query embedding failures report a tool
+error rather than an empty list. The tool remains discoverable without a key.
+
+The search service shares the application-owned embedding client with background
+refresh work. The SDK executes the synchronous tool in a worker thread, keeping
+database and cloud calls off the application's event loop.
 
 ## Endpoint and lifecycle
 
@@ -64,6 +85,11 @@ Replace `8000` with the gateway port. Open the UI URL printed in the terminal,
 connect, and select `hello_world` under **Tools**. Execute it without arguments;
 the structured result should be `{"message": "Hello World"}`.
 
+To exercise foodstuff search, select `search_foodstuffs` and enter, for example,
+`{"query": "Moehre", "limit": 5}`. With configured credentials and populated
+embeddings, verify that the ranked summaries contain no similarity scores.
+Without credentials, expect a semantic-search-unavailable tool error.
+
 In an already open Inspector, add a **Streamable HTTP** server with that URL.
 For a directly running backend, use `http://localhost:8080/mcp/` instead.
 Keep the trailing slash. Inspector proxies the connection through its Node
@@ -82,7 +108,11 @@ Run the backend regression suite with the existing test PostgreSQL available:
 `tests/test_mcp.py` exercises the SDK client over Streamable HTTP through the
 ASGI transport, application startup/shutdown across fresh instances, the
 existing greeting/OpenAPI routes, and rejection of an unconfigured Host.
+It also verifies foodstuff search schemas, ranked summary serialization, limits,
+invalid inputs, unavailable capability, provider failures, empty results, and
+embedding-client cleanup using a fake provider and the test database; it makes
+no paid OpenAI calls.
 The client probe separately permits verification over a listening TCP server.
 
-No domain instructions, foodstuff reads, proposal behavior, or AI Service
-integration are included yet.
+Artifacts, foodstuff writes, recipe search, proposal behavior, domain instruction
+resources, and AI Service integration remain outside this slice.

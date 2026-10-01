@@ -1,10 +1,18 @@
 import asyncio
 
 import httpx2
+import pytest
+from kochwiki_contract import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
+from mcp.types import TextContent
 
+from app.db.session import SessionLocal
 from app.main import create_app
+from app.models.foodstuff_embedding import FoodstuffEmbedding
+from app.schemas.foodstuff import FoodstuffCreate
+from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
+from app.services.foodstuffs import create_foodstuff, foodstuff_summary_out
 
 
 def test_mcp_http_discovery_invocation_and_lifecycle() -> None:
@@ -20,12 +28,101 @@ def test_mcp_http_discovery_invocation_and_lifecycle() -> None:
                     streamable_http_client("http://localhost/mcp/", http_client=http)
                 ) as client:
                     tools = await client.list_tools()
-                    assert [tool.name for tool in tools.tools] == ["hello_world"]
+                    assert [tool.name for tool in tools.tools] == ["hello_world", "search_foodstuffs"]
                     result = await client.call_tool("hello_world", {})
                     assert not result.is_error
                     assert result.structured_content == {"message": "Hello World"}
 
     asyncio.run(exercise())
+    asyncio.run(exercise())
+
+
+class QueryProvider:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.fail = False
+        self.closed = False
+
+    def embed(self, text: str, model: str) -> list[float]:
+        self.calls.append(text)
+        if self.fail:
+            raise RuntimeError("secret provider diagnostic")
+        return [1.0] + [0.0] * (DIMENSIONS - 1)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = QueryProvider()
+    monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider))
+    summaries: list[dict[str, object]] = []
+    with SessionLocal.begin() as session:
+        for name in ["Karotte", "Tomate", "Missing"]:
+            foodstuff = create_foodstuff(session, FoodstuffCreate(name=name, unit=Unit.G))
+            if name == "Missing":
+                continue
+            vector = ([1.0, 0.0] if name == "Karotte" else [0.0, 1.0]) + [0.0] * (DIMENSIONS - 2)
+            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff.id, model=MODEL, source_text=name, vector=vector))
+            summaries.append(foodstuff_summary_out(foodstuff).model_dump(mode="json"))
+
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+            ) as http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+                    discovery = await client.list_tools()
+                    tool = next(tool for tool in discovery.tools if tool.name == "search_foodstuffs")
+                    assert tool.input_schema["required"] == ["query"]
+                    assert tool.input_schema["properties"]["limit"]["default"] == 5
+                    assert "cosine_distance" not in str(tool.output_schema)
+                    result = await client.call_tool("search_foodstuffs", {"query": "Moehre"})
+                    assert not result.is_error
+                    assert result.structured_content == {"result": summaries}
+                    result = await client.call_tool("search_foodstuffs", {"query": "Moehre", "limit": 1})
+                    assert not result.is_error
+                    assert result.structured_content == {"result": summaries[:1]}
+                    for arguments in [
+                        {"query": " "}, {"query": ""}, {"query": "q", "limit": 0},
+                        {"query": "q", "limit": 21}, {"query": "q", "limit": True},
+                    ]:
+                        invalid = await client.call_tool("search_foodstuffs", arguments)
+                        assert invalid.is_error
+                    assert provider.calls == ["Moehre", "Moehre"]
+                    provider.fail = True
+                    failed = await client.call_tool("search_foodstuffs", {"query": "query"})
+                    assert failed.is_error
+                    assert any(isinstance(item, TextContent) and "Query embedding failed" in item.text for item in failed.content)
+                    assert "secret provider diagnostic" not in str(failed)
+                    provider.fail = False
+                    with SessionLocal.begin() as session:
+                        for embedding in session.query(FoodstuffEmbedding).all():
+                            session.delete(embedding)
+                    empty = await client.call_tool("search_foodstuffs", {"query": "query"})
+                    assert not empty.is_error
+                    assert empty.structured_content == {"result": []}
+
+    asyncio.run(exercise())
+    assert provider.closed
+
+
+def test_foodstuff_search_without_credentials_reports_tool_error() -> None:
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+            ) as http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+                    result = await client.call_tool("search_foodstuffs", {"query": "Moehre"})
+                    assert result.is_error
+                    assert any(isinstance(item, TextContent) and "Semantic search unavailable" in item.text for item in result.content)
+                    assert not (await client.call_tool("hello_world", {})).is_error
+
     asyncio.run(exercise())
 
 

@@ -1,6 +1,6 @@
 # Foodstuff semantic search
 
-The backend offers alias/name discovery through `app.services.foodstuff_search.FoodstuffSemanticSearch` and operational commands. No HTTP/MCP endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied.
+The backend offers alias/name discovery through `app.services.foodstuff_search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
 
 ## Configuration and database rollout
 

@@ -10,7 +10,8 @@ from app.db.session import SessionLocal
 from app.services.embeddings import EmbeddingClient
 from app.services.foodstuff_embeddings import FoodstuffEmbeddingService
 from app.services.foodstuff_refresh import RefreshWorker
-from app.mcp_server import create_mcp_server
+from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.mcp_server import MCPServices, create_mcp_server
 from app.schemas.errors import ErrorResponse
 from app.services import greeting
 from app.services.exceptions import DomainError
@@ -30,11 +31,13 @@ async def hello_world() -> dict[str, str]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    server, mcp_app = create_mcp_server()
+    mcp_services = MCPServices()
+    server, mcp_app = create_mcp_server(mcp_services)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         embeddings = EmbeddingClient.from_settings(settings)
+        mcp_services.bind_foodstuff_search(FoodstuffSemanticSearch(SessionLocal, embeddings))
         refresh = FoodstuffEmbeddingService(SessionLocal, embeddings)
         worker: RefreshWorker | None = None
         if embeddings.available:
@@ -47,6 +50,7 @@ def create_app() -> FastAPI:
         finally:
             if worker:
                 worker.stop()
+            mcp_services.bind_foodstuff_search(None)
             embeddings.close()
 
     application = FastAPI(
