@@ -18,9 +18,9 @@ The guidance covers supplied recipe/foodstuff snapshots, additional searches,
 candidate interpretation and natural-language clarification. Clear matches need
 no extra confirmation. Retrieved references should be discussed or displayed
 selectively when the host supports that presentation. Retrieved recipes are
-distinct from proposals, and the currently available tools cannot create or save
-anything. Empty results and retrieval failures must not be treated as proof that
-an item is absent.
+distinct from proposals. Dedicated foodstuff creation requires an explicit user
+request; missing ingredients in recipe proposals remain separate. Empty results
+and retrieval failures must not be treated as proof that an item is absent.
 
 This establishes Kochwiki's ownership of domain guidance. The existing recipe
 instructions in AI Service remain in use until a later migration consumes MCP
@@ -48,6 +48,31 @@ error rather than an empty list. The tool remains discoverable without a key.
 The search service shares the application-owned embedding client with background
 refresh work. The SDK executes the synchronous tool in a worker thread, keeping
 database and cloud calls off the application's event loop.
+
+## Foodstuff creation
+
+`create_foodstuff` accepts a `foodstuff` object using the existing REST
+`FoodstuffCreate` schema. Name and unit (`G`, `ML`, `PIECE`) are mandatory;
+brand, kcal, carbs, protein and fat are optional. Nutrition values are per
+100 g/ml or per piece. The result is a complete `FoodstuffOut` object directly
+in structured content, including the assigned ID and empty `recipeVersionIds`.
+
+The tool uses the same creation service as REST, inside its own database
+transaction. It returns success only after commit and retains the post-commit
+embedding refresh trigger. Validation errors and existing name/brand conflicts
+produce tool errors; database failures roll back and return a generic error.
+Creation works without OpenAI credentials; embedding refresh remains disabled
+in that case. The tool is marked as a write and is not idempotent.
+
+Instructions require searching for duplicates first and warning/clarifying
+plausible matches. This is agent guidance, not enforced duplicate detection;
+search covers only current embeddings. If any nutrition value is supplied,
+including zero, the agent must ask for a missing user-provided unit. Otherwise
+it may choose a suitable unit and mention that choice. Tool validation always
+requires a unit, but cannot establish whether it came from the user.
+
+This tool immediately persists a catalogue entry for a dedicated user request.
+It does not create recipe proposals, temporary ingredients or recipe drafts.
 
 ## Recipe search
 
@@ -144,6 +169,11 @@ backend, so no browser CORS configuration is needed in Kochwiki.
 
 See the [official Inspector connection documentation](https://github.com/modelcontextprotocol/inspector/blob/main/docs/mcp-server-configuration.md).
 
+To exercise creation, select `create_foodstuff` and submit
+`{"foodstuff": {"name": "Inspector test ingredient", "unit": "G"}}`.
+This writes a real catalogue entry. Use the regular foodstuff UI to delete the
+test entry afterwards if desired.
+
 ### Automated checks
 
 Run the backend regression suite with the existing test PostgreSQL available:
@@ -161,7 +191,10 @@ It also verifies both search schemas, ranked summary/full-recipe serialization, 
 invalid inputs, unavailable capability, provider failures, empty results, and
 embedding-client cleanup using a fake provider and the test database; it makes
 no paid OpenAI calls.
+Creation checks cover the required name/unit contract (including omitted units
+with zero nutrition values), saved output, persistence, post-commit refresh,
+name/brand conflicts, invalid inputs and rollback without refresh on failure.
 The client probe separately permits verification over a listening TCP server.
 
-Artifacts, writes, proposal behavior, separate instruction resources, and
+Artifacts, recipe writes, proposal behavior, separate instruction resources, and
 AI Service integration remain outside this slice.

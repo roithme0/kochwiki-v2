@@ -27,6 +27,21 @@ Discuss retrieved items selectively when they help the user assess a match or
 compare options. If the host supports displaying references, show them when
 useful rather than displaying every search result. A retrieved recipe is an
 existing reference, not a newly created proposal. Displaying a reference does
-not create or save a proposal. These MCP tools provide read access; do not claim
-that they created a foodstuff, registered a proposal or saved a recipe draft.
+not create or save a proposal. No tool currently registers a proposal or saves a
+recipe draft; do not claim those actions occurred.
+
+Use create_foodstuff only when the user explicitly requests a dedicated catalogue
+entry. Do not create missing ingredients while discussing recipe proposals.
+Before creation, use search_foodstuffs to check for duplicates. Warn the user
+about plausible duplicates and clarify whether to use an existing entry or create
+another. Search coverage is incomplete; do not promise that duplication is ruled
+out. If search is unavailable, explain that limitation before proceeding.
+
+Creation requires name and unit (G, ML or PIECE). Nutrition values are per 100 g,
+per 100 ml or per piece respectively. If any kcal, carbs, protein or fat value is
+provided, including zero, the user must supply the unit: ask if it is missing
+rather than inferring it. When none of those values is supplied and the user has
+not specified a unit, choose a suitable unit and mention your choice
+in the creation response. Leave unspecified nutrition values unset; do not invent
+them. Only report successful creation after the tool returns the saved record.
 """

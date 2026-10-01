@@ -1,19 +1,26 @@
+import logging
 from typing import Annotated
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.types import ToolAnnotations
 from pydantic import Field
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.applications import Starlette
 
 from app.core.config import get_settings
+from app.db.session import SessionLocal
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
-from app.services import greeting
-from app.schemas.foodstuff import FoodstuffSummaryOut
+from app.services import foodstuffs, greeting
+from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut
 from app.schemas.recipe import RecipeVersionOut
 from app.services.foodstuff_search import FoodstuffSemanticSearch
 from app.services.recipe_search import RecipeSemanticSearch
 from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
+from app.services.exceptions import DomainError
+
+logger = logging.getLogger(__name__)
 
 
 def hello_world() -> dict[str, str]:
@@ -87,6 +94,29 @@ def create_mcp_server(
         except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
             raise ToolError(str(error)) from None
         return [candidate.recipe for candidate in candidates]
+
+    @server.tool(annotations=ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False,
+    ))
+    def create_foodstuff(foodstuff: FoodstuffCreate) -> FoodstuffOut:
+        """Persist a foodstuff only for an explicit user request, not a recipe proposal.
+
+        Search for duplicates first and clarify plausible matches with the user.
+        Name and unit are required. If any nutrition value is supplied (including
+        zero), ask the user for the unit if they have not specified it. Otherwise
+        choose a suitable unit and mention it in the response. Nutrition values
+        apply per 100 g/ml or per piece. Returns the saved foodstuff with its ID.
+        """
+        try:
+            with SessionLocal.begin() as session:
+                created = foodstuffs.create_foodstuff(session, foodstuff)
+                result = foodstuffs.foodstuff_out(created)
+            return result
+        except DomainError as error:
+            raise ToolError(error.message) from None
+        except SQLAlchemyError as error:
+            logger.error("MCP foodstuff creation failed (%s)", type(error).__name__)
+            raise ToolError("Foodstuff creation failed") from None
 
     mcp_app = server.streamable_http_app(
         streamable_http_path="/",

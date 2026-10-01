@@ -8,6 +8,8 @@ from kochwiki_contract import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.main import create_app
@@ -15,6 +17,9 @@ from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.models.foodstuff_embedding import FoodstuffEmbedding
 from app.models.recipe_embedding import RecipeEmbedding
 from app.schemas.foodstuff import FoodstuffCreate
+from app.models.foodstuff import Foodstuff
+from app.services import foodstuffs
+from app.services.foodstuff_refresh import foodstuff_refresh
 from app.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.services.foodstuffs import create_foodstuff, foodstuff_summary_out
@@ -41,13 +46,111 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                         assert initialization is not None
                         assert initialization.instructions == KOCHWIKI_INSTRUCTIONS
                     tools = await client.list_tools()
-                    assert [tool.name for tool in tools.tools] == ["hello_world", "search_foodstuffs", "search_recipes"]
+                    assert [tool.name for tool in tools.tools] == [
+                        "hello_world", "search_foodstuffs", "search_recipes", "create_foodstuff",
+                    ]
                     result = await client.call_tool("hello_world", {})
                     assert not result.is_error
                     assert result.structured_content == {"message": "Hello World"}
 
     asyncio.run(exercise())
     asyncio.run(exercise())
+
+
+def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
+    refreshed: list[int] = []
+    subscriber = refreshed.append
+
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+            ) as http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+                    tool = next(tool for tool in (await client.list_tools()).tools if tool.name == "create_foodstuff")
+                    assert tool.input_schema["required"] == ["foodstuff"]
+                    fields = tool.input_schema["$defs"]["FoodstuffCreate"]
+                    assert fields["required"] == ["name", "unit"]
+                    assert tool.annotations is not None
+                    assert tool.annotations.read_only_hint is False
+                    assert tool.annotations.idempotent_hint is False
+                    for payload in [
+                        {"name": "Carrot", "unit": "G"},
+                        {"name": "Oat drink", "brand": "Test", "unit": "ML",
+                         "kcal": 40, "carbs": 6, "protein": 1, "fat": 0},
+                    ]:
+                        result = await client.call_tool("create_foodstuff", {"foodstuff": payload})
+                        assert not result.is_error
+                        saved = result.structured_content
+                        assert saved is not None
+                        record_id = saved["id"]
+                        assert isinstance(record_id, int)
+                        with SessionLocal() as session:
+                            persisted = foodstuffs.get_foodstuff(session, record_id)
+                            assert saved == foodstuffs.foodstuff_out(persisted).model_dump(mode="json")
+                            expected = FoodstuffCreate.model_validate(payload)
+                            for field, value in expected.model_dump().items():
+                                assert getattr(persisted, field) == value
+                        assert saved["recipeVersionIds"] == []
+                        assert record_id in refreshed
+                    duplicate = await client.call_tool("create_foodstuff", {
+                        "foodstuff": {"name": "Oat drink", "brand": "Test", "unit": "ML"},
+                    })
+                    assert duplicate.is_error
+                    assert "same name and brand already exists" in str(duplicate)
+                    for payload in [
+                        {"unit": "G"}, {"name": "Missing unit"},
+                        *({"name": "Missing unit", field: 0} for field in ["kcal", "carbs", "protein", "fat"]),
+                        {"name": "Null unit", "unit": None, "protein": 1},
+                        {"name": "Invalid unit", "unit": "KG"},
+                        {"name": "Negative", "unit": "G", "kcal": -1},
+                    ]:
+                        assert (await client.call_tool("create_foodstuff", {"foodstuff": payload})).is_error
+                    with SessionLocal() as session:
+                        assert len(foodstuffs.list_foodstuffs(session)) == 2
+                    assert len(refreshed) == 2
+
+    foodstuff_refresh.subscribe(subscriber)
+    try:
+        asyncio.run(exercise())
+    finally:
+        foodstuff_refresh.unsubscribe(subscriber)
+
+
+def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    original_create = foodstuffs.create_foodstuff
+    refreshed: list[int] = []
+    subscriber = refreshed.append
+
+    def fail_after_flush(session: Session, payload: FoodstuffCreate) -> Foodstuff:
+        original_create(session, payload)
+        raise SQLAlchemyError("secret database diagnostic")
+
+    monkeypatch.setattr(foodstuffs, "create_foodstuff", fail_after_flush)
+
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+            ) as http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+                    result = await client.call_tool("create_foodstuff", {
+                        "foodstuff": {"name": "Rollback", "unit": "PIECE"},
+                    })
+                    assert result.is_error
+                    assert "Foodstuff creation failed" in str(result)
+                    assert "secret database diagnostic" not in str(result)
+        with SessionLocal() as session:
+            assert not foodstuffs.list_foodstuffs(session)
+        assert refreshed == []
+
+    foodstuff_refresh.subscribe(subscriber)
+    try:
+        asyncio.run(exercise())
+    finally:
+        foodstuff_refresh.unsubscribe(subscriber)
 
 
 class QueryProvider:

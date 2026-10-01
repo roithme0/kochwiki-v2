@@ -198,6 +198,30 @@ instructions through both default discovery and the explicit initialization
 handshake across fresh application instances. The client probe checks that
 instructions are present. Focused type checking passes without diagnostics.
 
+### Dedicated foodstuff creation MCP tool
+
+Expose `create_foodstuff(foodstuff)` with the existing `FoodstuffCreate` schema
+and shared REST creation service. Name and unit remain mandatory; return
+`FoodstuffOut` after transaction commit, retaining the existing embedding refresh
+trigger. Validation and domain conflicts become tool errors. Database failures
+roll back without scheduling refresh and expose no database diagnostics.
+
+Instructions restrict creation to explicit, dedicated requests. Search first
+for duplicates and clarify plausible matches; this remains instruction-driven.
+Any supplied nutrition value, including zero, requires a user-supplied unit.
+Without nutrition values, the agent may choose a suitable unit and mention it.
+Validation enforces unit presence, while user provenance remains agent guidance.
+Nutrition uses the existing per-100-g/ml or per-piece convention.
+
+This persists a catalogue entry immediately. Missing ingredients in future
+proposals remain separate; proposal storage, atomic proposal saving and AI Service
+integration are deferred. See [tool contract](../mcp.md#foodstuff-creation).
+
+Verification: all 112 backend tests pass. MCP tests cover discovery, saved output,
+persistence, required units with zero nutrition values, invalid inputs, duplicate
+conflicts, post-commit refresh and rollback without refresh on failure. Focused
+type checking passes. Tests make no paid OpenAI calls.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:
