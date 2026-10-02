@@ -1,11 +1,12 @@
 import type { RecipeVersionOut } from '../../core/api/generated';
-import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
-import { ChatArtifact } from '@roithme0/chat-ui/ui';
+import { presentArtifact, ArtifactResponse } from '@roithme0/chat-ui/conversation';
+import { ChatArtifact, ChatArtifactCapability, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
 import type { RecipeVersionWrite } from '../../core/api/generated';
 import { RecipePresentation } from '../models/recipe-presentation';
 
 export interface RecipeSessionInput {
   readonly context: RecipeContext;
+  readonly artifactCapabilities: readonly ChatArtifactCapability[];
 }
 
 export interface RecipeContext {
@@ -13,7 +14,10 @@ export interface RecipeContext {
 }
 
 export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
-  return { context: { source: structuredClone(source) } };
+  return {
+    context: { source: structuredClone(source) },
+    artifactCapabilities: [JSON_ARTIFACT_CAPABILITY],
+  };
 }
 
 export interface OriginalPresentation extends RecipePresentation {
@@ -98,7 +102,8 @@ export function recipeArtifact(
   };
 }
 
-export function mapProposalArtifact(artifact: ArtifactResponse): ChatArtifact {
+export function mapConversationArtifact(artifact: ArtifactResponse): ChatArtifact {
+  if (artifact.type === JSON_ARTIFACT_CAPABILITY.type) return presentArtifact(artifact);
   const payload = artifact.payload;
   if (
     artifact.type === 'recipe.proposal' &&

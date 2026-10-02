@@ -43,7 +43,7 @@ describe('Packaged chat UI integration', () => {
         expect(element.querySelector('.artifact h3')?.textContent?.trim()).toBe('Host headline');
     });
 
-    it('keeps the banner and headline with a generic fallback when no renderer is supplied', () => {
+    it('keeps the banner and headline with an unsupported presentation message when no renderer is supplied', () => {
         const fixture = TestBed.createComponent(RendererTestHost);
         fixture.componentInstance.showRenderer = false;
         fixture.detectChanges();
@@ -51,8 +51,9 @@ describe('Packaged chat UI integration', () => {
         const element: HTMLElement = fixture.nativeElement;
         expect(element.querySelector('.banner h2')?.textContent?.trim()).toBe('Banner');
         expect(fixture.debugElement.query(By.css('.artifact h3'))).not.toBeNull();
-        expect(element.querySelector('.json-fallback')?.textContent)
-            .toContain('Host name');
+        expect(element.querySelector('pre')).toBeNull();
+        expect(element.textContent).toContain('Diese Darstellung wird nicht unterst\u00fctzt.');
+        expect(element.textContent).not.toContain('Host name');
         expect(fixture.debugElement.query(By.css('.host-renderer'))).toBeNull();
         expect(element.textContent).not.toContain('host-owned-id');
     });

@@ -1,4 +1,5 @@
-import { isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
+import { JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
+import { isRecipePresentation, mapConversationArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
 import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 
 describe('Recipe conversation contract', () => {
@@ -7,7 +8,7 @@ describe('Recipe conversation contract', () => {
     source.originName = 'Familie';
     source.originUrl = 'https://example.org/rezept';
     const input = mapSessionInput(source);
-    expect(input).toEqual({ context: { source } });
+    expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY] });
     expect(input.context.source).not.toBe(source);
     expect(input.context.source.ingredients[0].foodstuff).not.toBe(source.ingredients[0].foodstuff);
     expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);
@@ -20,6 +21,14 @@ describe('Recipe conversation contract', () => {
     expect(input.context.source.ingredients[0].foodstuff.name).toBe('Linsen');
   });
 
+  it('preserves explicit JSON presentation instead of treating it as a recipe proposal', () => {
+    const artifact = mapConversationArtifact({ ...conversationProposal(), type: 'json', payload: {
+      title: 'Foodstuff', payload: { value: { name: 'Linsen', unit: 'G' } },
+    } });
+    expect(artifact).toEqual({ kind: 'artifact', id: conversationProposal().artifact_id,
+      type: 'json', headline: 'Foodstuff', payload: { value: { name: 'Linsen', unit: 'G' } } });
+  });
+
   it('uses enriched nutrition unchanged and creates detached read-only artifact data', () => {
     const source = conversationRecipe();
     source.kcal = 987;
@@ -29,7 +38,7 @@ describe('Recipe conversation contract', () => {
     if (!isRecipePresentation(artifact.payload)) throw new Error('Invalid fixture');
     expect(artifact.payload.kcal).toBe(987);
     expect(artifact.payload.ingredients[0].foodstuff.name).toBe('Linsen');
-    const proposal = mapProposalArtifact(conversationProposal());
+    const proposal = mapConversationArtifact(conversationProposal());
     expect(proposal.type).toBe('kochwiki-recipe');
     expect(proposal.headline).toBe('Vorschlag: Neue Linsensuppe');
   });
@@ -42,11 +51,11 @@ describe('Recipe conversation contract', () => {
     { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), ingredients: [null] } },
     { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), steps: [{}] } },
   ])('contains malformed artifacts locally: %j', payload => {
-    expect(mapProposalArtifact({ ...conversationProposal(), payload: payload as ReturnType<typeof conversationProposal>['payload'] }).type)
+    expect(mapConversationArtifact({ ...conversationProposal(), payload: payload as ReturnType<typeof conversationProposal>['payload'] }).type)
       .toBe('kochwiki-unsupported');
   });
 
   it('does not treat an unknown artifact type as a recipe', () => {
-    expect(mapProposalArtifact({ ...conversationProposal(), type: 'other' }).type).toBe('kochwiki-unsupported');
+    expect(mapConversationArtifact({ ...conversationProposal(), type: 'other' }).type).toBe('kochwiki-unsupported');
   });
 });

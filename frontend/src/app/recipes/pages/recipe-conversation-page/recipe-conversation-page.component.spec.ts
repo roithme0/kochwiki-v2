@@ -6,11 +6,11 @@ import { backendUrl } from '../../../core/constants/api';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import { ChatUiComponent } from '@roithme0/chat-ui/ui';
+import { ChatUiComponent, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { mapProposalArtifact } from '../../conversation/recipe-conversation-contract';
+import { mapConversationArtifact } from '../../conversation/recipe-conversation-contract';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -86,6 +86,21 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
   }
 
+  it('renders an explicitly selected JSON artifact without recipe save actions', async () => {
+    const page = await open();
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Show the foodstuff', turn_id: null }))
+      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'turn-json',
+        message: { role: 'assistant', text: 'Here is the foodstuff.', turn_id: 'turn-json' },
+        artifacts: [{ ...conversationProposal(), type: 'json', turn_id: 'turn-json',
+          payload: { title: 'Foodstuff', payload: { value: { name: 'Linsen', unit: 'G' } } } }],
+      }));
+    await page.submit({ text: 'Show the foodstuff', acknowledge: vi.fn() });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('pre')?.textContent).toContain('"name": "Linsen"');
+    expect(fixture.nativeElement.textContent).not.toContain('Als Entwurf speichern');
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it.each(['active', 'draft'] as const)('saves a separate draft from %s with captured attribution and no overlapping requests', async state => {
     source.state = state;
     source.originName = 'Familie'; source.originUrl = 'https://example.org';
@@ -93,12 +108,12 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await submit(page);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent.match(/Als Entwurf speichern/g)).toHaveLength(1);
-    const payload = mapProposalArtifact(conversationProposal()).payload;
+    const payload = mapConversationArtifact(conversationProposal()).payload;
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
     await page.saveProposal(payload);
-    await page.saveProposal(mapProposalArtifact({ ...conversationProposal(), artifact_id: 'another' }).payload);
+    await page.saveProposal(mapConversationArtifact({ ...conversationProposal(), artifact_id: 'another' }).payload);
     await page.saveProposal(page.original()?.payload);
     source.originName = 'Changed';
     expect(save).toHaveBeenCalledTimes(1);
@@ -120,7 +135,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   it('retains null attribution and refined typed names, rejects non-actionable payloads, and restores availability after failures', async () => {
     const page = await open();
     const artifact = conversationProposal();
-    const payload = mapProposalArtifact({ ...artifact, payload: { name: '  Eigener Name  ', base: { kind: 'proposal', proposal_id: 'previous' }, recipe: conversationRecipe() } }).payload;
+    const payload = mapConversationArtifact({ ...artifact, payload: { name: '  Eigener Name  ', base: { kind: 'proposal', proposal_id: 'previous' }, recipe: conversationRecipe() } }).payload;
     await page.saveProposal(null);
     await page.saveProposal(page.original()?.payload);
     expect(save).not.toHaveBeenCalled();
@@ -147,7 +162,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await submit(page);
     const original = page.original();
     const content = page.view().content;
-    const operation = page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    const operation = page.saveProposal(mapConversationArtifact(conversationProposal()).payload);
     const http = TestBed.inject(HttpTestingController);
     const url = `${backendUrl}/recipes/${source.recipeLineageId}/drafts`;
     const request = http.expectOne(url);
@@ -171,7 +186,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
-    const operation = page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    const operation = page.saveProposal(mapConversationArtifact(conversationProposal()).payload);
     if (boundary === 'destroy') fixture.destroy();
     if (boundary === 'user') user.set(null);
     if (boundary === 'route') {
@@ -188,7 +203,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   it('keeps the outstanding lock across successful replacement and suppresses old feedback', async () => {
     const page = await open();
     await submit(page);
-    const payload = mapProposalArtifact(conversationProposal()).payload;
+    const payload = mapConversationArtifact(conversationProposal()).payload;
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
@@ -209,7 +224,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   it('keeps a deferred save and its feedback valid through a failed replacement', async () => {
     const page = await open();
     await submit(page);
-    const payload = mapProposalArtifact(conversationProposal()).payload;
+    const payload = mapConversationArtifact(conversationProposal()).payload;
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
@@ -230,7 +245,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   it('retains save feedback and leave protection after failed replacement, then dismisses it on successful replacement', async () => {
     const page = await open();
     await submit(page);
-    await page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).payload);
     fetchMock.mockResolvedValueOnce(response({ kind: 'expired', detail: 'Session expired' }, 410));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -250,7 +265,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(getRecipe).toHaveBeenCalledWith(source.recipeLineageId, source.recipeVersionId);
     expect(fetchMock.mock.calls[0][0]).toBe('/ai/api/v1/agents/kochwiki/sessions');
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
-    expect(Object.keys(request.input)).toEqual(['context']);
+    expect(Object.keys(request.input)).toEqual(['context', 'artifactCapabilities']);
+    expect(request.input.artifactCapabilities).toEqual([JSON_ARTIFACT_CAPABILITY]);
     expect(request.input.context.source.recipeVersionId).toBe(source.recipeVersionId);
     expect(request.input.context.source.ingredients[0].foodstuff).toEqual(source.ingredients[0].foodstuff);
     expect(request.input.context).not.toHaveProperty('foodstuffs');

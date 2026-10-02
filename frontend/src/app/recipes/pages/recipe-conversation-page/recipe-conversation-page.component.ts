@@ -10,7 +10,7 @@ import { ActiveUserService } from '../../../core/services/active-user.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { isProposalPresentation, proposalWrite, isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
+import { isProposalPresentation, proposalWrite, isRecipePresentation, mapConversationArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
 import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-bar.service';
 
 @Component({
@@ -109,7 +109,7 @@ export class RecipeConversationPageComponent {
       const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source));
       const controller = new ConversationController(transport, state => {
         if (this.isCurrent(generation)) this.view.set(state);
-      }, mapProposalArtifact);
+      }, mapConversationArtifact);
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');

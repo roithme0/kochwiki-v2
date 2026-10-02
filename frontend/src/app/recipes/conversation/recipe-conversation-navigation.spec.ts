@@ -10,7 +10,7 @@ import { RecipePageComponent } from '../pages/recipe-page/recipe-page.component'
 import { MacroChartComponent } from '../../core/components/macro-chart/macro-chart.component';
 import { PageHeaderService } from '../../core/services/page-header.service';
 import { SnackBarService } from '../../core/services/snack-bar.service';
-import { mapProposalArtifact } from './recipe-conversation-contract';
+import { mapConversationArtifact } from './recipe-conversation-contract';
 import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 import { routes } from '../../app.routes';
 
@@ -43,7 +43,7 @@ describe('Version-specific conversation routing', () => {
     const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Improve', acknowledge: vi.fn() });
-    await page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).payload);
     const action = snackbar.mock.calls[0][1];
     if (!action) throw new Error('Missing action');
     const router = TestBed.inject(Router);
