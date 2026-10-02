@@ -79,18 +79,15 @@ def verify_mcp(port: int) -> None:
         assert json.loads(payload) == {
             "method": method, "path": "/mcp/?sample=a%20b", "port": "8080",
         }
-    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
-    try:
-        connection.request("POST", "/mcp?sample=1", b"{}")
-        response = connection.getresponse()
-        assert response.status == 308
-        assert response.getheader("Location").endswith("/mcp/?sample=1")
-        response.read()
-    finally:
-        connection.close()
+    for method in ("GET", "POST", "DELETE"):
+        status, payload = request(port, "/mcp?sample=1", method, b"{}")
+        assert status == 200, (status, payload)
+        assert json.loads(payload) == {
+            "method": method, "path": "/mcp/?sample=1", "port": "8080",
+        }
     for path in ("/api/mcp", "/api/mcp/", "/api/mcp/other"):
         assert request(port, path)[0] == 404, path
-    print(f"Gateway {port}: MCP path, methods, queries, redirect and retired API path passed", flush=True)
+    print(f"Gateway {port}: MCP paths, methods, queries and retired API path passed", flush=True)
 
 
 def verify(port: int, delayed: bool) -> None:

@@ -178,9 +178,9 @@ saving and selective presentation; they do not implement authorization checks.
 ## Endpoint and lifecycle
 
 The Streamable HTTP endpoint is `/mcp/` on both the backend and gateway.
-The gateway forwards this path directly to the backend and redirects `/mcp`
-to `/mcp/` with HTTP 308, preserving the method. `/api/mcp/` is not exposed.
-Keep the trailing slash in client URLs.
+The gateway forwards `/mcp/` directly to the backend and internally rewrites
+`/mcp` to `/mcp/`, preserving the method and query. `/api/mcp/` is not exposed.
+Both gateway paths work for clients that do not follow redirects.
 For a backend on port 8080, connect to `http://localhost:8080/mcp/`.
 Other containers on the same network can use `http://backend:8080/mcp/`.
 
@@ -200,6 +200,10 @@ name `backend`, with optional ports. Add the actual gateway hostname when using
 a different address. This setting does not grant authentication or domain
 permissions. Browser-origin MCP connections are not enabled in this slice;
 the intended consumer is a service-side client.
+The local Compose configuration also allows `host.docker.internal` for clients
+in other Docker projects connecting through the published gateway port.
+Staging and production Compose forward `MCP_ALLOWED_HOSTS` when set; include
+the hostname used in `KOCHWIKI_MCP_URL` along with the existing allowed hosts.
 
 ## Try it
 
