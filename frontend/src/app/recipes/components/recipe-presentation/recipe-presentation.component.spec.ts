@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { FoodstuffUnit } from '../../../foodstuffs/models/foodstuff-unit';
 import { IngredientsGridComponent } from '../ingredients-grid/ingredients-grid.component';
 import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
@@ -28,10 +27,7 @@ describe('RecipePresentationComponent', () => {
           index: 1,
           amount: 200,
           foodstuff: {
-            id: 7,
             name: 'Tomaten',
-            brand: null,
-            unit: FoodstuffUnit.Gram,
             unitVerbose: 'g',
             kcal: 18,
             carbs: 3.9,
@@ -60,5 +56,6 @@ describe('RecipePresentationComponent', () => {
     expect(nutrition.nutrition()).toBe(recipe);
     expect(fixture.nativeElement.textContent).toContain('Tomaten');
     expect(fixture.nativeElement.textContent).toContain('Tomaten schneiden.');
+    expect(fixture.nativeElement.textContent).toContain('25 min');
   });
 });

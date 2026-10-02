@@ -1,13 +1,14 @@
 import { JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
 import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../foodstuffs/presentation/foodstuff-artifact';
-import { isRecipePresentation, mapConversationArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
+import { RECIPE_ARTIFACT_CAPABILITY, isRecipePresentation } from '../presentation/recipe-artifact';
+import { mapConversationArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
 import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 
 describe('Recipe conversation contract', () => {
   it('captures the enriched recipe with inline foodstuffs as detached generic context', () => {
     const source = conversationRecipe();
     const input = mapSessionInput(source);
-    expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY] });
+    expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY, RECIPE_ARTIFACT_CAPABILITY] });
     expect(input.context.source).not.toBe(source);
     expect(input.context.source.ingredients[0].foodstuff).not.toBe(source.ingredients[0].foodstuff);
     expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);
@@ -37,19 +38,16 @@ describe('Recipe conversation contract', () => {
     expect(artifact.payload.ingredients[0].foodstuff.name).toBe('Linsen');
     const proposal = mapConversationArtifact(conversationProposal());
     expect(proposal.type).toBe('kochwiki-recipe');
-    expect(proposal.headline).toBe('Vorschlag: Neue Linsensuppe');
+    expect(proposal.headline).toBe('Neue Linsensuppe');
   });
 
-  it.each([null, {}, { base: { kind: 'source' }, name: 'Bad', recipe: {} },
-    { base: { kind: 'unknown' }, name: 'Bad', recipe: conversationRecipe() },
-    { base: { kind: 'proposal', proposal_id: '' }, name: 'Bad', recipe: conversationRecipe() },
-    { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), servings: 0 } },
-    { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), kcal: Infinity } },
-    { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), ingredients: [null] } },
-    { base: { kind: 'source' }, name: 'Bad', recipe: { ...conversationRecipe(), steps: [{}] } },
+  it.each([null, {}, { title: 'Bad', payload: {} },
+    { title: 'Bad', payload: { ...conversationRecipe(), servings: 0 } },
+    { title: 'Bad', payload: { ...conversationRecipe(), kcal: Infinity } },
+    { title: 'Bad', payload: { ...conversationRecipe(), ingredients: [null] } },
+    { title: 'Bad', payload: { ...conversationRecipe(), steps: [{}] } },
   ])('contains malformed artifacts locally: %j', payload => {
-    expect(mapConversationArtifact({ ...conversationProposal(), payload: payload as ReturnType<typeof conversationProposal>['payload'] }).type)
-      .toBe('kochwiki-unsupported');
+    expect(mapConversationArtifact({ ...conversationProposal(), payload: payload as ReturnType<typeof conversationProposal>['payload'] }).type).toBe('kochwiki-unsupported');
   });
 
   it('does not treat an unknown artifact type as a recipe', () => {

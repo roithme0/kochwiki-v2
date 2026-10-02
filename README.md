@@ -54,10 +54,10 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-The frontend uses `@roithme0/chat-ui` version `0.0.4-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each proposal can be saved explicitly as a new draft in the source lineage. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves create separate drafts; ambiguous failures are not retried automatically.
+The frontend uses `@roithme0/chat-ui` version `0.0.4-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each stored proposal can be saved explicitly as a new draft in the source lineage, through its artifact save button or an explicit request in chat. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves return the same created recipe version; ambiguous failures are not retried automatically.
 
 The conversation frontend advertises the shared chat UI JSON capability and a
-KochWiki foodstuff presentation capability alongside the selected recipe context.
+KochWiki foodstuff and recipe presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
 tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
 use the name as title and the brand as optional subtitle. Their complete payload
@@ -68,6 +68,19 @@ partial or all-zero totals show absolute values and missing-value indicators.
 These presentations have no save, selection, editing, or navigation actions and
 perform no enrichment fetches. This integration requires a chat UI package with
 the capability contract, header guidance, subtitles, and explicit JSON renderer.
+
+Recipe artifacts use the recipe name as their title and render complete data
+through the shared recipe presentation component: servings, preparation time,
+ingredients, steps, and per-serving nutrition. Ingredient foodstuffs contain only
+name, unit label, and nutrition; catalogue IDs and proposal identity are excluded.
+Both existing recipes and resolved proposals can be presented. Presentation
+alone does not create or save a proposal or draft. The optional
+artifact metadata field `proposalId` identifies the stored proposal represented
+by the resolved presentation. Its presence enables the save button, which calls
+`POST /recipe-proposals/{proposal_id}/save`. HTTP and MCP share the same proposal
+save service and in-memory mapping; saving atomically creates required temporary
+foodstuffs and a draft, and repeat saves return that version. Recipe payloads
+contain no save identity, roles, or foodstuff IDs.
 
 Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and context limits surface as initialization errors rather than silently reducing the snapshot.
 

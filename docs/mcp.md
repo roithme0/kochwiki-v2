@@ -299,5 +299,11 @@ repeat saves, deleted drafts, validation and missing dependencies, sanitized
 database failures with rollback/retry, and isolation across application instances.
 It uses the real test database and SDK transport without paid model calls.
 
-Artifacts, separate instruction resources, and AI Service integration remain
-deferred.
+The frontend save button uses `POST /recipe-proposals/{proposal_id}/save`, which
+calls the same save service and uses the same in-memory proposal store as MCP.
+Both paths share atomic ingredient/draft creation and repeated-save behavior.
+`tests/test_recipe_proposal_http.py` verifies the HTTP path; the MCP workflow test
+also verifies that HTTP returns the draft already saved through MCP.
+
+Artifact presentation and metadata are supplied by the consumer frontend through
+the AI Service presentation contract. They are not MCP output responsibilities.

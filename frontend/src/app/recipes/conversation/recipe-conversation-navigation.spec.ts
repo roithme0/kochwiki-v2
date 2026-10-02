@@ -31,7 +31,7 @@ describe('Version-specific conversation routing', () => {
       provideRouter(routes),
       { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }), restorationState: signal('idle') } },
       { provide: SnackBarService, useValue: { open: snackbar } },
-      { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, createRecipeDraft: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
+      { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, saveRecipeProposal: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
     ] });
     TestBed.overrideComponent(MacroChartComponent, { set: { template: '' } });
   });
@@ -43,7 +43,7 @@ describe('Version-specific conversation routing', () => {
     const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Improve', acknowledge: vi.fn() });
-    await page.saveProposal(mapConversationArtifact(conversationProposal()).payload);
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
     const action = snackbar.mock.calls[0][1];
     if (!action) throw new Error('Missing action');
     const router = TestBed.inject(Router);

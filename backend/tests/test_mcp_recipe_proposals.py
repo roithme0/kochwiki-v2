@@ -89,6 +89,9 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle() -> None:
                     assert draft.ingredients[1].foodstuff.name == "Beans"
                     repeated = await client.call_tool("save_recipe_proposal", args)
                     assert not repeated.is_error and repeated.structured_content == saved.structured_content
+                    http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save")
+                    assert http_saved.status_code == 200
+                    assert http_saved.json() == draft.model_dump(mode="json")
                     with SessionLocal.begin() as session:
                         assert len(list_foodstuffs(session)) == 2
                         assert session.query(RecipeVersion).count() == 2

@@ -124,7 +124,9 @@ def test_application_instance_retention_and_shutdown_cleanup() -> None:
         other = cast(RecipeProposalStore, create_app().state.recipe_proposals)
         with pytest.raises(NotFoundError):
             other.get(proposal.proposalId)
-        assert all("proposal" not in path for path in client.get("/api/openapi.json").json()["paths"])
+        assert {path for path in client.get("/api/openapi.json").json()["paths"] if "proposal" in path} == {
+            "/recipe-proposals/{proposal_id}/save",
+        }
     with pytest.raises(NotFoundError):
         store.get(proposal.proposalId)
 

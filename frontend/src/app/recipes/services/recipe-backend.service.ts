@@ -40,6 +40,9 @@ export class RecipeBackendService {
   createRecipeDraft = (recipeLineageId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
     requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipes/' + recipeLineageId + '/drafts', zRecipeVersionOut, { body: recipeVersion });
 
+  saveRecipeProposal = (proposalId: string): Promise<RecipeVersionOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/recipe-proposals/' + proposalId + '/save', zRecipeVersionOut);
+
   updateRecipeDraft = (recipeLineageId: string, recipeVersionId: string, recipeVersion: RecipeVersionWrite): Promise<RecipeVersionOut> =>
     requestApiResponse(this.httpClient, 'PUT', backendUrl + '/recipes/' + recipeLineageId + '/drafts/' + recipeVersionId, zRecipeVersionOut, { body: recipeVersion });
 

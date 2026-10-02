@@ -1,8 +1,8 @@
 @if (phase() === 'ready') {
-  <ng-template #recipeRenderer let-payload>
+  <ng-template #recipeRenderer let-payload let-artifact="artifact">
     @if (isRecipePresentation(payload)) {
-      @if (isProposalPresentation(payload)) {
-        <button mat-flat-button class="proposal-save" [disabled]="savePending()" (click)="saveProposal(payload)">Als Entwurf speichern</button>
+      @if (recipeProposalId(artifact.metadata)) {
+        <button mat-flat-button class="proposal-save" [disabled]="savePending()" (click)="saveProposal(artifact.metadata)">Als Entwurf speichern</button>
       }
       <app-recipe-presentation [recipe]="payload" />
     }
