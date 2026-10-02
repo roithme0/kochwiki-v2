@@ -1,77 +1,19 @@
 import type { RecipeVersionOut } from '../../core/api/generated';
 import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
 import { ChatArtifact } from '@roithme0/chat-ui/ui';
-import type { FoodstuffOut } from '../../core/api/generated';
-import type { Unit } from '../../core/api/generated';
 import type { RecipeVersionWrite } from '../../core/api/generated';
 import { RecipePresentation } from '../models/recipe-presentation';
 
 export interface RecipeSessionInput {
-  readonly source: {
-    readonly external_reference: string;
-    readonly recipe: {
-      readonly name: string;
-      readonly servings: number;
-      readonly preparation_time: number | null;
-      readonly origin_name: string | null;
-      readonly origin_url: string | null;
-      readonly ingredients: readonly {
-        index: number;
-        amount: number;
-        foodstuff_reference: number;
-      }[];
-      readonly steps: readonly { index: number; description: string }[];
-    };
-  };
-  readonly foodstuffs: readonly {
-    external_reference: number;
-    name: string;
-    brand: string | null;
-    unit: Unit;
-    unit_verbose: string;
-    kcal: number | null;
-    carbs: number | null;
-    protein: number | null;
-    fat: number | null;
-  }[];
+  readonly context: RecipeContext;
 }
 
-export function mapSessionInput(
-  source: RecipeVersionOut,
-  foodstuffs: readonly FoodstuffOut[],
-): RecipeSessionInput {
-  return {
-    source: {
-      external_reference: source.recipeVersionId,
-      recipe: {
-        name: source.name,
-        servings: source.servings,
-        preparation_time: source.preptime,
-        origin_name: source.originName,
-        origin_url: source.originUrl,
-        ingredients: source.ingredients.map(({ index, amount, foodstuff }) => ({
-          index,
-          amount,
-          foodstuff_reference: foodstuff.id,
-        })),
-        steps: source.steps.map(({ index, description }) => ({
-          index,
-          description,
-        })),
-      },
-    },
-    foodstuffs: foodstuffs.map((foodstuff) => ({
-      external_reference: foodstuff.id,
-      name: foodstuff.name,
-      brand: foodstuff.brand,
-      unit: foodstuff.unit,
-      unit_verbose: foodstuff.unitVerbose,
-      kcal: foodstuff.kcal,
-      carbs: foodstuff.carbs,
-      protein: foodstuff.protein,
-      fat: foodstuff.fat,
-    })),
-  };
+export interface RecipeContext {
+  readonly source: RecipeVersionOut;
+}
+
+export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
+  return { context: { source: structuredClone(source) } };
 }
 
 export interface OriginalPresentation extends RecipePresentation {

@@ -8,7 +8,6 @@ import { AgentConfiguration, ConversationController, ConversationViewState, Http
 import { ChatArtifact, ChatSubmission, ChatUiComponent, artifactRenderer } from '@roithme0/chat-ui/ui';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
-import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 import { isProposalPresentation, proposalWrite, isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
@@ -25,7 +24,6 @@ export class RecipeConversationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly header = inject(PageHeaderService);
   private readonly recipes = inject(RecipeBackendService);
-  private readonly foodstuffs = inject(FoodstuffBackendService);
   private readonly activeUser = inject(ActiveUserService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(SnackBarService);
@@ -99,30 +97,16 @@ export class RecipeConversationPageComponent {
       return;
     }
     try {
-      const [sourceResult, catalogResult] = await Promise.allSettled([
-        this.recipes.getRecipeVersion(this.lineageId, this.versionId).then(value => structuredClone(value)),
-        this.foodstuffs.getAllFoodstuffs().then(value => structuredClone(value)),
-      ]);
+      const source = structuredClone(await this.recipes.getRecipeVersion(this.lineageId, this.versionId));
       if (!this.isCurrent(generation)) return;
-      if (sourceResult.status === 'rejected') {
-        const error: unknown = sourceResult.reason;
-        this.phase.set(error instanceof HttpErrorResponse && error.status === 404 ? 'unavailable' : 'error');
-        return;
-      }
-      const source = sourceResult.value;
       if (source.state === 'historical' || source.recipeVersionId !== this.versionId || source.recipeLineageId !== this.lineageId) {
         this.phase.set('unavailable');
         return;
       }
-      if (catalogResult.status === 'rejected') {
-        this.phase.set('error');
-        return;
-      }
-      const catalog = catalogResult.value;
       this.source = source;
       this.header.headline = source.name;
       this.original.set(recipeArtifact(`original-${source.recipeVersionId}`, `Original: ${source.name}`, source));
-      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source, catalog));
+      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source));
       const controller = new ConversationController(transport, state => {
         if (this.isCurrent(generation)) this.view.set(state);
       }, mapProposalArtifact);
@@ -130,9 +114,9 @@ export class RecipeConversationPageComponent {
       this.view.set(controller.state);
       this.phase.set('ready');
       await controller.start();
-    } catch {
+    } catch (error: unknown) {
       if (!this.isCurrent(generation)) return;
-      this.phase.set('error');
+      this.phase.set(error instanceof HttpErrorResponse && error.status === 404 ? 'unavailable' : 'error');
     }
   }
 

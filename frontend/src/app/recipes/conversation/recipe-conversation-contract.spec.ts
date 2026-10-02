@@ -1,27 +1,23 @@
 import { isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
-import { conversationFoodstuff, conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
+import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 
 describe('Recipe conversation contract', () => {
-  it('maps the version UUID and every catalog item without persistence metadata or lost nulls', () => {
+  it('captures the enriched recipe with inline foodstuffs as detached generic context', () => {
     const source = conversationRecipe();
     source.originName = 'Familie';
     source.originUrl = 'https://example.org/rezept';
-    const catalog = Array.from({ length: 101 }, (_, index) => ({ ...conversationFoodstuff(), id: index + 1 }));
-    const input = mapSessionInput(source, catalog);
-    expect(input.source).toEqual({ external_reference: source.recipeVersionId, recipe: {
-      name: 'Linsensuppe', servings: 2, preparation_time: 30, origin_name: 'Familie', origin_url: 'https://example.org/rezept',
-      ingredients: [{ index: 1, amount: 100, foodstuff_reference: 1 }],
-      steps: [{ index: 1, description: 'Linsen kochen.' }],
-    } });
-    expect(input.foodstuffs).toHaveLength(101);
-    expect(input.foodstuffs[0]).toEqual({ external_reference: 1, name: 'Linsen', brand: null,
-      unit: 'G', unit_verbose: 'g', kcal: 120, carbs: 20, protein: 8, fat: null });
-    expect(mapSessionInput(conversationRecipe(), []).source.recipe.origin_name).toBeNull();
-    expect(mapSessionInput(conversationRecipe(), []).source.recipe.origin_url).toBeNull();
+    const input = mapSessionInput(source);
+    expect(input).toEqual({ context: { source } });
+    expect(input.context.source).not.toBe(source);
+    expect(input.context.source.ingredients[0].foodstuff).not.toBe(source.ingredients[0].foodstuff);
+    expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);
+    expect(input.context.source.ingredients[0].foodstuff.id).toBe(1);
+    expect(mapSessionInput(conversationRecipe()).context.source.originName).toBeNull();
+    expect(mapSessionInput(conversationRecipe()).context.source.originUrl).toBeNull();
     source.steps[0].description = 'Changed';
-    catalog[0].name = 'Changed';
-    expect(input.source.recipe.steps[0].description).toBe('Linsen kochen.');
-    expect(input.foodstuffs[0].name).toBe('Linsen');
+    source.ingredients[0].foodstuff.name = 'Changed';
+    expect(input.context.source.steps[0].description).toBe('Linsen kochen.');
+    expect(input.context.source.ingredients[0].foodstuff.name).toBe('Linsen');
   });
 
   it('uses enriched nutrition unchanged and creates detached read-only artifact data', () => {

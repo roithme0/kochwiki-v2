@@ -12,10 +12,9 @@ import { ActiveUserService } from '../../../core/services/active-user.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { mapProposalArtifact } from '../../conversation/recipe-conversation-contract';
 import { PageHeaderService } from '../../../core/services/page-header.service';
-import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { conversationFoodstuff, conversationProposal, conversationRecipe } from '../../conversation/recipe-conversation.fixtures';
+import { conversationProposal, conversationRecipe } from '../../conversation/recipe-conversation.fixtures';
 import { RecipeConversationPageComponent } from './recipe-conversation-page.component';
 
 function response(payload: unknown, status = 200): Response {
@@ -34,13 +33,11 @@ class EmptyPage {}
 describe('Recipe conversation page through published controller and HTTP transport', () => {
   let fixture: ComponentFixture<RecipeConversationPageComponent>;
   let source: ReturnType<typeof conversationRecipe>;
-  let catalog: ReturnType<typeof conversationFoodstuff>[];
   const save = vi.fn<RecipeBackendService['createRecipeDraft']>();
   const notify = vi.fn();
   const dismiss = vi.fn();
   const snackbar = vi.fn<SnackBarService['open']>();
   const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
-  const getCatalog = vi.fn<FoodstuffBackendService['getAllFoodstuffs']>();
   const fetchMock = vi.fn<typeof fetch>();
   const user = signal<{ id: number; username: string } | null>({ id: 1, username: 'Test' });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
@@ -51,10 +48,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
     save.mockResolvedValue({ ...conversationRecipe(), state: 'draft', recipeVersionId: 'saved' });
     user.set({ id: 1, username: 'Test' });
     source = conversationRecipe();
-    catalog = [conversationFoodstuff()];
     params = new BehaviorSubject(convertToParamMap({ lineageId: source.recipeLineageId, recipeVersionId: source.recipeVersionId }));
     getRecipe.mockResolvedValue(source);
-    getCatalog.mockResolvedValue(catalog);
     fetchMock.mockImplementation(async () => response({ session_id: 'session-1', expires_at: 'later' }));
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({
@@ -62,7 +57,6 @@ describe('Recipe conversation page through published controller and HTTP transpo
       providers: [provideRouter([{ path: '**', component: EmptyPage }]),
         { provide: ActivatedRoute, useValue: { paramMap: params } },
         { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, createRecipeDraft: save, notifyRecipesChanged: notify } },
-        { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs: getCatalog } },
         { provide: SnackBarService, useValue: { open: snackbar } },
         { provide: ActiveUserService, useValue: { activeUser: user } }],
     });
@@ -255,6 +249,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(getRecipe).toHaveBeenCalledWith(source.recipeLineageId, source.recipeVersionId);
     expect(fetchMock.mock.calls[0][0]).toBe('/ai/api/v1/agents/kochwiki/sessions');
+    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(Object.keys(request.input)).toEqual(['context']);
+    expect(request.input.context.source.recipeVersionId).toBe(source.recipeVersionId);
+    expect(request.input.context.source.ingredients[0].foodstuff).toEqual(source.ingredients[0].foodstuff);
+    expect(request.input.context).not.toHaveProperty('foodstuffs');
     const header = TestBed.inject(PageHeaderService);
     expect(header.headline()).toBe(source.name);
     expect(header.subheader()).toBe('Rezept verbessern');
@@ -281,12 +280,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const initialBody = fetchMock.mock.calls[0][1]?.body;
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     source.name = 'Changed'; source.ingredients[0].foodstuff.name = 'Changed';
-    catalog[0].name = 'Changed'; catalog.push({ ...conversationFoodstuff(), id: 2 });
     await page.performAction('new-session');
     expect(fetchMock.mock.calls[1][1]?.body).toBe(initialBody);
     expect(confirm).not.toHaveBeenCalled();
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(getCatalog).toHaveBeenCalledTimes(1);
     expect(page.original()?.headline).toBe('Original: Linsensuppe');
   });
 
@@ -339,15 +336,14 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fixture.debugElement.query(By.directive(ChatUiComponent))).toBeNull();
   });
 
-  it('retries both initial data reads after a catalog failure without starting partial sessions', async () => {
-    getCatalog.mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }));
+  it('retries the recipe read after a failure without starting a partial session', async () => {
+    getRecipe.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
     const page = await open();
     expect(page.phase()).toBe('error');
     expect(fetchMock).not.toHaveBeenCalled();
     await page.load();
     expect(page.phase()).toBe('ready');
     expect(getRecipe).toHaveBeenCalledTimes(2);
-    expect(getCatalog).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -359,9 +355,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fixture.nativeElement.textContent).toContain('Erneut versuchen');
   });
 
-  it('keeps historical sources unavailable even when the catalog also fails', async () => {
+  it('keeps historical sources unavailable', async () => {
     source.state = 'historical';
-    getCatalog.mockRejectedValueOnce(new Error('Offline'));
     const page = await open();
     expect(page.phase()).toBe('unavailable');
     expect(fetchMock).not.toHaveBeenCalled();

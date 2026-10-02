@@ -4,7 +4,6 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { EMPTY } from 'rxjs';
 import { ActiveUserService } from '../../core/services/active-user.service';
-import { FoodstuffBackendService } from '../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../services/recipe-backend.service';
 import { RecipeConversationPageComponent } from '../pages/recipe-conversation-page/recipe-conversation-page.component';
 import { RecipePageComponent } from '../pages/recipe-page/recipe-page.component';
@@ -33,7 +32,6 @@ describe('Version-specific conversation routing', () => {
       { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }), restorationState: signal('idle') } },
       { provide: SnackBarService, useValue: { open: snackbar } },
       { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, createRecipeDraft: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
-      { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs: async () => [] } },
     ] });
     TestBed.overrideComponent(MacroChartComponent, { set: { template: '' } });
   });
