@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 import { IngredientsGridComponent } from '../ingredients-grid/ingredients-grid.component';
-import { RecipeMacroChartCardComponent } from '../recipe-macro-chart-card/recipe-macro-chart-card.component';
+import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
 
@@ -9,7 +9,7 @@ import { RecipePresentation } from '../../models/recipe-presentation';
   imports: [
     IngredientsGridComponent,
     StepsGridComponent,
-    RecipeMacroChartCardComponent,
+    NutritionCardComponent,
   ],
   templateUrl: './recipe-presentation.component.html',
   styleUrl: './recipe-presentation.component.scss',

@@ -363,14 +363,6 @@ export type RecipeVersionOut = {
      */
     name: string;
     /**
-     * Originname
-     */
-    originName: string | null;
-    /**
-     * Originurl
-     */
-    originUrl: string | null;
-    /**
      * Preptime
      */
     preptime: number | null;
@@ -414,14 +406,6 @@ export type RecipeVersionWrite = {
      * Name
      */
     name: string;
-    /**
-     * Originname
-     */
-    originName?: string | null;
-    /**
-     * Originurl
-     */
-    originUrl?: string | null;
     /**
      * Preptime
      */
@@ -778,6 +762,44 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostResponses = {
 };
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostResponse = ResolveRecipePresentationRecipePresentationsResolvePostResponses[keyof ResolveRecipePresentationRecipePresentationsResolvePostResponses];
+
+export type SaveProposalRecipeProposalsProposalIdSavePostData = {
+    body?: never;
+    path: {
+        /**
+         * Proposal Id
+         */
+        proposal_id: string;
+    };
+    query?: never;
+    url: '/recipe-proposals/{proposal_id}/save';
+};
+
+export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveProposalRecipeProposalsProposalIdSavePostError = SaveProposalRecipeProposalsProposalIdSavePostErrors[keyof SaveProposalRecipeProposalsProposalIdSavePostErrors];
+
+export type SaveProposalRecipeProposalsProposalIdSavePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeVersionOut;
+};
+
+export type SaveProposalRecipeProposalsProposalIdSavePostResponse = SaveProposalRecipeProposalsProposalIdSavePostResponses[keyof SaveProposalRecipeProposalsProposalIdSavePostResponses];
 
 export type ListRecipeVersionsRecipesGetData = {
     body?: never;

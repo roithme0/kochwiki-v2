@@ -72,6 +72,24 @@ def ready(port: int, process: subprocess.Popen[bytes] | None = None) -> None:
     raise AssertionError(f"Relay on {port} did not start")
 
 
+def verify_mcp(port: int) -> None:
+    for method in ("GET", "POST", "DELETE"):
+        status, payload = request(port, "/mcp/?sample=a%20b", method, b"{}")
+        assert status == 200, (status, payload)
+        assert json.loads(payload) == {
+            "method": method, "path": "/mcp/?sample=a%20b", "port": "8080",
+        }
+    for method in ("GET", "POST", "DELETE"):
+        status, payload = request(port, "/mcp?sample=1", method, b"{}")
+        assert status == 200, (status, payload)
+        assert json.loads(payload) == {
+            "method": method, "path": "/mcp/?sample=1", "port": "8080",
+        }
+    for path in ("/api/mcp", "/api/mcp/", "/api/mcp/other"):
+        assert request(port, path)[0] == 404, path
+    print(f"Gateway {port}: MCP paths, methods, queries and retired API path passed", flush=True)
+
+
 def verify(port: int, delayed: bool) -> None:
     assert request(port, "/aide")[0] == 200, "Ordinary frontend prefix route blocked"
     for agent in ("kochwiki", "demo", "renamed-agent_2"):
@@ -134,6 +152,7 @@ def main() -> None:
             compose(environment, "up", "-d", "--force-recreate")
             ready(18992)
             assert request(18992, "/api/health")[0] == 200
+            verify_mcp(18992)
             if mode == "controlled":
                 verify(18992, not options.skip_delay)
             else:

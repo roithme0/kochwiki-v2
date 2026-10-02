@@ -10,13 +10,9 @@ import {
 } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Chart, DoughnutController, ArcElement } from 'chart.js';
-import type { FoodstuffSummaryOut } from '../../api/generated';
+import { NutritionValues } from '../../models/nutrition-values';
+import { buildNutritionLegend, hasMacroDistribution } from '../../utils/nutrition-legend';
 import { ChartLegendElement } from '../../models/chart-legend-element';
-
-type NutritionValues = Pick<
-  FoodstuffSummaryOut,
-  'kcal' | 'carbs' | 'protein' | 'fat'
->;
 
 const PLACEHOLDER_VALUE: number = 1;
 const PLACEHOLDER_LEGEND: Record<string, ChartLegendElement> = {
@@ -45,15 +41,7 @@ export class MacroChartComponent implements OnDestroy {
 
   chart: Chart | null = null;
 
-  dataIncompleteOrInvalid = computed(
-    (): boolean =>
-      this.nutrition().carbs == null ||
-      this.nutrition().protein == null ||
-      this.nutrition().fat == null ||
-      (this.nutrition().carbs == 0 &&
-        this.nutrition().protein == 0 &&
-        this.nutrition().fat == 0)
-  );
+  dataIncompleteOrInvalid = computed(() => !hasMacroDistribution(this.nutrition()));
 
   legend = computed(
     (): Record<string, ChartLegendElement> =>
@@ -109,40 +97,8 @@ export class MacroChartComponent implements OnDestroy {
     chart.update();
   }
 
-  private buildLegend = (
-    nutrition: NutritionValues
-  ): Record<string, ChartLegendElement> =>
-    this.dataIncompleteOrInvalid()
-      ? PLACEHOLDER_LEGEND
-      : {
-          carbs: {
-            displayName: 'Kohlenhydrate',
-            color: 'rgb(19,154,155)',
-            valueAbsolute: nutrition.carbs,
-            valuePercentage: this.calculateValuePercentage(
-              nutrition,
-              nutrition.carbs
-            ),
-          },
-          protein: {
-            displayName: 'Protein',
-            color: 'rgb(155, 255, 117)',
-            valueAbsolute: nutrition.protein,
-            valuePercentage: this.calculateValuePercentage(
-              nutrition,
-              nutrition.protein
-            ),
-          },
-          fat: {
-            displayName: 'Fett',
-            color: 'rgb(255,97,97)',
-            valueAbsolute: nutrition.fat,
-            valuePercentage: this.calculateValuePercentage(
-              nutrition,
-              nutrition.fat
-            ),
-          },
-        };
+  private buildLegend = (nutrition: NutritionValues): Record<string, ChartLegendElement> =>
+    this.dataIncompleteOrInvalid() ? PLACEHOLDER_LEGEND : buildNutritionLegend(nutrition);
 
   private createChart(
     canvas: HTMLCanvasElement,
@@ -200,23 +156,4 @@ export class MacroChartComponent implements OnDestroy {
         ];
   }
 
-  private calculateValuePercentage(
-    nutrition: NutritionValues,
-    macroValue: number | null | undefined
-  ): number | null {
-    if (
-      nutrition.carbs == null ||
-      nutrition.protein == null ||
-      nutrition.fat == null ||
-      macroValue == null
-    ) {
-      return null;
-    }
-
-    const macroSum: number =
-      nutrition.carbs +
-      nutrition.protein +
-      nutrition.fat;
-    return (macroValue / macroSum) * 100;
-  }
 }

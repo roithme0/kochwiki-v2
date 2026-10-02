@@ -52,8 +52,6 @@ const draftRecipeVersion: RecipeVersionOut = {
   name: 'Recipe',
   servings: 2,
   preptime: null,
-  originName: null,
-  originUrl: null,
   kcal: null,
   carbs: null,
   protein: null,

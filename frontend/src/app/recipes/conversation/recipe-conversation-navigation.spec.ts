@@ -4,14 +4,13 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { EMPTY } from 'rxjs';
 import { ActiveUserService } from '../../core/services/active-user.service';
-import { FoodstuffBackendService } from '../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../services/recipe-backend.service';
 import { RecipeConversationPageComponent } from '../pages/recipe-conversation-page/recipe-conversation-page.component';
 import { RecipePageComponent } from '../pages/recipe-page/recipe-page.component';
 import { MacroChartComponent } from '../../core/components/macro-chart/macro-chart.component';
 import { PageHeaderService } from '../../core/services/page-header.service';
 import { SnackBarService } from '../../core/services/snack-bar.service';
-import { mapProposalArtifact } from './recipe-conversation-contract';
+import { mapConversationArtifact } from './recipe-conversation-contract';
 import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 import { routes } from '../../app.routes';
 
@@ -32,8 +31,7 @@ describe('Version-specific conversation routing', () => {
       provideRouter(routes),
       { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }), restorationState: signal('idle') } },
       { provide: SnackBarService, useValue: { open: snackbar } },
-      { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, createRecipeDraft: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
-      { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs: async () => [] } },
+      { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, saveRecipeProposal: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
     ] });
     TestBed.overrideComponent(MacroChartComponent, { set: { template: '' } });
   });
@@ -45,7 +43,7 @@ describe('Version-specific conversation routing', () => {
     const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Improve', acknowledge: vi.fn() });
-    await page.saveProposal(mapProposalArtifact(conversationProposal()).payload);
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
     const action = snackbar.mock.calls[0][1];
     if (!action) throw new Error('Missing action');
     const router = TestBed.inject(Router);

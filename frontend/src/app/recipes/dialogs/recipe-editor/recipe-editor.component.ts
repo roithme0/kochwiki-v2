@@ -39,8 +39,6 @@ type LoadResult<T> =
 interface RecipeFormControls {
   metaFormGroup: FormGroup<{
     name: FormControl<string | null>;
-    originName: FormControl<string | null>;
-    originUrl: FormControl<string | null>;
   }>;
   ingredientsFormGroup: FormGroup<{
     servings: FormControl<number | null>;
@@ -121,8 +119,6 @@ export class RecipeEditorComponent {
   readonly recipeForm = this.fb.group<RecipeFormControls>({
     metaFormGroup: this.fb.group({
       name: this.fb.control('', Validators.required),
-      originName: this.fb.control(''),
-      originUrl: this.fb.control(''),
     }),
     ingredientsFormGroup: this.fb.group({
       servings: this.fb.control(2, Validators.required),
@@ -260,8 +256,6 @@ export class RecipeEditorComponent {
       action,
       recipeVersion: {
         name: metaFormGroup.name,
-        originName: metaFormGroup.originName || null,
-        originUrl: metaFormGroup.originUrl || null,
         servings: ingredientsFormGroup.servings,
         ingredients: ingredientsFormGroup.ingredients.map((ingredient) => ({
           index: ingredient.index!,

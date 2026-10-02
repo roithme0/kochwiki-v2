@@ -1,0 +1,34 @@
+<mat-card>
+  @if (showHeader()) {
+    <mat-card-header>
+      <mat-card-title>Nährwerte</mat-card-title>
+      <mat-card-subtitle>{{ basis() }}</mat-card-subtitle>
+    </mat-card-header>
+  }
+  <mat-card-content>
+    <div class="nutrition-content">
+      @if (showChart()) {
+        <app-macro-chart class="macro-chart" [nutrition]="nutrition()" />
+        @if (nutrition().kcal == null) {
+          <p class="kcal">Kalorien: <mat-icon role="img" aria-label="Kalorienangabe fehlt">help_outline</mat-icon></p>
+        }
+      } @else {
+        <p class="kcal">
+          @if (nutrition().kcal != null) {
+            {{ nutrition().kcal | number:'1.0-0' }} kcal
+          } @else {
+            Kalorien:
+            <mat-icon role="img" aria-label="Kalorienangabe fehlt">help_outline</mat-icon>
+          }
+        </p>
+      }
+      @if (showLegend()) {
+        <div class="legend">
+          @for (entry of nutrientLegend(); track entry.displayName) {
+            <app-chart-legend-element [legendElement]="entry" />
+          }
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

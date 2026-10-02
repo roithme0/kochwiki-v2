@@ -1,4 +1,3 @@
-import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -8,15 +7,31 @@ import { AgentConfiguration, ConversationController, ConversationViewState, Http
 import { ChatArtifact, ChatSubmission, ChatUiComponent, artifactRenderer } from '@roithme0/chat-ui/ui';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
-import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { isProposalPresentation, proposalWrite, isRecipePresentation, mapProposalArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
+import { mapConversationArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
 import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-bar.service';
+import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
+import { recipeProposalId, isRecipePresentation } from '../../presentation/recipe-artifact';
+import { isFoodstuffPresentation } from '../../../foodstuffs/presentation/foodstuff-artifact';
+
+function proposalSaveErrorMessage(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    switch (error.status) {
+      case 404:
+        return 'Dieser Vorschlag oder ein benötigter Eintrag ist nicht mehr verfügbar. Bitte erstelle einen neuen Vorschlag.';
+      case 409:
+        return 'Der Vorschlag konnte wegen eines Konflikts nicht gespeichert werden. Bitte überarbeite ihn.';
+      case 422:
+        return 'Der Entwurf konnte wegen ungültiger Rezeptdaten nicht gespeichert werden.';
+    }
+  }
+  return 'Speichern konnte nicht bestätigt werden. Möglicherweise wurde der Entwurf bereits erstellt.';
+}
 
 @Component({
   selector: 'app-recipe-conversation-page',
-  imports: [ChatUiComponent, RecipePresentationComponent, MatButtonModule, RouterLink],
+  imports: [ChatUiComponent, RecipePresentationComponent, FoodstuffPresentationComponent, MatButtonModule, RouterLink],
   templateUrl: './recipe-conversation-page.component.html',
   styleUrl: './recipe-conversation-page.component.scss',
 })
@@ -25,16 +40,14 @@ export class RecipeConversationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly header = inject(PageHeaderService);
   private readonly recipes = inject(RecipeBackendService);
-  private readonly foodstuffs = inject(FoodstuffBackendService);
   private readonly activeUser = inject(ActiveUserService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(SnackBarService);
   
-  private source: RecipeVersionOut | null = null;
   private saveEpoch = 0;
   private saveFeedback: SnackBarHandle | null = null;
   readonly savePending = signal(false);
-  readonly isProposalPresentation = isProposalPresentation;
+  readonly recipeProposalId = recipeProposalId;
 
   private controller: ConversationController | null = null;
   private generation = 0;
@@ -58,6 +71,7 @@ export class RecipeConversationPageComponent {
   });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
+  readonly isFoodstuffPresentation = isFoodstuffPresentation;
 
   constructor() {
     let userId = this.activeUser.activeUser()?.id;
@@ -86,7 +100,6 @@ export class RecipeConversationPageComponent {
   async load(): Promise<void> {
     const generation = ++this.generation;
     this.invalidateSaveFeedback();
-    this.source = null;
     this.controller = null;
     this.actionPending = false;
     this.setSubmitted(false);
@@ -99,40 +112,25 @@ export class RecipeConversationPageComponent {
       return;
     }
     try {
-      const [sourceResult, catalogResult] = await Promise.allSettled([
-        this.recipes.getRecipeVersion(this.lineageId, this.versionId).then(value => structuredClone(value)),
-        this.foodstuffs.getAllFoodstuffs().then(value => structuredClone(value)),
-      ]);
+      const source = structuredClone(await this.recipes.getRecipeVersion(this.lineageId, this.versionId));
       if (!this.isCurrent(generation)) return;
-      if (sourceResult.status === 'rejected') {
-        const error: unknown = sourceResult.reason;
-        this.phase.set(error instanceof HttpErrorResponse && error.status === 404 ? 'unavailable' : 'error');
-        return;
-      }
-      const source = sourceResult.value;
       if (source.state === 'historical' || source.recipeVersionId !== this.versionId || source.recipeLineageId !== this.lineageId) {
         this.phase.set('unavailable');
         return;
       }
-      if (catalogResult.status === 'rejected') {
-        this.phase.set('error');
-        return;
-      }
-      const catalog = catalogResult.value;
-      this.source = source;
       this.header.headline = source.name;
       this.original.set(recipeArtifact(`original-${source.recipeVersionId}`, `Original: ${source.name}`, source));
-      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source, catalog));
+      const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, mapSessionInput(source));
       const controller = new ConversationController(transport, state => {
         if (this.isCurrent(generation)) this.view.set(state);
-      }, mapProposalArtifact);
+      }, mapConversationArtifact);
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');
       await controller.start();
-    } catch {
+    } catch (error: unknown) {
       if (!this.isCurrent(generation)) return;
-      this.phase.set('error');
+      this.phase.set(error instanceof HttpErrorResponse && error.status === 404 ? 'unavailable' : 'error');
     }
   }
 
@@ -169,18 +167,17 @@ export class RecipeConversationPageComponent {
     );
   }
 
-  async saveProposal(payload: unknown): Promise<void> {
-    if (this.savePending() || !this.source || !isProposalPresentation(payload)
+  async saveProposal(metadata: unknown): Promise<void> {
+    const proposalId = recipeProposalId(metadata);
+    if (this.savePending() || this.phase() !== 'ready' || !proposalId
       || this.destroyRef.destroyed || this.activeUser.activeUser() === null) return;
-    const source = this.source;
-    const write = proposalWrite(payload, source);
     const epoch = this.saveEpoch;
     const userId = this.activeUser.activeUser()?.id;
     this.savePending.set(true);
     const current = (): boolean => !this.destroyRef.destroyed && epoch === this.saveEpoch
       && userId === this.activeUser.activeUser()?.id;
     try {
-      const draft = await this.recipes.createRecipeDraft(source.recipeLineageId, write);
+      const draft = await this.recipes.saveRecipeProposal(proposalId);
       this.recipes.notifyRecipesChanged();
       if (!current()) return;
       this.saveFeedback?.dismiss();
@@ -193,9 +190,7 @@ export class RecipeConversationPageComponent {
     } catch (error: unknown) {
       if (!current()) return;
       this.saveFeedback?.dismiss();
-      this.saveFeedback = this.snackbar.open(error instanceof HttpErrorResponse && error.status === 422
-        ? 'Der Entwurf konnte wegen ungültiger Rezeptdaten nicht gespeichert werden.'
-        : 'Speichern konnte nicht bestätigt werden. Möglicherweise wurde der Entwurf bereits erstellt.');
+      this.saveFeedback = this.snackbar.open(proposalSaveErrorMessage(error));
     } finally {
       this.savePending.set(false);
     }

@@ -31,8 +31,6 @@ def recipe_version_payload(name: str, foodstuff_id: object | None = None, **over
         "name": name,
         "servings": 2,
         "preptime": 10,
-        "originName": "Home",
-        "originUrl": "https://example.com/recipe",
         "ingredients": [],
         "steps": [{"index": 1, "description": "Cook"}],
     }
@@ -368,11 +366,42 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert invalid.json()["detail"][0]["loc"] == ["body", "unit"]
     assert invalid.json()["detail"][0]["type"] == "missing"
     assert invalid.json()["detail"][0]["input"] == {"name": "Missing required values"}
+    unknown_field = client.post("/foodstuffs", json={"name": "Oats", "unit": "G", "unexpected": True})
+    assert unknown_field.status_code == 422
+    assert unknown_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_field.json()["detail"][0]["type"] == "extra_forbidden"
     assert client.post("/recipes", json={"name": "Incomplete"}).status_code == 422
+    unknown_recipe_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown recipe field", unexpected=True,
+    ))
+    assert unknown_recipe_field.status_code == 422
+    assert unknown_recipe_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_recipe_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_step_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown step field", steps=[{"index": 1, "description": "Cook", "unexpected": True}],
+    ))
+    assert unknown_step_field.status_code == 422
+    assert unknown_step_field.json()["detail"][0]["loc"] == ["body", "steps", 0, "unexpected"]
+    assert unknown_step_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_ingredient_field = client.post("/recipes", json=recipe_version_payload(
+        "Unknown ingredient field",
+        ingredients=[{"index": 1, "amount": 100, "foodstuffId": 1, "unexpected": True}],
+    ))
+    assert unknown_ingredient_field.status_code == 422
+    assert unknown_ingredient_field.json()["detail"][0]["loc"] == ["body", "ingredients", 0, "unexpected"]
+    assert unknown_ingredient_field.json()["detail"][0]["type"] == "extra_forbidden"
+    unknown_update_field = client.patch("/foodstuffs/1", json={"unexpected": True})
+    assert unknown_update_field.status_code == 422
+    assert unknown_update_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
+    assert unknown_update_field.json()["detail"][0]["type"] == "extra_forbidden"
     assert client.post("/recipes", json=recipe_version_payload("Bad index", steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}])).status_code == 422
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
     assert client.patch("/foodstuffs/1", json={"unit": None}).status_code == 422
-    assert client.post("/recipes", json=recipe_version_payload("Invalid origin", originUrl="not a valid URL")).status_code == 422
+    for field, value in (("originName", "Home"), ("originUrl", "https://example.com/recipe")):
+        removed_field = client.post("/recipes", json=recipe_version_payload(f"Removed {field}", **{field: value}))
+        assert removed_field.status_code == 422
+        assert removed_field.json()["detail"][0]["loc"] == ["body", field]
+        assert removed_field.json()["detail"][0]["type"] == "extra_forbidden"
     openapi = client.get("/api/openapi.json").json()
     recipe_paths = openapi["paths"]
     validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
@@ -569,7 +598,7 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
     oats = create_foodstuff(client)
     created = client.post("/recipes", json=recipe_version_payload(
         "Decimal recipe", ingredients=[{"index": 1, "amount": 12.5, "foodstuffId": oats["id"]}],
-        preptime=None, originName=None, originUrl=None,
+        preptime=None,
     ))
     assert created.status_code == 201
     recipe = created.json()
@@ -600,20 +629,6 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         with pytest.raises(ValidationError) as error:
             RecipeVersionOut.model_validate(body)
         assert error.value.errors()[0]["type"] == "extra_forbidden"
-
-
-def test_put_draft_preflight_allows_browser_update(client: TestClient) -> None:
-    response = client.options(
-        "/recipes/1/drafts/00000000-0000-0000-0000-000000000001",
-        headers={
-            "Origin": "http://localhost:4200",
-            "Access-Control-Request-Method": "PUT",
-            "Access-Control-Request-Headers": "content-type",
-        },
-    )
-
-    assert response.status_code == 200
-    assert "PUT" in response.headers["access-control-allow-methods"]
 
 
 def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:

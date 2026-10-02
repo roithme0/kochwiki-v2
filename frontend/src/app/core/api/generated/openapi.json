@@ -16,6 +16,7 @@
         "type": "object"
       },
       "FoodstuffCreate": {
+        "additionalProperties": false,
         "properties": {
           "brand": {
             "anyOf": [
@@ -306,6 +307,7 @@
         "type": "object"
       },
       "FoodstuffUpdate": {
+        "additionalProperties": false,
         "properties": {
           "brand": {
             "anyOf": [
@@ -458,6 +460,7 @@
         "type": "object"
       },
       "IngredientWrite": {
+        "additionalProperties": false,
         "properties": {
           "amount": {
             "exclusiveMinimum": 0.0,
@@ -783,28 +786,6 @@
             "title": "Name",
             "type": "string"
           },
-          "originName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originname"
-          },
-          "originUrl": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originurl"
-          },
           "preptime": {
             "anyOf": [
               {
@@ -861,8 +842,6 @@
           "name",
           "servings",
           "preptime",
-          "originName",
-          "originUrl",
           "kcal",
           "carbs",
           "protein",
@@ -883,6 +862,7 @@
         "type": "string"
       },
       "RecipeVersionWrite": {
+        "additionalProperties": false,
         "properties": {
           "ingredients": {
             "items": {
@@ -896,30 +876,6 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "originName": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originname"
-          },
-          "originUrl": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originurl"
           },
           "preptime": {
             "anyOf": [
@@ -986,6 +942,7 @@
         "type": "object"
       },
       "StepWrite": {
+        "additionalProperties": false,
         "properties": {
           "description": {
             "maxLength": 200,
@@ -1459,6 +1416,66 @@
           }
         },
         "summary": "Resolve Recipe Presentation"
+      }
+    },
+    "/recipe-proposals/{proposal_id}/save": {
+      "post": {
+        "operationId": "save_proposal_recipe_proposals__proposal_id__save_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeVersionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save Proposal"
       }
     },
     "/recipes": {

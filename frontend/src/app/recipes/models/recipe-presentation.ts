@@ -1,9 +1,12 @@
 import type { FoodstuffSummaryOut } from '../../core/api/generated';
 
+export type RecipePresentationFoodstuff = Pick<FoodstuffSummaryOut,
+  'name' | 'unitVerbose' | 'kcal' | 'carbs' | 'protein' | 'fat'>;
+
 export interface RecipePresentationIngredient {
   readonly index: number;
   readonly amount: number;
-  readonly foodstuff: FoodstuffSummaryOut;
+  readonly foodstuff: RecipePresentationFoodstuff;
 }
 
 export interface RecipePresentationStep {

@@ -25,12 +25,26 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
+The optional backend foodstuff alias search uses OpenAI embeddings and PostgreSQL pgvector. See [configuration, initial refresh/search commands, lifecycle and verification](docs/foodstuff-semantic-search.md).
+
+Recipe name search uses the same embedding foundation for active versions and
+drafts, returning complete recipes. See [recipe search and refresh commands](docs/recipe-semantic-search.md).
+
+The backend also hosts a Streamable HTTP MCP endpoint with hello-world and
+foodstuff and recipe search tools, explicit foodstuff creation and updates, and
+recipe proposal creation, retrieval and saving. See
+[MCP integration and local verification](docs/mcp.md).
+
 The backend consumes the local `kochwiki-contract` package containing shared
 resolver API models. After installing backend requirements, install
 `backend/contract` into the same environment before running the backend or
 OpenAPI generation. See [contract package development and wheel verification](backend/contract/README.md).
 
 The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
+
+Browser API access is same-origin through the gateway or Angular development
+proxy, so the backend has no CORS middleware. Server-to-server requests require
+no browser CORS permissions. MCP validates Host and Origin headers separately.
 
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 
@@ -40,9 +54,35 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 ## AI Workflows
 
-The frontend uses `@roithme0/chat-ui` version `0.0.4-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and full foodstuff catalog once, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each proposal can be saved explicitly as a new draft in the source lineage, preserving the original snapshot attribution. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves create separate drafts; ambiguous failures are not retried automatically.
+The frontend uses `@roithme0/chat-ui` version `0.1.0-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each stored proposal can be saved explicitly as a new draft in the source lineage, through its artifact save button or an explicit request in chat. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves return the same created recipe version; ambiguous failures are not retried automatically.
 
-Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and catalog/context limits surface as initialization errors rather than silently reducing the catalog.
+The conversation frontend advertises the shared chat UI JSON capability and a
+KochWiki foodstuff and recipe presentation capabilities alongside the selected recipe context.
+The agent can explicitly present data using the AI Service local presentation
+tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
+use the name as title and the brand as optional subtitle. Their complete payload
+contains `unit`, `kcal`, `carbs`, `protein`, and `fat`, with explicit `null` values
+for unknown nutrition. The shared nutrition card displays values per 100 g,
+100 ml, or piece. Complete, nonzero macro totals show a chart and percentages;
+partial or all-zero totals show absolute values and missing-value indicators.
+These presentations have no save, selection, editing, or navigation actions and
+perform no enrichment fetches. This integration requires a chat UI package with
+the capability contract, header guidance, subtitles, and explicit JSON renderer.
+
+Recipe artifacts use the recipe name as their title and render complete data
+through the shared recipe presentation component: servings, preparation time,
+ingredients, steps, and per-serving nutrition. Ingredient foodstuffs contain only
+name, unit label, and nutrition; catalogue IDs and proposal identity are excluded.
+Both existing recipes and resolved proposals can be presented. Presentation
+alone does not create or save a proposal or draft. The optional
+artifact metadata field `proposalId` identifies the stored proposal represented
+by the resolved presentation. Its presence enables the save button, which calls
+`POST /recipe-proposals/{proposal_id}/save`. HTTP and MCP share the same proposal
+save service and in-memory mapping; saving atomically creates required temporary
+foodstuffs and a draft, and repeat saves return that version. Recipe payloads
+contain no save identity, roles, or foodstuff IDs.
+
+Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and context limits surface as initialization errors rather than silently reducing the snapshot.
 
 Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. Contract tests cover the public `/ui` and `/conversation` entry points and controlled request/response flows; these do not establish live-agent or mobile-keyboard readiness.
 

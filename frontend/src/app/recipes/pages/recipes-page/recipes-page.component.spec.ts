@@ -20,8 +20,6 @@ const recipeVersion = (id: number, name: string) => ({
     name,
     servings: 1,
     preptime: null,
-    originName: null,
-    originUrl: null,
     kcal: null,
     carbs: null,
     protein: null,

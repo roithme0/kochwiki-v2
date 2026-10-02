@@ -1,5 +1,4 @@
 from datetime import datetime
-from urllib.parse import urlparse
 from uuid import UUID
 
 from kochwiki_contract.common import JsonDecimal
@@ -21,21 +20,11 @@ from app.schemas.foodstuff import FoodstuffSummaryOut
 
 
 class RecipeVersionFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=200)
     servings: int = Field(ge=1, le=99)
     preptime: int | None = Field(default=None, ge=1, le=999)
-    originName: str | None = Field(default=None, max_length=200)
-    originUrl: str | None = Field(default=None, max_length=200)
-
-    @field_validator("originUrl")
-    @classmethod
-    def validate_origin_url(cls, value: str | None) -> str | None:
-        if value in (None, ""):
-            return None
-        parsed = urlparse(value)
-        if not parsed.scheme or not parsed.netloc:
-            raise ValueError("originUrl must be a valid absolute URL")
-        return value
 
 
 class RecipeVersionWrite(RecipeVersionFields):
@@ -87,8 +76,6 @@ class RecipeVersionOut(BaseModel):
     name: str
     servings: int
     preptime: int | None
-    originName: str | None
-    originUrl: str | None
     kcal: JsonDecimal | None
     carbs: JsonDecimal | None
     protein: JsonDecimal | None

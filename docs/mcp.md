@@ -1,0 +1,332 @@
+# MCP integration
+
+Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
+`hello_world` takes no arguments, returning
+`{"message": "Hello World"}` as structured content. It and the existing HTTP
+`GET /` endpoint call `app/services/greeting.py` directly.
+
+## Domain instructions
+
+Kochwiki provides domain guidance as MCP server instructions in connection
+metadata (`instructions` in the initialization response, also available through
+SDK discovery). The text lives in `backend/app/mcp_instructions.py`; it is not
+a separate tool, prompt or resource. An SDK client can read `client.instructions`
+after connecting. The consuming service must include it in the agent's context;
+delivery through MCP alone does not cause a model to follow it.
+
+The guidance covers supplied recipe/foodstuff snapshots, additional searches,
+candidate interpretation and natural-language clarification. Clear matches need
+no extra confirmation. Retrieved references should be discussed or displayed
+selectively when the host supports that presentation. Retrieved recipes are
+distinct from proposals. Dedicated foodstuff creation and updates require explicit
+user requests; missing ingredients in recipe proposals remain separate. Empty results
+and retrieval failures must not be treated as proof that an item is absent.
+
+Kochwiki owns the domain guidance. The AI Service consumes these instructions
+alongside discovered tools and supplies only generic conversation, tool execution
+and artifact delivery guidance. The frontend advertises presentation capabilities
+and their payload, header and metadata contracts; the AI Service provides the
+generic local `present_artifact` tool. MCP results remain data and do not
+automatically display artifacts. No Kochwiki recipe workflow instructions or
+presentation schemas are defined in the AI Service.
+
+Instructions and tool definitions are discovered at AI Service startup. Restart
+the AI Service after changing them; there is no live instruction refresh.
+
+### Guidance responsibilities
+
+- MCP instructions own domain workflows: when to search, clarify, create, refine,
+  save and present results, including duplicate checks and unit clarification.
+- Tool descriptions and parameter schemas describe each operation's inputs,
+  outputs, side effects and constraints. They do not repeat multi-step policies.
+- Frontend artifact capabilities describe the display, complete payload, headers
+  and metadata meanings. They do not prescribe retrieval or write workflows.
+- AI Service instructions own generic conversation and execution behavior.
+  Its presentation tool supplies generic capability selection and validation guidance.
+
+Short statements of consequences may appear at a boundary, such as presentation
+not saving domain data. Keep workflow policies in MCP instructions to avoid drift.
+
+## Foodstuff search
+
+`search_foodstuffs` accepts a foodstuff name or alias in `query`, and an optional
+integer `limit` (default 5, range 1–20). It calls the shared semantic search
+service directly and returns ranked `FoodstuffSummaryOut` objects, including IDs,
+names, brands, units and nutrition values. Similarity scores stay internal.
+The SDK wraps the list in structured content as `{"result": [...]}`; an empty
+eligible catalogue returns `{"result": []}` successfully.
+
+Search is a prefilter for the agent, not an identity decision. The agent uses
+the summaries and conversation to select an item or clarify ambiguity. Only
+records with current embeddings are eligible. Configure `OPENAI_API_KEY` and
+populate embeddings before use; see [semantic search setup](foodstuff-semantic-search.md).
+Blank queries and invalid limits produce MCP tool errors. Missing credentials
+report semantic search unavailable; query embedding failures report a tool
+error rather than an empty list. The tool remains discoverable without a key.
+
+The search service shares the application-owned embedding client with background
+refresh work. The SDK executes the synchronous tool in a worker thread, keeping
+database and cloud calls off the application's event loop.
+
+## Foodstuff creation
+
+`create_foodstuff` accepts a `foodstuff` object using the existing REST
+`FoodstuffCreate` schema. Name and unit (`G`, `ML`, `PIECE`) are mandatory;
+brand, kcal, carbs, protein and fat are optional. Nutrition values are per
+100 g/ml or per piece. The result is a complete `FoodstuffOut` object directly
+in structured content, including the assigned ID and empty `recipeVersionIds`.
+
+The tool uses the same creation service as REST, inside its own database
+transaction. It returns success only after commit and retains the post-commit
+embedding refresh trigger. Validation errors and existing name/brand conflicts
+produce tool errors; database failures roll back and return a generic error.
+Creation works without OpenAI credentials; embedding refresh remains disabled
+in that case. The tool is marked as a write and is not idempotent.
+
+Instructions require searching for duplicates first and warning/clarifying
+plausible matches. This is agent guidance, not enforced duplicate detection;
+search covers only current embeddings. If any nutrition value is supplied,
+including zero, the agent must ask for a missing user-provided unit. Otherwise
+it may choose a suitable unit and mention that choice. Tool validation always
+requires a unit, but cannot establish whether it came from the user.
+
+This tool immediately persists a catalogue entry for a dedicated user request.
+It does not create recipe proposals, temporary ingredients or recipe drafts.
+
+## Foodstuff updates and saved results
+
+`update_foodstuff` accepts `foodstuff_id` (a positive integer) and `changes`
+using the REST `FoodstuffUpdate` schema. Omitted fields remain unchanged;
+explicit `null` clears brand or nutrition. Name and unit cannot be cleared.
+The shared update service runs in a transaction and returns complete
+`FoodstuffOut` structured content after commit, including recipe version IDs.
+Missing targets, name/brand conflicts and invalid inputs produce tool errors.
+Database failures roll back and return a generic error. The tool is marked as a
+potentially destructive, idempotent write. Name/brand changes schedule embedding
+refresh after commit; nutrition and unit changes alone do not.
+
+Instructions require explicit update requests and an unambiguously identified
+target, presented before updating through an artifact when supported or through
+its concrete details in text. Clarify uncertainty rather than guessing. A precise
+request for a clearly identified target needs no additional confirmation. Updates
+affect all recipes using the shared entry. For name/brand changes, search for
+duplicates of the proposed identity, excluding the target, and clarify plausible
+matches.
+
+If a unit change retains existing kcal or macro values, the agent warns about
+their changed nutritional basis and confirms intent. The backend permits the
+change; warnings, target clarification and duplicate searches are instruction
+policies rather than programmatic checks. Nutrition updates may use the existing
+unit when their basis is clear.
+
+After either creation or update, present the saved foodstuff returned by the tool
+as a foodstuff artifact when supported, with a concise textual fallback. Foodstuff
+artifacts use frontend-advertised capabilities through the AI Service's local
+presentation tool; these MCP tools return data and do not themselves render artifacts.
+
+## Recipe search
+
+`search_recipes` accepts a recipe name in `query`, and an optional integer
+`limit` (default 5, range 1–20). It calls the existing `RecipeSemanticSearch`
+service and returns ranked, complete `RecipeVersionOut` objects in structured
+content as `{"result": [...]}`. Results include version and lineage IDs, state,
+ingredients with foodstuff summaries, steps and nutrition. Similarity scores
+stay internal. Active versions and drafts with current name embeddings are
+eligible; historical versions are excluded. Multiple versions of a lineage
+can appear independently.
+
+As with foodstuff search, results are candidates for the agent to assess in
+conversation. Retrieval neither creates a proposal nor displays an artifact.
+Blank queries, invalid limits, missing credentials and query embedding failures
+produce tool errors; an empty eligible catalogue succeeds with an empty list.
+The tool remains discoverable without credentials. Both search services share
+the lifespan-owned embedding client and are unbound during shutdown.
+See [recipe embedding setup and initial refresh](recipe-semantic-search.md).
+
+## Recipe proposals
+
+`create_recipe_proposal` accepts a `proposal` object using `RecipeProposalCreate`:
+`sourceRecipeVersionId`, optional `baseProposalId`, and a complete `recipe`.
+Ingredients use either `{"kind": "existing", "foodstuffId": 123}` or
+`{"kind": "temporary", "definition": {"name": "Beans", "unit": "G"}}`.
+The result is `RecipeProposalOut`, including the new `proposalId` and creation
+time. Registration validates references but writes no recipes or foodstuffs.
+Refinement creates a new proposal with the base proposal's original source and
+a complete replacement recipe, leaving the base unchanged.
+
+`get_recipe_proposal` accepts `proposal_id` and returns `RecipeProposalDetailsOut`:
+`proposal` preserves the stored input and identifiers; `presentation` resolves
+current catalogue foodstuffs, retains temporary definitions and calculates
+per-serving nutrition. Missing referenced foodstuffs cause a tool error. Neither
+registration nor retrieval renders an artifact or saves a recipe.
+
+`save_recipe_proposal` accepts `proposal_id` and returns the complete saved
+`RecipeVersionOut`. On explicit user request it creates a draft in the source
+lineage and materializes temporary foodstuffs in one transaction. Saving
+authorizes those foodstuff creations without separate confirmation. Failed saves
+roll back together; database errors return a generic tool error. Successful
+commits retain the existing embedding refresh triggers.
+
+Repeated saves return the same created version in its current state, even after
+editing or publication. A deleted saved version is not recreated. Proposals and
+save mappings live in application memory and are cleared on shutdown; saved
+database records remain. This assumes a single process. Creation is marked as a
+non-idempotent write, retrieval as read-only, and saving as an idempotent write.
+These tools work without embedding credentials. Instructions guide explicit
+saving and selective presentation; they do not implement authorization checks.
+
+## Endpoint and lifecycle
+
+The Streamable HTTP endpoint is `/mcp/` on both the backend and gateway.
+The gateway forwards `/mcp/` directly to the backend and internally rewrites
+`/mcp` to `/mcp/`, preserving the method and query. `/api/mcp/` is not exposed.
+Both gateway paths work for clients that do not follow redirects.
+For a backend on port 8080, connect to `http://localhost:8080/mcp/`.
+Other containers on the same network can use `http://backend:8080/mcp/`.
+
+The FastAPI lifespan runs the SDK session manager. `create_app()` allocates a
+fresh MCP server and manager for each application instance; the SDK manager
+cannot be restarted after shutdown. The existing Uvicorn entry point remains
+`app.main:app`.
+
+This slice uses stateless HTTP with JSON responses. Domain context will use
+explicit references in later slices; it must not depend on transport sessions.
+Streaming notifications and client callbacks are outside this slice.
+MCP tool schemas are discovered through MCP, not FastAPI OpenAPI.
+
+`MCP_ALLOWED_HOSTS` configures the SDK transport's Host allowlist as a
+comma-separated list. Defaults allow loopback addresses and the Docker service
+name `backend`, with optional ports. Add the actual gateway hostname when using
+a different address. This setting does not grant authentication or domain
+permissions. Browser-origin MCP connections are not enabled in this slice;
+the intended consumer is a service-side client.
+The local Compose configuration also allows `host.docker.internal` for clients
+in other Docker projects connecting through the published gateway port.
+Staging and production Compose forward `MCP_ALLOWED_HOSTS` when set; include
+the hostname used in `KOCHWIKI_MCP_URL` along with the existing allowed hosts.
+
+## Try it
+
+Install the backend requirements and local contract package as described in the
+repository README. From `backend`, start the existing application:
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080
+```
+
+In another terminal, from `backend`, run the official SDK client probe:
+
+```powershell
+.venv\Scripts\python.exe tests/verify_mcp.py http://localhost:8080/mcp/
+```
+
+The probe connects, checks that server instructions are present, discovers the
+tools, invokes hello-world, and checks its structured result. It requires neither
+an AI model nor database queries. Normal deployment
+startup still runs the existing database migrations.
+
+## Verification
+
+### Manual check with MCP Inspector
+
+With the current backend running in Compose, start Inspector from PowerShell:
+
+```powershell
+npx.cmd @modelcontextprotocol/inspector --server-url http://localhost:8000/mcp/ --transport http
+```
+
+Replace `8000` with the gateway port. Open the UI URL printed in the terminal,
+connect, and select `hello_world` under **Tools**. Execute it without arguments;
+the structured result should be `{"message": "Hello World"}`.
+
+To exercise foodstuff search, select `search_foodstuffs` and enter, for example,
+`{"query": "Moehre", "limit": 5}`. With configured credentials and populated
+embeddings, verify that the ranked summaries contain no similarity scores.
+Without credentials, expect a semantic-search-unavailable tool error.
+
+To exercise recipe search, select `search_recipes` and enter, for example,
+`{"query": "Spaghetti Bolognese", "limit": 5}`. Populate recipe embeddings first;
+the result contains full recipe versions without similarity scores.
+
+In an already open Inspector, add a **Streamable HTTP** server with that URL.
+For a directly running backend, use `http://localhost:8080/mcp/` instead.
+Keep the trailing slash. Inspector proxies the connection through its Node
+backend, so no browser CORS configuration is needed in Kochwiki.
+
+See the [official Inspector connection documentation](https://github.com/modelcontextprotocol/inspector/blob/main/docs/mcp-server-configuration.md).
+
+To exercise creation, select `create_foodstuff` and submit
+`{"foodstuff": {"name": "Inspector test ingredient", "unit": "G"}}`.
+This writes a real catalogue entry. Use the regular foodstuff UI to delete the
+test entry afterwards if desired.
+
+To exercise updating, use that returned ID as `foodstuff_id`:
+`{"foodstuff_id": 123, "changes": {"brand": "Inspector test", "protein": 0}}`.
+Replace `123` with the actual ID. This changes the real catalogue entry and
+returns its complete saved representation.
+
+To exercise proposals in Inspector, select `create_recipe_proposal` and use an
+actual source recipe version UUID and foodstuff ID:
+
+```json
+{
+  "proposal": {
+    "sourceRecipeVersionId": "REPLACE-WITH-SOURCE-UUID",
+    "recipe": {
+      "name": "Inspector proposal",
+      "servings": 2,
+      "ingredients": [
+        {"index": 1, "amount": 50, "foodstuff": {"kind": "existing", "foodstuffId": 123}},
+        {"index": 2, "amount": 100, "foodstuff": {"kind": "temporary", "definition": {"name": "Inspector beans", "unit": "G"}}}
+      ],
+      "steps": [{"index": 1, "description": "Cook and serve"}]
+    }
+  }
+}
+```
+
+Use the returned ID in `{"proposal_id": "REPLACE-WITH-PROPOSAL-UUID"}` for
+`get_recipe_proposal`, then `save_recipe_proposal`. Retrieval creates no database
+records; saving writes a real draft and the temporary foodstuff. Saving again
+returns the same version. To try refinement, submit the complete creation payload
+again with `baseProposalId` set to the previous proposal ID.
+
+### Automated checks
+
+Run the backend regression suite with the existing test PostgreSQL available:
+
+```powershell
+.venv\Scripts\python.exe -m pytest tests -q
+```
+
+`tests/test_mcp.py` exercises the SDK client over Streamable HTTP through the
+ASGI transport, application startup/shutdown across fresh instances, the
+existing greeting/OpenAPI routes, and rejection of an unconfigured Host.
+It verifies instruction delivery through both the default SDK connection mode
+and the explicit initialization handshake.
+It also verifies both search schemas, ranked summary/full-recipe serialization, limits,
+invalid inputs, unavailable capability, provider failures, empty results, and
+embedding-client cleanup using a fake provider and the test database; it makes
+no paid OpenAI calls.
+Creation checks cover the required name/unit contract (including omitted units
+with zero nutrition values), saved output, persistence, post-commit refresh,
+name/brand conflicts, invalid inputs and rollback without refresh on failure.
+Update checks cover partial changes and explicit nulls, retained nutrition on
+unit changes, recipe version references, identity-only refresh, missing targets,
+conflicts, validation and rollback without refresh on database failure.
+The client probe separately permits verification over a listening TCP server.
+
+`tests/test_mcp_recipe_proposals.py` covers discovery and annotations, proposal
+creation and refinement, resolved retrieval without database writes, atomic saving,
+repeat saves, deleted drafts, validation and missing dependencies, sanitized
+database failures with rollback/retry, and isolation across application instances.
+It uses the real test database and SDK transport without paid model calls.
+
+The frontend save button uses `POST /recipe-proposals/{proposal_id}/save`, which
+calls the same save service and uses the same in-memory proposal store as MCP.
+Both paths share atomic ingredient/draft creation and repeated-save behavior.
+`tests/test_recipe_proposal_http.py` verifies the HTTP path; the MCP workflow test
+also verifies that HTTP returns the draft already saved through MCP.
+
+Artifact presentation and metadata are supplied by the consumer frontend through
+the AI Service presentation contract. They are not MCP output responsibilities.

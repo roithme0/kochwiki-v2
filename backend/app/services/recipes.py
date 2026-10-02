@@ -1,8 +1,5 @@
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import Select, select
@@ -25,14 +22,9 @@ from app.schemas.recipe import (
 )
 from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuffs import foodstuff_summary_out
-
-NutritionField = Literal["kcal", "carbs", "protein", "fat"]
-
-
-@dataclass(frozen=True)
-class _NutritionIngredient:
-    amount: Decimal
-    foodstuff: Foodstuff
+from app.services.recipe_embeddings import remove_recipe_embedding
+from app.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.services.recipe_refresh import mark_recipe_refresh
 
 
 def list_recipe_versions(session: Session) -> Sequence[RecipeVersion]:
@@ -83,6 +75,7 @@ def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersio
     version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
     session.add(lineage)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage.id, version.version_id)
 
 
@@ -91,10 +84,12 @@ def publish_active_recipe_edit(session: Session, lineage_id: UUID, payload: Reci
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
     now = _now()
     active_version.state = RecipeVersionState.HISTORICAL
+    remove_recipe_embedding(session, active_version.version_id)
     session.flush()
     version = _new_recipe_version(active_version.lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
     session.add(version)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
@@ -104,6 +99,7 @@ def create_recipe_draft(session: Session, lineage_id: UUID, payload: RecipeVersi
     version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now())
     session.add(version)
     session.flush()
+    mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
@@ -112,9 +108,12 @@ def update_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID, pa
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be updated")
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    previous_name = draft_version.name
     _apply_version_content(session, draft_version, payload, foodstuffs)
     draft_version.last_modified = _now()
     session.flush()
+    if previous_name != draft_version.name:
+        mark_recipe_refresh(session, version_id)
     return get_recipe_version_by_id(session, lineage_id, version_id)
 
 
@@ -124,10 +123,12 @@ def publish_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID) -
         raise ConflictError("Only draft recipe versions can be published")
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
     active_version.state = RecipeVersionState.HISTORICAL
+    remove_recipe_embedding(session, active_version.version_id)
     session.flush()
     draft_version.state = RecipeVersionState.ACTIVE
     draft_version.last_modified = _now()
     session.flush()
+    mark_recipe_refresh(session, version_id)
     return get_recipe_version_by_id(session, lineage_id, version_id)
 
 
@@ -146,10 +147,10 @@ def delete_recipe_lineage(session: Session, lineage_id: UUID) -> None:
 
 
 def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
-    total_kcal = _total_nutrition(version.ingredients, "kcal")
-    total_carbs = _total_nutrition(version.ingredients, "carbs")
-    total_protein = _total_nutrition(version.ingredients, "protein")
-    total_fat = _total_nutrition(version.ingredients, "fat")
+    total_kcal = total_nutrition(version.ingredients, "kcal")
+    total_carbs = total_nutrition(version.ingredients, "carbs")
+    total_protein = total_nutrition(version.ingredients, "protein")
+    total_fat = total_nutrition(version.ingredients, "fat")
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
@@ -159,12 +160,10 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         name=version.name,
         servings=version.servings,
         preptime=version.preptime,
-        originName=version.origin_name,
-        originUrl=version.origin_url,
-        kcal=_per_serving(total_kcal, version.servings),
-        carbs=_per_serving(total_carbs, version.servings),
-        protein=_per_serving(total_protein, version.servings),
-        fat=_per_serving(total_fat, version.servings),
+        kcal=per_serving(total_kcal, version.servings),
+        carbs=per_serving(total_carbs, version.servings),
+        protein=per_serving(total_protein, version.servings),
+        fat=per_serving(total_fat, version.servings),
         ingredients=[ingredient_out(item) for item in sorted(version.ingredients, key=lambda item: item.index)],
         steps=[step_out(item) for item in sorted(version.steps, key=lambda item: item.index)],
     )
@@ -181,16 +180,16 @@ def resolve_recipe_presentation(session: Session, payload: RecipePresentationRes
         for ingredient in sorted(payload.ingredients, key=lambda item: item.index)
     ]
     nutrition_ingredients = [
-        _NutritionIngredient(amount=ingredient.amount, foodstuff=foodstuffs[ingredient.foodstuffId])
+        ResolvedNutritionIngredient(amount=ingredient.amount, foodstuff=foodstuffs[ingredient.foodstuffId])
         for ingredient in payload.ingredients
     ]
     return RecipePresentationOut(
         servings=payload.servings,
         preptime=payload.preptime,
-        kcal=_per_serving(_total_nutrition(nutrition_ingredients, "kcal"), payload.servings),
-        carbs=_per_serving(_total_nutrition(nutrition_ingredients, "carbs"), payload.servings),
-        protein=_per_serving(_total_nutrition(nutrition_ingredients, "protein"), payload.servings),
-        fat=_per_serving(_total_nutrition(nutrition_ingredients, "fat"), payload.servings),
+        kcal=per_serving(total_nutrition(nutrition_ingredients, "kcal"), payload.servings),
+        carbs=per_serving(total_nutrition(nutrition_ingredients, "carbs"), payload.servings),
+        protein=per_serving(total_nutrition(nutrition_ingredients, "protein"), payload.servings),
+        fat=per_serving(total_nutrition(nutrition_ingredients, "fat"), payload.servings),
         ingredients=ingredients,
         steps=[
             RecipePresentationStepOut(index=step.index, description=step.description)
@@ -280,8 +279,6 @@ def _new_recipe_version(
         name=payload.name,
         servings=payload.servings,
         preptime=payload.preptime,
-        origin_name=payload.originName,
-        origin_url=payload.originUrl,
     )
     version.ingredients = _new_ingredients(payload.ingredients, foodstuffs)
     version.steps = _new_steps(payload.steps)
@@ -300,8 +297,6 @@ def _apply_version_content(
     version.name = payload.name
     version.servings = payload.servings
     version.preptime = payload.preptime
-    version.origin_name = payload.originName
-    version.origin_url = payload.originUrl
 
 
 def _foodstuffs_for_ingredients(session: Session, ingredients: Sequence[IngredientWrite]) -> dict[int, Foodstuff]:
@@ -344,37 +339,6 @@ def _replace_version_steps(session: Session, version: RecipeVersion, payloads: l
 
 def _new_steps(payloads: list[StepWrite]) -> list[Step]:
     return [Step(index=payload.index, description=payload.description) for payload in payloads]
-
-
-def _total_nutrition(
-    ingredients: Sequence[Ingredient] | list[_NutritionIngredient], attribute: NutritionField
-) -> Decimal | None:
-    if not ingredients:
-        return None
-    total = Decimal("0")
-    for ingredient in ingredients:
-        value = _nutrition_value(ingredient.foodstuff, attribute)
-        if value is None:
-            return None
-        if ingredient.foodstuff.unit.value in ("G", "ML"):
-            total += ingredient.amount * value / Decimal("100")
-        else:
-            total += ingredient.amount * value
-    return total
-
-
-def _per_serving(total: Decimal | None, servings: int) -> Decimal | None:
-    return None if total is None else total / Decimal(servings)
-
-
-def _nutrition_value(foodstuff: Foodstuff, attribute: NutritionField) -> Decimal | None:
-    if attribute == "kcal":
-        return foodstuff.kcal
-    if attribute == "carbs":
-        return foodstuff.carbs
-    if attribute == "protein":
-        return foodstuff.protein
-    return foodstuff.fat
 
 
 def _now() -> datetime:

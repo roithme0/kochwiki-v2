@@ -2,7 +2,7 @@ name: kochwiki-v2-local
 
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.2-pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: kochwiki
@@ -23,7 +23,9 @@ services:
       db:
         condition: service_healthy
     environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DATABASE_URL: postgresql+psycopg://user:password@db:5432/kochwiki
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*,host.docker.internal}
 
   frontend:
     build:

@@ -107,8 +107,6 @@ function recipeVersionWithSteps(): RecipeVersionOut {
         name: 'Testrezept',
         servings: 2,
         preptime: 20,
-        originName: null,
-        originUrl: null,
         kcal: null,
         carbs: null,
         protein: null,

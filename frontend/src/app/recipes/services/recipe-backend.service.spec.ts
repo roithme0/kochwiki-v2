@@ -11,7 +11,7 @@ const versionId = '00000000-0000-4000-8000-000000000002';
 const recipe: RecipeVersionOut = {
   recipeLineageId: lineageId, recipeVersionId: versionId, state: 'active',
   createdAt: '2026-09-30T10:00:00Z', lastModified: '2026-09-30T10:00:00Z',
-  name: 'Oats', servings: 2, preptime: null, originName: null, originUrl: null,
+  name: 'Oats', servings: 2, preptime: null,
   kcal: 46.25, carbs: 7.5, protein: null, fat: null,
   ingredients: [{ id: 1, index: 1, amount: 12.5, recipeVersionId: versionId,
     foodstuff: { id: 1, name: 'Oats', brand: null, unit: 'G', unitVerbose: 'g',
@@ -19,7 +19,7 @@ const recipe: RecipeVersionOut = {
   steps: [{ id: 1, index: 1, description: 'Cook', recipeVersionId: versionId }],
 };
 const write: RecipeVersionWrite = {
-  name: recipe.name, servings: recipe.servings, preptime: null, originName: null, originUrl: null,
+  name: recipe.name, servings: recipe.servings, preptime: null,
   ingredients: [{ index: 1, amount: 12.5, foodstuffId: 1 }],
   steps: [{ index: 1, description: 'Cook' }],
 };
