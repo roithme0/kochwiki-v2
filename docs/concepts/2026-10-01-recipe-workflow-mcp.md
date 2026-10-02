@@ -317,12 +317,45 @@ nutrition totals. Zero remains a known value.
 
 Resolution performs read-only queries without autoflush and returns detached
 data. It does not change the retained proposal. Presentation is a derived view,
-not a new proposal or an artifact. MCP/HTTP exposure, artifact rendering, saving
-and AI Service integration remain deferred.
+not a new proposal or an artifact. MCP/HTTP exposure, artifact rendering
+and AI Service integration remain deferred. Saving is implemented below.
 
 Verification covers mixed existing/temporary ingredients, all three units,
 ordering, metadata, zero/unknown nutrition, empty recipes, changed catalogue
 values, missing dependencies, deleted sources, detached output and no writes.
+
+### Atomic recipe proposal saving
+
+`save_recipe_proposal(session_factory, store, proposal_id)` in
+`app/services/recipe_proposal_saves.py` owns a fresh session and transaction.
+It resolves the original source version to its lineage, creates temporary
+foodstuffs through the existing foodstuff service, and creates a draft through
+the existing recipe service. Active, draft and historical sources are accepted.
+The original recipe is unchanged; proposal metadata and content are retained in
+the new draft. Existing foodstuff references use current catalogue values.
+
+The service returns `RecipeVersionOut`. Foodstuffs and draft commit together;
+missing dependencies, catalogue constraint conflicts, creation failures and
+commit failures roll back all writes. Embedding refresh is dispatched only
+after commit. Catalogue matching remains outside this service: temporary
+definitions are created rather than automatically matched or substituted.
+
+`RecipeProposalStore` keeps a proposal-to-created-version UUID mapping alongside
+its proposals. A single reentrant store lock serializes saves, including
+concurrent requests, and protects shutdown cleanup. The association is recorded
+only after successful commit. Repeated saves return the current contents of the
+same version, including subsequent edits or publication. A deleted saved version
+raises `NotFoundError`; it is never silently recreated. Refinements have separate
+save associations.
+
+Both proposals and associations disappear when the store is cleared or the
+backend restarts. A process failure between database commit and recording the
+association remains possible; durable retry guarantees are deferred. This slice
+adds no HTTP/MCP endpoint, artifact rendering or AI Service integration.
+
+Verification covers mixed and catalogue-only ingredients, source states,
+attribution and ordering, live nutrition, repeated and concurrent saves,
+refinements, deleted saved versions, full rollback and post-commit refresh.
 
 ## Related Planning
 

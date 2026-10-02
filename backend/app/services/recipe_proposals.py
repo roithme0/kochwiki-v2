@@ -1,4 +1,7 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from threading import RLock
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -17,6 +20,8 @@ from app.services.exceptions import ConflictError, NotFoundError
 class RecipeProposalStore:
     def __init__(self) -> None:
         self._proposals: dict[UUID, RecipeProposalOut] = {}
+        self._saved_versions: dict[UUID, UUID] = {}
+        self._save_lock = RLock()
 
     def create(self, session: Session, payload: RecipeProposalCreate) -> RecipeProposalOut:
         validated = RecipeProposalCreate.model_validate(payload.model_dump())
@@ -52,14 +57,34 @@ class RecipeProposalStore:
             recipe=validated.recipe,
         )
         result = proposal.model_copy(deep=True)
-        self._proposals[proposal.proposalId] = proposal
+        with self._save_lock:
+            self._proposals[proposal.proposalId] = proposal
         return result
 
     def get(self, proposal_id: UUID) -> RecipeProposalOut:
-        proposal = self._proposals.get(proposal_id)
-        if proposal is None:
-            raise NotFoundError(f"Recipe proposal with id {proposal_id} not found")
-        return proposal.model_copy(deep=True)
+        with self._save_lock:
+            proposal = self._proposals.get(proposal_id)
+            if proposal is None:
+                raise NotFoundError(f"Recipe proposal with id {proposal_id} not found")
+            return proposal.model_copy(deep=True)
+
+    @contextmanager
+    def saving(self, proposal_id: UUID) -> Iterator[None]:
+        with self._save_lock:
+            self.get(proposal_id)
+            yield
+
+    def saved_version_id(self, proposal_id: UUID) -> UUID | None:
+        with self._save_lock:
+            self.get(proposal_id)
+            return self._saved_versions.get(proposal_id)
+
+    def record_saved_version(self, proposal_id: UUID, version_id: UUID) -> None:
+        with self._save_lock:
+            self.get(proposal_id)
+            self._saved_versions[proposal_id] = version_id
 
     def clear(self) -> None:
-        self._proposals.clear()
+        with self._save_lock:
+            self._proposals.clear()
+            self._saved_versions.clear()
