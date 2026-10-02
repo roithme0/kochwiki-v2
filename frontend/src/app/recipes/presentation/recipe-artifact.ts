@@ -14,13 +14,13 @@ const recipePresentationSchema = z.extend(zRecipePresentationOut, {
 
 const recipeMetadataSchema = z.strictObject({
   proposalId: z.optional(z.uuid().check(z.meta({
-    description: 'Use the exact proposalId returned by KochWiki for the stored proposal represented by this artifact. Display its resolved presentation from get_recipe_proposal. Omit for existing recipes or recipes without a stored proposal. This enables the user to save that stored proposal as a draft, including creation of its temporary foodstuffs.',
+    description: 'The exact KochWiki proposalId of the stored proposal represented by this presentation. Omit for existing recipes or recipes without a stored proposal. Its presence enables the save button for that proposal.',
   }))),
 });
 
 export const RECIPE_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   type: 'kochwiki-recipe',
-  description: 'Display an existing recipe or a resolved recipe proposal when useful for discussion. Do not automatically display every search result. Supply complete presentation data from the selected recipe or the resolved proposal presentation, including preparation time, ingredients, steps and per-serving nutrition. Use null for unknown nutrition or preparation time; do not invent values. Displaying a recipe does not create or save a proposal or draft. Include only the presentation fields required by this schema.',
+  description: 'Display a complete existing recipe or resolved recipe proposal: servings, preparation time, ingredients, steps and per-serving nutrition. Supply only the presentation fields in the schema, using null for unknown nutrition or preparation time. Displaying a recipe does not create or save domain data.',
   titleDescription: 'Use the recipe name as the title.',
   subtitleDescription: 'Omit the subtitle.',
   payloadSchema: z.record(z.string(), z.json()).parse(z.toJSONSchema(recipePresentationSchema)),

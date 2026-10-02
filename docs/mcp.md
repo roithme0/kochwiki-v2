@@ -22,11 +22,30 @@ distinct from proposals. Dedicated foodstuff creation and updates require explic
 user requests; missing ingredients in recipe proposals remain separate. Empty results
 and retrieval failures must not be treated as proof that an item is absent.
 
-This establishes Kochwiki's ownership of domain guidance. The existing recipe
-instructions in AI Service remain in use until a later migration consumes MCP
-instructions and replaces the existing domain capabilities. Generic conversation,
-tool execution and artifact delivery guidance remains the consuming service's
-responsibility. Artifact integration remains deferred.
+Kochwiki owns the domain guidance. The AI Service consumes these instructions
+alongside discovered tools and supplies only generic conversation, tool execution
+and artifact delivery guidance. The frontend advertises presentation capabilities
+and their payload, header and metadata contracts; the AI Service provides the
+generic local `present_artifact` tool. MCP results remain data and do not
+automatically display artifacts. No Kochwiki recipe workflow instructions or
+presentation schemas are defined in the AI Service.
+
+Instructions and tool definitions are discovered at AI Service startup. Restart
+the AI Service after changing them; there is no live instruction refresh.
+
+### Guidance responsibilities
+
+- MCP instructions own domain workflows: when to search, clarify, create, refine,
+  save and present results, including duplicate checks and unit clarification.
+- Tool descriptions and parameter schemas describe each operation's inputs,
+  outputs, side effects and constraints. They do not repeat multi-step policies.
+- Frontend artifact capabilities describe the display, complete payload, headers
+  and metadata meanings. They do not prescribe retrieval or write workflows.
+- AI Service instructions own generic conversation and execution behavior.
+  Its presentation tool supplies generic capability selection and validation guidance.
+
+Short statements of consequences may appear at a boundary, such as presentation
+not saving domain data. Keep workflow policies in MCP instructions to avoid drift.
 
 ## Foodstuff search
 
@@ -102,8 +121,8 @@ unit when their basis is clear.
 
 After either creation or update, present the saved foodstuff returned by the tool
 as a foodstuff artifact when supported, with a concise textual fallback. Foodstuff
-artifact rendering and AI Service integration remain deferred; these tools return
-data and do not themselves render artifacts.
+artifacts use frontend-advertised capabilities through the AI Service's local
+presentation tool; these MCP tools return data and do not themselves render artifacts.
 
 ## Recipe search
 

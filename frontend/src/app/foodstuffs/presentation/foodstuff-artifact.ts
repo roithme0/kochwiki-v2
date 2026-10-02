@@ -10,7 +10,7 @@ export type FoodstuffPresentation = z.infer<typeof foodstuffPresentationSchema>;
 
 export const FOODSTUFF_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   type: 'kochwiki-foodstuff',
-  description: 'Show a foodstuff and its nutrition when useful for discussion or after explicitly requested creation or update. Do not present every search result automatically. Supply unit and all four nutrition values from the foodstuff, using null for missing values; do not invent or convert values. Nutrition is per 100 g for G, per 100 ml for ML, and per piece for PIECE.',
+  description: 'Display a foodstuff nutrition card. Supply its unit and all four nutrition values, using null for missing values. Nutrition is per 100 g for G, per 100 ml for ML, and per piece for PIECE.',
   titleDescription: 'Use the foodstuff name as the title.',
   subtitleDescription: 'Use the foodstuff brand as the subtitle. Omit the subtitle when there is no brand.',
   payloadSchema: z.record(z.string(), z.json()).parse(z.toJSONSchema(foodstuffPresentationSchema)),
