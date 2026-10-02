@@ -53,8 +53,6 @@ def resolve_recipe_proposal_presentation(
         name=recipe.name,
         servings=recipe.servings,
         preptime=recipe.preptime,
-        originName=recipe.originName,
-        originUrl=recipe.originUrl,
         kcal=per_serving(total_nutrition(nutrition_ingredients, "kcal"), recipe.servings),
         carbs=per_serving(total_nutrition(nutrition_ingredients, "carbs"), recipe.servings),
         protein=per_serving(total_nutrition(nutrition_ingredients, "protein"), recipe.servings),

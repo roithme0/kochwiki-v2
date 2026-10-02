@@ -39,7 +39,6 @@ def prepare() -> tuple[RecipeProposalStore, RecipeProposalOut, UUID, int]:
             "sourceRecipeVersionId": source.version_id,
             "recipe": {
                 "name": "Improved", "servings": 2, "preptime": 20,
-                "originName": "Attribution", "originUrl": "https://example.org/recipe",
                 "ingredients": [
                     {"index": 2, "amount": 50, "foodstuff": {"kind": "existing", "foodstuffId": foodstuff_id}},
                     {"index": 1, "amount": 100, "foodstuff": {"kind": "temporary", "definition": {
@@ -72,7 +71,6 @@ def test_atomic_save_and_repeat_returns_current_version() -> None:
         assert result.state == RecipeVersionState.DRAFT
         assert result.recipeLineageId == lineage_id
         assert result.name == "Improved" and result.servings == 2 and result.preptime == 20
-        assert result.originName == "Attribution" and result.originUrl == "https://example.org/recipe"
         assert result.kcal == Decimal(130)
         assert [item.index for item in result.ingredients] == [1, 2]
         assert [item.description for item in result.steps] == ["Cook", "Serve"]

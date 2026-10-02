@@ -363,14 +363,6 @@ export type RecipeVersionOut = {
      */
     name: string;
     /**
-     * Originname
-     */
-    originName: string | null;
-    /**
-     * Originurl
-     */
-    originUrl: string | null;
-    /**
      * Preptime
      */
     preptime: number | null;
@@ -414,14 +406,6 @@ export type RecipeVersionWrite = {
      * Name
      */
     name: string;
-    /**
-     * Originname
-     */
-    originName?: string | null;
-    /**
-     * Originurl
-     */
-    originUrl?: string | null;
     /**
      * Preptime
      */

@@ -86,8 +86,6 @@ export const zStepWrite = z.strictObject({
 export const zRecipeVersionWrite = z.strictObject({
     ingredients: z.optional(z.array(zIngredientWrite)),
     name: z.string().check(z.minLength(1), z.maxLength(200)),
-    originName: z.nullish(z.string().check(z.maxLength(200))),
-    originUrl: z.nullish(z.string().check(z.maxLength(200))),
     preptime: z.nullish(z.int().check(z.gte(1), z.lte(999))),
     servings: z.int().check(z.gte(1), z.lte(99)),
     steps: z.optional(z.array(zStepWrite))
@@ -228,8 +226,6 @@ export const zRecipeVersionOut = z.strictObject({
     kcal: z.nullable(z.number()),
     lastModified: z.iso.datetime(),
     name: z.string(),
-    originName: z.nullable(z.string()),
-    originUrl: z.nullable(z.string()),
     preptime: z.nullable(z.int()),
     protein: z.nullable(z.number()),
     recipeLineageId: z.uuid(),

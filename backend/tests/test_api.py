@@ -31,8 +31,6 @@ def recipe_version_payload(name: str, foodstuff_id: object | None = None, **over
         "name": name,
         "servings": 2,
         "preptime": 10,
-        "originName": "Home",
-        "originUrl": "https://example.com/recipe",
         "ingredients": [],
         "steps": [{"index": 1, "description": "Cook"}],
     }
@@ -399,7 +397,11 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert client.post("/recipes", json=recipe_version_payload("Bad index", steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}])).status_code == 422
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
     assert client.patch("/foodstuffs/1", json={"unit": None}).status_code == 422
-    assert client.post("/recipes", json=recipe_version_payload("Invalid origin", originUrl="not a valid URL")).status_code == 422
+    for field, value in (("originName", "Home"), ("originUrl", "https://example.com/recipe")):
+        removed_field = client.post("/recipes", json=recipe_version_payload(f"Removed {field}", **{field: value}))
+        assert removed_field.status_code == 422
+        assert removed_field.json()["detail"][0]["loc"] == ["body", field]
+        assert removed_field.json()["detail"][0]["type"] == "extra_forbidden"
     openapi = client.get("/api/openapi.json").json()
     recipe_paths = openapi["paths"]
     validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
@@ -596,7 +598,7 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
     oats = create_foodstuff(client)
     created = client.post("/recipes", json=recipe_version_payload(
         "Decimal recipe", ingredients=[{"index": 1, "amount": 12.5, "foodstuffId": oats["id"]}],
-        preptime=None, originName=None, originUrl=None,
+        preptime=None,
     ))
     assert created.status_code == 201
     recipe = created.json()

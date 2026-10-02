@@ -786,28 +786,6 @@
             "title": "Name",
             "type": "string"
           },
-          "originName": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originname"
-          },
-          "originUrl": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originurl"
-          },
           "preptime": {
             "anyOf": [
               {
@@ -864,8 +842,6 @@
           "name",
           "servings",
           "preptime",
-          "originName",
-          "originUrl",
           "kcal",
           "carbs",
           "protein",
@@ -900,30 +876,6 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
-          },
-          "originName": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originname"
-          },
-          "originUrl": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Originurl"
           },
           "preptime": {
             "anyOf": [

@@ -5,7 +5,7 @@
       [value]="recipesGridControlsService.searchBy()"
       (input)="onSeachValueChanged(searchValueField.value)"
       (selectionchange)="onSeachValueChanged(searchValueField.value)"
-      placeholder="Name oder Ersteller*in suchen ..."
+      placeholder="Rezeptname suchen ..."
       matInput
       [matAutocomplete]="search"
     />
@@ -13,32 +13,24 @@
       #search="matAutocomplete"
       (optionSelected)="onSearchOptionSelected($event)"
     >
-      @if(filteredNamesMap().size > 0){
-      <mat-optgroup [label]="nameOptionsGroupLabel">
+      @if (filteredNamesMap().size > 0) {
         @for (name of filteredNamesMap(); track name[0]) {
-        <mat-option [value]="name[0]">{{ name[1] }}</mat-option>
+          <mat-option [value]="name[0]">{{ name[1] }}</mat-option>
         }
-      </mat-optgroup>
-      } @if(filteredOrigins().size > 0){
-      <mat-optgroup [label]="originOptionsGroupLabel">
-        @for (origin of filteredOrigins(); track origin) {
-        <mat-option [value]="origin">{{ origin }}</mat-option>
-        }
-      </mat-optgroup>
       }
     </mat-autocomplete>
   </mat-form-field>
 </form>
 
 <button mat-mini-fab class="search-button medium-size-button">
-  @if(recipesGridControlsService.searchBy() != ''){
-  <mat-icon
-    aria-hidden="false"
-    aria-label="Löschen"
-    fontIcon="clear"
-    (click)="recipesGridControlsService.clearSearch()"
-  />
-  }@else{
-  <mat-icon aria-hidden="false" aria-label="Suchen" fontIcon="search" />
+  @if (recipesGridControlsService.searchBy() != "") {
+    <mat-icon
+      aria-hidden="false"
+      aria-label="Löschen"
+      fontIcon="clear"
+      (click)="recipesGridControlsService.clearSearch()"
+    />
+  } @else {
+    <mat-icon aria-hidden="false" aria-label="Suchen" fontIcon="search" />
   }
 </button>

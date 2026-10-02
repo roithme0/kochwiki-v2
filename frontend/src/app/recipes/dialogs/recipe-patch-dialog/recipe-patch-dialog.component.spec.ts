@@ -127,8 +127,6 @@ const recipeVersionWrite = {
     name: 'Recipe',
     servings: 1,
     preptime: null,
-    originName: null,
-    originUrl: null,
     ingredients: [],
     steps: [],
 } satisfies RecipeVersionWrite;
@@ -146,8 +144,6 @@ function createRecipeVersion(state: RecipeVersionOut['state'], recipeVersionId: 
         name: recipeVersionWrite.name,
         servings: recipeVersionWrite.servings,
         preptime: recipeVersionWrite.preptime,
-        originName: recipeVersionWrite.originName,
-        originUrl: recipeVersionWrite.originUrl,
         ingredients: [],
         steps: [],
         kcal: null,

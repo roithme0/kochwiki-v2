@@ -35,8 +35,6 @@ export class RecipeMetaFormComponent {
     if (recipeVersion !== undefined) {
       this.recipeForm.get('metaFormGroup')?.setValue({
         name: recipeVersion.name,
-        originName: recipeVersion.originName,
-        originUrl: recipeVersion.originUrl,
       });
     }
   }

@@ -89,8 +89,6 @@ function recipeVersion(recipeVersionId: string, lastModified: string, state: Rec
     name: 'Recipe',
     servings: 1,
     preptime: null,
-    originName: null,
-    originUrl: null,
     kcal: null,
     carbs: null,
     protein: null,

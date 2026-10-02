@@ -6,16 +6,12 @@ import { conversationProposal, conversationRecipe } from './recipe-conversation.
 describe('Recipe conversation contract', () => {
   it('captures the enriched recipe with inline foodstuffs as detached generic context', () => {
     const source = conversationRecipe();
-    source.originName = 'Familie';
-    source.originUrl = 'https://example.org/rezept';
     const input = mapSessionInput(source);
     expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY] });
     expect(input.context.source).not.toBe(source);
     expect(input.context.source.ingredients[0].foodstuff).not.toBe(source.ingredients[0].foodstuff);
     expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);
     expect(input.context.source.ingredients[0].foodstuff.id).toBe(1);
-    expect(mapSessionInput(conversationRecipe()).context.source.originName).toBeNull();
-    expect(mapSessionInput(conversationRecipe()).context.source.originUrl).toBeNull();
     source.steps[0].description = 'Changed';
     source.ingredients[0].foodstuff.name = 'Changed';
     expect(input.context.source.steps[0].description).toBe('Linsen kochen.');

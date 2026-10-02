@@ -124,9 +124,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(save).not.toHaveBeenCalled();
   });
 
-  it.each(['active', 'draft'] as const)('saves a separate draft from %s with captured attribution and no overlapping requests', async state => {
+  it.each(['active', 'draft'] as const)('saves a separate draft from %s with no overlapping requests', async state => {
     source.state = state;
-    source.originName = 'Familie'; source.originUrl = 'https://example.org';
     const page = await open();
     await submit(page);
     fixture.detectChanges();
@@ -138,11 +137,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await page.saveProposal(payload);
     await page.saveProposal(mapConversationArtifact({ ...conversationProposal(), artifact_id: 'another' }).payload);
     await page.saveProposal(page.original()?.payload);
-    source.originName = 'Changed';
     expect(save).toHaveBeenCalledTimes(1);
     expect(page.view().composerDisabled).toBe(false);
     expect(save).toHaveBeenCalledWith(source.recipeLineageId, {
-      name: 'Neue Linsensuppe', servings: 2, preptime: 30, originName: 'Familie', originUrl: 'https://example.org',
+      name: 'Neue Linsensuppe', servings: 2, preptime: 30,
       ingredients: [{ index: 1, amount: 100, foodstuffId: 1 }], steps: [{ index: 1, description: 'Linsen kochen.' }],
     });
     pending.resolve({ ...conversationRecipe(), recipeVersionId: 'returned', state: 'draft' });
@@ -155,7 +153,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(getRecipe).toHaveBeenCalledTimes(1);
   });
 
-  it('retains null attribution and refined typed names, rejects non-actionable payloads, and restores availability after failures', async () => {
+  it('retains refined typed names, rejects non-actionable payloads, and restores availability after failures', async () => {
     const page = await open();
     const artifact = conversationProposal();
     const payload = mapConversationArtifact({ ...artifact, payload: { name: '  Eigener Name  ', base: { kind: 'proposal', proposal_id: 'previous' }, recipe: conversationRecipe() } }).payload;
@@ -164,7 +162,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(save).not.toHaveBeenCalled();
     save.mockRejectedValueOnce(new HttpErrorResponse({ status: 422 }));
     await page.saveProposal(payload);
-    expect(save.mock.calls[0][1]).toMatchObject({ name: '  Eigener Name  ', originName: null, originUrl: null });
+    expect(save.mock.calls[0][1]).toMatchObject({ name: '  Eigener Name  ' });
     expect(snackbar.mock.calls[0][0]).toContain('ungültiger Rezeptdaten');
     save.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
     await page.saveProposal(payload);
@@ -190,7 +188,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const url = `${backendUrl}/recipes/${source.recipeLineageId}/drafts`;
     const request = http.expectOne(url);
     expect(request.request.body).toEqual({
-      name: 'Neue Linsensuppe', servings: 2, preptime: 30, originName: null, originUrl: null,
+      name: 'Neue Linsensuppe', servings: 2, preptime: 30,
       ingredients: [{ index: 1, amount: 100, foodstuffId: 1 }], steps: [{ index: 1, description: 'Linsen kochen.' }],
     });
     request.flush({ recipeLineageId: source.recipeLineageId, recipeVersionId: 'invalid' }, { status: 201, statusText: 'Created' });

@@ -33,9 +33,6 @@ export class RecipesSearchComponent {
   readonly router = inject(Router);
   readonly recipeVersions = input<RecipeVersionOut[]>([]);
 
-  readonly nameOptionsGroupLabel: string = 'Namen';
-  readonly originOptionsGroupLabel: string = 'Ersteller*innen';
-
   namesMap = computed(
     (): Map<string, string> =>
       this.recipeVersions().reduce((acc, recipeVersion) => {
@@ -46,26 +43,11 @@ export class RecipesSearchComponent {
   readonly recipeVersionsById = computed(
     (): Map<string, RecipeVersionOut> => new Map(this.recipeVersions().map((recipeVersion) => [recipeVersion.recipeVersionId, recipeVersion]))
   );
-  origins = computed((): string[] =>
-    this.recipeVersions()
-      .map((recipeVersion) => recipeVersion.originName || '')
-      .filter((origin) => origin != '')
-  );
   filteredNamesMap = computed(
     (): Map<string, string> =>
       new Map(
         [...this.namesMap()].filter(([id, name]) =>
           name
-            .toLowerCase()
-            .includes(this.recipesGridControlsService.searchBy().toLowerCase())
-        )
-      )
-  );
-  filteredOrigins = computed(
-    (): Set<string> =>
-      new Set(
-        this.origins().filter((origin) =>
-          origin
             .toLowerCase()
             .includes(this.recipesGridControlsService.searchBy().toLowerCase())
         )
@@ -79,16 +61,13 @@ export class RecipesSearchComponent {
   }
 
   onSearchOptionSelected(event: MatAutocompleteSelectedEvent): void {
-    if (event.option.group?.label === this.nameOptionsGroupLabel) {
-      const recipeVersion = this.recipeVersionsById().get(event.option.value as string);
-      if (recipeVersion !== undefined) {
-        void this.router.navigate(
-          recipeVersion.state === 'active'
-            ? ['recipes', recipeVersion.recipeLineageId]
-            : ['recipes', recipeVersion.recipeLineageId, 'versions', recipeVersion.recipeVersionId]
-        );
-      }
-    }
+    const recipeVersion = this.recipeVersionsById().get(event.option.value as string);
+    if (recipeVersion === undefined) return;
+    void this.router.navigate(
+      recipeVersion.state === 'active'
+        ? ['recipes', recipeVersion.recipeLineageId]
+        : ['recipes', recipeVersion.recipeLineageId, 'versions', recipeVersion.recipeVersionId]
+    );
   }
 
   //#endregion

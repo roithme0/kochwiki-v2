@@ -53,8 +53,6 @@ def _materialize_recipe(session: Session, recipe: ProposalRecipe) -> RecipeVersi
         name=recipe.name,
         servings=recipe.servings,
         preptime=recipe.preptime,
-        originName=recipe.originName,
-        originUrl=recipe.originUrl,
         ingredients=ingredients,
         steps=recipe.steps,
     )

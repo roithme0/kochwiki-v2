@@ -92,7 +92,7 @@ def test_retention_is_detached_and_creates_no_records_or_refresh_work() -> None:
     assert before <= proposal.createdAt <= datetime.now(timezone.utc)
     assert proposal.createdAt.tzinfo == timezone.utc
     assert proposal.sourceRecipeVersionId == source and proposal.baseProposalId is None
-    assert proposal.recipe.preptime is None and proposal.recipe.originName is None and proposal.recipe.originUrl is None
+    assert proposal.recipe.preptime is None
     definition = proposal.recipe.ingredients[1].foodstuff
     assert isinstance(definition, TemporaryProposalFoodstuff)
     assert definition.definition.kcal == Decimal(0) and definition.definition.carbs is None
@@ -217,7 +217,7 @@ def test_mutated_invalid_payload_is_revalidated_before_retention() -> None:
 
 @pytest.mark.parametrize("fields", [
     {"name": ""}, {"name": "x" * 201}, {"servings": 0}, {"servings": 100},
-    {"preptime": 0}, {"preptime": 1000}, {"originName": "x" * 201}, {"originUrl": "relative"},
+    {"preptime": 0}, {"preptime": 1000}, {"originName": "Home"}, {"originUrl": "https://example.org/recipe"},
     {"unknown": True}, {"ingredients": [existing(), existing(index=2)]},
     {"ingredients": [temporary(), temporary(index=3, unit="ML", kcal=5)]},
     {"ingredients": [temporary(brand=""), temporary(index=3, brand=None)]},

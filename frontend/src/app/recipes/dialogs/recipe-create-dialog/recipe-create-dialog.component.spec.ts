@@ -15,8 +15,6 @@ describe('RecipeCreateDialogComponent', () => {
     const recipeVersion: RecipeVersionWrite = {
         name: 'Linsensuppe',
         servings: 2,
-        originName: null,
-        originUrl: null,
         preptime: null,
         ingredients: [],
         steps: [],

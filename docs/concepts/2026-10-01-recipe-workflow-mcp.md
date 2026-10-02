@@ -300,9 +300,7 @@ temporary definitions remain inline and create no database records. Missing
 proposals or referenced foodstuffs raise `NotFoundError`. The original source
 version is not needed to present the complete proposed recipe.
 
-`RecipeProposalPresentationOut` preserves the proposed name, servings, preparation
-time and origin fields, orders ingredients and steps by index, and adds nutrition
-per serving. Ingredient foodstuffs retain explicit `existing` and `temporary`
+`RecipeProposalPresentationOut` preserves the proposed name, servings and preparation time, orders ingredients and steps by index, and adds nutrition per serving. Ingredient foodstuffs retain explicit `existing` and `temporary`
 variants with the same flat descriptive, unit and nutrition fields. Only existing
 entries carry a catalogue ID; temporary entries have no fabricated ID. Both
 inherit `ResolvedProposalFoodstuffFields`. Stored proposals continue to use

@@ -27,7 +27,7 @@ export class RecipesGridComponent {
 
   displayedRecipeVersions = computed((): RecipeVersionOut[] => {
     let recipeVersions = this.recipeVersions();
-    recipeVersions = this.filterRecipeVersionsByNameOrOrigin(recipeVersions);
+    recipeVersions = this.filterRecipeVersionsByName(recipeVersions);
     recipeVersions = this.sortRecipeVersions(recipeVersions);
     return recipeVersions;
   });
@@ -44,14 +44,12 @@ export class RecipesGridComponent {
     }
   });
 
-  filterRecipeVersionsByNameOrOrigin(recipeVersions: RecipeVersionOut[]): RecipeVersionOut[] {
+  filterRecipeVersionsByName(recipeVersions: RecipeVersionOut[]): RecipeVersionOut[] {
     const searchBy = this.recipesGridControlsService.searchBy();
     return searchBy === ''
       ? recipeVersions
       : recipeVersions.filter(
-          (recipeVersion) =>
-            recipeVersion.name.toLowerCase().includes(searchBy.toLowerCase()) ||
-            recipeVersion.originName?.toLowerCase().includes(searchBy.toLowerCase())
+          (recipeVersion) => recipeVersion.name.toLowerCase().includes(searchBy.toLowerCase())
         );
   }
 

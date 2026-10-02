@@ -32,7 +32,7 @@ The agreed placement for draft saving is a Kochwiki-owned "Als Entwurf speichern
 
 A relationship between a proposal and a derived draft is explicitly out of scope, in both frontend state and backend storage. Saving copies recipe content into the normal draft contract without proposal/session provenance or a proposal-to-draft mapping. The snackbar uses the save response's draft identifier only for its immediate navigation action; this does not establish a tracked relationship. Membership in the existing recipe lineage remains unchanged.
 
-Preserve `originName` and `originUrl` from the conversation's original recipe snapshot when saving any proposal as a draft, including proposals refined from earlier proposals. Preserve absent values as absent. Proposal payloads do not supply these fields; this is ordinary recipe source attribution, not a relationship to an AI proposal or session. Users can subsequently edit attribution through the existing draft editor.
+Superseded by the 2026-10-02 implementation: recipe proposals and saved recipes no longer carry `originName` or `originUrl`. The original-source snapshot remains conversation context, while saving retains the source recipe lineage.
 
 The agent currently emits complete recipe proposals, not independently selectable patches. This integration presents those complete recipes for inspection and conversational refinement. Individual-change acceptance and a dedicated change-review UI are outside this concept; the README's broader aspiration does not expand this integration's scope.
 

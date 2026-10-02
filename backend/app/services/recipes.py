@@ -160,8 +160,6 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         name=version.name,
         servings=version.servings,
         preptime=version.preptime,
-        originName=version.origin_name,
-        originUrl=version.origin_url,
         kcal=per_serving(total_kcal, version.servings),
         carbs=per_serving(total_carbs, version.servings),
         protein=per_serving(total_protein, version.servings),
@@ -281,8 +279,6 @@ def _new_recipe_version(
         name=payload.name,
         servings=payload.servings,
         preptime=payload.preptime,
-        origin_name=payload.originName,
-        origin_url=payload.originUrl,
     )
     version.ingredients = _new_ingredients(payload.ingredients, foodstuffs)
     version.steps = _new_steps(payload.steps)
@@ -301,8 +297,6 @@ def _apply_version_content(
     version.name = payload.name
     version.servings = payload.servings
     version.preptime = payload.preptime
-    version.origin_name = payload.originName
-    version.origin_url = payload.originUrl
 
 
 def _foodstuffs_for_ingredients(session: Session, ingredients: Sequence[IngredientWrite]) -> dict[int, Foodstuff]:

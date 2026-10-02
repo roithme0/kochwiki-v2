@@ -160,7 +160,7 @@ export class RecipeConversationPageComponent {
     if (this.savePending() || !this.source || !isProposalPresentation(payload)
       || this.destroyRef.destroyed || this.activeUser.activeUser() === null) return;
     const source = this.source;
-    const write = proposalWrite(payload, source);
+    const write = proposalWrite(payload);
     const epoch = this.saveEpoch;
     const userId = this.activeUser.activeUser()?.id;
     this.savePending.set(true);

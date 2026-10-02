@@ -31,8 +31,6 @@ describe('RecipeEditorComponent', () => {
         name: 'Linsensuppe',
         servings: 2,
         preptime: 20,
-        originName: null,
-        originUrl: null,
         kcal: null,
         carbs: null,
         protein: null,
@@ -211,7 +209,7 @@ describe('RecipeEditorComponent', () => {
         expect(emitted).toHaveBeenCalledWith({
             action: 'publish',
             recipeVersion: {
-                name: 'Linsensuppe', servings: 2, preptime: null, originName: null, originUrl: null,
+                name: 'Linsensuppe', servings: 2, preptime: null,
                 ingredients: [{ index: 1, amount: 12.5, foodstuffId: 1 }],
                 steps: [
                     { index: 1, description: 'Servieren' },

@@ -46,16 +46,11 @@ export function isProposalPresentation(
   );
 }
 
-export function proposalWrite(
-  proposal: ProposalPresentation,
-  source: Pick<RecipeVersionOut, 'originName' | 'originUrl'>,
-): RecipeVersionWrite {
+export function proposalWrite(proposal: ProposalPresentation): RecipeVersionWrite {
   return {
     name: proposal.name,
     servings: proposal.servings,
     preptime: proposal.preptime,
-    originName: source.originName,
-    originUrl: source.originUrl,
     ingredients: proposal.ingredients.map(({ index, amount, foodstuff }) => ({
       index,
       amount,

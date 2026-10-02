@@ -42,7 +42,6 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
             "sourceRecipeVersionId": source.version_id,
             "recipe": {
                 "name": "Proposal", "servings": 2, "preptime": 10,
-                "originName": "Kitchen", "originUrl": "https://example.com/recipe",
                 "ingredients": [
                     {"index": 2, "amount": amount, "foodstuff": {"kind": "temporary", "definition": {
                         "name": "New ingredient", "brand": "Farm", "unit": unit,
@@ -64,7 +63,6 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
         session.expunge(pending)
         assert [session.scalar(select(func.count()).select_from(model)) for model in models] == before
     assert presentation.name == "Proposal" and presentation.servings == 2 and presentation.preptime == 10
-    assert presentation.originName == "Kitchen" and presentation.originUrl == "https://example.com/recipe"
     assert presentation.kcal == expected and presentation.carbs == 25
     assert presentation.protein == 0 and presentation.fat == 10
     assert [ingredient.index for ingredient in presentation.ingredients] == [1, 2]
