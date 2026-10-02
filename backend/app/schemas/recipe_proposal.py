@@ -2,8 +2,9 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from kochwiki_contract.common import JsonDecimal
-from kochwiki_contract.recipe import StepWrite, _validate_unique_indexes
+from kochwiki_contract import Unit
+from kochwiki_contract.common import JsonDecimal, NonnegativeJsonDecimal
+from kochwiki_contract.recipe import RecipePresentationStepOut, StepWrite, _validate_unique_indexes
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.foodstuff import FoodstuffCreate
@@ -78,3 +79,45 @@ class RecipeProposalCreate(BaseModel):
 class RecipeProposalOut(RecipeProposalCreate):
     proposalId: UUID
     createdAt: datetime
+
+
+class ResolvedProposalFoodstuffFields(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str
+    brand: str | None
+    unit: Unit = Field(strict=False)
+    unitVerbose: str
+    kcal: NonnegativeJsonDecimal | None
+    carbs: NonnegativeJsonDecimal | None
+    protein: NonnegativeJsonDecimal | None
+    fat: NonnegativeJsonDecimal | None
+
+
+class ResolvedExistingProposalFoodstuff(ResolvedProposalFoodstuffFields):
+    kind: Literal["existing"]
+    id: int = Field(gt=0)
+
+
+class ResolvedTemporaryProposalFoodstuff(ResolvedProposalFoodstuffFields):
+    kind: Literal["temporary"]
+
+
+class ProposalPresentationIngredientOut(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    index: int = Field(ge=1, le=99)
+    amount: JsonDecimal = Field(gt=0, le=9999)
+    foodstuff: Annotated[
+        ResolvedExistingProposalFoodstuff | ResolvedTemporaryProposalFoodstuff,
+        Field(discriminator="kind"),
+    ]
+
+
+class RecipeProposalPresentationOut(RecipeVersionFields):
+    kcal: NonnegativeJsonDecimal | None
+    carbs: NonnegativeJsonDecimal | None
+    protein: NonnegativeJsonDecimal | None
+    fat: NonnegativeJsonDecimal | None
+    ingredients: list[ProposalPresentationIngredientOut]
+    steps: list[RecipePresentationStepOut]

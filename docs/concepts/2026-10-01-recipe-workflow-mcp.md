@@ -291,6 +291,39 @@ application isolation and shutdown cleanup, detached input/output, no records or
 embedding refresh work, failure atomicity and retention after dependency edits
 or deletion. Focused type checking passes; tests make no paid provider calls.
 
+### Recipe proposal presentation
+
+`resolve_recipe_proposal_presentation(session, store, proposal_id)` in
+`app/services/recipe_proposal_presentations.py` derives a presentation from a
+retained proposal. Existing foodstuffs resolve against the current catalogue;
+temporary definitions remain inline and create no database records. Missing
+proposals or referenced foodstuffs raise `NotFoundError`. The original source
+version is not needed to present the complete proposed recipe.
+
+`RecipeProposalPresentationOut` preserves the proposed name, servings, preparation
+time and origin fields, orders ingredients and steps by index, and adds nutrition
+per serving. Ingredient foodstuffs retain explicit `existing` and `temporary`
+variants with the same flat descriptive, unit and nutrition fields. Only existing
+entries carry a catalogue ID; temporary entries have no fabricated ID. Both
+inherit `ResolvedProposalFoodstuffFields`. Stored proposals continue to use
+references or inline definitions. The existing `RecipePresentationOut` requires persisted foodstuff IDs and
+therefore remains the presentation type for catalogue-only recipes.
+
+`app/services/recipe_nutrition.py` shares the established nutrition calculation
+between saved recipes, catalogue-only presentations and proposal presentations.
+Grams and millilitres use values per 100 units; pieces use values per piece.
+Missing values yield unknown totals for that nutrient; empty recipes have unknown
+nutrition totals. Zero remains a known value.
+
+Resolution performs read-only queries without autoflush and returns detached
+data. It does not change the retained proposal. Presentation is a derived view,
+not a new proposal or an artifact. MCP/HTTP exposure, artifact rendering, saving
+and AI Service integration remain deferred.
+
+Verification covers mixed existing/temporary ingredients, all three units,
+ordering, metadata, zero/unknown nutrition, empty recipes, changed catalogue
+values, missing dependencies, deleted sources, detached output and no writes.
+
 ## Related Planning
 
 Cross-project direction remains in the workspace's `plan` repository:
