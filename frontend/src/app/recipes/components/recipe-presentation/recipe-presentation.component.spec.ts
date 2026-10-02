@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { FoodstuffUnit } from '../../../foodstuffs/models/foodstuff-unit';
 import { IngredientsGridComponent } from '../ingredients-grid/ingredients-grid.component';
-import { RecipeMacroChartCardComponent } from '../recipe-macro-chart-card/recipe-macro-chart-card.component';
+import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
 import { RecipePresentationComponent } from './recipe-presentation.component';
@@ -52,12 +52,12 @@ describe('RecipePresentationComponent', () => {
       By.directive(StepsGridComponent)
     ).componentInstance as StepsGridComponent;
     const nutrition = fixture.debugElement.query(
-      By.directive(RecipeMacroChartCardComponent)
-    ).componentInstance as RecipeMacroChartCardComponent;
+      By.directive(NutritionCardComponent)
+    ).componentInstance as NutritionCardComponent;
 
     expect(ingredients.recipe()).toBe(recipe);
     expect(steps.recipe()).toBe(recipe);
-    expect(nutrition.recipe()).toBe(recipe);
+    expect(nutrition.nutrition()).toBe(recipe);
     expect(fixture.nativeElement.textContent).toContain('Tomaten');
     expect(fixture.nativeElement.textContent).toContain('Tomaten schneiden.');
   });

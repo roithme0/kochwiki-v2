@@ -1,6 +1,6 @@
 @use "../../../../styles/mat-card-styles.scss" as *;
 
-.chart-wrapper {
+.nutrition-content {
   display: grid;
   place-items: center;
 }
@@ -10,11 +10,8 @@
   max-width: 26rem;
 }
 
-.spacer {
-  height: 0.5rem;
-}
-
 .legend {
+  margin-top: 0.5rem;
   width: 100%;
   max-width: 30rem;
   display: flex;
@@ -22,7 +19,8 @@
   gap: 0.5rem;
 }
 
-.incomplete-message {
-  margin: 0;
-  padding: 1rem 0 0;
+.kcal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
