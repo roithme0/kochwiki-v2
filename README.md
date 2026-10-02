@@ -31,7 +31,8 @@ Recipe name search uses the same embedding foundation for active versions and
 drafts, returning complete recipes. See [recipe search and refresh commands](docs/recipe-semantic-search.md).
 
 The backend also hosts a Streamable HTTP MCP endpoint with hello-world and
-foodstuff and recipe search tools and explicit foodstuff creation and updates. See
+foodstuff and recipe search tools, explicit foodstuff creation and updates, and
+recipe proposal creation, retrieval and saving. See
 [MCP integration and local verification](docs/mcp.md).
 
 The backend consumes the local `kochwiki-contract` package containing shared

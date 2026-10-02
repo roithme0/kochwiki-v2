@@ -28,9 +28,9 @@ async def hello_world() -> dict[str, str]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    mcp_services = MCPServices()
-    server, mcp_app = create_mcp_server(mcp_services)
     recipe_proposals = RecipeProposalStore()
+    mcp_services = MCPServices(recipe_proposals)
+    server, mcp_app = create_mcp_server(mcp_services)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:

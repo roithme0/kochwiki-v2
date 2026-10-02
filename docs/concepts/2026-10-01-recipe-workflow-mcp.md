@@ -317,8 +317,9 @@ nutrition totals. Zero remains a known value.
 
 Resolution performs read-only queries without autoflush and returns detached
 data. It does not change the retained proposal. Presentation is a derived view,
-not a new proposal or an artifact. MCP/HTTP exposure, artifact rendering
-and AI Service integration remain deferred. Saving is implemented below.
+not a new proposal or an artifact. MCP exposure is implemented below; HTTP
+exposure, artifact rendering and AI Service integration remain deferred.
+Saving is implemented below.
 
 Verification covers mixed existing/temporary ingredients, all three units,
 ordering, metadata, zero/unknown nutrition, empty recipes, changed catalogue
@@ -356,6 +357,26 @@ adds no HTTP/MCP endpoint, artifact rendering or AI Service integration.
 Verification covers mixed and catalogue-only ingredients, source states,
 attribution and ordering, live nutrition, repeated and concurrent saves,
 refinements, deleted saved versions, full rollback and post-commit refresh.
+
+### Recipe proposal MCP workflow
+
+The MCP server now exposes `create_recipe_proposal`, `get_recipe_proposal` and
+`save_recipe_proposal` using the same application-owned proposal store. Creation
+accepts `RecipeProposalCreate` and returns the stored `RecipeProposalOut`; a
+refinement supplies the previous ID as `baseProposalId` and a complete new recipe.
+Retrieval returns `RecipeProposalDetailsOut`, containing both the stored proposal
+and its resolved presentation. This preserves the input for refinements while
+providing current foodstuff details and nutrition for discussion or display.
+Saving delegates to the atomic service and returns the created version.
+
+Instructions distinguish proposal registration, optional artifact display and
+explicit saving. Inline ingredients stay temporary until saving; the save request
+also authorizes their creation. Tool error handling preserves domain messages
+and sanitizes database failures. The tools require no embedding credentials and
+do not introduce HTTP endpoints, artifact rendering or AI Service integration.
+SDK transport tests cover the complete workflow, annotations, refinement,
+application isolation, invalid/missing references, repeat saves, deleted drafts
+and transactional failure with retry. See [MCP usage](../mcp.md).
 
 ## Related Planning
 

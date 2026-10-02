@@ -26,7 +26,7 @@ This establishes Kochwiki's ownership of domain guidance. The existing recipe
 instructions in AI Service remain in use until a later migration consumes MCP
 instructions and replaces the existing domain capabilities. Generic conversation,
 tool execution and artifact delivery guidance remains the consuming service's
-responsibility. Proposal tools and artifact integration are outside this slice.
+responsibility. Artifact integration remains deferred.
 
 ## Foodstuff search
 
@@ -124,6 +124,38 @@ The tool remains discoverable without credentials. Both search services share
 the lifespan-owned embedding client and are unbound during shutdown.
 See [recipe embedding setup and initial refresh](recipe-semantic-search.md).
 
+## Recipe proposals
+
+`create_recipe_proposal` accepts a `proposal` object using `RecipeProposalCreate`:
+`sourceRecipeVersionId`, optional `baseProposalId`, and a complete `recipe`.
+Ingredients use either `{"kind": "existing", "foodstuffId": 123}` or
+`{"kind": "temporary", "definition": {"name": "Beans", "unit": "G"}}`.
+The result is `RecipeProposalOut`, including the new `proposalId` and creation
+time. Registration validates references but writes no recipes or foodstuffs.
+Refinement creates a new proposal with the base proposal's original source and
+a complete replacement recipe, leaving the base unchanged.
+
+`get_recipe_proposal` accepts `proposal_id` and returns `RecipeProposalDetailsOut`:
+`proposal` preserves the stored input and identifiers; `presentation` resolves
+current catalogue foodstuffs, retains temporary definitions and calculates
+per-serving nutrition. Missing referenced foodstuffs cause a tool error. Neither
+registration nor retrieval renders an artifact or saves a recipe.
+
+`save_recipe_proposal` accepts `proposal_id` and returns the complete saved
+`RecipeVersionOut`. On explicit user request it creates a draft in the source
+lineage and materializes temporary foodstuffs in one transaction. Saving
+authorizes those foodstuff creations without separate confirmation. Failed saves
+roll back together; database errors return a generic tool error. Successful
+commits retain the existing embedding refresh triggers.
+
+Repeated saves return the same created version in its current state, even after
+editing or publication. A deleted saved version is not recreated. Proposals and
+save mappings live in application memory and are cleared on shutdown; saved
+database records remain. This assumes a single process. Creation is marked as a
+non-idempotent write, retrieval as read-only, and saving as an idempotent write.
+These tools work without embedding credentials. Instructions guide explicit
+saving and selective presentation; they do not implement authorization checks.
+
 ## Endpoint and lifecycle
 
 The Streamable HTTP endpoint is `/mcp/` on both the backend and gateway.
@@ -210,6 +242,32 @@ To exercise updating, use that returned ID as `foodstuff_id`:
 Replace `123` with the actual ID. This changes the real catalogue entry and
 returns its complete saved representation.
 
+To exercise proposals in Inspector, select `create_recipe_proposal` and use an
+actual source recipe version UUID and foodstuff ID:
+
+```json
+{
+  "proposal": {
+    "sourceRecipeVersionId": "REPLACE-WITH-SOURCE-UUID",
+    "recipe": {
+      "name": "Inspector proposal",
+      "servings": 2,
+      "ingredients": [
+        {"index": 1, "amount": 50, "foodstuff": {"kind": "existing", "foodstuffId": 123}},
+        {"index": 2, "amount": 100, "foodstuff": {"kind": "temporary", "definition": {"name": "Inspector beans", "unit": "G"}}}
+      ],
+      "steps": [{"index": 1, "description": "Cook and serve"}]
+    }
+  }
+}
+```
+
+Use the returned ID in `{"proposal_id": "REPLACE-WITH-PROPOSAL-UUID"}` for
+`get_recipe_proposal`, then `save_recipe_proposal`. Retrieval creates no database
+records; saving writes a real draft and the temporary foodstuff. Saving again
+returns the same version. To try refinement, submit the complete creation payload
+again with `baseProposalId` set to the previous proposal ID.
+
 ### Automated checks
 
 Run the backend regression suite with the existing test PostgreSQL available:
@@ -235,5 +293,11 @@ unit changes, recipe version references, identity-only refresh, missing targets,
 conflicts, validation and rollback without refresh on database failure.
 The client probe separately permits verification over a listening TCP server.
 
-Artifacts, recipe writes, proposal behavior, separate instruction resources, and
-AI Service integration remain outside this slice.
+`tests/test_mcp_recipe_proposals.py` covers discovery and annotations, proposal
+creation and refinement, resolved retrieval without database writes, atomic saving,
+repeat saves, deleted drafts, validation and missing dependencies, sanitized
+database failures with rollback/retry, and isolation across application instances.
+It uses the real test database and SDK transport without paid model calls.
+
+Artifacts, separate instruction resources, and AI Service integration remain
+deferred.

@@ -49,6 +49,7 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                     assert [tool.name for tool in tools.tools] == [
                         "hello_world", "search_foodstuffs", "search_recipes", "create_foodstuff",
                         "update_foodstuff",
+                        "create_recipe_proposal", "get_recipe_proposal", "save_recipe_proposal",
                     ]
                     result = await client.call_tool("hello_world", {})
                     assert not result.is_error

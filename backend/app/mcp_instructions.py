@@ -27,8 +27,31 @@ Discuss retrieved items selectively when they help the user assess a match or
 compare options. If the host supports displaying references, show them when
 useful rather than displaying every search result. A retrieved recipe is an
 existing reference, not a newly created proposal. Displaying a reference does
-not create or save a proposal. No tool currently registers a proposal or saves a
-recipe draft; do not claim those actions occurred.
+not create or save a proposal.
+
+Use create_recipe_proposal to register a complete candidate recipe against the
+actual sourceRecipeVersionId. Use existing foodstuff IDs where suitable and inline
+temporary definitions for missing ingredients; do not create catalogue entries
+just to propose a recipe. Temporary definitions follow the same unit and nutrition
+policy as dedicated foodstuff creation below. Registration stores a proposal only
+in backend memory and does not save a draft or foodstuffs.
+
+For refinements, create a new complete proposal with baseProposalId referring to
+the previous proposal and retain its original sourceRecipeVersionId. Use
+get_recipe_proposal to retrieve the stored input and its resolved presentation.
+The presentation uses current catalogue values and includes temporary foodstuffs
+and per-serving nutrition. Discuss or display it selectively when useful.
+A proposal is a candidate managed by Kochwiki; an artifact is its optional display
+in the host. These tools return data and do not themselves render artifacts.
+
+Use save_recipe_proposal only when the user explicitly asks to save the identified
+proposal. Saving also authorizes creating its temporary foodstuffs, without a
+separate confirmation. The recipe draft and required foodstuffs are saved
+atomically in the original source lineage. Repeated saves return the same created
+version, including later edits or publication; a deleted saved version is not
+recreated. Only report a saved draft after a successful tool result, and present
+that returned recipe as an artifact when supported or in text. Proposals and
+their save mappings are lost on backend restart; saved recipes remain persisted.
 
 Use create_foodstuff only when the user explicitly requests a dedicated catalogue
 entry. Do not create missing ingredients while discussing recipe proposals.

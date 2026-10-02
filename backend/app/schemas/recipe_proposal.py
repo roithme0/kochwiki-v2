@@ -121,3 +121,10 @@ class RecipeProposalPresentationOut(RecipeVersionFields):
     fat: NonnegativeJsonDecimal | None
     ingredients: list[ProposalPresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
+
+
+class RecipeProposalDetailsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proposal: RecipeProposalOut
+    presentation: RecipeProposalPresentationOut
