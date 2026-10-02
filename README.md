@@ -56,7 +56,18 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 
 The frontend uses `@roithme0/chat-ui` version `0.0.4-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each proposal can be saved explicitly as a new draft in the source lineage, preserving the original snapshot attribution. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves create separate drafts; ambiguous failures are not retried automatically.
 
-The conversation frontend advertises the shared chat UI JSON presentation capability alongside the selected recipe context. The agent can explicitly present complete JSON data using the AI Service local presentation tool; MCP results do not automatically appear as artifacts. JSON presentations have no recipe save button or domain write effect. This integration requires a chat UI package containing the capability contract and explicit JSON renderer.
+The conversation frontend advertises the shared chat UI JSON capability and a
+KochWiki foodstuff presentation capability alongside the selected recipe context.
+The agent can explicitly present data using the AI Service local presentation
+tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
+use the name as title and the brand as optional subtitle. Their complete payload
+contains `unit`, `kcal`, `carbs`, `protein`, and `fat`, with explicit `null` values
+for unknown nutrition. The shared nutrition card displays values per 100 g,
+100 ml, or piece. Complete, nonzero macro totals show a chart and percentages;
+partial or all-zero totals show absolute values and missing-value indicators.
+These presentations have no save, selection, editing, or navigation actions and
+perform no enrichment fetches. This integration requires a chat UI package with
+the capability contract, header guidance, subtitles, and explicit JSON renderer.
 
 Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving does not cancel remote work. History scrolling is manual, and context limits surface as initialization errors rather than silently reducing the snapshot.
 

@@ -3,6 +3,7 @@ import { presentArtifact, ArtifactResponse } from '@roithme0/chat-ui/conversatio
 import { ChatArtifact, ChatArtifactCapability, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
 import type { RecipeVersionWrite } from '../../core/api/generated';
 import { RecipePresentation } from '../models/recipe-presentation';
+import { FOODSTUFF_ARTIFACT_CAPABILITY, isFoodstuffPresentation } from '../../foodstuffs/presentation/foodstuff-artifact';
 
 export interface RecipeSessionInput {
   readonly context: RecipeContext;
@@ -16,7 +17,7 @@ export interface RecipeContext {
 export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
   return {
     context: { source: structuredClone(source) },
-    artifactCapabilities: [JSON_ARTIFACT_CAPABILITY],
+    artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY],
   };
 }
 
@@ -104,6 +105,10 @@ export function recipeArtifact(
 
 export function mapConversationArtifact(artifact: ArtifactResponse): ChatArtifact {
   if (artifact.type === JSON_ARTIFACT_CAPABILITY.type) return presentArtifact(artifact);
+  if (artifact.type === FOODSTUFF_ARTIFACT_CAPABILITY.type) {
+    const presentation = presentArtifact(artifact);
+    if (isFoodstuffPresentation(presentation.payload)) return presentation;
+  }
   const payload = artifact.payload;
   if (
     artifact.type === 'recipe.proposal' &&
@@ -125,7 +130,7 @@ export function mapConversationArtifact(artifact: ArtifactResponse): ChatArtifac
     id: artifact.artifact_id,
     type: 'kochwiki-unsupported',
     headline: 'Inhalt nicht darstellbar',
-    payload: 'Dieser Inhalt ist kein unterstützter Rezeptvorschlag.',
+    payload: 'Dieser Inhalt ist nicht unterstützt.',
   };
 }
 

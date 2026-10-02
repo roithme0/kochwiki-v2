@@ -1,4 +1,5 @@
 import { JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
+import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../foodstuffs/presentation/foodstuff-artifact';
 import { isRecipePresentation, mapConversationArtifact, mapSessionInput, recipeArtifact } from './recipe-conversation-contract';
 import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
 
@@ -8,7 +9,7 @@ describe('Recipe conversation contract', () => {
     source.originName = 'Familie';
     source.originUrl = 'https://example.org/rezept';
     const input = mapSessionInput(source);
-    expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY] });
+    expect(input).toEqual({ context: { source }, artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY] });
     expect(input.context.source).not.toBe(source);
     expect(input.context.source.ingredients[0].foodstuff).not.toBe(source.ingredients[0].foodstuff);
     expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);

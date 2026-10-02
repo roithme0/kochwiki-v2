@@ -12,10 +12,12 @@ import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 import { isProposalPresentation, proposalWrite, isRecipePresentation, mapConversationArtifact, mapSessionInput, recipeArtifact } from '../../conversation/recipe-conversation-contract';
 import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-bar.service';
+import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
+import { isFoodstuffPresentation } from '../../../foodstuffs/presentation/foodstuff-artifact';
 
 @Component({
   selector: 'app-recipe-conversation-page',
-  imports: [ChatUiComponent, RecipePresentationComponent, MatButtonModule, RouterLink],
+  imports: [ChatUiComponent, RecipePresentationComponent, FoodstuffPresentationComponent, MatButtonModule, RouterLink],
   templateUrl: './recipe-conversation-page.component.html',
   styleUrl: './recipe-conversation-page.component.scss',
 })
@@ -56,6 +58,7 @@ export class RecipeConversationPageComponent {
   });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
+  readonly isFoodstuffPresentation = isFoodstuffPresentation;
 
   constructor() {
     let userId = this.activeUser.activeUser()?.id;

@@ -7,6 +7,9 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { ChatUiComponent, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
+import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../../foodstuffs/presentation/foodstuff-artifact';
+import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
+import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
@@ -80,6 +83,26 @@ describe('Recipe conversation page through published controller and HTTP transpo
       artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: {} }],
     });
   }
+
+  it('renders explicitly presented MCP foodstuff data with name/brand headers and no writes or enrichment fetches', async () => {
+    const page = await open();
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Zeige die Linsen', turn_id: null }))
+      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'foodstuff-turn',
+        message: { role: 'assistant', text: 'Die gefundenen Linsen', turn_id: 'foodstuff-turn' },
+        artifacts: [{ ...conversationProposal(), artifact_id: 'foodstuff', type: 'kochwiki-foodstuff',
+          payload: { title: 'Linsen', subtitle: 'Meine Marke',
+            payload: { unit: 'G', kcal: 200, carbs: 12, protein: 8, fat: 4 } } }],
+      }));
+    await page.submit({ text: 'Zeige die Linsen', acknowledge: vi.fn() });
+    fixture.detectChanges();
+    expect(fixture.debugElement.queryAll(By.directive(FoodstuffPresentationComponent))).toHaveLength(1);
+    expect(fixture.nativeElement.textContent).toContain('Meine Marke');
+    const cards = fixture.debugElement.queryAll(By.directive(NutritionCardComponent));
+    expect(cards.map(card => (card.componentInstance as NutritionCardComponent).basis())).toContain('pro 100 g');
+    expect(getRecipe).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(save).not.toHaveBeenCalled();
+  });
 
   async function submit(page: RecipeConversationPageComponent): Promise<void> {
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null })).mockResolvedValueOnce(turn());
@@ -266,7 +289,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock.mock.calls[0][0]).toBe('/ai/api/v1/agents/kochwiki/sessions');
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(Object.keys(request.input)).toEqual(['context', 'artifactCapabilities']);
-    expect(request.input.artifactCapabilities).toEqual([JSON_ARTIFACT_CAPABILITY]);
+    expect(request.input.artifactCapabilities).toEqual([JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY]);
     expect(request.input.context.source.recipeVersionId).toBe(source.recipeVersionId);
     expect(request.input.context.source.ingredients[0].foodstuff).toEqual(source.ingredients[0].foodstuff);
     expect(request.input.context).not.toHaveProperty('foodstuffs');
