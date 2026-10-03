@@ -59,13 +59,11 @@ The frontend uses `@roithme0/chat-ui` version `0.1.0-alpha` from GitHub Packages
 The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
-tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
-are required after creation or updates, including foodstuffs materialized when
-saving a proposal. Every newly created proposal or refinement and saved draft
-also requires a recipe artifact. MCP domain instructions guide these presentation
-calls; delivery depends on the consuming agent. Internal IDs are confined to
-tool arguments and hidden artifact metadata, with items identified by name and
-meaningful details in user-facing responses. Foodstuff artifacts
+tool; MCP results do not automatically appear as artifacts. Domain behavior is
+defined in [the MCP instructions](backend/app/mcp_instructions.py);
+[MCP integration](docs/mcp.md#domain-instructions) documents delivery and
+instruction ownership. Artifact delivery depends on the consuming agent.
+Foodstuff artifacts
 use the name as title and the brand as optional subtitle. Their complete payload
 contains `unit`, `kcal`, `carbs`, `protein`, and `fat`, with explicit `null` values
 for unknown nutrition. The shared nutrition card displays values per 100 g,
@@ -75,14 +73,12 @@ These presentations have no save, selection, editing, or navigation actions and
 perform no enrichment fetches. This integration requires a chat UI package with
 the capability contract, header guidance, subtitles, and explicit JSON renderer.
 
-Nutrition questions use the separate `kochwiki-nutrition` artifact for either a
-foodstuff or recipe. It contains `kcal`, `carbs`, `protein`, and `fat` (with explicit
+The `kochwiki-nutrition` artifact can display nutrition for either a foodstuff or
+recipe. It contains `kcal`, `carbs`, `protein`, and `fat` (with explicit
 `null` for unknown values), plus a required `basis`: `per-100-g`, `per-100-ml`,
 `per-piece`, `per-serving`, or `whole-recipe`. The shared nutrition card displays
-that basis without converting values. Recipe nutrition is per serving by default;
-whole-recipe requests require multiplying known values by servings. Nutrition
-artifacts have no save actions. Full foodstuff and recipe artifacts remain distinct
-for full item requests and write results; the current full foodstuff display uses
+that basis without converting values. Nutrition artifacts have no save actions.
+The current full foodstuff display uses
 the same nutrition card and can be expanded independently.
 
 Recipe artifacts use the recipe name as their title and render complete data

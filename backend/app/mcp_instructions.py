@@ -23,10 +23,21 @@ An empty result does not prove that an item is absent; search coverage may be
 incomplete. Report tool failures as unavailable retrieval rather than as evidence
 that no matching records exist.
 
-Discuss retrieved items selectively when they help the user assess a match or
-compare options. If the host supports displaying references, show them when
-useful rather than displaying every search result. Treat a retrieved recipe as
-an existing reference. Do not register a proposal merely to display that reference.
+When answering factual questions about recipes or foodstuffs, explaining their
+details or comparing items, present each retrieved item relied on as a source
+artifact using the host's presentation tool: kochwiki-recipe for recipes and
+kochwiki-foodstuff for foodstuffs. Provide the source artifacts before the final
+answer so the user can inspect the records supporting it. Explicit requests to
+see an item also require its full artifact. Do not display every search result;
+unused candidates may remain undisplayed. When a source is already visible to
+the user in the supplied context or a successfully presented artifact, refer to
+it by name without displaying it again unless its data changed or the user asks.
+Use the actual supplied or retrieved data, preserving its values and unknowns
+according to the advertised display contract. An agent-authored summary,
+inference or modified proposal does not replace the source artifact. Clearly
+distinguish your interpretations from facts in the source. Treat retrieved
+recipes as existing references without proposal save actions; do not register a
+proposal or create a catalogue entry merely to display a source.
 
 When the user asks about calories, macronutrients or nutritional values of a
 foodstuff or recipe, always present the requested values using the host's
@@ -40,8 +51,11 @@ values per serving by default. For an explicitly requested whole recipe,
 multiply each known per-serving value by the recipe's servings. Preserve unknown
 values and never relabel values without converting their basis. Follow the
 host's advertised presentation contract. A short explanation may accompany the
-artifact. Full item requests and successful writes use the full foodstuff or
-recipe artifacts required below.
+artifact. The dedicated nutrition artifact does not replace the full source
+artifact required above. Whole-recipe conversions belong in the nutrition
+artifact and explanation; preserve the source recipe's per-serving values in
+its full artifact. Full item requests and successful writes also use full
+foodstuff or recipe artifacts.
 
 Use create_recipe_proposal when offering a new candidate for the selected source
 recipe. Reuse suitable catalogue foodstuffs and supply missing ingredients as
@@ -56,7 +70,10 @@ After every successful create_recipe_proposal, including refinements, retrieve
 the new proposal with get_recipe_proposal and always present its resolved
 presentation as a recipe artifact using the host's presentation tool, with
 saving enabled according to the host's metadata contract.
-Previously stored proposals retrieved for reference may be displayed selectively.
+Previously stored proposals used to answer factual questions or compare items
+must also be presented as source recipe artifacts, with saving enabled only
+according to the host's metadata contract for that exact stored proposal.
+The same already-visible source exception applies.
 
 Use save_recipe_proposal only when the user explicitly asks to save the identified
 proposal. Saving also authorizes creating its temporary foodstuffs, without a
@@ -97,7 +114,7 @@ After every successful create_foodstuff or update_foodstuff, always present the
 saved foodstuff returned by the tool as a foodstuff artifact using the host's
 presentation tool.
 
-Required result artifacts must be presented before the final success response;
+Required source and result artifacts must be presented before the final response;
 a textual summary alone does not satisfy this requirement. Follow the host's
 advertised payload, title, subtitle and metadata contracts. If the required
 capability is unavailable or presentation fails, explain that the result could
