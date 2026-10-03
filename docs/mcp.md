@@ -18,7 +18,12 @@ The guidance covers supplied recipe/foodstuff snapshots, additional searches,
 candidate interpretation and natural-language clarification. Clear matches need
 no extra confirmation. Retrieved references should be discussed or displayed
 selectively when the host supports that presentation. Retrieved recipes are
-distinct from proposals. Dedicated foodstuff creation and updates require explicit
+distinct from proposals. Every newly created proposal (including refinements),
+saved draft, newly created foodstuff and updated foodstuff must be presented as an
+artifact through the host's presentation tool. This includes temporary foodstuffs
+materialized when saving a draft. Internal IDs belong only in tool arguments and
+artifact metadata; user-facing text and display content identify items by name,
+brand and meaningful details. Dedicated foodstuff creation and updates require explicit
 user requests; missing ingredients in recipe proposals remain separate. Empty results
 and retrieval failures must not be treated as proof that an item is absent.
 
@@ -119,8 +124,10 @@ change; warnings, target clarification and duplicate searches are instruction
 policies rather than programmatic checks. Nutrition updates may use the existing
 unit when their basis is clear.
 
-After either creation or update, present the saved foodstuff returned by the tool
-as a foodstuff artifact when supported, with a concise textual fallback. Foodstuff
+After either creation or update, always present the saved foodstuff returned by
+the tool as a foodstuff artifact. If presentation is unavailable or fails, explain
+that the write succeeded but display failed; do not repeat the write to repair
+presentation or claim that an artifact was shown. Foodstuff
 artifacts use frontend-advertised capabilities through the AI Service's local
 presentation tool; these MCP tools return data and do not themselves render artifacts.
 
@@ -159,6 +166,9 @@ a complete replacement recipe, leaving the base unchanged.
 current catalogue foodstuffs, retains temporary definitions and calculates
 per-serving nutrition. Missing referenced foodstuffs cause a tool error. Neither
 registration nor retrieval renders an artifact or saves a recipe.
+After every successful creation or refinement, instructions require retrieving
+the new proposal's resolved presentation and displaying it as a recipe artifact,
+with its exact `proposalId` only in metadata to enable the save action.
 
 `save_recipe_proposal` accepts `proposal_id` and returns the complete saved
 `RecipeVersionOut`. On explicit user request it creates a draft in the source
@@ -173,7 +183,10 @@ save mappings live in application memory and are cleared on shutdown; saved
 database records remain. This assumes a single process. Creation is marked as a
 non-idempotent write, retrieval as read-only, and saving as an idempotent write.
 These tools work without embedding credentials. Instructions guide explicit
-saving and selective presentation; they do not implement authorization checks.
+saving and mandatory result presentation; they do not implement authorization
+checks or enforce artifact delivery. The saved draft is presented without
+`proposalId` metadata, and each newly materialized foodstuff is presented using
+its saved ingredient details. Previously retrieved references remain selective.
 
 ## Endpoint and lifecycle
 

@@ -14,8 +14,12 @@ consulting another recipe would help.
 Assess candidates using their returned details and the conversation. Choose a
 clear match without an extra confirmation step. When the intended item remains
 ambiguous, ask the user in natural language. Ranking alone does not establish
-identity. Use returned identifiers when referring to existing records; never
-invent them. An empty result does not prove that an item is absent: only records
+identity. Use returned identifiers only in tool arguments and artifact metadata;
+never invent them. Do not expose proposal, foodstuff, recipe version, lineage,
+artifact or other internal IDs in user-facing text, titles, subtitles or display
+payloads. Refer to items by name, brand and meaningful details instead, including
+when asking for clarification or explaining a tool error.
+An empty result does not prove that an item is absent: only records
 with current embeddings are searchable. Report tool failures as unavailable
 retrieval rather than as evidence that no matching records exist.
 
@@ -35,14 +39,24 @@ in backend memory and does not save a draft or foodstuffs.
 For refinements, create a new complete proposal with baseProposalId referring to
 the previous proposal and retain its original sourceRecipeVersionId. Use
 get_recipe_proposal to retrieve the stored input and its resolved presentation.
-Discuss or display its resolved presentation selectively when useful.
-A proposal is a candidate managed by Kochwiki; an artifact is its optional display
-in the host. These tools return data and do not themselves render artifacts.
+After every successful create_recipe_proposal, including refinements, retrieve
+the new proposal with get_recipe_proposal and always present its resolved
+presentation as a recipe artifact using the host's presentation tool. Include
+the exact returned proposalId only in artifact metadata to enable saving.
+A proposal is a candidate managed by Kochwiki; its artifact displays that
+candidate in the host. These MCP tools return data and do not themselves render
+artifacts. Previously stored proposals retrieved for reference may be displayed
+selectively.
 
 Use save_recipe_proposal only when the user explicitly asks to save the identified
 proposal. Saving also authorizes creating its temporary foodstuffs, without a
-separate confirmation. Present the returned recipe as an artifact when supported
-or in text.
+separate confirmation. Always present the returned saved recipe as a recipe
+artifact using the host's presentation tool. Use the complete saved result,
+including its resolved ingredients and nutrition, and omit proposalId metadata
+because this artifact represents a saved recipe. Also present each foodstuff
+newly created from a temporary definition as a foodstuff artifact, using its
+saved details from the returned recipe's ingredients. Existing catalogue
+foodstuffs do not need separate artifacts merely because the draft uses them.
 
 Use create_foodstuff only when the user explicitly requests a dedicated catalogue
 entry. Do not create missing ingredients while discussing recipe proposals.
@@ -74,8 +88,16 @@ existing kcal or macro values, warn that their nutritional basis will change and
 confirm that this is intended. Do not invent conversions; the tool permits unit
 changes without enforcing this warning.
 
-After successful creation or update, present the saved foodstuff returned by the
-tool as a foodstuff artifact when the host supports it. Otherwise provide a
-concise textual presentation of that saved result. This is a persisted catalogue
-record, not a recipe proposal.
+After every successful create_foodstuff or update_foodstuff, always present the
+saved foodstuff returned by the tool as a foodstuff artifact using the host's
+presentation tool. This is a persisted catalogue record, not a recipe proposal.
+
+Required result artifacts must be presented before the final success response;
+a textual summary alone does not satisfy this requirement. Follow the host's
+advertised payload, title, subtitle and metadata contracts. If the required
+capability is unavailable or presentation fails, explain that the operation
+succeeded but its result could not be displayed. Do not repeat a successful
+creation or update to repair presentation; retry only retrieval or presentation
+when appropriate. Never claim that an artifact was displayed unless presentation
+succeeded.
 """

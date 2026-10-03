@@ -60,6 +60,12 @@ The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff and recipe presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
 tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
+are required after creation or updates, including foodstuffs materialized when
+saving a proposal. Every newly created proposal or refinement and saved draft
+also requires a recipe artifact. MCP domain instructions guide these presentation
+calls; delivery depends on the consuming agent. Internal IDs are confined to
+tool arguments and hidden artifact metadata, with items identified by name and
+meaningful details in user-facing responses. Foodstuff artifacts
 use the name as title and the brand as optional subtitle. Their complete payload
 contains `unit`, `kcal`, `carbs`, `protein`, and `fat`, with explicit `null` values
 for unknown nutrition. The shared nutrition card displays values per 100 g,
