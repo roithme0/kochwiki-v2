@@ -1,6 +1,6 @@
 # Kochwiki
 
-Kochwiki is a private, mobile-first recipe app. This next iteration builds on v1 and introduces AI-assisted recipe improvements, while serving as a practical project for professional AI and full-stack engineering.
+Kochwiki is a personal, private, mobile-first recipe app. This next iteration builds on v1 and introduces AI-assisted recipe improvements.
 
 ## Core Features
 
@@ -47,10 +47,6 @@ proxy, so the backend has no CORS middleware. Server-to-server requests require
 no browser CORS permissions. MCP validates Host and Origin headers separately.
 
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
-
-## Scope
-
-Kochwiki is for personal, private use. It is also a learning environment for applying production-minded AI and full-stack practices.
 
 ## AI Workflows
 
