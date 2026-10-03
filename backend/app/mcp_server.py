@@ -109,10 +109,10 @@ def create_mcp_server(
     ) -> list[RecipeVersionOut]:
         """Find a bounded, ranked shortlist of existing recipes by name.
 
-        Results include complete active versions and drafts; historical versions
-        are excluded.
+        Results include complete active versions and drafts with per-serving
+        nutrition; historical versions are excluded.
         Multiple versions of one recipe may appear. Only versions with current
-        embeddings can be returned. Retrieval does not create or save a proposal.
+        embeddings can be returned. This operation is read-only.
         """
         try:
             candidates = services.get_recipe_search().search(query, limit)
@@ -157,13 +157,14 @@ def create_mcp_server(
         read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False,
     ))
     def create_recipe_proposal(proposal: RecipeProposalCreate) -> RecipeProposalOut:
-        """Register a complete candidate recipe without saving a draft or foodstuffs.
+        """Register a complete candidate recipe in memory.
 
         Ingredients reference catalogue IDs or contain inline temporary definitions.
-        baseProposalId links a refinement to a previous proposal; the source version
-        must match and recipe is a complete replacement. Returns the stored input
-        with a new proposal ID and creation time. Proposals are lost on backend
-        restart. Registration does not render an artifact.
+        baseProposalId references a stored proposal; sourceRecipeVersionId must
+        match that proposal's source version and recipe supplies the complete
+        candidate. Returns the stored input with a new proposal ID and creation
+        time. Proposals are lost on backend
+        restart. No database records are written.
         """
         with tool_errors("Recipe proposal", "creation"), SessionLocal() as session:
             return services.recipe_proposals.create(session, proposal)
@@ -172,13 +173,12 @@ def create_mcp_server(
         read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False,
     ))
     def get_recipe_proposal(proposal_id: UUID) -> RecipeProposalDetailsOut:
-        """Retrieve a stored proposal and its resolved presentation, without saving.
+        """Retrieve a stored proposal and its resolved presentation by proposal ID.
 
-        The proposal contains the original input and identifiers for refinement.
+        The proposal contains the original input and stored identifiers.
         The presentation enriches existing foodstuffs from the current catalogue,
         includes inline temporary foodstuffs and calculates per-serving nutrition.
-        Missing referenced foodstuffs cause an error. This tool returns data
-        without displaying an artifact.
+        Missing referenced foodstuffs cause an error. This operation is read-only.
         """
         with tool_errors("Recipe proposal", "retrieval"), SessionLocal() as session:
             return RecipeProposalDetailsOut(
@@ -194,9 +194,9 @@ def create_mcp_server(
 
         All creations commit atomically or roll back together. The draft preserves
         the source recipe's lineage. Repeated saves return the same created
-        version in its current state; a deleted
-        saved version is an error and is never recreated. Returns the complete
-        saved recipe version.
+        version in its current state; a deleted saved version is an error and is
+        never recreated. Returns the complete saved recipe version with
+        per-serving nutrition.
         """
         with tool_errors("Recipe proposal", "saving"):
             return save_proposal(SessionLocal, services.recipe_proposals, proposal_id)

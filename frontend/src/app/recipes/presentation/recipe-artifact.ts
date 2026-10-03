@@ -14,7 +14,7 @@ const recipePresentationSchema = z.extend(zRecipePresentationOut, {
 
 const recipeMetadataSchema = z.strictObject({
   proposalId: z.optional(z.uuid().check(z.meta({
-    description: 'The exact KochWiki proposalId of the stored proposal represented by this presentation. Omit for existing recipes or recipes without a stored proposal. Its presence enables the save button for that proposal.',
+    description: 'Optional exact KochWiki proposalId identifying the stored proposal represented by this presentation. Valid only when this presentation represents that stored proposal. Its presence enables the save button for that proposal.',
   }))),
 });
 

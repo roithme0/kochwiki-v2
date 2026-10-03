@@ -14,6 +14,8 @@ import { SnackBarHandle, SnackBarService } from '../../../core/services/snack-ba
 import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
 import { recipeProposalId, isRecipePresentation } from '../../presentation/recipe-artifact';
 import { isFoodstuffPresentation } from '../../../foodstuffs/presentation/foodstuff-artifact';
+import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
+import { isNutritionPresentation, nutritionBasisLabel } from '../../../core/presentation/nutrition-artifact';
 
 function proposalSaveErrorMessage(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
@@ -31,7 +33,7 @@ function proposalSaveErrorMessage(error: unknown): string {
 
 @Component({
   selector: 'app-recipe-conversation-page',
-  imports: [ChatUiComponent, RecipePresentationComponent, FoodstuffPresentationComponent, MatButtonModule, RouterLink],
+  imports: [ChatUiComponent, RecipePresentationComponent, FoodstuffPresentationComponent, NutritionCardComponent, MatButtonModule, RouterLink],
   templateUrl: './recipe-conversation-page.component.html',
   styleUrl: './recipe-conversation-page.component.scss',
 })
@@ -72,6 +74,8 @@ export class RecipeConversationPageComponent {
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
   readonly isFoodstuffPresentation = isFoodstuffPresentation;
+  readonly isNutritionPresentation = isNutritionPresentation;
+  readonly nutritionBasisLabel = nutritionBasisLabel;
 
   constructor() {
     let userId = this.activeUser.activeUser()?.id;

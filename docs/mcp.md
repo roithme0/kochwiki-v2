@@ -9,18 +9,11 @@ Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
 
 Kochwiki provides domain guidance as MCP server instructions in connection
 metadata (`instructions` in the initialization response, also available through
-SDK discovery). The text lives in `backend/app/mcp_instructions.py`; it is not
-a separate tool, prompt or resource. An SDK client can read `client.instructions`
-after connecting. The consuming service must include it in the agent's context;
+SDK discovery). The authoritative domain policy lives in
+[`backend/app/mcp_instructions.py`](../backend/app/mcp_instructions.py), not in
+this document or a separate tool, prompt or resource. An SDK client can read
+`client.instructions` after connecting. The consuming service must include it in the agent's context;
 delivery through MCP alone does not cause a model to follow it.
-
-The guidance covers supplied recipe/foodstuff snapshots, additional searches,
-candidate interpretation and natural-language clarification. Clear matches need
-no extra confirmation. Retrieved references should be discussed or displayed
-selectively when the host supports that presentation. Retrieved recipes are
-distinct from proposals. Dedicated foodstuff creation and updates require explicit
-user requests; missing ingredients in recipe proposals remain separate. Empty results
-and retrieval failures must not be treated as proof that an item is absent.
 
 Kochwiki owns the domain guidance. The AI Service consumes these instructions
 alongside discovered tools and supplies only generic conversation, tool execution
@@ -30,22 +23,42 @@ generic local `present_artifact` tool. MCP results remain data and do not
 automatically display artifacts. No Kochwiki recipe workflow instructions or
 presentation schemas are defined in the AI Service.
 
+Domain instructions guide agent behavior; they do not implement authorization
+checks or enforce artifact delivery. This document describes integration,
+contracts and operational limitations rather than restating those policies.
+
 Instructions and tool definitions are discovered at AI Service startup. Restart
 the AI Service after changing them; there is no live instruction refresh.
 
 ### Guidance responsibilities
 
 - MCP instructions own domain workflows: when to search, clarify, create, refine,
-  save and present results, including duplicate checks and unit clarification.
-- Tool descriptions and parameter schemas describe each operation's inputs,
-  outputs, side effects and constraints. They do not repeat multi-step policies.
-- Frontend artifact capabilities describe the display, complete payload, headers
-  and metadata meanings. They do not prescribe retrieval or write workflows.
+  save and present results, and why a particular tool or artifact is appropriate.
+  They own sequencing, duplicate checks, unit clarification, artifact selection,
+  required result presentation and domain behavior such as hiding internal IDs.
+- Each tool description and parameter schema describes only that operation:
+  how to call it, accepted inputs, returned outputs, side effects and constraints.
+  Descriptions must be self-contained. They must not prescribe overall behavior,
+  workflow sequencing, when or why to call the tool, or comparisons and directions
+  to other tools or artifacts.
+- Each frontend artifact capability describes only its own display and how to
+  supply its complete payload, headers and metadata. This includes nutritional
+  basis, unknown-value representation and the meaning of any enabled actions.
+  It must not prescribe when or why to display the artifact, retrieval or write
+  workflows, overall behavior, or distinctions and directions to other artifacts.
 - AI Service instructions own generic conversation and execution behavior.
-  Its presentation tool supplies generic capability selection and validation guidance.
+  Its presentation tool describes its own invocation and validation contract;
+  Kochwiki artifact selection policy remains in MCP instructions.
 
-Short statements of consequences may appear at a boundary, such as presentation
-not saving domain data. Keep workflow policies in MCP instructions to avoid drift.
+Keep each rule with its owner to avoid duplication and drift. MCP instructions
+refer to advertised contracts rather than repeating payload fields, header rules
+or metadata definitions. Tool and capability descriptions may state their own
+consequences, such as read-only retrieval, values not being converted by a display,
+or metadata enabling a save button. These are contract facts, not workflow policy.
+
+For example, "Display calories and macronutrients with the supplied basis"
+belongs in the nutrition capability. "Use the nutrition artifact for nutrition
+questions" and comparisons with full item displays belong in MCP instructions.
 
 ## Foodstuff search
 
@@ -56,10 +69,9 @@ names, brands, units and nutrition values. Similarity scores stay internal.
 The SDK wraps the list in structured content as `{"result": [...]}`; an empty
 eligible catalogue returns `{"result": []}` successfully.
 
-Search is a prefilter for the agent, not an identity decision. The agent uses
-the summaries and conversation to select an item or clarify ambiguity. Only
-records with current embeddings are eligible. Configure `OPENAI_API_KEY` and
-populate embeddings before use; see [semantic search setup](foodstuff-semantic-search.md).
+Ranking is not an identity guarantee. Only records with current embeddings are
+eligible. Configure `OPENAI_API_KEY` and populate embeddings before use;
+see [semantic search setup](foodstuff-semantic-search.md).
 Blank queries and invalid limits produce MCP tool errors. Missing credentials
 report semantic search unavailable; query embedding failures report a tool
 error rather than an empty list. The tool remains discoverable without a key.
@@ -83,17 +95,14 @@ produce tool errors; database failures roll back and return a generic error.
 Creation works without OpenAI credentials; embedding refresh remains disabled
 in that case. The tool is marked as a write and is not idempotent.
 
-Instructions require searching for duplicates first and warning/clarifying
-plausible matches. This is agent guidance, not enforced duplicate detection;
-search covers only current embeddings. If any nutrition value is supplied,
-including zero, the agent must ask for a missing user-provided unit. Otherwise
-it may choose a suitable unit and mention that choice. Tool validation always
-requires a unit, but cannot establish whether it came from the user.
+Tool validation requires a unit but cannot establish whether it came from the
+user. Semantic search covers only current embeddings and is not an exhaustive
+duplicate check; persistence rejects existing name/brand conflicts.
 
-This tool immediately persists a catalogue entry for a dedicated user request.
+This tool immediately persists a catalogue entry.
 It does not create recipe proposals, temporary ingredients or recipe drafts.
 
-## Foodstuff updates and saved results
+## Foodstuff updates
 
 `update_foodstuff` accepts `foodstuff_id` (a positive integer) and `changes`
 using the REST `FoodstuffUpdate` schema. Omitted fields remain unchanged;
@@ -105,24 +114,9 @@ Database failures roll back and return a generic error. The tool is marked as a
 potentially destructive, idempotent write. Name/brand changes schedule embedding
 refresh after commit; nutrition and unit changes alone do not.
 
-Instructions require explicit update requests and an unambiguously identified
-target, presented before updating through an artifact when supported or through
-its concrete details in text. Clarify uncertainty rather than guessing. A precise
-request for a clearly identified target needs no additional confirmation. Updates
-affect all recipes using the shared entry. For name/brand changes, search for
-duplicates of the proposed identity, excluding the target, and clarify plausible
-matches.
-
-If a unit change retains existing kcal or macro values, the agent warns about
-their changed nutritional basis and confirms intent. The backend permits the
-change; warnings, target clarification and duplicate searches are instruction
-policies rather than programmatic checks. Nutrition updates may use the existing
-unit when their basis is clear.
-
-After either creation or update, present the saved foodstuff returned by the tool
-as a foodstuff artifact when supported, with a concise textual fallback. Foodstuff
-artifacts use frontend-advertised capabilities through the AI Service's local
-presentation tool; these MCP tools return data and do not themselves render artifacts.
+Updates affect all recipes using the shared entry. Changing the unit while
+retaining nutrition values changes their basis without converting those values;
+the backend permits this change without checking user intent.
 
 ## Recipe search
 
@@ -135,8 +129,7 @@ stay internal. Active versions and drafts with current name embeddings are
 eligible; historical versions are excluded. Multiple versions of a lineage
 can appear independently.
 
-As with foodstuff search, results are candidates for the agent to assess in
-conversation. Retrieval neither creates a proposal nor displays an artifact.
+Retrieval neither creates a proposal nor displays an artifact.
 Blank queries, invalid limits, missing credentials and query embedding failures
 produce tool errors; an empty eligible catalogue succeeds with an empty list.
 The tool remains discoverable without credentials. Both search services share
@@ -161,10 +154,9 @@ per-serving nutrition. Missing referenced foodstuffs cause a tool error. Neither
 registration nor retrieval renders an artifact or saves a recipe.
 
 `save_recipe_proposal` accepts `proposal_id` and returns the complete saved
-`RecipeVersionOut`. On explicit user request it creates a draft in the source
-lineage and materializes temporary foodstuffs in one transaction. Saving
-authorizes those foodstuff creations without separate confirmation. Failed saves
-roll back together; database errors return a generic tool error. Successful
+`RecipeVersionOut`. It creates a draft in the source lineage and materializes
+temporary foodstuffs in one transaction. Failed saves roll back together;
+database errors return a generic tool error. Successful
 commits retain the existing embedding refresh triggers.
 
 Repeated saves return the same created version in its current state, even after
@@ -172,8 +164,7 @@ editing or publication. A deleted saved version is not recreated. Proposals and
 save mappings live in application memory and are cleared on shutdown; saved
 database records remain. This assumes a single process. Creation is marked as a
 non-idempotent write, retrieval as read-only, and saving as an idempotent write.
-These tools work without embedding credentials. Instructions guide explicit
-saving and selective presentation; they do not implement authorization checks.
+These tools work without embedding credentials.
 
 ## Endpoint and lifecycle
 

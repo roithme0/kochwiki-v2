@@ -57,9 +57,13 @@ Kochwiki is for personal, private use. It is also a learning environment for app
 The frontend uses `@roithme0/chat-ui` version `0.1.0-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each stored proposal can be saved explicitly as a new draft in the source lineage, through its artifact save button or an explicit request in chat. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves return the same created recipe version; ambiguous failures are not retried automatically.
 
 The conversation frontend advertises the shared chat UI JSON capability and a
-KochWiki foodstuff and recipe presentation capabilities alongside the selected recipe context.
+KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
-tool; MCP results do not automatically appear as artifacts. Foodstuff artifacts
+tool; MCP results do not automatically appear as artifacts. Domain behavior is
+defined in [the MCP instructions](backend/app/mcp_instructions.py);
+[MCP integration](docs/mcp.md#domain-instructions) documents delivery and
+instruction ownership. Artifact delivery depends on the consuming agent.
+Foodstuff artifacts
 use the name as title and the brand as optional subtitle. Their complete payload
 contains `unit`, `kcal`, `carbs`, `protein`, and `fat`, with explicit `null` values
 for unknown nutrition. The shared nutrition card displays values per 100 g,
@@ -68,6 +72,14 @@ partial or all-zero totals show absolute values and missing-value indicators.
 These presentations have no save, selection, editing, or navigation actions and
 perform no enrichment fetches. This integration requires a chat UI package with
 the capability contract, header guidance, subtitles, and explicit JSON renderer.
+
+The `kochwiki-nutrition` artifact can display nutrition for either a foodstuff or
+recipe. It contains `kcal`, `carbs`, `protein`, and `fat` (with explicit
+`null` for unknown values), plus a required `basis`: `per-100-g`, `per-100-ml`,
+`per-piece`, `per-serving`, or `whole-recipe`. The shared nutrition card displays
+that basis without converting values. Nutrition artifacts have no save actions.
+The current full foodstuff display uses
+the same nutrition card and can be expanded independently.
 
 Recipe artifacts use the recipe name as their title and render complete data
 through the shared recipe presentation component: servings, preparation time,

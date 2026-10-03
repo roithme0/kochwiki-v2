@@ -4,6 +4,7 @@ import { ChatArtifact, ChatArtifactCapability, JSON_ARTIFACT_CAPABILITY } from '
 import { RecipePresentation } from '../models/recipe-presentation';
 import { RECIPE_ARTIFACT_CAPABILITY, isRecipePresentation, isRecipeArtifactMetadata } from '../presentation/recipe-artifact';
 import { FOODSTUFF_ARTIFACT_CAPABILITY, isFoodstuffPresentation } from '../../foodstuffs/presentation/foodstuff-artifact';
+import { NUTRITION_ARTIFACT_CAPABILITY, isNutritionPresentation } from '../../core/presentation/nutrition-artifact';
 
 export interface RecipeSessionInput {
   readonly context: RecipeContext;
@@ -17,7 +18,7 @@ export interface RecipeContext {
 export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
   return {
     context: { source: structuredClone(source) },
-    artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY, RECIPE_ARTIFACT_CAPABILITY],
+    artifactCapabilities: [JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY, RECIPE_ARTIFACT_CAPABILITY, NUTRITION_ARTIFACT_CAPABILITY],
   };
 }
 
@@ -69,6 +70,10 @@ export function mapConversationArtifact(artifact: ArtifactResponse): ChatArtifac
   if (artifact.type === FOODSTUFF_ARTIFACT_CAPABILITY.type) {
     const presentation = presentArtifact(artifact);
     if (isFoodstuffPresentation(presentation.payload)) return presentation;
+  }
+  if (artifact.type === NUTRITION_ARTIFACT_CAPABILITY.type && isRecord(artifact.payload)
+    && isNutritionPresentation(artifact.payload['payload'])) {
+    return presentArtifact(artifact);
   }
   return {
     kind: 'artifact',

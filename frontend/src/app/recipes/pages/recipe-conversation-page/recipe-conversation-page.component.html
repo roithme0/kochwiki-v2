@@ -12,12 +12,17 @@
       <app-foodstuff-presentation [foodstuff]="payload" />
     }
   </ng-template>
+  <ng-template #nutritionRenderer let-payload>
+    @if (isNutritionPresentation(payload)) {
+      <app-nutrition-card [nutrition]="payload" [basis]="nutritionBasisLabel(payload.basis)" />
+    }
+  </ng-template>
   <ai-chat-ui class="chat-ui-integration"
     bannerTitle="Dein Rezept weiterentwickeln"
     bannerDescription="Beschreibe, was du verbessern möchtest. Vorschläge verändern dein Rezept nicht. Du kannst sie als neue Entwürfe speichern."
     composerPlaceholder="Was möchtest du verbessern?"
     [content]="content()"
-    [artifactRenderers]="{ 'kochwiki-recipe': artifactRenderer(recipeRenderer), 'kochwiki-foodstuff': artifactRenderer(foodstuffRenderer) }"
+    [artifactRenderers]="{ 'kochwiki-recipe': artifactRenderer(recipeRenderer), 'kochwiki-foodstuff': artifactRenderer(foodstuffRenderer), 'kochwiki-nutrition': artifactRenderer(nutritionRenderer) }"
     [composerDisabled]="view().composerDisabled"
     [conversationStatus]="view().status"
     (messageSubmitted)="submit($event)"

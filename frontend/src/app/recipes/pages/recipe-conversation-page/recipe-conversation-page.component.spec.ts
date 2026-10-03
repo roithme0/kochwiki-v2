@@ -9,6 +9,7 @@ import { By } from '@angular/platform-browser';
 import { ChatUiComponent, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
 import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../../foodstuffs/presentation/foodstuff-artifact';
 import { RECIPE_ARTIFACT_CAPABILITY } from '../../presentation/recipe-artifact';
+import { NUTRITION_ARTIFACT_CAPABILITY } from '../../../core/presentation/nutrition-artifact';
 import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
 import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
@@ -109,6 +110,36 @@ describe('Recipe conversation page through published controller and HTTP transpo
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null })).mockResolvedValueOnce(turn());
     await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
   }
+
+  it.each([
+    { title: 'Linsen', subtitle: 'Meine Marke', basis: 'per-100-g', label: 'pro 100 g' },
+    { title: 'Linsensuppe', basis: 'per-serving', label: 'pro Portion' },
+    { title: 'Linsensuppe', basis: 'whole-recipe', label: 'gesamtes Rezept' },
+  ])('renders dedicated nutrition for $title with $basis without full item or save actions', async item => {
+    const page = await open();
+    const payload = { basis: item.basis, kcal: 200, carbs: null, protein: 8, fat: 0 };
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Nährwerte?', turn_id: null }))
+      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'nutrition-turn',
+        message: { role: 'assistant', text: 'Hier sind die Nährwerte.', turn_id: 'nutrition-turn' },
+        artifacts: [{ ...conversationProposal(), type: 'kochwiki-nutrition',
+          payload: { title: item.title, subtitle: item.subtitle, payload } }],
+      }));
+    await page.submit({ text: 'Nährwerte?', acknowledge: vi.fn() });
+    fixture.detectChanges();
+    const cards = fixture.debugElement.queryAll(By.directive(NutritionCardComponent));
+    expect(cards).toHaveLength(2);
+    const card = cards[1].componentInstance as NutritionCardComponent;
+    expect(card.basis()).toBe(item.label);
+    expect(card.nutrition()).toEqual(payload);
+    expect(fixture.nativeElement.textContent).toContain(item.title);
+    if (item.subtitle) expect(fixture.nativeElement.textContent).toContain(item.subtitle);
+    expect(fixture.debugElement.queryAll(By.directive(FoodstuffPresentationComponent))).toHaveLength(0);
+    expect(fixture.debugElement.queryAll(By.directive(RecipePresentationComponent))).toHaveLength(1);
+    expect(fixture.nativeElement.textContent).not.toContain('Als Entwurf speichern');
+    expect(getRecipe).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(save).not.toHaveBeenCalled();
+  });
 
   it('renders a recipe with temporary ingredients and preparation time without saving or fetching', async () => {
     const page = await open();
@@ -330,7 +361,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock.mock.calls[0][0]).toBe('/ai/api/v1/agents/kochwiki/sessions');
     const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
     expect(Object.keys(request.input)).toEqual(['context', 'artifactCapabilities']);
-    expect(request.input.artifactCapabilities).toEqual([JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY, RECIPE_ARTIFACT_CAPABILITY]);
+    expect(request.input.artifactCapabilities).toEqual([JSON_ARTIFACT_CAPABILITY, FOODSTUFF_ARTIFACT_CAPABILITY, RECIPE_ARTIFACT_CAPABILITY, NUTRITION_ARTIFACT_CAPABILITY]);
     expect(request.input.context.source.recipeVersionId).toBe(source.recipeVersionId);
     expect(request.input.context.source.ingredients[0].foodstuff).toEqual(source.ingredients[0].foodstuff);
     expect(request.input.context).not.toHaveProperty('foodstuffs');
