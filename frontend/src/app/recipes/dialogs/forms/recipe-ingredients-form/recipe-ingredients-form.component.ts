@@ -1,3 +1,4 @@
+import type { IngredientOut, RecipeVersionOut } from '../../../../core/api/generated';
 import {
   Component,
   DestroyRef,
@@ -8,7 +9,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -18,9 +19,7 @@ import {
   Validators,
   FormBuilder,
 } from '@angular/forms';
-import { Foodstuff } from '../../../../foodstuffs/models/foodstuff';
-import { Ingredient } from '../../../models/ingredient';
-import { RecipeVersion } from '../../../models/recipe';
+import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { MatDialog } from '@angular/material/dialog';
@@ -43,7 +42,6 @@ import {
 @Component({
   selector: 'app-recipe-ingredients-form',
   imports: [
-    CommonModule,
     IngredientFieldComponent,
     MatButtonModule,
     ReactiveFormsModule,
@@ -53,14 +51,14 @@ import {
     MatExpansionModule,
     MatSelectModule,
     ChartLegendElementComponent,
-    MacroChartComponent,
-  ],
+    MacroChartComponent
+],
   templateUrl: './recipe-ingredients-form.component.html',
   styleUrl: './recipe-ingredients-form.component.scss',
 })
 export class RecipeIngredientsFormComponent {
-  foodstuffs = input.required<Foodstuff[]>();
-  recipeVersion = input<RecipeVersion>();
+  foodstuffs = input.required<FoodstuffOut[]>();
+  recipeVersion = input<RecipeVersionOut>();
 
   readonly recipeFormDirective = inject(FormGroupDirective);
   readonly fb: FormBuilder = inject(FormBuilder);
@@ -70,7 +68,6 @@ export class RecipeIngredientsFormComponent {
   recipeForm!: FormGroup;
   ingredientsFormGroup!: FormGroup;
   readonly ingredientDrafts = signal<DraftIngredientNutrition[]>([]);
-  readonly showLegend = signal(false);
   readonly legend: WritableSignal<Record<string, ChartLegendElement>> = signal({});
   readonly nutritionState = computed((): DraftNutritionState =>
     calculateDraftNutrition(
@@ -120,15 +117,16 @@ export class RecipeIngredientsFormComponent {
       'ingredientsFormGroup'
     ) as FormGroup;
 
-    const recipeVersion: RecipeVersion | undefined = this.recipeVersion();
+    const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
     if (recipeVersion != undefined) {
       this.recipeForm.get('ingredientsFormGroup')?.patchValue({
         servings: recipeVersion.servings,
       });
-      recipeVersion.ingredients.forEach((ingredient: Ingredient) =>
+      recipeVersion.ingredients.forEach((ingredient: IngredientOut) =>
         this.addIngredient(ingredient)
       );
     }
+    if (this.ingredients.length === 0) this.addIngredient();
 
     this.ingredientsFormGroup.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -140,7 +138,7 @@ export class RecipeIngredientsFormComponent {
     return this.recipeForm.get('ingredientsFormGroup.ingredients') as FormArray;
   }
 
-  addIngredient(ingredient?: Ingredient): void {
+  addIngredient(ingredient?: IngredientOut): void {
     this.ingredients.push(
       this.fb.group({
         index: [this.ingredients.length + 1, Validators.required],
@@ -155,10 +153,6 @@ export class RecipeIngredientsFormComponent {
     this.ingredients.removeAt(index);
     this.reindexIngredients();
     this.updateNutritionDraft();
-  }
-
-  toggleLegend(): void {
-    this.showLegend.update((showLegend) => !showLegend);
   }
 
   onNutritionPreviewFocusIn(event: FocusEvent): void {

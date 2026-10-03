@@ -4,6 +4,10 @@
   gap: 1rem;
 }
 
+.short-number-field {
+  width: min(100%, 9rem);
+}
+
 .steps-wrapper {
   display: flex;
   flex-direction: column;
@@ -20,32 +24,36 @@
   gap: 0.25rem;
 }
 
+.drag-handle {
+  cursor: grab;
+  margin: 5px 0;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
 .remove-button {
+  flex: 0 0 auto;
   margin: 5px 0;
 }
 
-.index-and-description-wrapper {
+.description-wrapper {
   min-width: 0;
+  flex: 1;
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-}
-
-.index-field {
-  flex: 0 0 4rem;
 }
 
 .description-field {
   flex: 1;
 }
 
-/* remove arrows from input number field */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
+.add-button {
+  align-self: flex-start;
+  width: min(100%, 15rem);
 }
 
-/* remove arrows from input number field */
-input[type="number"] {
-  -moz-appearance: textfield;
+.step-limit {
+  margin: 0;
 }

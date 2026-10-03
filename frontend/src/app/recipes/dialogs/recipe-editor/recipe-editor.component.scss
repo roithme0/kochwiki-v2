@@ -1,12 +1,10 @@
+@use "../../../../styles/mat-card-styles.scss" as *;
+
 :host {
   display: flex;
   flex-direction: column;
   inline-size: 100%;
   min-block-size: 100%;
-}
-
-:host ::ng-deep .mat-horizontal-content-container {
-  padding: 0.75rem 24px 24px !important;
 }
 
 mat-spinner {
@@ -45,6 +43,27 @@ mat-spinner {
   padding-block: 0.375rem;
   line-height: 1.25;
   white-space: normal;
+}
+
+.form-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 1.5rem;
+}
+
+.form-section {
+  min-inline-size: 0;
+}
+
+.form-section mat-card {
+  min-inline-size: 0;
+  gap: 1rem;
+}
+
+.form-section h2 {
+  margin: 0;
+  font: inherit;
 }
 
 .button-wrapper mat-icon {

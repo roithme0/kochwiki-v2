@@ -2,13 +2,13 @@ from decimal import Decimal
 from typing import Self
 from uuid import UUID
 
+from kochwiki_contract import FoodstuffSummaryOut, Unit
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-from app.models.enums import Unit
-from app.schemas.common import JsonDecimal
 
 
 class FoodstuffFields(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=50)
     brand: str | None = Field(default=None, max_length=100)
     unit: Unit
@@ -43,20 +43,6 @@ class FoodstuffUpdate(FoodstuffFields):
         if "unit" in self.model_fields_set and self.unit is None:
             raise ValueError("unit cannot be null")
         return self
-
-
-class FoodstuffSummaryOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    brand: str | None
-    unit: Unit
-    unitVerbose: str
-    kcal: JsonDecimal | None
-    carbs: JsonDecimal | None
-    protein: JsonDecimal | None
-    fat: JsonDecimal | None
 
 
 class FoodstuffOut(FoodstuffSummaryOut):

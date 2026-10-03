@@ -1,27 +1,40 @@
----
-version: "3.1"
+name: kochwiki-v2-production
 
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.2-pg16
     restart: unless-stopped
     environment:
       POSTGRES_DB: kochwiki
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     volumes:
-      - /volume1/docker/Kochwiki/production/postgresql/data:/var/lib/postgresql/data
+      - ./postgresql/data:/var/lib/postgresql/data
 
   backend:
-    image: roithme0/kochwiki-backend:latest
-    ports:
-      - 8888:8080
+    image: roithme0/kochwiki-v2-backend:latest
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      DATABASE_URL: postgresql+psycopg://user:password@db:5432/kochwiki
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*}
     depends_on:
       - db
 
   frontend:
-    image: roithme0/kochwiki-frontend:latest
-    ports:
-      - 8000:80
+    image: roithme0/kochwiki-v2-frontend:latest
     depends_on:
       - backend
+
+  gateway:
+    image: nginx:1.25
+    environment:
+      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-}
+    entrypoint: ["/bin/sh", "-c", "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
+    ports:
+      - "${GATEWAY_PORT:-8000}:80"
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ./gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
+    depends_on:
+      - backend
+      - frontend

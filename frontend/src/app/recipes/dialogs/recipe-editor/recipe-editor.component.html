@@ -10,31 +10,55 @@
   }
   @case ("ready") {
     <form [formGroup]="recipeForm" class="form">
-      <mat-stepper>
-        <mat-step>
-          <app-recipe-meta-form
-            [recipeVersion]="recipeVersion() ?? undefined"
-          />
-        </mat-step>
-        <mat-step>
-          <app-recipe-ingredients-form
-            [foodstuffs]="foodstuffs()"
-            [recipeVersion]="recipeVersion() ?? undefined"
-          />
-        </mat-step>
-        <mat-step>
-          <app-recipe-preparation-form
-            [recipeVersion]="recipeVersion() ?? undefined"
-          />
-        </mat-step>
-      </mat-stepper>
-      <mat-divider />
+      <app-section-nav
+        #sectionNav
+        class="section-nav"
+        label="Rezeptabschnitte"
+        [items]="sectionNavItems"
+        [activeId]="activeSection()"
+        (selected)="goToSection($event)"
+      />
+      <div class="form-sections">
+        <section #editorSection id="basics" class="form-section" aria-labelledby="basics-heading">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title><h2 id="basics-heading">Basis</h2></mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <app-recipe-meta-form [recipeVersion]="recipeVersion() ?? undefined" />
+            </mat-card-content>
+          </mat-card>
+        </section>
+        <section #editorSection id="ingredients" class="form-section" aria-labelledby="ingredients-heading">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title><h2 id="ingredients-heading">Zutaten</h2></mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <app-recipe-ingredients-form
+                [foodstuffs]="foodstuffs()"
+                [recipeVersion]="recipeVersion() ?? undefined"
+              />
+            </mat-card-content>
+          </mat-card>
+        </section>
+        <section #editorSection id="preparation" class="form-section" aria-labelledby="preparation-heading">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title><h2 id="preparation-heading">Zubereitung</h2></mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <app-recipe-preparation-form [recipeVersion]="recipeVersion() ?? undefined" />
+            </mat-card-content>
+          </mat-card>
+        </section>
+      </div>
       <div class="button-wrapper">
         <button
           mat-flat-button
           type="button"
           color="primary"
-          [disabled]="recipeForm.invalid || submitting()"
+          [disabled]="submitting()"
           (click)="onSubmit('publish')"
         >
           <mat-icon aria-hidden="true" fontIcon="save" />
@@ -42,9 +66,9 @@
         </button>
         @if (mode() === "active") {
           <button
-            mat-stroked-button
+            mat-button
             type="button"
-            [disabled]="recipeForm.invalid || submitting()"
+            [disabled]="submitting()"
             (click)="onSubmit('draft')"
           >
             Als Entwurf speichern

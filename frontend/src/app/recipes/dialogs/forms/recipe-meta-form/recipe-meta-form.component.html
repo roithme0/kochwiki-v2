@@ -2,15 +2,8 @@
   <mat-form-field appearance="outline" floatLabel="always">
     <mat-label>Name</mat-label>
     <input matInput formControlName="name" />
-  </mat-form-field>
-
-  <mat-form-field appearance="outline" floatLabel="always">
-    <mat-label>URL</mat-label>
-    <input matInput formControlName="originUrl" />
-  </mat-form-field>
-
-  <mat-form-field appearance="outline" floatLabel="always">
-    <mat-label>Ersteller*in</mat-label>
-    <input matInput formControlName="originName" />
+    @if (metaFormGroup.get('name')?.hasError('required') && metaFormGroup.get('name')?.touched) {
+      <mat-error>Bitte einen Namen eingeben.</mat-error>
+    }
   </mat-form-field>
 </div>

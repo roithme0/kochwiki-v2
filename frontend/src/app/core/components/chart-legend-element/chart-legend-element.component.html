@@ -3,11 +3,17 @@
     <div class="color-indicator" [style.--color]="legendElement().color"></div>
     <p class="display-name">{{ legendElement().displayName }}</p>
     <div class="spacer"></div>
+    @if (displayedValuePercentage() != null) {
     <mat-card>
       <mat-card-content class="percentage-content">
-        <p class="value-percentage">{{ displayedValuePercentage() }} %</p>
+        <p class="value-percentage">{{ displayedValuePercentage() }}&nbsp;%</p>
       </mat-card-content>
     </mat-card>
-    <p class="value-absolute">{{ displayedValueAbsolute() }} g</p>
+    }
+    @if (displayedValueAbsolute() != null) {
+    <p class="value-absolute">{{ displayedValueAbsolute() }}&nbsp;g</p>
+    } @else {
+    <mat-icon class="value-absolute" role="img" [attr.aria-label]="legendElement().displayName + ': Angabe fehlt'">help_outline</mat-icon>
+    }
   </mat-card-content>
 </mat-card>

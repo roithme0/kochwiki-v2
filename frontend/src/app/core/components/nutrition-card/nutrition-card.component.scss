@@ -1,0 +1,26 @@
+@use "../../../../styles/mat-card-styles.scss" as *;
+
+.nutrition-content {
+  display: grid;
+  place-items: center;
+}
+
+.macro-chart {
+  width: 80%;
+  max-width: 26rem;
+}
+
+.legend {
+  margin-top: 0.5rem;
+  width: 100%;
+  max-width: 30rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.kcal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

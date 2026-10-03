@@ -48,8 +48,6 @@ class RecipeVersion(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     servings: Mapped[int] = mapped_column(nullable=False)
     preptime: Mapped[int | None] = mapped_column(nullable=True)
-    origin_name: Mapped[str | None] = mapped_column("origin_name", String(200), nullable=True)
-    origin_url: Mapped[str | None] = mapped_column("origin_url", String(200), nullable=True)
     ingredients: Mapped[list[Ingredient]] = relationship(
         back_populates="recipe_version", cascade="all, delete-orphan", order_by="Ingredient.index"
     )

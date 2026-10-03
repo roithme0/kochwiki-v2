@@ -1,13 +1,20 @@
+# syntax=docker/dockerfile:1
+
 ### Stage 1: compile and build angular ###
 FROM node:22 AS build
 
 ARG CONFIGURATION
+ARG VERSION=0.0.0
+
+ENV APP_VERSION=${VERSION}
 
 # add source code
 WORKDIR /usr/local/app
 # Copy only necessary files to reduce context size
 COPY package*.json /usr/local/app/
-RUN npm ci
+COPY .npmrc /usr/local/app/
+RUN --mount=type=secret,id=npm_token \
+    NPM_TOKEN="$(cat /run/secrets/npm_token)" npm ci
 
 COPY ./ /usr/local/app/
 RUN npm run build -- --configuration=${CONFIGURATION} --output-hashing=all

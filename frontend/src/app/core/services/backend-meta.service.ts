@@ -7,9 +7,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { environment } from '../../../environments/environment';
-
-const backendUrl: string = environment.backendUrl;
+import { backendUrl } from '../constants/api';
 
 @Injectable({
   providedIn: 'root',

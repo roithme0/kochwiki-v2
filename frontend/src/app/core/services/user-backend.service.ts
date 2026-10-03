@@ -1,10 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom, Subject } from 'rxjs';
-import { User } from '../models/user';
-import { environment } from '../../../environments/environment';
+import { Subject } from 'rxjs';
+import { array } from 'zod/mini';
+import type { UserCreate, UserOut } from '../api/generated';
+import { zUserOut } from '../api/generated/zod.gen';
+import { requestApiResponse } from '../api/request-api-response';
+import { backendUrl } from '../constants/api';
 
-const backendUrl: string = environment.backendUrl;
+const userListSchema = array(zUserOut);
 
 @Injectable({
   providedIn: 'root',
@@ -19,14 +22,12 @@ export class UserBackendService {
     this.usersSubject.next();
   }
 
-  getAllUsers = (): Promise<User[]> =>
-    firstValueFrom(this.httpClient.get<User[]>(backendUrl + '/users'));
+  getAllUsers = (): Promise<UserOut[]> =>
+    requestApiResponse(this.httpClient, 'GET', backendUrl + '/users', userListSchema);
 
-  getUserById = (userId: number): Promise<User> =>
-    firstValueFrom(this.httpClient.get<User>(backendUrl + '/users/' + userId));
+  getUserById = (userId: number): Promise<UserOut> =>
+    requestApiResponse(this.httpClient, 'GET', backendUrl + '/users/' + userId, zUserOut);
 
-  postUser = (user: Partial<User>): Promise<User> =>
-    firstValueFrom(
-      this.httpClient.post<User>(backendUrl + '/users', user)
-    );
+  postUser = (user: UserCreate): Promise<UserOut> =>
+    requestApiResponse(this.httpClient, 'POST', backendUrl + '/users', zUserOut, { body: user });
 }

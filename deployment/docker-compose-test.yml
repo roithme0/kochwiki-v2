@@ -1,8 +1,8 @@
-name: kochwiki-test
+name: kochwiki-v2-test
 
 services:
   db:
-    image: postgres:16
+    image: pgvector/pgvector:0.8.2-pg16
     environment:
       POSTGRES_DB: kochwiki_test
       POSTGRES_USER: test

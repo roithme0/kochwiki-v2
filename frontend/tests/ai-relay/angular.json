@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "projects": {
+    "relay-check": {
+      "projectType": "application",
+      "root": "",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "main.ts",
+            "tsConfig": "tsconfig.json",
+            "index": "index.html",
+            "outputPath": "../../../deployment/tests/angular-build"
+          }
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "relay-check:build",
+            "proxyConfig": "../../proxy.conf.cjs"
+          }
+        }
+      }
+    }
+  }
+}

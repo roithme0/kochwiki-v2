@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { User } from '../models/user';
+import type { UserOut } from '../api/generated';
 import { SnackBarService } from './snack-bar.service';
 import { Router } from '@angular/router';
 import { UserBackendService } from './user-backend.service';
@@ -16,7 +16,6 @@ export const ACTIVE_USER_STORAGE_KEY: string = 'activeUser';
 
 interface StoredUserSelection {
   id: number;
-  username: string;
 }
 
 @Injectable({
@@ -27,22 +26,34 @@ export class ActiveUserService {
   private readonly router = inject(Router);
   private readonly userBackendService = inject(UserBackendService);
 
-  private _activeUser: WritableSignal<User | null> = signal(null);
+  private readonly _activeUser = signal<UserOut | null>(null);
+  private readonly _restorationState = signal<'idle' | 'loading' | 'error'>('idle');
+  readonly restorationState = this._restorationState.asReadonly();
+  private selectedUserId: number | null = null;
+  private restorationRequest = 0;
 
   constructor() {
-    const restoredUser: User | null = this.readStoredUser();
+    const restoredUser: StoredUserSelection | null = this.readStoredUser();
     if (restoredUser !== null) {
-      this._activeUser.set(restoredUser);
-      void this.reconcileActiveUser(restoredUser.id);
+      this.selectedUserId = restoredUser.id;
+      this.storeSelection(restoredUser);
+      void this.restoreActiveUser(restoredUser.id);
     }
   }
 
-  get activeUser(): Signal<User | null> {
+  get activeUser(): Signal<UserOut | null> {
     return this._activeUser;
   }
 
-  selectUser(value: User): void {
+  selectUser(value: UserOut): void {
+    if (!this.isStoredSelection(value) || typeof value.username !== 'string') {
+      return;
+    }
+
+    this.restorationRequest++;
+    this.selectedUserId = value.id;
     this._activeUser.set(value);
+    this._restorationState.set('idle');
     this.storeUser(value);
     this.snackBarService.open('Als ' + value.username + ' angemeldet');
   }
@@ -50,7 +61,10 @@ export class ActiveUserService {
   //#region Public Methods
 
   switchUser(): void {
+    this.restorationRequest++;
+    this.selectedUserId = null;
     this._activeUser.set(null);
+    this._restorationState.set('idle');
     this.clearStoredUser();
     this.router.navigate(['/userSelection']);
   }
@@ -59,41 +73,46 @@ export class ActiveUserService {
 
   //#endregion Utilities
 
-  private async reconcileActiveUser(userId: number): Promise<void> {
+  retryRestoration(): void {
+    if (this._restorationState() === 'error' && this.selectedUserId !== null) {
+      void this.restoreActiveUser(this.selectedUserId);
+    }
+  }
+
+  private async restoreActiveUser(userId: number): Promise<void> {
+    const request = ++this.restorationRequest;
+    this._restorationState.set('loading');
     try {
-      const user: User = await this.userBackendService.getUserById(userId);
-      if (this._activeUser()?.id !== userId) {
-        return;
-      }
+      const user: UserOut = await this.userBackendService.getUserById(userId);
+      if (request !== this.restorationRequest) return;
 
       this._activeUser.set(user);
-      this.storeUser(user);
+      this._restorationState.set('idle');
     } catch (error: unknown) {
-      if (this._activeUser()?.id !== userId) {
-        return;
-      }
+      if (request !== this.restorationRequest) return;
 
       if (error instanceof HttpErrorResponse && error.status === 404) {
-        this._activeUser.set(null);
+        this.selectedUserId = null;
         this.clearStoredUser();
-        void this.router.navigate(['/userSelection']);
+        this._restorationState.set('idle');
         return;
       }
 
+      this._restorationState.set('error');
       if (isDevMode()) {
-        console.warn('failed to reconcile selected user: ', error);
+        console.warn('failed to restore selected user: ', error);
       }
     }
   }
 
-  private readStoredUser(): User | null {
+  private readStoredUser(): StoredUserSelection | null {
     const storage: Storage | null = this.getStorage();
     if (storage === null) {
       return null;
     }
 
     try {
-      const user: User | null = this.parseUser(storage.getItem(ACTIVE_USER_STORAGE_KEY));
+      const user: StoredUserSelection | null = this.parseUser(storage.getItem(ACTIVE_USER_STORAGE_KEY));
       if (user === null) {
         storage.removeItem(ACTIVE_USER_STORAGE_KEY);
       }
@@ -103,15 +122,18 @@ export class ActiveUserService {
     }
   }
 
-  private storeUser(user: User): void {
+  private storeUser(user: UserOut): void {
+    this.storeSelection({ id: user.id });
+  }
+
+  private storeSelection(selection: StoredUserSelection): void {
     const storage: Storage | null = this.getStorage();
     if (storage === null) {
       return;
     }
 
     try {
-      const selection: StoredUserSelection = { id: user.id, username: user.username };
-      storage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify(selection));
+      storage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify({ id: selection.id }));
     } catch {
       return;
     }
@@ -138,14 +160,14 @@ export class ActiveUserService {
     }
   }
 
-  private parseUser(rawUser: string | null): User | null {
+  private parseUser(rawUser: string | null): StoredUserSelection | null {
     if (rawUser === null || rawUser === '') {
       return null;
     }
 
     try {
       const parsedUser: unknown = JSON.parse(rawUser);
-      if (!this.isUser(parsedUser)) {
+      if (!this.isStoredSelection(parsedUser)) {
         return null;
       }
       return parsedUser;
@@ -154,7 +176,7 @@ export class ActiveUserService {
     }
   }
 
-  private isUser(value: unknown): value is User {
+  private isStoredSelection(value: unknown): value is StoredUserSelection {
     if (typeof value !== 'object' || value === null) {
       return false;
     }
@@ -162,9 +184,8 @@ export class ActiveUserService {
     const candidate: Record<string, unknown> = value as Record<string, unknown>;
     return (
       typeof candidate['id'] === 'number' &&
-      Number.isInteger(candidate['id']) &&
-      candidate['id'] > 0 &&
-      typeof candidate['username'] === 'string'
+      Number.isSafeInteger(candidate['id']) &&
+      candidate['id'] > 0
     );
   }
 

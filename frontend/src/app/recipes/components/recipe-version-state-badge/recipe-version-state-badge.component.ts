@@ -1,5 +1,6 @@
+import type { RecipeVersionState } from '../../../core/api/generated';
 import { Component, input } from '@angular/core';
-import { RecipeVersionState } from '../../models/recipe';
+
 
 @Component({
   selector: 'app-recipe-version-state-badge',

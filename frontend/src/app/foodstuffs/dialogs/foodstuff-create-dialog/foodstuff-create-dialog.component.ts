@@ -3,7 +3,7 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffFormComponent } from '../../components/foodstuff-form/foodstuff-form.component';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffCreate } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 
 @Component({
@@ -17,7 +17,7 @@ export class FoodstuffCreateDialogComponent {
   private readonly foodstuffBackendService = inject(FoodstuffBackendService);
   private readonly snackBarService = inject(SnackBarService);
 
-  async onSubmit(foodstuff: Partial<Foodstuff>): Promise<void> {
+  async onSubmit(foodstuff: FoodstuffCreate): Promise<void> {
     try {
       await this.foodstuffBackendService.postFoodstuff(foodstuff);
       this.foodstuffBackendService.notifyFoodstuffsChanged();

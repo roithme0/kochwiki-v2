@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-foodstuffs-table-create-foodstuff',
-  imports: [CommonModule, MatButtonModule, MatIconModule],
+  imports: [MatButtonModule, MatIconModule],
   templateUrl: './foodstuffs-table-create-foodstuff.component.html',
   styleUrl: './foodstuffs-table-create-foodstuff.component.css',
 })

@@ -1,25 +1,41 @@
-<mat-form-field
-  appearance="outline"
-  floatLabel="always"
-  class="foodstuff-field"
->
-  <mat-label>Lebensmittel</mat-label>
-  <mat-select
-    [formControl]="foodstuffIdControl"
-    single
-    (selectionChange)="selectedFoodstuffId.set(foodstuffIdControl.value)"
-  >
-    <mat-option disabled selected></mat-option>
-    @for(foodstuff of foodstuffs(); track foodstuff.id) {
-    <mat-option [value]="foodstuff.id">{{ foodstuff.name }}</mat-option
-    >}
-  </mat-select>
-</mat-form-field>
+<div class="ingredient-fields">
+  <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic" class="foodstuff-field">
+    <mat-label>Lebensmittel</mat-label>
+    <mat-select
+      [formControl]="foodstuffIdControl"
+      [attr.aria-describedby]="foodstuffIdControl.invalid && foodstuffIdControl.touched ? 'ingredient-errors-' + index() : null"
+      single
+      (selectionChange)="selectedFoodstuffId.set(foodstuffIdControl.value)"
+    >
+      <mat-option disabled selected></mat-option>
+      @for(foodstuff of foodstuffs(); track foodstuff.id) {
+      <mat-option [value]="foodstuff.id">{{ foodstuff.name }}</mat-option
+      >}
+    </mat-select>
+  </mat-form-field>
 
-<mat-form-field appearance="outline" floatLabel="always" class="amount-field">
-  <mat-label>Menge</mat-label>
-  <input matInput type="number" [formControl]="ingredientControl" />
-  @if(selectedFoodstuff() != undefined){
-  <span matTextSuffix>{{ selectedFoodstuff()?.unitVerbose }}</span>
-  }
-</mat-form-field>
+  <mat-form-field appearance="outline" floatLabel="always" subscriptSizing="dynamic" class="amount-field">
+    <mat-label>Menge</mat-label>
+    <input
+      matInput
+      type="number"
+      [formControl]="ingredientControl"
+      [attr.aria-describedby]="ingredientControl.invalid && ingredientControl.touched ? 'ingredient-errors-' + index() : null"
+    />
+    @if(selectedFoodstuff() != undefined){
+    <span matTextSuffix>{{ selectedFoodstuff()?.unitVerbose }}</span>
+    }
+  </mat-form-field>
+</div>
+
+@if ((foodstuffIdControl.hasError('required') && foodstuffIdControl.touched) ||
+     (ingredientControl.hasError('required') && ingredientControl.touched)) {
+  <div class="ingredient-errors" [id]="'ingredient-errors-' + index()" role="alert">
+    @if (foodstuffIdControl.hasError('required') && foodstuffIdControl.touched) {
+      <div>Bitte ein Lebensmittel auswählen.</div>
+    }
+    @if (ingredientControl.hasError('required') && ingredientControl.touched) {
+      <div>Bitte eine Menge eingeben.</div>
+    }
+  </div>
+}

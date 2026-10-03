@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,7 +6,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RecipeBackendService } from '../../../recipes/services/recipe-backend.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffsTableComponent } from '../../components/foodstuffs-table/foodstuffs-table.component';
@@ -16,13 +16,12 @@ import { LoadState } from '../../../core/utils/load-state';
 @Component({
   selector: 'app-foodstuffs-page',
   imports: [
-    CommonModule,
     FoodstuffsTableComponent,
     FoodstuffsTableCreateFoodstuffComponent,
     MatProgressSpinnerModule,
     MatIconModule,
-    FoodstuffsSearchComponent,
-  ],
+    FoodstuffsSearchComponent
+],
   templateUrl: './foodstuffs-page.component.html',
   styleUrl: './foodstuffs-page.component.scss',
 })
@@ -34,7 +33,7 @@ export class FoodstuffsPageComponent {
   private readonly snackBarService = inject(SnackBarService);
   readonly pageHeaderService = inject(PageHeaderService);
 
-  readonly foodstuffsState = signal<LoadState<Foodstuff[]>>({
+  readonly foodstuffsState = signal<LoadState<FoodstuffOut[]>>({
     status: 'loading',
     data: [],
   });

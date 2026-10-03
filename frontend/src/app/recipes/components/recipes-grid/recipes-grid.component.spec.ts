@@ -1,7 +1,8 @@
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { RecipeVersion } from '../../models/recipe';
+
 import { WindowWidthService } from '../../../core/services/window-width.service';
 import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 import { RecipesGridElementComponent } from '../recipes-grid-element/recipes-grid-element.component';
@@ -9,7 +10,7 @@ import { RecipesGridComponent } from './recipes-grid.component';
 
 describe('RecipesGridComponent', () => {
   it('orders active versions and drafts by last modification time without mutating the input', () => {
-    const recipeVersions: RecipeVersion[] = [
+    const recipeVersions: RecipeVersionOut[] = [
       recipeVersion('00000000-0000-0000-0000-000000000001', '2026-09-10T09:00:00Z', 'active'),
       recipeVersion('00000000-0000-0000-0000-000000000002', '2026-09-10T11:00:00Z', 'draft'),
       recipeVersion('00000000-0000-0000-0000-000000000003', '2026-09-10T10:00:00Z', 'active'),
@@ -75,10 +76,10 @@ describe('RecipesGridComponent', () => {
 
 @Component({ selector: 'app-recipes-grid-element', standalone: true, template: '' })
 class RecipeGridElementStubComponent {
-  readonly recipeVersion = input.required<RecipeVersion>();
+  readonly recipeVersion = input.required<RecipeVersionOut>();
 }
 
-function recipeVersion(recipeVersionId: string, lastModified: string, state: RecipeVersion['state']): RecipeVersion {
+function recipeVersion(recipeVersionId: string, lastModified: string, state: RecipeVersionOut['state']): RecipeVersionOut {
   return {
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId,
@@ -88,8 +89,6 @@ function recipeVersion(recipeVersionId: string, lastModified: string, state: Rec
     name: 'Recipe',
     servings: 1,
     preptime: null,
-    originName: null,
-    originUrl: null,
     kcal: null,
     carbs: null,
     protein: null,

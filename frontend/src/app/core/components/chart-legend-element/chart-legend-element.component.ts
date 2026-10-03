@@ -1,11 +1,12 @@
 import { Component, computed, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { ChartLegendElement } from '../../models/chart-legend-element';
 
 @Component({
   selector: 'app-chart-legend-element',
-  imports: [CommonModule, MatCardModule],
+  imports: [MatCardModule, MatIconModule],
   templateUrl: './chart-legend-element.component.html',
   styleUrl: './chart-legend-element.component.scss',
 })

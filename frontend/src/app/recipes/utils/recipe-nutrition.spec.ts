@@ -2,11 +2,11 @@ import {
   DraftIngredientNutrition,
   calculateDraftNutrition,
 } from './recipe-nutrition';
-import { Foodstuff } from '../../foodstuffs/models/foodstuff';
+import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 describe('calculateDraftNutrition', () => {
-  const foodstuffs: Foodstuff[] = [
+  const foodstuffs: FoodstuffOut[] = [
     {
       id: 1,
       name: 'Haferflocken',
@@ -59,7 +59,7 @@ describe('calculateDraftNutrition', () => {
   });
 
   it('keeps missing nutrition unknown and uses the recipe-page incomplete state', () => {
-    const incompleteFoodstuff: Foodstuff = { ...foodstuffs[0], protein: null };
+    const incompleteFoodstuff: FoodstuffOut = { ...foodstuffs[0], protein: null };
 
     expect(
       calculateDraftNutrition(

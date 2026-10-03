@@ -1,5 +1,6 @@
+import type { RecipeVersionState } from '../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { RecipeVersionState } from '../../models/recipe';
+
 import { RecipeVersionStateBadgeComponent } from './recipe-version-state-badge.component';
 
 describe('RecipeVersionStateBadgeComponent', () => {
@@ -24,7 +25,7 @@ describe('RecipeVersionStateBadgeComponent', () => {
 
     const styles = getComputedStyle(fixture.nativeElement);
     expect(styles.display).toBe('inline-flex');
-    expect(styles.borderRadius).toBe('8px');
+    expect(styles.borderRadius).toBe('0.5rem');
     expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 

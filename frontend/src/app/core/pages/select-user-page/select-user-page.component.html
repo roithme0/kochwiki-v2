@@ -1,4 +1,12 @@
 <main>
+  @if (isLoading()) {
+  <mat-spinner diameter="25" />
+  } @else if (hasError()) {
+  <div class="error" role="alert">
+    <p>Benutzer konnten nicht geladen werden.</p>
+    <button mat-button type="button" (click)="fetchUsers()">Erneut versuchen</button>
+  </div>
+  } @else {
   <nav>
     @for(user of users(); track user.id){
     <mat-card (click)="onUserSelected(user)">
@@ -20,4 +28,5 @@
   >
     <mat-icon aria-hidden="false" aria-label="Nutzer*in hinzufügen" fontIcon="add" />
   </button>
+  }
 </main>

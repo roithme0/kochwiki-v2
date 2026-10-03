@@ -19,6 +19,7 @@ export class PageHeaderService {
 
   private _showHome: WritableSignal<boolean> = signal(DEFAULT_SHOW_HOME);
   private _headline: WritableSignal<string> = signal('');
+  private _subheader: WritableSignal<string> = signal('');
   private _back: WritableSignal<string> = signal('');
   private _showBack: WritableSignal<boolean> = signal(DEFAULT_SHOW_BACK);
 
@@ -28,6 +29,14 @@ export class PageHeaderService {
 
   set headline(headline: string) {
     this._headline.set(headline);
+  }
+
+  set subheader(subheader: string) {
+    this._subheader.set(subheader);
+  }
+
+  get subheader(): Signal<string> {
+    return this._subheader;
   }
 
   get showHome(): Signal<boolean> {
@@ -50,10 +59,12 @@ export class PageHeaderService {
     showHome: boolean,
     headline: string,
     back: string,
-    showBack: boolean = DEFAULT_SHOW_BACK
+    showBack: boolean = DEFAULT_SHOW_BACK,
+    subheader: string = ''
   ): void {
     this._showHome.set(showHome);
     this.headline = headline;
+    this.subheader = subheader;
     this._back.set(back);
     this._showBack.set(showBack);
   }

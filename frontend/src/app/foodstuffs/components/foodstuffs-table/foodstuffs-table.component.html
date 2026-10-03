@@ -69,9 +69,15 @@
     @else{
     <ng-container [matColumnDef]="field">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        {{ displayedVerboseNames()[field] }}
+        {{ fieldLabels[field] }}
       </th>
-      <td mat-cell *matCellDef="let foodstuff">{{ foodstuff[field] }}</td>
+      <td mat-cell *matCellDef="let foodstuff">
+        @if (field === 'unit') {
+          {{ unitLabel(foodstuff.unit) }}
+        } @else {
+          {{ foodstuff[field] }}
+        }
+      </td>
     </ng-container>
     }}
 

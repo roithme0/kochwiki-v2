@@ -10,9 +10,10 @@ TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", "postgresql+psycopg://test:test@localhost:5433/kochwiki_test"
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+os.environ["OPENAI_API_KEY"] = ""
 
 from app.db.session import engine
-from app.main import app
+from app.main import create_app
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -30,5 +31,5 @@ def clear_database() -> None:
 
 @pytest.fixture
 def client() -> TestClient:
-    with TestClient(app) as test_client:
+    with TestClient(create_app()) as test_client:
         yield test_client

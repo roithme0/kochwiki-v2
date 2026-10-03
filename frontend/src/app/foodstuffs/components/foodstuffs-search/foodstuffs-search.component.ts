@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, computed, inject, input } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -7,26 +7,25 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
-import { Foodstuff } from '../../models/foodstuff';
+import type { FoodstuffOut } from '../../../core/api/generated';
 
 @Component({
   selector: 'app-foodstuffs-search',
   imports: [
-    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     MatInputModule,
     MatFormFieldModule,
     MatAutocompleteModule,
     MatIconModule,
-    MatButtonModule,
-  ],
+    MatButtonModule
+],
   templateUrl: './foodstuffs-search.component.html',
   styleUrl: './foodstuffs-search.component.scss',
 })
 export class FoodstuffsSearchComponent {
   readonly foodstuffTableControlsService = inject(FoodstuffTableControlService);
-  readonly foodstuffs = input<Foodstuff[]>([]);
+  readonly foodstuffs = input<FoodstuffOut[]>([]);
 
   names = computed((): string[] =>
     [...this.foodstuffs()]

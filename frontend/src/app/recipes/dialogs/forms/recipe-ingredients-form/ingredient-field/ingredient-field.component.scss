@@ -1,16 +1,28 @@
 :host {
   min-width: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ingredient-fields {
+  display: flex;
   gap: 0.5rem;
 }
 
 .foodstuff-field {
   flex: 1;
+  min-width: 0;
 }
 
 .amount-field {
   flex: 0 0 6rem;
+}
+
+.ingredient-errors {
+  color: var(--mat-form-field-error-text-color);
+  font-size: 0.75rem;
+  line-height: 1rem;
 }
 
 /* remove arrows from input number field */

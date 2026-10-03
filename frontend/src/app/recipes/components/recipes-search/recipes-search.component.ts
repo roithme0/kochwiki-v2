@@ -1,4 +1,5 @@
-import { CommonModule } from '@angular/common';
+import type { RecipeVersionOut } from '../../../core/api/generated';
+
 import { Component, computed, inject, input } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
@@ -11,30 +12,26 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 import { Router } from '@angular/router';
-import { RecipeVersion } from '../../models/recipe';
+
 
 @Component({
   selector: 'app-recipes-search',
   imports: [
-    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     MatInputModule,
     MatFormFieldModule,
     MatAutocompleteModule,
     MatIconModule,
-    MatButtonModule,
-  ],
+    MatButtonModule
+],
   templateUrl: './recipes-search.component.html',
   styleUrl: './recipes-search.component.scss',
 })
 export class RecipesSearchComponent {
   readonly recipesGridControlsService = inject(RecipesGridControlsService);
   readonly router = inject(Router);
-  readonly recipeVersions = input<RecipeVersion[]>([]);
-
-  readonly nameOptionsGroupLabel: string = 'Namen';
-  readonly originOptionsGroupLabel: string = 'Ersteller*innen';
+  readonly recipeVersions = input<RecipeVersionOut[]>([]);
 
   namesMap = computed(
     (): Map<string, string> =>
@@ -44,28 +41,13 @@ export class RecipesSearchComponent {
       }, new Map<string, string>())
   );
   readonly recipeVersionsById = computed(
-    (): Map<string, RecipeVersion> => new Map(this.recipeVersions().map((recipeVersion) => [recipeVersion.recipeVersionId, recipeVersion]))
-  );
-  origins = computed((): string[] =>
-    this.recipeVersions()
-      .map((recipeVersion) => recipeVersion.originName || '')
-      .filter((origin) => origin != '')
+    (): Map<string, RecipeVersionOut> => new Map(this.recipeVersions().map((recipeVersion) => [recipeVersion.recipeVersionId, recipeVersion]))
   );
   filteredNamesMap = computed(
     (): Map<string, string> =>
       new Map(
         [...this.namesMap()].filter(([id, name]) =>
           name
-            .toLowerCase()
-            .includes(this.recipesGridControlsService.searchBy().toLowerCase())
-        )
-      )
-  );
-  filteredOrigins = computed(
-    (): Set<string> =>
-      new Set(
-        this.origins().filter((origin) =>
-          origin
             .toLowerCase()
             .includes(this.recipesGridControlsService.searchBy().toLowerCase())
         )
@@ -79,16 +61,13 @@ export class RecipesSearchComponent {
   }
 
   onSearchOptionSelected(event: MatAutocompleteSelectedEvent): void {
-    if (event.option.group?.label === this.nameOptionsGroupLabel) {
-      const recipeVersion = this.recipeVersionsById().get(event.option.value as string);
-      if (recipeVersion !== undefined) {
-        void this.router.navigate(
-          recipeVersion.state === 'active'
-            ? ['recipes', recipeVersion.recipeLineageId]
-            : ['recipes', recipeVersion.recipeLineageId, 'versions', recipeVersion.recipeVersionId]
-        );
-      }
-    }
+    const recipeVersion = this.recipeVersionsById().get(event.option.value as string);
+    if (recipeVersion === undefined) return;
+    void this.router.navigate(
+      recipeVersion.state === 'active'
+        ? ['recipes', recipeVersion.recipeLineageId]
+        : ['recipes', recipeVersion.recipeLineageId, 'versions', recipeVersion.recipeVersionId]
+    );
   }
 
   //#endregion

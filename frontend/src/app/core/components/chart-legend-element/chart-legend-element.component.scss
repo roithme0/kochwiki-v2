@@ -21,6 +21,11 @@ p {
   margin: 0;
 }
 
+.value-percentage,
+.value-absolute {
+  white-space: nowrap;
+}
+
 .spacer {
   flex: 1 0 0;
 }
@@ -28,4 +33,33 @@ p {
 .percentage-content {
   padding: 0.5rem;
   color: gray;
+}
+
+@container nutrition-legend (max-width: 14rem) {
+  .legend-content {
+    display: grid;
+    grid-template-columns: 0.5rem minmax(0, 1fr) auto auto;
+    column-gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .display-name {
+    grid-column: 2 / -1;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .percentage-content {
+    padding: 0.25rem;
+  }
+
+  .legend-content > mat-card {
+    grid-column: 3;
+  }
+
+  .value-absolute {
+    grid-column: 4;
+  }
 }

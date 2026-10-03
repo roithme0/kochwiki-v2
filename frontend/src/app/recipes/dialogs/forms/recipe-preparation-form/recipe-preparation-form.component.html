@@ -1,36 +1,29 @@
 <div class="preparation-mat-step" [formGroup]="preparationFormGroup">
-  <mat-form-field appearance="outline" floatLabel="always">
+  <mat-form-field appearance="outline" floatLabel="always" class="short-number-field">
     <mat-label>Zubereitungszeit</mat-label>
     <input matInput type="number" formControlName="preptime" />
     <span matTextSuffix>min</span>
   </mat-form-field>
 
-  <div class="steps-wrapper" formArrayName="steps">
+  <div
+    class="steps-wrapper"
+    formArrayName="steps"
+    cdkDropList
+    [cdkDropListData]="steps.controls"
+    (cdkDropListDropped)="dropStep($event)"
+  >
     @for (step of steps.controls; track step) {
-      <div class="step-wrapper" formGroupName="{{ $index }}">
+      <div class="step-wrapper" formGroupName="{{ $index }}" cdkDrag [cdkDragData]="step">
         <button
           mat-icon-button
-          color="warn"
-          class="remove-button"
-          (click)="removeStep($index)"
+          type="button"
+          class="drag-handle"
+          cdkDragHandle
+          [attr.aria-label]="'Schritt ' + ($index + 1) + ' ziehen, um ihn zu verschieben'"
         >
-          <mat-icon
-            aria-hidden="false"
-            aria-label="Löschen"
-            fontIcon="close"
-          ></mat-icon>
+          <mat-icon aria-hidden="true" fontIcon="drag_indicator" />
         </button>
-
-        <div class="index-and-description-wrapper">
-          <mat-form-field
-            appearance="outline"
-            floatLabel="always"
-            class="index-field"
-          >
-            <mat-label>Index</mat-label>
-            <input matInput type="number" formControlName="index" />
-          </mat-form-field>
-
+        <div class="description-wrapper">
           <mat-form-field
             appearance="outline"
             floatLabel="always"
@@ -44,14 +37,39 @@
               #autosize="cdkTextareaAutosize"
             >
             </textarea>
+            @if (step.get('description')?.hasError('required') && step.get('description')?.touched) {
+              <mat-error>Bitte den Schritt beschreiben.</mat-error>
+            }
           </mat-form-field>
         </div>
+        <button
+          mat-icon-button
+          type="button"
+          color="warn"
+          class="remove-button"
+          [attr.aria-label]="'Schritt ' + ($index + 1) + ' löschen'"
+          (click)="removeStep($index)"
+        >
+          <mat-icon aria-hidden="true" fontIcon="close" />
+        </button>
       </div>
     }
   </div>
 
-  <button mat-flat-button class="add-button" color="accent" (click)="addStep()">
+  <button
+    matButton="tonal"
+    type="button"
+    class="add-button"
+    color="accent"
+    [disabled]="steps.length >= 99"
+    aria-label="Schritt hinzufügen"
+    [attr.aria-describedby]="steps.length >= 99 ? 'step-limit' : null"
+    (click)="addStep()"
+  >
     <mat-icon aria-hidden="true" fontIcon="add" />
     Schritt hinzufügen
   </button>
+  @if (steps.length >= 99) {
+    <p id="step-limit" class="step-limit">Maximal 99 Schritte möglich.</p>
+  }
 </div>

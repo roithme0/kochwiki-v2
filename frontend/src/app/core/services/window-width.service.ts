@@ -3,7 +3,7 @@ import {
   WritableSignal,
   signal,
   Signal,
-  afterRender,
+  afterNextRender,
 } from '@angular/core';
 
 @Injectable({
@@ -13,7 +13,7 @@ export class WindowWidthService {
   private windowInnerWidth: WritableSignal<number> = signal(360);
 
   constructor() {
-    afterRender(() => {
+    afterNextRender(() => {
       this.windowInnerWidth.set(window.innerWidth);
       window.addEventListener('resize', this.windowEventListener);
     });
