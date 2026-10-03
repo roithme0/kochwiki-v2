@@ -35,22 +35,48 @@ generic local `present_artifact` tool. MCP results remain data and do not
 automatically display artifacts. No Kochwiki recipe workflow instructions or
 presentation schemas are defined in the AI Service.
 
+Nutrition questions require the frontend's dedicated `kochwiki-nutrition`
+artifact, shared by recipes and foodstuffs. Full item requests and successful
+writes use `kochwiki-recipe` or `kochwiki-foodstuff`. The dedicated nutrition
+payload includes calories, macros and an explicit basis; foodstuffs use their
+catalogue unit's basis and recipes default to per serving. For whole-recipe
+requests, instructions require multiplying known per-serving values by servings,
+preserving unknown values. Presentation does not calculate conversions, fetch
+data, create proposals or enable saving. Markdown tables alone do not satisfy
+nutrition requests. These remain agent policies rather than enforced delivery.
+
 Instructions and tool definitions are discovered at AI Service startup. Restart
 the AI Service after changing them; there is no live instruction refresh.
 
 ### Guidance responsibilities
 
 - MCP instructions own domain workflows: when to search, clarify, create, refine,
-  save and present results, including duplicate checks and unit clarification.
-- Tool descriptions and parameter schemas describe each operation's inputs,
-  outputs, side effects and constraints. They do not repeat multi-step policies.
-- Frontend artifact capabilities describe the display, complete payload, headers
-  and metadata meanings. They do not prescribe retrieval or write workflows.
+  save and present results, and why a particular tool or artifact is appropriate.
+  They own sequencing, duplicate checks, unit clarification, artifact selection,
+  required result presentation and domain behavior such as hiding internal IDs.
+- Each tool description and parameter schema describes only that operation:
+  how to call it, accepted inputs, returned outputs, side effects and constraints.
+  Descriptions must be self-contained. They must not prescribe overall behavior,
+  workflow sequencing, when or why to call the tool, or comparisons and directions
+  to other tools or artifacts.
+- Each frontend artifact capability describes only its own display and how to
+  supply its complete payload, headers and metadata. This includes nutritional
+  basis, unknown-value representation and the meaning of any enabled actions.
+  It must not prescribe when or why to display the artifact, retrieval or write
+  workflows, overall behavior, or distinctions and directions to other artifacts.
 - AI Service instructions own generic conversation and execution behavior.
-  Its presentation tool supplies generic capability selection and validation guidance.
+  Its presentation tool describes its own invocation and validation contract;
+  Kochwiki artifact selection policy remains in MCP instructions.
 
-Short statements of consequences may appear at a boundary, such as presentation
-not saving domain data. Keep workflow policies in MCP instructions to avoid drift.
+Keep each rule with its owner to avoid duplication and drift. MCP instructions
+refer to advertised contracts rather than repeating payload fields, header rules
+or metadata definitions. Tool and capability descriptions may state their own
+consequences, such as read-only retrieval, values not being converted by a display,
+or metadata enabling a save button. These are contract facts, not workflow policy.
+
+For example, "Display calories and macronutrients with the supplied basis"
+belongs in the nutrition capability. "Use the nutrition artifact for nutrition
+questions" and comparisons with full item displays belong in MCP instructions.
 
 ## Foodstuff search
 
