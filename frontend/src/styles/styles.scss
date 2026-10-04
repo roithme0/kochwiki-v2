@@ -98,6 +98,8 @@ html {
 
   overscroll-behavior-y: none; /* prevent pull to refresh on mobile */
   height: 100dvh;
+  max-width: 30rem;
+  margin: auto;
 }
 
 body {
