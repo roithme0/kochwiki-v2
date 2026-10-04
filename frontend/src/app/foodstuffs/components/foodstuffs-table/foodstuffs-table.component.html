@@ -6,7 +6,7 @@
     [dataSource]="tableDataSource"
     (contentChanged)="contentChanged()"
   >
-    @for (field of displayedFieldsService.displayedFields(); track field) {
+    @for (field of displayedFields(); track field) {
 
     <!-- chart -->
     @if(field === 'chart'){
@@ -83,11 +83,11 @@
 
     <tr
       mat-header-row
-      *matHeaderRowDef="displayedFieldsService.displayedFields(); sticky: true"
+      *matHeaderRowDef="displayedFields(); sticky: true"
     ></tr>
     <tr
       mat-row
-      *matRowDef="let row; columns: displayedFieldsService.displayedFields()"
+      *matRowDef="let row; columns: displayedFields()"
     ></tr>
   </table>
   <div class="spacer"></div>

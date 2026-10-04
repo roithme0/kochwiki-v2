@@ -1,6 +1,7 @@
 @use "../../../../styles/styles.scss" as *;
 
 :host {
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }

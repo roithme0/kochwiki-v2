@@ -3,12 +3,35 @@ import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 
-import { WindowWidthService } from '../../../core/services/window-width.service';
+import { ElementWidthService } from '../../../core/services/element-width.service';
 import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 import { RecipesGridElementComponent } from '../recipes-grid-element/recipes-grid-element.component';
 import { RecipesGridComponent } from './recipes-grid.component';
 
 describe('RecipesGridComponent', () => {
+  it('updates recipe columns from its own element width at the existing breakpoints', () => {
+    const width = signal(480);
+    const observe = vi.fn().mockReturnValue(width);
+    TestBed.configureTestingModule({
+      imports: [RecipesGridComponent, RouterTestingModule],
+      providers: [{ provide: ElementWidthService, useValue: { observe } }],
+    });
+    const fixture = TestBed.createComponent(RecipesGridComponent);
+
+    expect(observe.mock.calls[0][0]).toBe(fixture.nativeElement);
+    expect(fixture.componentInstance.displayedColumns()).toBe(2);
+    width.set(599);
+    expect(fixture.componentInstance.displayedColumns()).toBe(2);
+    width.set(600);
+    expect(fixture.componentInstance.displayedColumns()).toBe(3);
+    width.set(899);
+    expect(fixture.componentInstance.displayedColumns()).toBe(3);
+    width.set(900);
+    expect(fixture.componentInstance.displayedColumns()).toBe(4);
+    width.set(480);
+    expect(fixture.componentInstance.displayedColumns()).toBe(2);
+  });
+
   it('orders active versions and drafts by last modification time without mutating the input', () => {
     const recipeVersions: RecipeVersionOut[] = [
       recipeVersion('00000000-0000-0000-0000-000000000001', '2026-09-10T09:00:00Z', 'active'),
@@ -50,7 +73,7 @@ describe('RecipesGridComponent', () => {
     await TestBed.configureTestingModule({
       imports: [RecipesGridComponent, RouterTestingModule],
       providers: [
-        { provide: WindowWidthService, useValue: { getWindowInnerWidth: () => signal(360) } },
+        { provide: ElementWidthService, useValue: { observe: () => signal(360) } },
         RecipesGridControlsService,
       ],
     })
