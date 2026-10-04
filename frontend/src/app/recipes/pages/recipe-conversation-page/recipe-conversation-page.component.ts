@@ -83,12 +83,16 @@ export class RecipeConversationPageComponent {
       const next = this.activeUser.activeUser()?.id;
       if (next !== userId) {
         userId = next;
+        this.generation++;
+        this.controller?.dispose();
+        this.controller = null;
         this.invalidateSaveFeedback();
       }
     });
     this.destroyRef.onDestroy(() => {
       this.generation++;
       this.invalidateSaveFeedback();
+      this.controller?.dispose();
       this.controller = null;
       this.setSubmitted(false);
       this.header.subheader = '';
@@ -104,6 +108,7 @@ export class RecipeConversationPageComponent {
   async load(): Promise<void> {
     const generation = ++this.generation;
     this.invalidateSaveFeedback();
+    this.controller?.dispose();
     this.controller = null;
     this.actionPending = false;
     this.setSubmitted(false);

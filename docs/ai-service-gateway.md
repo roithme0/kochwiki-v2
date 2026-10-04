@@ -1,8 +1,9 @@
 # AI Service gateway connection
 
 Kochwiki relays only `/ai/api/v1/agents/{agent_name}/sessions`, an individual
-session, and its `/messages` and `/turns` resources. It removes `/ai` and
-preserves `/api`, methods, query strings, JSON bodies, and upstream errors.
+session, its `/messages` and `/turns` resources, and `/turns/{turn_id}/events`.
+It removes `/ai` and preserves `/api`, methods, query strings, JSON bodies,
+upstream errors, and server-sent event streams. Nginx response buffering is disabled.
 Other `/ai` requests return 404. This is routing, not authorization: both
 applications must remain within the agreed private network boundary.
 
@@ -79,7 +80,7 @@ resolution timeout. Angular uses its default upstream connection behavior,
 without a separate five-second connection deadline. A silently unreachable
 address can therefore take longer to fail in development than in deployment.
 Both have a **600-second read/inactivity timeout** for
-non-streaming turns (and 600 seconds for sending/request socket inactivity
+session requests and turn event streams (and 600 seconds for sending/request socket inactivity
 in Kochwiki). These are proxy inactivity limits, not an absolute end-to-end
 deadline. DNS and connection waits may occur sequentially in Nginx.
 
@@ -120,8 +121,9 @@ It starts an isolated `kochwiki-ai-relay-check` Compose project, a controlled
 upstream on port 18991, Nginx on 18992, and actual Angular development servers
 on 18993. A minimal Angular fixture consumes the same proxy configuration
 and installed Angular tooling, independently of the demo package. Ordinary
-Angular API checks use the existing Kochwiki API. It checks the four request forms, bodies/queries, representative
-upstream errors, excluded paths, 65-second turns, and exactly one upstream
+Angular API checks use the existing Kochwiki API. It checks the five request forms,
+bodies/queries, event delivery before upstream completion, representative
+upstream errors, excluded paths, 65-second responses, and exactly one upstream
 mutation after a disconnect. Unset, unresolved, and unreachable configurations
 must start and retain ordinary routing. The harness stops its containers and
 servers; it does not alter the normal Compose projects. `--skip-delay` is

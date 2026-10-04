@@ -7,6 +7,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { BehaviorSubject } from 'rxjs';
 import { By } from '@angular/platform-browser';
 import { ChatUiComponent, JSON_ARTIFACT_CAPABILITY } from '@roithme0/chat-ui/ui';
+import type { ArtifactResponse, AssistantMessageResponse, SessionSnapshotResponse, StreamEvent } from '@roithme0/chat-ui/conversation';
 import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../../foodstuffs/presentation/foodstuff-artifact';
 import { RECIPE_ARTIFACT_CAPABILITY } from '../../presentation/recipe-artifact';
 import { NUTRITION_ARTIFACT_CAPABILITY } from '../../../core/presentation/nutrition-artifact';
@@ -46,9 +47,15 @@ describe('Recipe conversation page through published controller and HTTP transpo
   const fetchMock = vi.fn<typeof fetch>();
   const user = signal<{ id: number; username: string } | null>({ id: 1, username: 'Test' });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  let timeline: SessionSnapshotResponse['timeline'];
+  let messages: SessionSnapshotResponse['messages'];
+  let artifacts: ArtifactResponse[];
 
   beforeEach(() => {
     vi.resetAllMocks();
+    timeline = [];
+    messages = [];
+    artifacts = [];
     snackbar.mockReturnValue({ dismiss });
     save.mockResolvedValue({ ...conversationRecipe(), state: 'draft', recipeVersionId: 'saved' });
     user.set({ id: 1, username: 'Test' });
@@ -80,21 +87,67 @@ describe('Recipe conversation page through published controller and HTTP transpo
   }
 
   function turn(): Response {
-    return response({ kind: 'completed', turn_id: 'turn-1',
-      message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: 'turn-1' },
-      artifacts: [conversationProposal(), { ...conversationProposal(), artifact_id: 'bad', payload: {} }],
+    const turnId = `turn-${messages.length / 2 + 1}`;
+    return completedTurn({ turn_id: turnId,
+      message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: turnId },
+      artifacts: [{ ...conversationProposal(), artifact_id: `proposal-${turnId}` },
+        { ...conversationProposal(), artifact_id: `bad-${turnId}`, payload: {} }],
     });
+  }
+
+  function accepted(turnId = `turn-${messages.length / 2 + 1}`): Response {
+    return response({ kind: 'accepted', turn_id: turnId }, 202);
+  }
+
+  function completedTurn(payload: {
+    turn_id: string; message: AssistantMessageResponse; artifacts: ArtifactResponse[];
+  }, userText = 'Mehr Gemüse'): Response {
+    const turnId = payload.turn_id;
+    const index = messages.length;
+    const presented = payload.artifacts.map(artifact => ({ ...artifact, turn_id: turnId }));
+    const initialTimeline: SessionSnapshotResponse['timeline'] = [...timeline,
+      { kind: 'message', id: `user-${index}`, role: 'user', text: userText, turn_id: turnId },
+    ];
+    const initialMessages: SessionSnapshotResponse['messages'] = [...messages,
+      { role: 'user', text: userText, turn_id: null },
+    ];
+    const events: StreamEvent[] = [
+      { kind: 'snapshot', turn_id: turnId, snapshot: {
+        session_id: 'session-1', expires_at: 'later', sequence: index,
+        active_turn_id: turnId, active_turn_status: 'in_progress',
+        terminal_turn_id: null, terminal_turn_kind: null,
+        messages: initialMessages, timeline: initialTimeline, artifacts,
+      } },
+      { kind: 'upsert', turn_id: turnId, sequence: index + 1, order: initialTimeline.length,
+        identity: `assistant-${index}`, item: { kind: 'message', id: `assistant-${index}`, ...payload.message } },
+      ...presented.map((artifact, order): StreamEvent => ({
+        kind: 'upsert', turn_id: turnId, sequence: index + order + 2,
+        order: initialTimeline.length + order + 1, identity: artifact.artifact_id,
+        item: { kind: 'artifact', artifact_id: artifact.artifact_id, turn_id: turnId }, artifact,
+      })),
+      { kind: 'closing', turn_id: turnId, sequence: index + presented.length + 2 },
+      { kind: 'terminal', turn_id: turnId, sequence: index + presented.length + 3, outcome: 'completed' },
+    ];
+    messages = [...initialMessages, payload.message];
+    timeline = [...initialTimeline,
+      { kind: 'message', id: `assistant-${index}`, ...payload.message },
+      ...presented.map(artifact => ({ kind: 'artifact' as const, artifact_id: artifact.artifact_id, turn_id: turnId })),
+    ];
+    artifacts = [...artifacts, ...presented];
+    return new Response(events.map(event => `data: ${JSON.stringify(event)}\n\n`).join(''),
+      { headers: { 'Content-Type': 'text/event-stream' } });
   }
 
   it('renders explicitly presented MCP foodstuff data with name/brand headers and no writes or enrichment fetches', async () => {
     const page = await open();
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Zeige die Linsen', turn_id: null }))
-      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'foodstuff-turn',
+      .mockResolvedValueOnce(accepted('foodstuff-turn'))
+      .mockResolvedValueOnce(completedTurn({ turn_id: 'foodstuff-turn',
         message: { role: 'assistant', text: 'Die gefundenen Linsen', turn_id: 'foodstuff-turn' },
         artifacts: [{ ...conversationProposal(), artifact_id: 'foodstuff', type: 'kochwiki-foodstuff',
           payload: { title: 'Linsen', subtitle: 'Meine Marke',
             payload: { unit: 'G', kcal: 200, carbs: 12, protein: 8, fat: 4 } } }],
-      }));
+      }, 'Zeige die Linsen'));
     await page.submit({ text: 'Zeige die Linsen', acknowledge: vi.fn() });
     fixture.detectChanges();
     expect(fixture.debugElement.queryAll(By.directive(FoodstuffPresentationComponent))).toHaveLength(1);
@@ -102,14 +155,62 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const cards = fixture.debugElement.queryAll(By.directive(NutritionCardComponent));
     expect(cards.map(card => (card.componentInstance as NutritionCardComponent).basis())).toContain('pro 100 g');
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(save).not.toHaveBeenCalled();
   });
 
   async function submit(page: RecipeConversationPageComponent): Promise<void> {
-    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null })).mockResolvedValueOnce(turn());
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }))
+      .mockResolvedValueOnce(accepted()).mockResolvedValueOnce(turn());
     await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
   }
+
+  it('renders streamed proposals before completion and blocks overlapping submissions', async () => {
+    const page = await open();
+    const acceptance = accepted();
+    const frames = (await turn().text()).split('\n\n').filter(Boolean);
+    let stream!: ReadableStreamDefaultController<Uint8Array>;
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({ start(controller) {
+      stream = controller;
+      frames.slice(0, -2).forEach(frame => controller.enqueue(encoder.encode(`${frame}\n\n`)));
+    } });
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }))
+      .mockResolvedValueOnce(acceptance)
+      .mockResolvedValueOnce(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+    const operation = page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('button.proposal-save')).not.toBeNull();
+    });
+    expect(page.view().composerDisabled).toBe(true);
+    expect(save).not.toHaveBeenCalled();
+    await page.submit({ text: 'Too soon', acknowledge: vi.fn() });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[3][1]?.headers).toEqual({ Accept: 'text/event-stream' });
+    frames.slice(-2).forEach(frame => stream.enqueue(encoder.encode(`${frame}\n\n`)));
+    stream.close();
+    await operation;
+    expect(page.view().composerDisabled).toBe(false);
+    expect(page.view().status).toBeNull();
+  });
+
+  it('keeps streamed artifacts after a disconnect without retrying the turn', async () => {
+    const page = await open();
+    const acceptance = accepted();
+    const frames = (await turn().text()).split('\n\n').filter(Boolean);
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }))
+      .mockResolvedValueOnce(acceptance)
+      .mockResolvedValueOnce(new Response(`${frames.slice(0, -1).join('\n\n')}\n\n`,
+        { headers: { 'Content-Type': 'text/event-stream' } }));
+    await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button.proposal-save')).not.toBeNull();
+    expect(page.view().status?.kind).toBe('error');
+    expect(page.view().status?.message).toContain('Ausgang ist unbekannt');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(save).not.toHaveBeenCalled();
+  });
 
   it.each([
     { title: 'Linsen', subtitle: 'Meine Marke', basis: 'per-100-g', label: 'pro 100 g' },
@@ -119,11 +220,12 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     const payload = { basis: item.basis, kcal: 200, carbs: null, protein: 8, fat: 0 };
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Nährwerte?', turn_id: null }))
-      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'nutrition-turn',
+      .mockResolvedValueOnce(accepted('nutrition-turn'))
+      .mockResolvedValueOnce(completedTurn({ turn_id: 'nutrition-turn',
         message: { role: 'assistant', text: 'Hier sind die Nährwerte.', turn_id: 'nutrition-turn' },
         artifacts: [{ ...conversationProposal(), type: 'kochwiki-nutrition',
           payload: { title: item.title, subtitle: item.subtitle, payload } }],
-      }));
+      }, 'Nährwerte?'));
     await page.submit({ text: 'Nährwerte?', acknowledge: vi.fn() });
     fixture.detectChanges();
     const cards = fixture.debugElement.queryAll(By.directive(NutritionCardComponent));
@@ -137,7 +239,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fixture.debugElement.queryAll(By.directive(RecipePresentationComponent))).toHaveLength(1);
     expect(fixture.nativeElement.textContent).not.toContain('Als Entwurf speichern');
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -148,11 +250,12 @@ describe('Recipe conversation page through published controller and HTTP transpo
         kcal: null, carbs: null, protein: null, fat: null } }],
       steps: [{ index: 1, description: 'Neue Zutat schneiden.' }] };
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Zeige das Rezept', turn_id: null }))
-      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'recipe-turn',
+      .mockResolvedValueOnce(accepted('recipe-turn'))
+      .mockResolvedValueOnce(completedTurn({ turn_id: 'recipe-turn',
         message: { role: 'assistant', text: 'Hier ist das Rezept.', turn_id: 'recipe-turn' },
         artifacts: [{ ...conversationProposal(), artifact_id: 'recipe', type: 'kochwiki-recipe',
           payload: { title: 'Neues Rezept', payload } }],
-      }));
+      }, 'Zeige das Rezept'));
     await page.submit({ text: 'Zeige das Rezept', acknowledge: vi.fn() });
     fixture.detectChanges();
     const recipes = fixture.debugElement.queryAll(By.directive(RecipePresentationComponent));
@@ -162,18 +265,19 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fixture.nativeElement.textContent).toContain('Neues Rezept');
     expect(fixture.nativeElement.textContent).not.toContain('Als Entwurf speichern');
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(save).not.toHaveBeenCalled();
   });
 
   it('renders an explicitly selected JSON artifact without recipe save actions', async () => {
     const page = await open();
     fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Show the foodstuff', turn_id: null }))
-      .mockResolvedValueOnce(response({ kind: 'completed', turn_id: 'turn-json',
+      .mockResolvedValueOnce(accepted('turn-json'))
+      .mockResolvedValueOnce(completedTurn({ turn_id: 'turn-json',
         message: { role: 'assistant', text: 'Here is the foodstuff.', turn_id: 'turn-json' },
         artifacts: [{ ...conversationProposal(), type: 'json', turn_id: 'turn-json',
           payload: { title: 'Foodstuff', payload: { value: { name: 'Linsen', unit: 'G' } } } }],
-      }));
+      }, 'Show the foodstuff'));
     await page.submit({ text: 'Show the foodstuff', acknowledge: vi.fn() });
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('pre')?.textContent).toContain('"name": "Linsen"');
@@ -381,7 +485,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock.mock.calls.map(call => call[0])).toEqual([
       '/ai/api/v1/agents/kochwiki/sessions',
       '/ai/api/v1/agents/kochwiki/sessions/session-1/messages', '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
+      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns/turn-1/events',
       '/ai/api/v1/agents/kochwiki/sessions/session-1/messages', '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
+      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns/turn-2/events',
     ]);
   });
 
@@ -508,11 +614,14 @@ describe('Recipe conversation page through published controller and HTTP transpo
   it('suppresses late turn results after leaving', async () => {
     const page = await open();
     const pending = deferred<Response>();
-    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Verbessern', turn_id: null })).mockReturnValueOnce(pending.promise);
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Verbessern', turn_id: null }))
+      .mockResolvedValueOnce(accepted()).mockReturnValueOnce(pending.promise);
     const acknowledge = vi.fn();
     const operation = page.submit({ text: 'Verbessern', acknowledge });
     await vi.waitFor(() => expect(acknowledge).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
     fixture.destroy();
+    expect(fetchMock.mock.calls[3][1]?.signal?.aborted).toBe(true);
     const oldView = page.view();
     const fresh = await open();
     pending.resolve(turn());
@@ -520,6 +629,31 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(page.view()).toBe(oldView);
     expect(fresh.view().content).toEqual([]);
     expect(fetchMock.mock.calls.filter(call => call[0] === '/ai/api/v1/agents/kochwiki/sessions')).toHaveLength(2);
+  });
+
+  it.each(['route', 'user'] as const)('closes the active stream after a %s change', async boundary => {
+    const page = await open();
+    const pending = deferred<Response>();
+    fetchMock.mockResolvedValueOnce(response({ role: 'user', text: 'Verbessern', turn_id: null }))
+      .mockResolvedValueOnce(accepted()).mockReturnValueOnce(pending.promise);
+    const operation = page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    if (boundary === 'user') user.set(null);
+    else {
+      const next = { ...conversationRecipe(), recipeVersionId: 'next', name: 'Neue Version' };
+      getRecipe.mockResolvedValueOnce(next);
+      params.next(convertToParamMap({ lineageId: next.recipeLineageId, recipeVersionId: next.recipeVersionId }));
+    }
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fetchMock.mock.calls[3][1]?.signal?.aborted).toBe(true));
+    if (boundary === 'route') {
+      await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+      expect(page.original()?.headline).toBe('Original: Neue Version');
+    }
+    const view = page.view();
+    pending.resolve(turn());
+    await operation;
+    expect(page.view()).toBe(view);
   });
 
   it('suppresses late session creation after leaving', async () => {

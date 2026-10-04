@@ -24,7 +24,7 @@
     "@angular/platform-browser": "22.1.6",
     "@angular/platform-browser-dynamic": "22.1.6",
     "@angular/router": "22.1.6",
-    "@roithme0/chat-ui": "0.2.0-alpha",
+    "@roithme0/chat-ui": "0.3.0-alpha",
     "angular": "file:",
     "chart.js": "^4.5.0",
     "rxjs": "~7.8.0",
