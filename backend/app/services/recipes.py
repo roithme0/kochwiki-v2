@@ -11,6 +11,7 @@ from app.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
 from app.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
+    RecipeLineageOut,
     RecipePresentationIngredientOut,
     RecipePresentationOut,
     RecipePresentationResolve,
@@ -66,6 +67,21 @@ def list_historical_recipe_versions(session: Session, lineage_id: UUID) -> Seque
         .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.state == RecipeVersionState.HISTORICAL)
         .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
     ).all()
+
+
+def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
+    lineage_id = select(RecipeVersion.lineage_id).where(RecipeVersion.version_id == version_id).scalar_subquery()
+    versions = session.scalars(
+        _recipe_version_statement()
+        .where(RecipeVersion.lineage_id == lineage_id)
+        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
+    ).all()
+    if not versions:
+        raise NotFoundError(f"Recipe version with id {version_id} not found")
+    return RecipeLineageOut(
+        recipeLineageId=versions[0].lineage_id,
+        versions=[recipe_version_out(version) for version in versions],
+    )
 
 
 def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersion:

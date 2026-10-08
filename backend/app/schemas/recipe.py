@@ -82,3 +82,10 @@ class RecipeVersionOut(BaseModel):
     fat: JsonDecimal | None
     ingredients: list[IngredientOut]
     steps: list[StepOut]
+
+
+class RecipeLineageOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    recipeLineageId: UUID
+    versions: list[RecipeVersionOut]
