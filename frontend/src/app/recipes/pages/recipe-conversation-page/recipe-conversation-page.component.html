@@ -1,8 +1,15 @@
-@if (phase() === 'ready') {
+@if (phase() === "ready") {
   <ng-template #recipeRenderer let-payload let-artifact="artifact">
     @if (isRecipePresentation(payload)) {
       @if (recipeProposalId(artifact.metadata)) {
-        <button mat-flat-button class="proposal-save" [disabled]="savePending()" (click)="saveProposal(artifact.metadata)">Als Entwurf speichern</button>
+        <button
+          mat-flat-button
+          class="proposal-save"
+          [disabled]="savePending()"
+          (click)="saveProposal(artifact.metadata)"
+        >
+          Als Entwurf speichern
+        </button>
       }
       <app-recipe-presentation [recipe]="payload" />
     }
@@ -14,28 +21,47 @@
   </ng-template>
   <ng-template #nutritionRenderer let-payload>
     @if (isNutritionPresentation(payload)) {
-      <app-nutrition-card [nutrition]="payload" [basis]="nutritionBasisLabel(payload.basis)" />
+      <app-nutrition-card
+        [nutrition]="payload"
+        [basis]="nutritionBasisLabel(payload.basis)"
+      />
     }
   </ng-template>
-  <ai-chat-ui class="chat-ui-integration"
+  <ai-chat-ui
+    class="chat-ui-integration"
     bannerTitle="Dein Rezept weiterentwickeln"
     bannerDescription="Beschreibe, was du verbessern möchtest. Vorschläge verändern dein Rezept nicht. Du kannst sie als neue Entwürfe speichern."
     composerPlaceholder="Was möchtest du verbessern?"
     [content]="content()"
-    [artifactRenderers]="{ 'kochwiki-recipe': artifactRenderer(recipeRenderer), 'kochwiki-foodstuff': artifactRenderer(foodstuffRenderer), 'kochwiki-nutrition': artifactRenderer(nutritionRenderer) }"
+    [artifactRenderers]="{
+      'kochwiki-recipe': artifactRenderer(recipeRenderer),
+      'kochwiki-foodstuff': artifactRenderer(foodstuffRenderer),
+      'kochwiki-nutrition': artifactRenderer(nutritionRenderer),
+    }"
     [composerDisabled]="view().composerDisabled"
     [conversationStatus]="view().status"
     (messageSubmitted)="submit($event)"
-    (statusActionTriggered)="performAction($event)" />
+    (statusActionTriggered)="performAction($event)"
+  />
 } @else {
   <div class="initial-state" role="status">
     @switch (phase()) {
-      @case ('loading') { <p>Rezept und Lebensmittel werden geladen …</p> }
-      @case ('error') {
+      @case ("waiting-for-user") {
+        <p>
+          Bitte wähle einen Benutzer aus, bevor du eine Unterhaltung startest.
+        </p>
+        <a mat-button routerLink="/userSelection">Benutzer auswählen</a>
+      }
+      @case ("loading") {
+        <p>Rezept und Lebensmittel werden geladen …</p>
+      }
+      @case ("error") {
         <p>Rezept und Lebensmittel konnten nicht geladen werden.</p>
         <button mat-button (click)="load()">Erneut versuchen</button>
       }
-      @case ('unavailable') { <p>Diese Rezeptversion ist nicht zum Verbessern verfügbar.</p> }
+      @case ("unavailable") {
+        <p>Diese Rezeptversion ist nicht zum Verbessern verfügbar.</p>
+      }
     }
     <a mat-button [routerLink]="back()">Zurück zum Rezept</a>
   </div>

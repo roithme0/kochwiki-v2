@@ -50,7 +50,7 @@ The initial service layout intentionally stays small: FastAPI, PostgreSQL, and S
 
 ## AI Workflows
 
-The frontend uses `@roithme0/chat-ui` version `0.3.0-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each stored proposal can be saved explicitly as a new draft in the source lineage, through its artifact save button or an explicit request in chat. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves return the same created recipe version; ambiguous failures are not retried automatically.
+The frontend uses `@roithme0/chat-ui` version `0.5.2-alpha` from GitHub Packages. Active and draft recipe detail pages offer **Rezept verbessern**, opening a conversation for that specific version. The page captures the original recipe and its used foodstuffs once, supplying them as generic caller context to the AI Service, shows read-only original and proposal recipes, and supports free-text refinement through the AI Service gateway. Generation never writes recipes. Each stored proposal can be saved explicitly as a new draft in the source lineage, through its artifact save button or an explicit request in chat. Saving stays in chat; the snackbar offers to open the returned draft through the leave confirmation. Repeat saves return the same created recipe version; ambiguous failures are not retried automatically.
 
 The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
@@ -89,6 +89,8 @@ by the resolved presentation. Its presence enables the save button, which calls
 save service and in-memory mapping; saving atomically creates required temporary
 foodstuffs and a draft, and repeat saves return that version. Recipe payloads
 contain no save identity, roles, or foodstuff IDs.
+
+Conversation requests, including SSE observation, carry the selected user's stable `kochwiki:<user.id>` identity in `X-Application-User`. A selected user is required before session creation; restoration does not start a session. Changing the selected user clears chat and detaches the previous observer. Late responses cannot update the new user's view; selecting another user starts a fresh conversation. Already admitted backend work continues. The locked `0.5.2-alpha` package provides the identity-aware chat UI constructor. Release verification uses the published registry package. The documented local-link workflow produced duplicate Angular injection contexts in tests.
 
 Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving stops observing the event stream without cancelling remote work. New content and status changes scroll the history to the bottom. Context limits surface as initialization errors rather than silently reducing the snapshot.
 

@@ -187,11 +187,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(save).not.toHaveBeenCalled();
     await page.submit({ text: 'Too soon', acknowledge: vi.fn() });
     expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock.mock.calls[3][1]?.headers).toEqual({ Accept: 'text/event-stream' });
+    expect(fetchMock.mock.calls[3][1]?.headers).toEqual({ Accept: 'text/event-stream', 'X-Application-User': 'kochwiki:1' });
     frames.slice(-2).forEach(frame => stream.enqueue(encoder.encode(`${frame}\n\n`)));
     stream.close();
     await operation;
-    expect(page.view().composerDisabled).toBe(false);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(page.view().status).toBeNull();
   });
 
@@ -299,7 +299,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await page.saveProposal(mapConversationArtifact({ ...conversationProposal(), artifact_id: 'another' }).metadata);
     await page.saveProposal(page.original()?.metadata);
     expect(save).toHaveBeenCalledTimes(1);
-    expect(page.view().composerDisabled).toBe(false);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(save).toHaveBeenCalledWith(proposalId);
     pending.resolve({ ...conversationRecipe(), recipeVersionId: 'returned', state: 'draft' });
     await operation;
@@ -491,6 +491,96 @@ describe('Recipe conversation page through published controller and HTTP transpo
     ]);
   });
 
+  it('sends the stable selected identity on initialization, submissions, turn starts and SSE', async () => {
+    const page = await open();
+    user.set({ id: 1, username: 'Renamed' });
+    fixture.detectChanges();
+    await submit(page);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    for (const [, request] of fetchMock.mock.calls) {
+      expect(new Headers(request?.headers).get('X-Application-User')).toBe('kochwiki:1');
+    }
+  });
+
+  it('waits for a selected user before loading context or creating a conversation', async () => {
+    user.set(null);
+    const page = await open();
+    expect(getRecipe).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(page.phase()).toBe('waiting-for-user');
+    expect(fixture.nativeElement.textContent).toContain('Benutzer auswählen');
+    expect(page.original()).toBeNull();
+    user.set({ id: 2, username: 'Restored' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('X-Application-User')).toBe('kochwiki:2');
+  });
+
+  it('blocks old-owner actions immediately and clears chat before starting for another selected user', async () => {
+    const page = await open();
+    await submit(page);
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    const acknowledge = vi.fn();
+    const operation = page.submit({ text: 'Old owner', acknowledge });
+    const requests = fetchMock.mock.calls.length;
+    user.set({ id: 2, username: 'Next' });
+    await page.submit({ text: 'Must not use old session', acknowledge: vi.fn() });
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
+    expect(fetchMock).toHaveBeenCalledTimes(requests);
+    expect(save).not.toHaveBeenCalled();
+    pending.resolve(response({ role: 'user', text: 'Old owner', turn_id: null }));
+    await operation;
+    expect(acknowledge).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(page.view().content).toEqual([]);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    expect(new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get('X-Application-User')).toBe('kochwiki:2');
+  });
+
+  it.each(['success', 'failure'] as const)('keeps a new selected user fresh after late old session creation %s', async outcome => {
+    const pending = deferred<Response>();
+    fetchMock.mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const page = fixture.componentInstance;
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    user.set({ id: 2, username: 'Next' });
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    const view = page.view();
+    pending.resolve(outcome === 'success'
+      ? response({ session_id: 'old-session', expires_at: 'later' })
+      : response({ kind: 'agent_unavailable', detail: 'Unavailable' }, 503));
+    await fixture.whenStable();
+    expect(page.view()).toBe(view);
+    expect(page.view().content).toEqual([]);
+    expect(page.view().status).toBeNull();
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('X-Application-User')).toBe('kochwiki:2');
+    await submit(page);
+    expect(fetchMock.mock.calls[2][0]).toBe('/ai/api/v1/agents/kochwiki/sessions/session-1/messages');
+    expect(new Headers(fetchMock.mock.calls[2][1]?.headers).get('X-Application-User')).toBe('kochwiki:2');
+  });
+
+  it('ignores a context read completing after user selection changed before effects flush', async () => {
+    const pending = deferred<ReturnType<typeof conversationRecipe>>();
+    getRecipe.mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const page = fixture.componentInstance;
+    user.set(null);
+    pending.resolve(source);
+    await pending.promise;
+    await Promise.resolve();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(page.original()).toBeNull();
+    fixture.detectChanges();
+    expect(page.view().content).toEqual([]);
+    expect(page.view().composerDisabled).toBe(true);
+  });
+
   it('reuses detached snapshots on initial session retry', async () => {
     fetchMock.mockResolvedValueOnce(response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503));
     const page = await open();
@@ -651,6 +741,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
       expect(page.original()?.headline).toBe('Original: Neue Version');
     }
     const view = page.view();
+    if (boundary === 'user') {
+      expect(page.original()).toBeNull();
+      expect(view.content).toEqual([]);
+      expect(view.composerDisabled).toBe(true);
+    }
     pending.resolve(turn());
     await operation;
     expect(page.view()).toBe(view);

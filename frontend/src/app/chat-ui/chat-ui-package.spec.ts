@@ -70,7 +70,7 @@ describe('Packaged chat UI integration', () => {
 
 describe('Packaged conversation entry point', () => {
     it('exposes a controller compatible with the Kochwiki HTTP transport', () => {
-        const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki);
+        const transport = new HttpConversationTransport('/ai/api/v1', AgentConfiguration.kochwiki, 'kochwiki:1');
         const controller = new ConversationController(transport, () => {});
 
         expect(controller).toBeInstanceOf(ConversationController);
