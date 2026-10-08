@@ -1,5 +1,5 @@
 import type { Mock } from "vitest";
-import { signal } from '@angular/core';
+import { ElementRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
@@ -9,6 +9,7 @@ import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffsTableComponent } from './foodstuffs-table.component';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
+import { ElementWidthService } from '../../../core/services/element-width.service';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 
 describe('FoodstuffsTableComponent', () => {
@@ -39,7 +40,9 @@ describe('FoodstuffsTableComponent', () => {
 
         TestBed.configureTestingModule({
             providers: [
-                { provide: FoodstuffTableDisplayedFieldsService, useValue: { displayedFields: signal(['unit']) } },
+                { provide: ElementRef, useValue: new ElementRef(document.createElement('div')) },
+                { provide: ElementWidthService, useValue: { observe: () => signal(360) } },
+                { provide: FoodstuffTableDisplayedFieldsService, useValue: { getDisplayedFields: () => signal(['unit']) } },
                 { provide: FoodstuffTableControlService, useValue: { searchBy: signal('') } },
                 { provide: MatDialog, useValue: { open: openDialog } },
                 {
@@ -75,6 +78,27 @@ describe('FoodstuffsTableComponent', () => {
         expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
         expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
         expect(element.textContent).not.toContain('Backend label');
+    });
+
+    it('updates rendered columns using the table host width', () => {
+        const width = signal(480);
+        const observe = vi.spyOn(TestBed.inject(ElementWidthService), 'observe').mockReturnValue(width);
+        vi.spyOn(TestBed.inject(FoodstuffTableDisplayedFieldsService), 'getDisplayedFields')
+            .mockImplementation((observedWidth) =>
+                new FoodstuffTableDisplayedFieldsService().getDisplayedFields(observedWidth));
+        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+        fixture.componentRef.setInput('foodstuffs', [foodstuff]);
+        fixture.detectChanges();
+        const element: HTMLElement = fixture.nativeElement;
+
+        expect(observe.mock.calls[0][0]).toBe(element);
+        expect(element.querySelectorAll('th')).toHaveLength(4);
+        width.set(1201);
+        fixture.detectChanges();
+        expect(element.querySelectorAll('th')).toHaveLength(10);
+        width.set(480);
+        fixture.detectChanges();
+        expect(element.querySelectorAll('th')).toHaveLength(4);
     });
 
     it('executes the foodstuff deletion and success side effects through the dialog action', async () => {

@@ -1,11 +1,11 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, inject, input } from '@angular/core';
 
 import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { RecipesGridElementComponent } from '../recipes-grid-element/recipes-grid-element.component';
-import { WindowWidthService } from '../../../core/services/window-width.service';
+import { ElementWidthService } from '../../../core/services/element-width.service';
 import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 
 
@@ -21,7 +21,14 @@ import { RecipesGridControlsService } from '../../services/recipes-grid-controls
   styleUrl: './recipes-grid.component.scss',
 })
 export class RecipesGridComponent {
-  readonly windowWidthService = inject(WindowWidthService);
+  private readonly elementWidthService = inject(ElementWidthService);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private readonly width = this.elementWidthService.observe(
+    this.elementRef.nativeElement,
+    this.destroyRef,
+  );
   readonly recipesGridControlsService = inject(RecipesGridControlsService);
   readonly recipeVersions = input<RecipeVersionOut[]>([]);
 
@@ -33,11 +40,10 @@ export class RecipesGridComponent {
   });
 
   displayedColumns = computed((): number => {
-    const windowInnerWidth: number =
-      this.windowWidthService.getWindowInnerWidth()();
-    if (windowInnerWidth < 600) {
+    const width = this.width();
+    if (width < 600) {
       return 2;
-    } else if (windowInnerWidth < 900) {
+    } else if (width < 900) {
       return 3;
     } else {
       return 4;

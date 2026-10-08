@@ -16,6 +16,9 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 BASE = "/ai/api/v1/agents/kochwiki/sessions"
 REQUESTS: list[tuple[str, str, bytes]] = []
+RELEASE_STREAM = threading.Event()
+STREAM_FIRST = b'data: {"kind":"snapshot"}\n\n'
+STREAM_LAST = b'data: {"kind":"terminal"}\n\n'
 
 
 class Upstream(BaseHTTPRequestHandler):
@@ -29,6 +32,16 @@ class Upstream(BaseHTTPRequestHandler):
         body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
         REQUESTS.append((self.command, self.path, body))
         query = parse_qs(urlsplit(self.path).query)
+        if "stream" in query:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Content-Length", str(len(STREAM_FIRST) + len(STREAM_LAST)))
+            self.end_headers()
+            self.wfile.write(STREAM_FIRST)
+            self.wfile.flush()
+            RELEASE_STREAM.wait(timeout=10)
+            self.wfile.write(STREAM_LAST)
+            return
         if "disconnect" in query:
             self.connection.shutdown(2)
             self.connection.close()
@@ -94,7 +107,8 @@ def verify(port: int, delayed: bool) -> None:
     assert request(port, "/aide")[0] == 200, "Ordinary frontend prefix route blocked"
     for agent in ("kochwiki", "demo", "renamed-agent_2"):
         for method, suffix in (("POST", ""), ("GET", "/session-1"),
-                               ("POST", "/session-1/messages"), ("POST", "/session-1/turns")):
+                               ("POST", "/session-1/messages"), ("POST", "/session-1/turns"),
+                               ("GET", "/session-1/turns/turn-1/events")):
             path = BASE.replace("/kochwiki/", f"/{agent}/") + suffix + "?sample=a%20b&sample=c"
             body = b'{"text":"hello","nested":{"value":1}}' if method == "POST" else b""
             before = len(REQUESTS)
@@ -114,9 +128,14 @@ def verify(port: int, delayed: bool) -> None:
     for path in ("/ai", "/ai/", "/ai/api/v1/agents/demo/configuration", "/ai/health",
                  "/ai/api/v1/agents//sessions", "/ai/api/v1/agents/demo%2Fother/sessions",
                  BASE + "-lookalike", BASE + "/session-1/other", BASE + "/session-1/turns/extra",
-                 BASE + "/session%2Fturns", BASE + "/session-1%2Fturns"):
+                 BASE + "/session%2Fturns", BASE + "/session-1%2Fturns",
+                 BASE + "/session-1/turns/turn-1", BASE + "/session-1/turns//events",
+                 BASE + "/session-1/turns/turn-1/events/extra",
+                 BASE + "/session-1/turns/turn%2F1/events",
+                 BASE + "/session-1/turns/turn-1%2Fevents"):
         assert request(port, path)[0] == 404, path
     assert len(REQUESTS) == before
+    verify_stream(port)
     before = len(REQUESTS)
     assert request(port, BASE + "/session-1/turns?disconnect=1", "POST", b"{}")[0] == 502
     time.sleep(0.2)
@@ -128,6 +147,27 @@ def verify(port: int, delayed: bool) -> None:
         assert time.monotonic() - started >= 65
         assert len(REQUESTS) == before + 1
     print(f"Relay {port}: routes, bodies, queries, errors, restrictions, disconnect/no retry, delay={delayed} passed", flush=True)
+
+
+def verify_stream(port: int) -> None:
+    path = BASE + "/session-1/turns/turn-1/events?stream=1&sample=a%20b"
+    RELEASE_STREAM.clear()
+    before = len(REQUESTS)
+    connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+    try:
+        connection.request("GET", path, headers={"Accept": "text/event-stream"})
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.getheader("Content-Type") == "text/event-stream"
+        first = response.readline() + response.readline()
+        assert first == STREAM_FIRST, first
+        assert REQUESTS[before:] == [("GET", path[3:], b"")]
+        RELEASE_STREAM.set()
+        assert response.read() == STREAM_LAST
+    finally:
+        RELEASE_STREAM.set()
+        connection.close()
+    print(f"Relay {port}: SSE delivered before upstream completion", flush=True)
 
 
 def compose(environment: dict[str, str], *arguments: str) -> None:

@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ViewChild,
   computed,
   effect,
@@ -27,6 +28,7 @@ import {
 } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
+import { ElementWidthService } from '../../../core/services/element-width.service';
 
 const DEFAULT_PAGE_SIZE: number = 12;
 
@@ -44,9 +46,16 @@ const DEFAULT_PAGE_SIZE: number = 12;
   styleUrl: './foodstuffs-table.component.scss',
 })
 export class FoodstuffsTableComponent implements OnDestroy {
-  readonly displayedFieldsService = inject(
-    FoodstuffTableDisplayedFieldsService
+  private readonly elementWidthService = inject(ElementWidthService);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly displayedFieldsService = inject(FoodstuffTableDisplayedFieldsService);
+
+  private readonly width = this.elementWidthService.observe(
+    this.elementRef.nativeElement,
+    this.destroyRef,
   );
+  readonly displayedFields = this.displayedFieldsService.getDisplayedFields(this.width);
   readonly foodstuffBackendService = inject(FoodstuffBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
