@@ -136,6 +136,21 @@ The tool remains discoverable without credentials. Both search services share
 the lifespan-owned embedding client and are unbound during shutdown.
 See [recipe embedding setup and initial refresh](recipe-semantic-search.md).
 
+## Recipe lineage retrieval
+
+`get_recipe_lineage` accepts `recipe_version_id` (a UUID) and returns a
+`RecipeLineageOut` object directly in structured content: `recipeLineageId` and
+`versions`, a list of complete `RecipeVersionOut` objects. All active, draft and
+historical versions in that lineage are included, including the supplied version.
+Versions are ordered by `lastModified` descending, then version ID descending.
+There is no filtering, limit or pagination. Unsaved proposals are excluded.
+
+The tool queries the database through the shared recipe service and does not
+depend on embeddings or OpenAI credentials. It is marked read-only and idempotent.
+Unknown or deleted versions and invalid UUIDs produce tool errors; database
+failures return a generic error. Retrieval does not write records or display
+artifacts. Lineage membership does not encode parent-version relationships.
+
 ## Recipe proposals
 
 `create_recipe_proposal` accepts a `proposal` object using `RecipeProposalCreate`:
@@ -306,6 +321,12 @@ Update checks cover partial changes and explicit nulls, retained nutrition on
 unit changes, recipe version references, identity-only refresh, missing targets,
 conflicts, validation and rollback without refresh on database failure.
 The client probe separately permits verification over a listening TCP server.
+
+`tests/test_mcp_recipe_lineage.py` verifies lineage discovery and annotations,
+complete recipe serialization across active, draft and historical versions,
+retrieval from each state without embeddings, deterministic ordering, unbounded
+coverage, isolation between lineages, read-only behavior, invalid/deleted/missing
+versions and sanitized database failures through the real SDK transport.
 
 `tests/test_mcp_recipe_proposals.py` covers discovery and annotations, proposal
 creation and refinement, resolved retrieval without database writes, atomic saving,

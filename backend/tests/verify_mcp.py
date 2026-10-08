@@ -10,7 +10,7 @@ async def verify(url: str) -> None:
             raise RuntimeError("Expected Kochwiki domain instructions")
         tools = await client.list_tools()
         expected = {
-            "hello_world", "search_foodstuffs", "search_recipes", "create_foodstuff",
+            "hello_world", "search_foodstuffs", "search_recipes", "get_recipe_lineage", "create_foodstuff",
             "update_foodstuff", "create_recipe_proposal", "get_recipe_proposal", "save_recipe_proposal",
         }
         if {tool.name for tool in tools.tools} != expected:

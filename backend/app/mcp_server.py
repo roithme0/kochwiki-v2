@@ -16,9 +16,9 @@ from starlette.applications import Starlette
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
-from app.services import foodstuffs, greeting
+from app.services import foodstuffs, greeting, recipes
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
-from app.schemas.recipe import RecipeVersionOut
+from app.schemas.recipe import RecipeLineageOut, RecipeVersionOut
 from app.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
 from app.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
 from app.services.recipe_proposal_saves import save_recipe_proposal as save_proposal
@@ -119,6 +119,25 @@ def create_mcp_server(
         except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
             raise ToolError(str(error)) from None
         return [candidate.recipe for candidate in candidates]
+
+    @server.tool(annotations=ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False,
+    ))
+    def get_recipe_lineage(
+        recipe_version_id: Annotated[UUID, Field(description="ID of a persisted recipe version in the lineage")],
+    ) -> RecipeLineageOut:
+        """Retrieve the complete lineage containing the supplied recipe version.
+
+        Returns the lineage ID and all related active, draft and historical
+        versions as complete objects, including the supplied
+        version, ordered by last modification time descending and version ID
+        descending for ties. Results are not filtered or truncated and include
+        ingredients, steps and per-serving nutrition. Unsaved proposals are
+        excluded. An unknown or deleted version produces an error.
+        This operation is read-only and requires no embedding credentials.
+        """
+        with tool_errors("Recipe lineage", "retrieval"), SessionLocal() as session:
+            return recipes.get_recipe_lineage(session, recipe_version_id)
 
     @server.tool(annotations=ToolAnnotations(
         read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False,
