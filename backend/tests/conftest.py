@@ -11,6 +11,9 @@ TEST_DATABASE_URL = os.getenv(
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["OPENAI_API_KEY"] = ""
+for variable in ("OIDC_ISSUER", "OIDC_CLIENT_SECRET", "OIDC_CALLBACK_URL", "OIDC_BACKCHANNEL_URL"):
+    os.environ[variable] = ""
+os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 
 from app.db.session import engine
 from app.main import create_app
@@ -25,7 +28,7 @@ def migrate_database() -> None:
 def clear_database() -> None:
     with engine.begin() as connection:
         connection.execute(
-            text('TRUNCATE TABLE ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
+            text('TRUNCATE TABLE login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
         )
 
 

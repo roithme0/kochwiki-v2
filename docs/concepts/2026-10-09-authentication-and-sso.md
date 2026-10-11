@@ -6,12 +6,51 @@ Initial concept under discussion. The agreed provider is now self-hosted Keycloa
 replacing Microsoft Entra External ID. Start with Kochwiki authentication;
 AI Service authentication and cross-application SSO integration remain deferred.
 The first local provider slice now configures the `services` realm through a
-repeatable setup/update command in `../identity-provider`. Kochwiki authentication
-integration and production deployment remain unimplemented.
+repeatable setup/update command in `../identity-provider`. Kochwiki application sessions, frontend authentication integration and production
+deployment remain unimplemented.
 The second local slice now provides dedicated PostgreSQL storage with a persistent Docker
 volume. Existing disposable demo accounts are not migrated. Backups are deferred
 from this slice.
-FastAPI manages OIDC login and issues an opaque browser session cookie.
+The next deployment slice adds Nginx to local, staging and production Compose
+definitions. Only Nginx publishes a host port; Keycloak and PostgreSQL remain on
+Docker networks. Staging and production use `start`, fixed external URLs,
+automatic restart, deployment-specific environment values and independent persistent volumes.
+Certificates and HTTPS are explicitly deferred; these HTTP-only definitions are
+deployment preparation, not a public production rollout.
+All three definitions passed Compose validation. Local proxy verification passed
+registration, login, repeat apply and forwarded-header spoofing checks. Login and
+provider data also survived PostgreSQL/Keycloak replacement through the proxy.
+Staging and production definitions have not been launched in their target environments.
+The provider-side Kochwiki OIDC client is now managed by the same repeatable
+configuration command. A standalone local callback verifies the login flow and
+identity claims before Kochwiki integration. The next agreed slice implements
+the actual FastAPI login/callback round trip, with manual browser URL entry and a
+minimal verification result. Local user mapping, application sessions and frontend
+integration remain subsequent slices.
+Local OIDC verification and the existing realm regression checks passed,
+including managed-setting repair and preservation of identities and the client
+secret. All three Compose definitions validate; the test callback is local-only.
+The Kochwiki verification slice now exposes `/api/auth/login` and
+`/api/auth/callback` through the existing gateway. Login uses a ten-minute,
+single-use PostgreSQL transaction containing state and browser-binding hashes,
+nonce, PKCE verifier and expiry. A temporary HttpOnly, SameSite=Lax cookie binds
+the transaction to the initiating browser; it is Secure for HTTPS callbacks.
+Only one pending login flow per browser is supported initially. Backend-side
+code exchange and RS256 ID-token validation establish identity; tokens are
+then discarded. Success and failures show generic, non-cached verification
+pages without profile data or automatic retries. This does not yet establish
+a Kochwiki application session, replace user selection or protect domain APIs.
+Configuration is environment-driven, with an optional separate local Docker
+backchannel address preserving the canonical issuer. The current local gateway
+uses port 8002; its callback and the provider's exact allowlist are aligned.
+Login transaction/identity safeguards and the existing backend suite passed.
+Actual hosted registration and login through Keycloak, Nginx and FastAPI passed;
+callback query values are redacted from backend access logs and gateway auth
+access logging is disabled. See `docs/authentication-verification.md` for the
+tracked configuration and verification instructions.
+
+The agreed full implementation will have FastAPI manage OIDC login and issue an
+opaque browser session cookie.
 Open self-registration grants immediate Kochwiki access without invitation or
 manual approval. Use Keycloak's standard email-and-password login rather
 than introducing an email-code authenticator dependency.
@@ -67,13 +106,14 @@ Use self-hosted Keycloak for dedicated accounts belonging to the service family.
 Users must not need Microsoft or other external accounts. A shared application
 realm named `services` is the agreed foundation for Kochwiki, AI Service, and
 future apps; separate OIDC clients and application sessions can support later
-SSO. Client configuration remains to be agreed. Reserve the administrative
+SSO. Kochwiki client configuration is defined below; future app clients remain
+deferred. Reserve the administrative
 `master` realm for Keycloak administration, not application users. Keep the
 application realm name stable because it forms part of the OIDC issuer URL.
 
 The sibling repository `../identity-provider` holds the provider setup. Its
 current `deployments/docker-compose-local.yml` pins Keycloak 26.8.0, publishes a
-configurable localhost-only host port, and uses `start-dev` with bootstrap
+configurable localhost-only host port through Nginx, and uses `start-dev` with bootstrap
 credentials from environment variables. The local deployment uses port 8006.
 Keycloak connects to a dedicated PostgreSQL 16 service through the Docker
 network; the database port is not published. A named volume persists database
@@ -86,6 +126,27 @@ an empty volume, so changing the environment file does not rotate stored
 credentials. Start with a fresh database instead of migrating demo accounts.
 The realm configuration command remains separate and does not recreate
 containers. This is a local demo, not an established production deployment.
+`deployments/docker-compose-staging.yml` and `docker-compose-prod.yml` provide
+separate projects using the same realm configuration and database initialization.
+All Compose files use the generic ignored `deployments/.env`, based on a single
+`.env.example`. Each deployed repository copy supplies its own secrets, port and
+fixed full `KC_HOSTNAME` URL. Running environments side by side from the same
+checkout requires explicit port/hostname overrides. The apply wrapper uses the
+adjacent `.env` and supports an explicit `-EnvFile` override. Nginx overwrites
+forwarded headers, and Keycloak consumes `X-Forwarded-*`. Keycloak has no published
+port; PostgreSQL uses a separate internal network shared only with Keycloak.
+Nginx resolves the Keycloak service through Docker DNS to support replacement.
+The admin console currently shares the proxy endpoint; access restrictions remain
+future work. All examples bind to localhost and serve HTTP. Do not expose them
+for public authentication before adding HTTPS and certificate renewal, choosing
+stable HTTPS issuer URLs and validating proxy behavior. Realm SSL requirements
+are retained; external HTTP login may therefore be rejected.
+All three deployments configure Nginx's host binding through `BIND_ADDRESS`
+(localhost by default) and required `BIND_PORT`; the example port is 8006.
+Local also uses the same explicit `KC_HOSTNAME`, `KC_HTTP_ENABLED=true` and
+`KC_HOSTNAME_STRICT=true` settings as staging/production while retaining
+`start-dev`. Browser access and verification must use the configured hostname
+consistently (the example uses `localhost`, not `127.0.0.1`).
 Backups and restore procedures are deferred from this slice; a persistent
 volume does not protect against disk failure or volume deletion.
 
@@ -126,6 +187,74 @@ and a maintained deployment. Hosting and email delivery can have recurring costs
 choosing Keycloak does not mean operating authentication is cost-free.
 
 Reference: [Keycloak production configuration](https://www.keycloak.org/server/configuration-production).
+
+## Kochwiki OIDC Client
+
+Group Kochwiki's client and mapper configuration under `config/kochwiki/` in
+the identity-provider repository. Realm and shared user-profile configuration
+remain at the configuration root; future app clients can use their own folders.
+
+Use the confidential client `kochwiki` within the `services` realm. Enable
+Standard Flow (Authorization Code), require PKCE `S256`, and authenticate the
+backend with a client secret. Disable Direct Access Grants (password grant),
+Implicit Flow and service accounts. The managed configuration also disables
+device authorization and CIBA. Users authenticate on Keycloak's hosted pages;
+the client secret never reaches Angular.
+
+Supply `KOCHWIKI_CLIENT_SECRET` through the identity-provider deployment's
+ignored `.env`, using a different random value per environment. The wrapper
+rejects the placeholder and secrets shorter than 32 characters or containing
+whitespace. Kochwiki later receives the same value through its own backend
+environment. Reapplying retains the configured secret; changing it is deliberate
+rotation requiring a coordinated backend update.
+
+Use `/api/auth/callback` as the fixed Kochwiki callback path and configure exact
+allowed URLs through the space-separated `KOCHWIKI_REDIRECT_URIS` environment
+variable. Local URLs are `http://localhost:8000/api/auth/callback` for Docker and
+`http://localhost:4200/api/auth/callback` for Angular development. Kochwiki will
+configure its public URL separately to construct a matching callback.
+
+Use `/signed-out` as the fixed return path after logout, with a Sign in button
+and no automatic login redirect. Configure its exact allowed URLs through
+`KOCHWIKI_LOGOUT_REDIRECT_URIS`. Local URLs are
+`http://localhost:8000/signed-out` and `http://localhost:4200/signed-out`.
+Staging and production supply HTTPS callback and logout URLs. The wrapper
+rejects wildcards, URL credentials, queries and fragments, and permits HTTP only
+on loopback hosts in the local deployment. The Kochwiki endpoints and signed-out
+page are not implemented by this slice.
+
+Consume validated ID-token claims `iss`, `sub`, `email`, `email_verified`, and
+`displayName`. Keycloak supplies the protocol identity claims; three managed
+client mappers supply email, verification status and the existing `displayName`
+attribute. No role or permission claims are required. New clients start without
+additional client scopes; existing scope assignments and unrelated mappers remain
+unmanaged. Email verification is not required initially. Kochwiki will map
+identity by `(iss, sub)` and refresh email and trimmed display name on login.
+
+The Compose `x-kochwiki` extension resolves client variables for the apply
+wrapper without adding the client secret to any container environment. Rendered
+client JSON travels over stdin to the helper, which uses a private temporary file
+and clears its contents on exit. Full resolved Compose output contains secrets
+and must not be printed or committed. Repeat apply updates the existing client
+and managed mappers while preserving their identifiers and existing users.
+Updates remain sequential and nontransactional.
+
+An independent local verification callback stands in for Kochwiki's future
+backend. Configure `KOCHWIKI_TEST_CALLBACK_URL`, defaulting to
+`http://localhost:8765/callback`; only local Compose adds it to the callback
+allowlist. Staging and production ignore that variable. The test listener binds
+to `127.0.0.1` only while running. This is a verification tool for this slice,
+not a requirement for every future client.
+
+The verification exercises hosted registration and login, callback state,
+single-use code exchange, signed ID-token validation including issuer, audience,
+expiry and nonce, and the agreed profile claims. Negative cases cover missing
+PKCE, unregistered callbacks, invalid client secrets and invalid PKCE verifiers.
+It deliberately changes client and mapper settings, reapplies configuration,
+and checks identity and secret preservation. Test accounts remain; their random
+passwords and issued tokens are neither printed nor persisted. This verification
+does not establish browser rendering, application session behavior or production
+deployment readiness.
 
 ## Registration and Access
 
@@ -289,9 +418,9 @@ required non-unique display name. Collect it during provider registration;
 users must not have to find an unused display name or expose email as that name.
 Keycloak uses the email address as its internal username, but neither field is
 the local identity key or the name shown throughout Kochwiki.
-Keycloak owns both email and display name across the service family. A managed
-custom display-name attribute and an OIDC claim mapper are the proposed approach;
-attribute name and claim mapping must be verified. Apply the agreed display-name
+Keycloak owns both email and display name across the service family. The managed
+custom `displayName` attribute and matching ID-token claim mapper are implemented
+in the provider configuration. Apply the agreed display-name
 validation rules. Do not conflate this display name with Keycloak's login username
 or collect first/last names during registration.
 
@@ -411,9 +540,7 @@ Reference: [Keycloak Admin REST API](https://www.keycloak.org/docs-api/26.8.0/re
    failure behavior? What tokens, permissions, and session settings does it require?
 3. Is periodic provider reauthentication or an absolute local session limit needed?
 4. What cookie, CSRF, and session lifecycle policies suit this deployment?
-5. Which profile attribute/claims and validation rules should registration and the
-   current-user response use?
-6. What production hosting, backup/recovery, monitoring, and upgrade
+5. What production hosting, backup/recovery, monitoring, and upgrade
    arrangements belong in the identity-provider repository?
 
 ## Risks

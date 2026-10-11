@@ -26,6 +26,11 @@ services:
         condition: service_healthy
     environment:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-kochwiki}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_CALLBACK_URL: ${OIDC_CALLBACK_URL:-}
+      OIDC_BACKCHANNEL_URL: ${OIDC_BACKCHANNEL_URL:-}
       DATABASE_URL: postgresql+psycopg://${APP_DB_USER:-kochwiki}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in deployment/.env}@db:5432/${APP_DB_NAME:-kochwiki}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*,host.docker.internal}
 

@@ -51,6 +51,10 @@ Browser API access is same-origin through the gateway or Angular development
 proxy, so the backend has no CORS middleware. Server-to-server requests require
 no browser CORS permissions. MCP validates Host and Origin headers separately.
 
+FastAPI can verify a Keycloak login through a manually opened browser URL.
+See [OIDC configuration and local verification](docs/authentication-verification.md).
+This initial slice does not yet establish an application session or protect APIs.
+
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 
 ## AI Workflows

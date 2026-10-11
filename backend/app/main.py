@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.router import router
+from app.core.auth_logging import configure_auth_logging
 from app.core.config import get_settings
 from app.mcp_server import MCPServices, create_mcp_server
 from app.schemas.errors import ErrorResponse
@@ -27,6 +28,7 @@ async def hello_world() -> dict[str, str]:
 
 
 def create_app() -> FastAPI:
+    configure_auth_logging()
     settings = get_settings()
     recipe_proposals = RecipeProposalStore()
     mcp_services = MCPServices(recipe_proposals)
