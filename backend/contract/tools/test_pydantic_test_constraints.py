@@ -2,13 +2,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from pydantic_test_constraints import read_constraints, test_constraints
+from pydantic_test_constraints import read_constraints, test_constraints as derive_constraints
 
 
 class PydanticConstraintsTests(unittest.TestCase):
     def test_versions_follow_dependency(self) -> None:
         self.assertEqual(
-            test_constraints(["other>=1", "pydantic-settings>=2", "pydantic>=2.15.2,<3"]),
+            derive_constraints(["other>=1", "pydantic-settings>=2", "pydantic>=2.15.2,<3"]),
             ("pydantic==2.15.2", "pydantic>=2.15.2,<3"),
         )
 
@@ -21,7 +21,7 @@ class PydanticConstraintsTests(unittest.TestCase):
             ["pydantic>=3,<2"], ["pydantic>=2.0,<2"],
         ):
             with self.subTest(dependencies=dependencies), self.assertRaises(ValueError):
-                test_constraints(dependencies)
+                derive_constraints(dependencies)
 
     def test_reading_project_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

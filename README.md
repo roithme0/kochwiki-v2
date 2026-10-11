@@ -25,6 +25,11 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
+Compose gives the backend a restricted PostgreSQL database owner and installs
+pgvector separately during database initialization. Existing databases need a
+one-time ownership setup before switching accounts; see
+[database accounts and rollout](docs/database-permissions.md).
+
 The optional backend foodstuff alias search uses OpenAI embeddings and PostgreSQL pgvector. See [configuration, initial refresh/search commands, lifecycle and verification](docs/foodstuff-semantic-search.md).
 
 Recipe name search uses the same embedding foundation for active versions and

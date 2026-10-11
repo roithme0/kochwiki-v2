@@ -8,6 +8,9 @@ AI Service authentication and cross-application SSO integration remain deferred.
 The first local provider slice now configures the `services` realm through a
 repeatable setup/update command in `../identity-provider`. Kochwiki authentication
 integration and production deployment remain unimplemented.
+The second local slice now provides dedicated PostgreSQL storage with a persistent Docker
+volume. Existing disposable demo accounts are not migrated. Backups are deferred
+from this slice.
 FastAPI manages OIDC login and issues an opaque browser session cookie.
 Open self-registration grants immediate Kochwiki access without invitation or
 manual approval. Use Keycloak's standard email-and-password login rather
@@ -69,13 +72,22 @@ SSO. Client configuration remains to be agreed. Reserve the administrative
 application realm name stable because it forms part of the OIDC issuer URL.
 
 The sibling repository `../identity-provider` holds the provider setup. Its
-current `deployments/docker-compose-local.yml` pins Keycloak 26.8.0, publishes a configurable
-host port, and uses `start-dev` with bootstrap credentials from environment
-variables. The already-running demo is bound to localhost port 8080; its port
-mapping differs from the current Compose file. This is a local demo, not an
-established production deployment. There is no mounted persistent database
-volume, so container recreation can lose users and configuration. The first
-slice applies configuration without recreating the container.
+current `deployments/docker-compose-local.yml` pins Keycloak 26.8.0, publishes a
+configurable localhost-only host port, and uses `start-dev` with bootstrap
+credentials from environment variables. The local deployment uses port 8006.
+Keycloak connects to a dedicated PostgreSQL 16 service through the Docker
+network; the database port is not published. A named volume persists database
+data across container recreation, and a database health check gates Keycloak
+startup. The PostgreSQL image creates the database using `POSTGRES_DB`, supplied
+from `KC_DB_NAME`. The initialization script creates a dedicated non-superuser
+role and transfers database ownership to it. Initialization and application passwords are
+separate secrets in the ignored deployment `.env`; initialization only runs on
+an empty volume, so changing the environment file does not rotate stored
+credentials. Start with a fresh database instead of migrating demo accounts.
+The realm configuration command remains separate and does not recreate
+containers. This is a local demo, not an established production deployment.
+Backups and restore procedures are deferred from this slice; a persistent
+volume does not protect against disk failure or volume deletion.
 
 Manage the provider configuration as code in `../identity-provider`; no manual
 GUI configuration should be required per environment. Use version-controlled
@@ -98,10 +110,17 @@ users, clients, and login. Lockout parameters were verified by readback, not by
 exercising the full failed-login threshold. Automated verification leaves
 uniquely named demo accounts in place and does not print or persist their passwords.
 
+The persistence slice was also verified by replacing both PostgreSQL and
+Keycloak containers while retaining their named database volume. The same realm,
+managed settings, profile schema, client IDs, user ID, display name, and password
+login survived without reapplying realm configuration. The verification leaves
+one additional demo account and never prints or persists its generated password.
+
 Self-hosting transfers patching, database backups and restore verification,
 monitoring, recovery, availability, administrator security, and extension
 maintenance to us. Production readiness remains a requirement even for this
-personal project. Production needs a persistent supported database, HTTPS,
+personal project. The local deployment now has persistent supported database
+storage. Production still needs HTTPS,
 correct public hostname and proxy configuration, protected administrative access,
 and a maintained deployment. Hosting and email delivery can have recurring costs;
 choosing Keycloak does not mean operating authentication is cost-free.
