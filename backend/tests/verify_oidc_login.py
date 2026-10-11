@@ -1,4 +1,4 @@
-"""Verify the local gateway/backend/Keycloak round trip with a disposable account."""
+"""Verify the disposable gateway/backend/Keycloak round trip."""
 
 import argparse
 import secrets
@@ -86,8 +86,10 @@ class Browser:
 
 
 def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
+    if base_url.rstrip("/") != "http://localhost:8012" or provider_url.rstrip("/") != "http://localhost:8016":
+        raise RuntimeError("Verification requires the disposable backend/provider on ports 8012/8016.")
     if not allow_user_creation:
-        raise RuntimeError("Pass --allow-user-creation to acknowledge that one demo account will remain.")
+        raise RuntimeError("Pass --allow-user-creation to create an account in the disposable provider.")
     run = secrets.token_hex(6)
     email, password = f"kochwiki-login-{run}@example.invalid", f"kitchen family verification {run}"
     browser = Browser(base_url, provider_url)
@@ -121,13 +123,13 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     if browser.request(base_url + "/api/auth/callback?state=unknown&code=unknown").status != 400:
         raise RuntimeError("An unbound callback was accepted.")
     print("PASS: unbound callback rejected; no application login session issued")
-    print(f"Demo account retained: {email}")
+    print("PASS: temporary account created in the disposable provider; runner handles teardown")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default="http://localhost:8000")
-    parser.add_argument("--provider-url", default="http://localhost:8006")
+    parser.add_argument("--base-url", default="http://localhost:8012")
+    parser.add_argument("--provider-url", default="http://localhost:8016")
     parser.add_argument("--allow-user-creation", action="store_true")
     arguments = parser.parse_args()
     try:

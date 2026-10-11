@@ -168,14 +168,15 @@ login forms: invalid passwords/display names and duplicate emails are rejected;
 duplicate display names and immediate access with unverified email are accepted.
 Reapplying configuration corrects a changed managed setting while preserving
 users, clients, and login. Lockout parameters were verified by readback, not by
-exercising the full failed-login threshold. Automated verification leaves
-uniquely named demo accounts in place and does not print or persist their passwords.
+exercising the full failed-login threshold. Automated verification uses a disposable provider instance, configured with the
+same managed files. Test accounts disappear when its database is torn down;
+passwords are not printed or persisted outside that test database.
 
 The persistence slice was also verified by replacing both PostgreSQL and
 Keycloak containers while retaining their named database volume. The same realm,
 managed settings, profile schema, client IDs, user ID, display name, and password
-login survived without reapplying realm configuration. The verification leaves
-one additional demo account and never prints or persists its generated password.
+login survived without reapplying realm configuration. The test database is retained across replacement within the disposable run,
+then removed by the runner. The persistent local realm is untouched.
 
 Self-hosting transfers patching, database backups and restore verification,
 monitoring, recovery, availability, administrator security, and extension
@@ -239,20 +240,20 @@ and must not be printed or committed. Repeat apply updates the existing client
 and managed mappers while preserving their identifiers and existing users.
 Updates remain sequential and nontransactional.
 
-An independent local verification callback stands in for Kochwiki's future
-backend. Configure `KOCHWIKI_TEST_CALLBACK_URL`, defaulting to
-`http://localhost:8765/callback`; only local Compose adds it to the callback
-allowlist. Staging and production ignore that variable. The test listener binds
-to `127.0.0.1` only while running. This is a verification tool for this slice,
-not a requirement for every future client.
+An independent verification callback tests the provider client without requiring
+Kochwiki's backend. The disposable provider allows `http://localhost:8766/callback`;
+the listener binds to loopback only while running. This is a verification tool,
+not a requirement for every future client. The disposable runner can additionally
+start a separate Kochwiki backend/database and the real gateway configuration
+for the application round trip. Regular local environments are never test targets.
 
 The verification exercises hosted registration and login, callback state,
 single-use code exchange, signed ID-token validation including issuer, audience,
 expiry and nonce, and the agreed profile claims. Negative cases cover missing
 PKCE, unregistered callbacks, invalid client secrets and invalid PKCE verifiers.
 It deliberately changes client and mapper settings, reapplies configuration,
-and checks identity and secret preservation. Test accounts remain; their random
-passwords and issued tokens are neither printed nor persisted. This verification
+and checks identity and secret preservation. Test accounts exist only in the disposable provider; their random
+passwords and issued tokens are neither printed nor saved outside it. This verification
 does not establish browser rendering, application session behavior or production
 deployment readiness.
 

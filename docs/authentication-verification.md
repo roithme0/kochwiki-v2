@@ -123,21 +123,32 @@ The OIDC tests cover identity validation, PKCE, browser binding, expiry,
 cancellation, replay, concurrent consumption, provider outages, configuration
 and access-log redaction. The normal backend suite checks existing behavior.
 
-With both local stacks running, from the KochWiki root:
+End-to-end verification uses disposable Keycloak and KochWiki stacks. From the
+KochWiki root, with PyJWT/cryptography available in the backend environment:
 
 ```powershell
-backend/.venv/Scripts/python.exe backend/tests/verify_oidc_login.py --allow-user-creation
+../identity-provider/scripts/Verify-Disposable.ps1 -Python "$PWD/backend/.venv/Scripts/python.exe" -KochwikiRepository "$PWD"
 ```
 
-For this workspace's current gateway, add `--base-url http://localhost:8002`.
+The runner starts an isolated provider on localhost port 8016, applies the same
+realm/profile/client configuration as the regular provider, runs its registration,
+OIDC and persistence verifiers, then builds an isolated KochWiki backend/database
+and gateway on localhost port 8012. The gateway uses the normal Nginx configuration
+with a static Nginx placeholder for the frontend; no frontend build is needed.
+The KochWiki verifier exercises registration, email/password login in a fresh
+cookie jar, reuse of a provider browser session and rejection of an unbound
+callback. All scripts reject regular local deployment targets.
 
-This HTTP/form verification creates one disposable provider account and retains
-it; credentials and tokens are never printed. It exercises registration,
-email/password login in a fresh browser cookie jar, reuse of an existing provider
-browser session and rejection of an unbound callback through the real gateway.
-It permits only local HTTP `localhost` addresses. The verifier emulates the
-browser's local Secure-cookie exception for Keycloak; it does not verify page
-rendering or replace a manual browser check.
+Test credentials are fixed public fixtures in the test Compose files. No regular
+local environment files or running application containers are changed. Temporary
+accounts and database state are removed with the dedicated test resources in
+`finally`, including on verification failure. Existing demo accounts in the
+persistent realm remain untouched. Ports 8012, 8016 and 8766 must be free, and
+concurrent runs are not supported. A killed runner or Docker outage can prevent
+cleanup; the identity-provider README documents scoped cleanup commands.
+
+These HTTP/form checks emulate the browser's local Secure-cookie exception;
+they do not verify page rendering or replace a manual browser check.
 
 Persistent KochWiki sessions, local user mapping, frontend login wiring and API
 authentication are the subsequent implementation slices. Provider revocation,
