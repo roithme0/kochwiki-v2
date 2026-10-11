@@ -1,4 +1,4 @@
-# Database accounts and existing database rollout
+# Database accounts and initialization
 
 All four Kochwiki Compose environments give the backend a restricted PostgreSQL
 database owner. It can read/write application data and run Alembic schema
@@ -35,65 +35,23 @@ The initialization script runs only on empty volumes. Changing `.env` does not
 rename databases or roles, rotate stored passwords, or initialize existing
 volumes. The existing volume and bind-mount paths are unchanged.
 
-## Existing databases: one-time command
+## Local and staging setup
 
-Prepare the new environment settings while keeping the old database running.
-Use the existing database name and a new application role distinct from the old
-administrator (normally `user`). Pause backend writes during the ownership
-change and use the usual database backup process. Do not remove storage volumes.
-Run this from the repository root, choosing the appropriate Compose file:
+Initialize local and staging from empty database storage; their current data
+does not need preserving. Recreate the database containers after clearing the
+storage. The PostgreSQL image creates the administrator and database, and the
+standard initialization script creates the restricted application user, installs
+pgvector and assigns database ownership.
 
-```powershell
-$setup = @'
-set -euo pipefail
-bash /docker-entrypoint-initdb.d/10-kochwiki.sh
-psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" --set ON_ERROR_STOP=1 --set app_user="$APP_DB_USER" --set old_owner="$POSTGRES_USER" <<'SQL'
-BEGIN;
-ALTER SCHEMA public OWNER TO :"app_user";
-SELECT format('ALTER %s %I.%I OWNER TO %I',
-  CASE WHEN c.relkind = 'S' THEN 'SEQUENCE' ELSE 'TABLE' END,
-  n.nspname, c.relname, :'app_user')
-FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'S')
-  AND c.relowner = (SELECT oid FROM pg_roles WHERE rolname = :'old_owner')
-  AND NOT EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND deptype = 'e')
-ORDER BY CASE WHEN c.relkind = 'S' THEN 1 ELSE 0 END \gexec
-SELECT format('ALTER TYPE %I.%I OWNER TO %I', n.nspname, t.typname, :'app_user')
-FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
-WHERE n.nspname = 'public' AND t.typtype = 'e'
-  AND t.typowner = (SELECT oid FROM pg_roles WHERE rolname = :'old_owner') \gexec
-COMMIT;
-SQL
-'@
-$adminSecret = Read-Host 'Existing database administrator password' -AsSecureString
-$env:PGPASSWORD = [System.Net.NetworkCredential]::new('', $adminSecret).Password
-$encodedSetup = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($setup.Replace("`r`n", "`n")))
-try {
-    $encodedSetup | docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml run --rm --no-deps -T -e PGHOST=db -e POSTGRES_USER=user -e PGPASSWORD --entrypoint bash db -c 'set -o pipefail; base64 -d | bash'
-    if ($LASTEXITCODE -ne 0) { throw 'Database role setup failed' }
-} finally {
-    $env:PGPASSWORD = $null
-}
-```
+Local uses the `postgresql-data` named volume; staging uses
+`deployment/postgresql/data` as a bind mount. Stop the relevant database before
+clearing its storage. Both setups discard their old database contents; start
+with empty storage so PostgreSQL runs initialization.
 
-This runs the same initializer against the existing database using the old
-administrator, then transfers Kochwiki's existing tables, sequences and enums
-in `public`. It preserves rows, sequence values and ownership of extensions and
-other databases. Objects outside this schema or owned by another role require
-separate review. It deliberately avoids `REASSIGN OWNED`, which would also
-transfer shared databases and tablespaces belonging to the administrator.
-
-Run this once with a new role. Initialization is transactional and fails if the
-role already exists. Ownership transfer uses a second transaction; if it fails
-after initialization succeeds, correct the error and rerun only the ownership
-SQL, not the initialization step.
-
-After success, deploy the updated containers with their existing storage. The
-backend connects as the new restricted role and continues running Alembic at
-startup. The former `user` stays an administrator; an existing volume does not
-gain a `postgres` administrator merely because the Compose configuration changes.
-`POSTGRES_PASSWORD` initializes that account only on fresh volumes. No running
-application environment is migrated automatically by this code change.
+Set the desired credentials in each environment before the first startup. Use a
+hexadecimal `APP_DB_PASSWORD` to avoid database-URL parsing and Alembic percent
+interpolation issues. After clearing storage, run the appropriate Compose file
+with its environment file. The backend creates its schema through Alembic.
 
 ## Verification
 
@@ -105,5 +63,4 @@ isolated run without publishing the test database port:
 docker compose -p kochwiki-db-permissions-check -f deployment/docker-compose-test.yml -f deployment/tests/compose.database-role.yml run --rm --build backend-tests
 ```
 
-References: [PostgreSQL database ownership](https://www.postgresql.org/docs/16/sql-alterdatabase.html)
-and [REASSIGN OWNED scope](https://www.postgresql.org/docs/16/sql-reassign-owned.html).
+Reference: [PostgreSQL database ownership](https://www.postgresql.org/docs/16/sql-alterdatabase.html).
