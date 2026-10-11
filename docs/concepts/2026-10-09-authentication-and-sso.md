@@ -2,17 +2,20 @@
 
 ## Status
 
-Initial concept under discussion. The agreed goal is to introduce authentication
-starting with Kochwiki, with later authentication for AI Service and an eventual
-single sign-on experience. Microsoft Entra External ID in an external tenant is
-the preferred provider direction, prioritizing lower operational effort over
-self-hosted Keycloak, subject to confirming the remaining requirements. FastAPI
-will manage OIDC login and issue an opaque browser session cookie. The chosen
-sign-up and sign-in method is email plus
-one-time code, without an application password. Open self-registration grants
-immediate Kochwiki access without invitation or manual approval. This document
-records the evolving concept, not an implementation specification. Authorization
-is explicitly outside this implementation's scope.
+Initial concept under discussion. The agreed provider is now self-hosted Keycloak,
+replacing Microsoft Entra External ID. Start with Kochwiki authentication;
+AI Service authentication and cross-application SSO integration remain deferred.
+The first local provider slice now configures the `services` realm through a
+repeatable setup/update command in `../identity-provider`. Kochwiki authentication
+integration and production deployment remain unimplemented.
+FastAPI manages OIDC login and issues an opaque browser session cookie.
+Open self-registration grants immediate Kochwiki access without invitation or
+manual approval. Use Keycloak's standard email-and-password login rather
+than introducing an email-code authenticator dependency.
+SMTP integration is optional and deferred; initial registration does not require
+email verification, and email-based password recovery is disabled.
+This is a concept, not an implementation specification. Authorization is
+explicitly outside this implementation's scope.
 
 ## Goal
 
@@ -57,74 +60,120 @@ and [OAuth 2.0 Security Best Current Practice](https://www.rfc-editor.org/rfc/rf
 
 ## Preferred Identity Provider
 
-Focus on Microsoft Entra External ID in an external tenant for consumer accounts.
-Users should create a dedicated account for the service family, authenticated
-through email plus one-time code, without a separate application password or
-a requirement to use personal Microsoft or organizational accounts. One account
-should serve Kochwiki, AI Service, and future applications in the SSO scope.
-Open self-registration grants immediate Kochwiki access. No invitation, manual
-approval, or separate application activation is required. This decision applies
-to Kochwiki; access to AI Service and future applications is not yet defined.
+Use self-hosted Keycloak for dedicated accounts belonging to the service family.
+Users must not need Microsoft or other external accounts. A shared application
+realm named `services` is the agreed foundation for Kochwiki, AI Service, and
+future apps; separate OIDC clients and application sessions can support later
+SSO. Client configuration remains to be agreed. Reserve the administrative
+`master` realm for Keycloak administration, not application users. Keep the
+application realm name stable because it forms part of the OIDC issuer URL.
 
-External ID supports local email plus one-time code for registration and login.
-It also supports SSO between applications
-registered in the external tenant. These capabilities fit the current direction;
-separate application registrations and sessions are the provisional approach.
+The sibling repository `../identity-provider` holds the provider setup. Its
+current `deployments/docker-compose-local.yml` pins Keycloak 26.8.0, publishes a configurable
+host port, and uses `start-dev` with bootstrap credentials from environment
+variables. The already-running demo is bound to localhost port 8080; its port
+mapping differs from the current Compose file. This is a local demo, not an
+established production deployment. There is no mounted persistent database
+volume, so container recreation can lose users and configuration. The first
+slice applies configuration without recreating the container.
 
-Microsoft operates the identity infrastructure. We retain responsibility for
-tenant security, administrator access to Entra, application configuration,
-and integration maintenance. Production readiness is a requirement
-even for this personal project. Costs, MFA requirements,
-and session/logout behavior still require evaluation before final commitment.
+Manage the provider configuration as code in `../identity-provider`; no manual
+GUI configuration should be required per environment. Use version-controlled
+configuration files and one repeatable setup/update command backed by Keycloak's
+Admin CLI or Admin REST API. It creates the `services` realm if missing and
+updates explicitly managed settings on existing realms, preserving registered
+users and settings outside its managed scope. Repeated runs must be safe.
+Supply environment-specific URLs and secrets separately; do not commit secrets
+or user data. The same process supports initial setup and subsequent updates
+and can be automated as a deployment step. Startup realm import alone is
+insufficient because it skips existing realms; configuration files are not
+automatically reconciled with the database on restart. The GUI remains available
+for inspection and troubleshooting.
+
+The first local slice was verified through Keycloak's hosted registration and
+login forms: invalid passwords/display names and duplicate emails are rejected;
+duplicate display names and immediate access with unverified email are accepted.
+Reapplying configuration corrects a changed managed setting while preserving
+users, clients, and login. Lockout parameters were verified by readback, not by
+exercising the full failed-login threshold. Automated verification leaves
+uniquely named demo accounts in place and does not print or persist their passwords.
+
+Self-hosting transfers patching, database backups and restore verification,
+monitoring, recovery, availability, administrator security, and extension
+maintenance to us. Production readiness remains a requirement even for this
+personal project. Production needs a persistent supported database, HTTPS,
+correct public hostname and proxy configuration, protected administrative access,
+and a maintained deployment. Hosting and email delivery can have recurring costs;
+choosing Keycloak does not mean operating authentication is cost-free.
+
+Reference: [Keycloak production configuration](https://www.keycloak.org/server/configuration-production).
 
 ## Registration and Access
 
-Anyone who completes registration should immediately be able to use Kochwiki.
-No invitation, manual approval, or separate activation is required. This work
-replaces the user selection mechanism with authenticated identity. Existing
-domain behavior is retained; new roles, data permissions, ownership, sharing,
-and entitlements are explicitly out of scope. Current domain restrictions have
+Anyone who completes registration should immediately be
+able to use Kochwiki. No invitation, manual approval, or separate activation is
+required. Existing domain behavior is retained; roles, permissions, ownership,
+sharing, and entitlements remain out of scope. Current domain restrictions have
 not been audited and are not assumed to exist or to be absent.
 
-Registration and fresh authentication use a one-time code delivered to the
-user's email address. Email verification is explicitly accepted. No separate
-approval step after registration is intended. This approach avoids requiring
-users to remember or store a password for the service family.
+Use standard email-and-password registration and login. The user accepts this
+simpler alternative to email-code authentication to avoid an additional
+authenticator extension or custom implementation. Registration collects a unique
+email address, password, and a separate required non-unique display name. Omit
+first and last name from registration and do not require them. Do not
+ask users to choose a login username. Enable Keycloak's Email as username and
+Login with email settings, and disable Duplicate emails. Keycloak maintains its
+internal username from the email address; it is not an application display name.
+Display names allow spaces and capitalization rather than inherit login username
+restrictions. Trim leading and trailing whitespace and require 1-50 characters
+after trimming; reject blank values and control characters. Keycloak's configured
+length validator trims for validation but retains surrounding whitespace in
+storage; Kochwiki must trim the claim before persisting or displaying it in the
+later application integration slice. Email
+verification is disabled initially because SMTP integration is deferred. Email
+addresses are self-reported profile data, not proof of mailbox ownership.
+Keycloak owns password storage, verification, and password-reset flows. Kochwiki
+must not collect or store passwords; authentication takes place on Keycloak's
+hosted pages through the existing OIDC direction. The agreed password policy
+requires at least 15 characters, allows spaces and passphrases, imposes no
+uppercase/number/symbol composition requirements, and has no periodic expiry.
+Do not configure a password blocklist or compromised-password check. Length alone
+does not prevent common or previously compromised passwords from being accepted.
+Enable brute-force protection in Temporary lockout mode and retain
+Keycloak 26.8.0's default parameters: 30 failed attempts, Multiple escalation,
+a 1-minute wait increment, a maximum wait of 15 minutes, and a failure-counter
+reset after 12 hours without failures or a successful login. Retain the default
+rapid-attempt settings: a 1000-millisecond quick-login check and a 1-minute
+minimum quick-login wait. Do not enable permanent lockouts. These version-specific
+defaults should be explicit in the reproducible realm configuration and reviewed
+on upgrades. Disable Forgot Password and any required
+actions or authentication flows that depend on sending email. Do not configure
+SMTP initially. Forgotten passwords require an administrator-assisted reset in
+Keycloak, with account ownership established outside the unavailable email flow.
+The recovery procedure remains to be defined; an unverified email alone must not
+be accepted as proof of ownership.
 
-Email-code authentication does not require a new code every time Kochwiki is
-opened. Persistent sign-in across browser restarts is the agreed default, without
-a required "Stay signed in?" choice. Entra browser-session policy and Kochwiki's
-own persistent session cookie must be designed together. Regular use should
-extend the local session through a sliding 30-day inactivity timeout, avoiding routine
-email-code prompts for active users. Mere background polling should not keep an
-otherwise unused session alive. After 30 days without qualifying use, the local
-session expires and the user returns through the Entra login flow; an existing
-Entra session may allow this without a new email code.
+Persistent Kochwiki sign-in across browser restarts remains the default, without
+a required "Stay signed in?" choice. The local persistent session uses a sliding
+30-day inactivity timeout; regular qualifying use renews it and background
+polling does not. After expiry, return through Keycloak login; an existing
+provider session may avoid entering credentials again. Keycloak browser persistence, SSO idle/max
+limits, and refresh-token lifetimes must be configured coherently. Built-in
+Remember Me presents a choice, so it cannot simply be assumed to implement our
+default-persistence requirement.
 
-Explicit logout invalidates the current server-side Kochwiki session, clears its
-browser cookie, and initiates Entra logout in that browser. Local logout must
-remain effective even if Entra logout is unavailable or interrupted. It does
-not revoke sessions on other devices. The intended experience is to avoid
-immediate automatic sign-in through the same Entra browser session after logout.
-Effects on future SSO applications will be resolved during the later SSO stage.
+Explicit logout invalidates the current local session, clears its cookie, and
+initiates Keycloak browser logout. Local logout remains effective if the
+provider is unavailable. Do not initiate account-wide revocation across devices.
+Avoid immediate automatic sign-in through the same provider browser session.
+Effects on later SSO applications remain for the SSO stage.
 
-The local session and Entra's authentication session are distinct. Extending a
-Kochwiki session does not renew Entra's session or demonstrate fresh email
-verification. Account status and revocation are checked as described below;
-provider reauthentication and any absolute session limit remain to be defined.
-Fresh authentication depends on mailbox access and timely email delivery.
+Kochwiki and Keycloak sessions are distinct. Local activity alone does not renew
+the provider session or prove fresh email ownership. Provider reauthentication
+and an absolute local session limit remain open. Registration abuse protection
+belongs to authentication operation; AI quotas remain outside this scope.
 
-Reference: [External ID user flows and persistent browser sessions](https://learn.microsoft.com/en-us/entra/external-id/customers/how-to-user-flow-sign-up-sign-in-customers).
-
-Registration abuse protection can be considered as part of operating the
-authentication flow. AI usage entitlements and quotas are outside this scope.
-
-Self-hosted Keycloak is no longer the focus because its patching, backups,
-monitoring, recovery, and availability introduce ongoing operating responsibility.
-
-References: [External tenant configuration](https://learn.microsoft.com/en-us/entra/external-id/tenant-configurations),
-[Local account registration and recovery](https://learn.microsoft.com/en-us/entra/external-id/customers/concept-authentication-methods-customers),
-and [External ID capabilities including SSO](https://learn.microsoft.com/en-us/entra/external-id/external-identities-overview).
+Reference: [Keycloak authentication, registration, and session settings](https://www.keycloak.org/docs/26.8.0/server_admin/).
 
 ## Scope Boundaries
 
@@ -152,7 +201,7 @@ and [External ID capabilities including SSO](https://learn.microsoft.com/en-us/e
 
 Require sign-in for every Kochwiki application page in this stage, including
 the home page and direct links to recipes or other features. On entry, restore
-the current session; if no valid session exists, initiate the Entra login flow.
+the current session; if no valid session exists, initiate the Keycloak login flow.
 Users with a valid session proceed directly to the requested page.
 
 After successful login, return users to their intended Kochwiki page using a
@@ -173,11 +222,11 @@ retain the separate scope boundary described above.
 
 ### Backend Sessions
 
-FastAPI owns the OIDC login flow and validates the identity returned by Entra.
+FastAPI owns the OIDC login flow and validates the identity returned by Keycloak.
 It establishes the current local Kochwiki user and creates a server-side session.
 The browser receives a random opaque session identifier in a Secure, HttpOnly
 cookie. Angular restores the current user from the backend rather than trusting
-a user ID selected or stored by the browser. Entra tokens stay server-side.
+a user ID selected or stored by the browser. Keycloak tokens stay server-side.
 
 Store server-side sessions in the existing PostgreSQL database. Sessions should
 survive backend restarts and be available to every backend instance using that
@@ -189,154 +238,164 @@ Renewal mechanics, cookie SameSite behavior, CSRF protection, and expired-sessio
 cleanup must be defined for a production implementation. Existing FastAPI can
 own this flow without requiring a separate authentication service.
 
-Future applications can maintain their own sessions and reuse the Entra login
+Future applications can maintain their own sessions and reuse the Keycloak login
 for SSO; sharing Kochwiki's session cookie across services is not required.
 
 Reference: [IETF browser application architecture guidance](https://www.rfc-editor.org/rfc/rfc10017.html).
 
 ## Local User Records
 
-Create a fresh local Kochwiki user on the first successful sign-in and reuse it
-on subsequent sign-ins. Do not link the authenticated account to a pre-existing
-manually selected user or migrate that user's associations. The backend owns
-the mapping from validated provider identity to the local user; the browser
-cannot choose which local user it authenticates as.
+Create a fresh local Kochwiki user on first successful sign-in and reuse it on
+later sign-ins. Do not link to existing manually selected users or migrate their
+associations. The backend owns identity mapping; the browser cannot choose the
+local user it authenticates as.
 
-The agreed identity key is the pair of Entra tenant ID (`tid`) and user object
-ID (`oid`) from a validated ID token. Accept identities only from the configured
-external tenant and expected issuer, with the token intended for Kochwiki's
-client. Enforce uniqueness of this pair locally so repeat or concurrent first
-sign-ins do not create multiple users for the same provider identity. Entra's
-`sub` is application-specific; `tid` and `oid` also suit later correlation across
-applications in the same tenant.
+Replace the Entra-specific `tid`/`oid` mapping with the OIDC issuer and subject
+pair (`iss`, `sub`) from a validated Keycloak ID token. Accept only the configured
+realm issuer and Kochwiki client audience. Enforce uniqueness locally, including
+concurrent first logins. Verify subject configuration across future clients
+before relying on it for cross-application correlation. The public issuer URL
+must be stable; hostname or realm migrations need an explicit identity migration.
 
-Extend the Kochwiki user with an email column. Email is profile information,
-not the identity key, and must not trigger automatic linking or merging of
-accounts. Deleting and recreating an Entra account produces a new identity even
-if the email is reused. Obtain email from Entra on each successful login and
-refresh the local value. Exact claim configuration remains an implementation
-detail to verify with the selected user flow.
+Email is profile information, not an identity key. Never automatically merge or
+link accounts by email. Deleting and recreating a provider account must produce
+a distinct identity even when its email is reused. Refresh the local email on
+every successful login from validated claims, without requiring `email_verified`
+to be true in the initial setup. Token validation proves the claim came from
+Keycloak, not that the user owns that mailbox. Do not treat this email as a
+verified recovery address or trusted recipient for sensitive information.
 
-The current user model contains a required, unique `username` with a 50-character
-limit, and the current user response contains only `id` and `username`. Replace
-this username with a required, non-unique display name, specified by the user
-during the Entra registration flow. Different users may have identical display
-names; identity is determined solely by the validated provider identity mapping.
-Do not ask users to find an unused name or use their email as the display name.
+Replace the current required unique `username` (50-character limit) with a
+required non-unique display name. Collect it during provider registration;
+users must not have to find an unused display name or expose email as that name.
+Keycloak uses the email address as its internal username, but neither field is
+the local identity key or the name shown throughout Kochwiki.
+Keycloak owns both email and display name across the service family. A managed
+custom display-name attribute and an OIDC claim mapper are the proposed approach;
+attribute name and claim mapping must be verified. Apply the agreed display-name
+validation rules. Do not conflate this display name with Keycloak's login username
+or collect first/last names during registration.
 
-Adding email and replacing username requires coordinated database, backend
-response, and frontend contract changes when implemented. Entra is the source
-of truth for both email and display name across the service family. Refresh both
-local fields from newly issued, validated login claims on every successful
-login. Claim configuration must include these fields. Profile synchronization
-uses login claims rather than Graph profile reads. The initial implementation
-does require a separate read-only Graph integration for account status and
-revocation checks, described below.
+Refresh both fields from newly issued validated login claims on successful
+login. Database, backend response, and frontend contract changes must ship
+together. Already signed-in apps may retain older values until their next login.
+Faster cross-application synchronization remains optional and undecided.
+Profile synchronization does not require an administrative API read on login.
 
-Already signed-in applications can retain older profile values until their next
-login. More immediate cross-application synchronization is an optional future
-enhancement, not part of the initial implementation. Its mechanism is undecided.
+Existing recipes and other domain data are not disposable. Check old-user
+references against the actual data model before implementation; destructive
+cleanup is not authorized.
 
-Reference: [Microsoft ID token claims and stable identity guidance](https://learn.microsoft.com/en-us/entra/identity-platform/id-token-claims-reference).
-
-Existing recipes and other domain data are not declared disposable by this
-decision. Any required treatment of references to old users must be checked
-against the actual data model before implementation; destructive cleanup is
-not part of this concept.
+References: [OIDC subject identifiers](https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes)
+and [Keycloak user profiles and claim mapping](https://www.keycloak.org/docs/26.8.0/server_admin/).
 
 ## Account Status and Session Revocation
 
-Track last qualifying activity separately from the last successful Entra
-validation. Update activity on each qualifying request for the sliding 30-day
-inactivity window; background polling must not count as activity. Record the
-original authentication time separately for comparison with provider revocation.
-Neither activity nor successful checks reset that original authentication time.
+Keep last qualifying activity separate from the last successful provider
+validation. Update activity for the sliding 30-day local inactivity window.
+Retain the original authentication time; successful checks and activity do not
+reset it. Reject expired or locally invalidated sessions before upstream checks;
+never revive an expired session.
 
-On each protected request, first reject a locally expired or invalidated session.
-Never revive an expired session by recording new activity. If the cached Entra
-validation is less than 15 minutes old, reuse it. Otherwise perform a read-only
-Graph check before executing the protected operation. Only successful validation
-advances the successful-check timestamp. Concurrent requests and backend
-instances should coordinate checks to avoid redundant upstream requests.
+Preserve the agreed 15-minute validation cache and fail-closed behavior. Before
+executing a protected operation, perform provider validation if that cache has
+expired. Only success advances the check timestamp. Coordinate concurrent checks
+across requests and backend instances.
 
-Check account existence, enabled status, and session revocation rather than
-existence alone. The intended Graph inputs are `accountEnabled` and
-`signInSessionsValidFromDateTime`, with revocation compared against the session's
-original authentication time. Verify exact permissions, claim/time semantics,
-and property availability in the external tenant before implementation. This
-integration requires read access, not the optional profile editor's Graph write
-permission.
+The Entra Graph integration and its `accountEnabled` /
+`signInSessionsValidFromDateTime` comparison no longer apply. The Keycloak
+mechanism is deliberately unresolved. Evaluate regular online refresh tokens,
+token introspection, and OIDC back-channel logout, with narrowly scoped Admin
+REST reads only if needed. These mechanisms have different guarantees; none is
+accepted as a drop-in replacement merely because Keycloak supports it.
+Verify deleted/disabled accounts, administrative session revocation, logout,
+reauthentication, token expiry, and a subsequent fresh login against
+the actual realm. Local JWT verification alone is not a current status check.
+Do not assume introspection of an expired access token proves account revocation.
+Do not use offline tokens as a shortcut without revisiting their logout semantics.
 
-A confirmed deleted or disabled account invalidates its local sessions. A
-confirmed revocation invalidates sessions authenticated before the revocation
-cutoff; a later successful authentication is not invalidated by an older cutoff.
-Detection occurs on the next request after the 15-minute cache expires, subject
-to Entra propagation delays. No background polling of inactive users is required.
+Confirmed deletion or disabling invalidates the account's local sessions.
+Confirmed provider session revocation invalidates affected local sessions;
+a subsequent fresh authentication must remain valid. Preserve the desired
+detection on the next protected request after the cache expires, subject to
+provider behavior. Inactive users do not need background polling. The exact
+mapping between provider and local sessions, required token storage/renewal,
+permissions, and provider idle/max limits must be resolved before implementation.
 
-If Graph validation cannot complete because of a timeout, throttling, service
-outage, or integration failure, deny the protected request, retain the local
-session, and display a temporary error without a retry action. Do not
-automatically replay failed application requests. A later normal request
-attempts the overdue Graph check again; retaining the session does not permit
-access until validation succeeds. Do not treat the failure
-as an authentication HTTP 401, trigger automatic logout or login redirects,
-advance the successful-check timestamp, or extend activity from the rejected
-request. There is no grace period that permits access using an overdue check.
-Normal activity tracking resumes after validation succeeds. Local session expiry
-still applies while validation is unavailable.
+On timeout, throttling, outage, or integration failure, deny the protected request,
+retain the local session, and display a temporary error without a retry action.
+Do not automatically replay failed application requests. A later normal request
+attempts the overdue check again. No access grace period, successful-check update,
+or activity renewal is permitted on failure. Do not return authentication 401,
+force logout, or redirect to login for an upstream availability failure. Local
+inactivity expiry still applies during an outage.
 
-References: [Graph user status and revocation properties](https://learn.microsoft.com/en-us/graph/api/resources/user?view=graph-rest-1.0)
-and [Entra versus application session revocation](https://learn.microsoft.com/en-us/entra/identity/users/users-revoke-access).
+Reference: [Keycloak OIDC endpoints, introspection, and logout](https://www.keycloak.org/securing-apps/oidc-layers).
+
+## Optional Enhancement: Email Delivery and Recovery
+
+Use Synology MailPlus Server as the mail service, forwarding outbound messages
+through an external email provider. Keycloak submits mail to MailPlus using
+authenticated, encrypted SMTP. Provider choice, sender domain, credentials,
+network access, and delivery configuration remain to be resolved.
+
+This extension is not a prerequisite for initial authentication. Until it is
+implemented, keep email verification, email-based password reset, and other
+email-dependent features disabled. After delivery is verified, enable verification
+and password recovery deliberately and test both complete user flows. Existing
+accounts need an explicit verification transition; do not mark previously
+self-reported email addresses verified automatically. Authentication and recovery
+must continue using the stable provider identity, not email-based account merging.
+
+MailPlus and the relay add operational dependencies and potentially recurring
+costs. Monitor delivery failures and protect SMTP credentials. Adding this
+extension does not permit login-email editing within Kochwiki.
 
 ## Optional Enhancement: Display-Name Editing in Kochwiki
 
-A future Kochwiki profile page may let the signed-in user edit their shared
-display name without visiting an Entra administration portal. FastAPI writes
-the new `displayName` to Entra through Microsoft Graph, then updates Kochwiki's
-local copy after confirmed success. Other apps obtain the change at their next
-login unless the optional synchronization enhancement has been implemented.
-Do not overwrite the confirmed update from an older cached token's claims.
+A future Kochwiki profile page may edit the shared display name. Keycloak remains
+the source of truth: update the provider first, then the local copy after confirmed
+success. Other apps receive the change at their next login unless faster profile
+synchronization is added. Older cached claims must not overwrite a confirmed edit.
 
-Prefer delegated Graph `User.ReadWrite` and `PATCH /me`, binding the operation
-to the authenticated account rather than granting the app tenant-wide profile
-write access. Configure Graph permission and consent in Entra, and acquire
-Graph-audience access tokens server-side. An existing Kochwiki session cookie
-or OIDC ID token alone cannot authorize a Graph request. Token caching, secure
-storage, renewal, and any necessary reauthentication must be designed; a
-30-day sliding local session does not guarantee a usable Graph token.
+Microsoft Graph and its delegated permissions are no longer applicable. Verify a
+supported Keycloak self-service integration before selecting it. If Admin REST
+writes are required, restrict credentials and permissions as far as supported,
+bind the target account server-side to the authenticated subject, and prevent
+any other profile-field edits. Broad administrative access is a material tradeoff,
+not an automatic consequence of adding a profile form. Provider-side validation
+and authorization still apply; application domain authorization remains out of scope.
 
-The feature includes an Angular form, a narrowly scoped FastAPI endpoint,
-display-name validation, CSRF protection, Graph failure handling, and coordinated
-frontend/backend contracts. Meaningful tests should cover current-user binding,
-expired-token behavior, upstream rejection, and uncertain or partial outcomes.
-The UI must not claim a successful update before Entra confirms it. A Graph
-success followed by a local persistence failure needs a recovery path.
+The feature includes an Angular form, a narrow FastAPI endpoint, validation,
+CSRF protection, secure token/credential handling, failure recovery, and coordinated
+contracts. Cover wrong-user targeting, upstream rejection, expired credentials,
+and provider success followed by local persistence failure. The UI reports
+success only after provider confirmation.
 
-Rough engineering estimate: 2-4 working days beyond an operational login/session
-implementation, assuming a standard OIDC library with usable server-side token
-acquisition and no new infrastructure. This includes tenant configuration, form
-and endpoint implementation, error handling, tests, and verification against a
-real external tenant. Allow a further 1-2 days if token-cache integration,
-incremental consent, or a fresh-authentication challenge is not already supported.
-These are planning estimates, not a measured delivery commitment. This is a
-bounded feature, but most work is in token lifecycle and reliable integration
-rather than the Graph update request itself. Profile editing remains optional
-and does not add Graph write permission to the initial login scope.
+Tentative planning estimate: 2-4 working days beyond working authentication if a
+suitable supported API and credential lifecycle are available; allow another
+1-2 days for additional credential integration. This must be re-estimated after
+Keycloak permissions and profile APIs are verified. The earlier Graph estimate
+is not evidence of equivalent Keycloak effort. No profile write access is needed
+in the initial implementation.
 
-Changing the login email from Kochwiki is explicitly excluded, including from
-optional enhancements. This feature must not edit `mail`, sign-in identities,
-or login email addresses. No separate profile editor is required initially.
+Changing login email from Kochwiki remains explicitly excluded, including from
+optional enhancements. No separate profile editor is required initially.
 
-References: [External ID self-profile permissions](https://learn.microsoft.com/en-us/entra/external-id/customers/reference-user-permissions),
-[Graph user updates](https://learn.microsoft.com/en-us/graph/api/user-update?view=graph-rest-1.0),
-and [Microsoft's profile-editing example](https://devblogs.microsoft.com/identity/external-id-profile-edit/).
+Reference: [Keycloak Admin REST API](https://www.keycloak.org/docs-api/26.8.0/rest-api/index.html).
 
 ## Decisions to Resolve
 
-1. Is any periodic provider reauthentication or absolute local session limit
-   required in addition to inactivity expiry and the agreed revocation checks?
-2. What cookie, CSRF, and session lifecycle security policies suit this deployment?
-3. Which profile fields and validation rules should the user response expose?
+1. How should administrator-assisted password recovery establish ownership
+   while email-based recovery is disabled?
+2. Which Keycloak validation/revocation mechanism meets the 15-minute checks and
+   failure behavior? What tokens, permissions, and session settings does it require?
+3. Is periodic provider reauthentication or an absolute local session limit needed?
+4. What cookie, CSRF, and session lifecycle policies suit this deployment?
+5. Which profile attribute/claims and validation rules should registration and the
+   current-user response use?
+6. What production hosting, backup/recovery, monitoring, and upgrade
+   arrangements belong in the identity-provider repository?
 
 ## Risks
 
