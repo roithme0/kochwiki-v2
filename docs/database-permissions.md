@@ -60,7 +60,7 @@ and exercises schema migrations and application flows through that role. For an
 isolated run without publishing the test database port:
 
 ```powershell
-docker compose -p kochwiki-db-permissions-check -f deployment/docker-compose-test.yml -f deployment/tests/compose.database-role.yml run --rm --build backend-tests
+docker compose -p kochwiki-db-permissions-check -f deployment/tests/docker-compose-test.yml -f deployment/tests/compose.database-role.yml run --rm --build backend-tests
 ```
 
 Reference: [PostgreSQL database ownership](https://www.postgresql.org/docs/16/sql-alterdatabase.html).

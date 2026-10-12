@@ -141,7 +141,7 @@ With backend development dependencies installed and the isolated test database
 running:
 
 ```powershell
-docker compose -f deployment/docker-compose-test.yml up -d db
+docker compose -f deployment/tests/docker-compose-test.yml up -d db
 cd backend
 .venv/Scripts/python.exe -m pytest -q
 ```

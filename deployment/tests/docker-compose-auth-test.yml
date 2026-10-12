@@ -14,13 +14,13 @@ services:
       timeout: 5s
       retries: 12
     volumes:
-      - ./postgres/init-kochwiki.sh:/docker-entrypoint-initdb.d/10-kochwiki.sh:ro
+      - ../postgres/init-kochwiki.sh:/docker-entrypoint-initdb.d/10-kochwiki.sh:ro
     tmpfs:
       - /var/lib/postgresql/data
 
   backend:
     build:
-      context: ../backend
+      context: ../../backend
     depends_on:
       db:
         condition: service_healthy
@@ -44,8 +44,8 @@ services:
     ports:
       - "127.0.0.1:8012:80"
     volumes:
-      - ./gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
-      - ./gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
+      - ../gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ../gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
     depends_on:
       - backend
       - frontend
