@@ -508,7 +508,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(getRecipe).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(page.phase()).toBe('waiting-for-user');
-    expect(fixture.nativeElement.textContent).toContain('Benutzer auswählen');
+    expect(fixture.nativeElement.textContent).toContain('Anmelden');
     expect(page.original()).toBeNull();
     user.set({ id: 2, display_name: 'Restored' });
     fixture.detectChanges();

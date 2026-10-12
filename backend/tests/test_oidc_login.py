@@ -108,7 +108,7 @@ def begin(browser: TestClient, provider: Provider) -> dict[str, list[str]]:
 
 
 def finish(browser: TestClient, query: dict[str, list[str]]) -> int:
-    return browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER}).status_code
+    return browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER}, follow_redirects=False).status_code
 
 
 def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> None:
@@ -123,8 +123,8 @@ def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> 
         assert transaction is not None
         assert transaction.state_hash == oidc.digest(query["state"][0])
         verifier = transaction.verifier
-    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER})
-    assert response.status_code == 200 and "Identity successfully verified" in response.text
+    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER}, follow_redirects=False)
+    assert response.status_code == 302 and response.headers["location"] == "/"
     assert provider.token_form["client_secret"] == SECRET
     assert provider.token_form["code_verifier"] == verifier
     challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
@@ -157,7 +157,7 @@ def test_invalid_identity_rejected(browser: TestClient, provider: Provider, over
 
 def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: Provider) -> None:
     provider.override = {"displayName": "  " + "a" * 50 + "  "}
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         first = session.scalars(select(User)).one()
         first_id = first.id
@@ -165,9 +165,9 @@ def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: 
         assert first.email == "cook@example.invalid"
         assert (first.issuer, first.subject) == (ISSUER, "provider-user")
     provider.override = {"displayName": "Shared Name", "email": "new@example.invalid"}
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     provider.override = {"sub": "recreated-account", "displayName": "Shared Name", "email": "new@example.invalid"}
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         users = session.scalars(select(User).order_by(User.id)).all()
         assert len(users) == 2

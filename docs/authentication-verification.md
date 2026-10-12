@@ -1,15 +1,32 @@
 # KochWiki OIDC login verification
 
-This slice connects FastAPI to the managed Keycloak `kochwiki` client. Enter
-`http://localhost:8000/api/auth/login` directly in a browser. Keycloak handles
-login or registration and redirects to `/api/auth/callback`. The backend validates
-the identity, creates or reuses a local KochWiki user, and displays a minimal
-confirmation with the local user number or an error page.
+Angular verifies the current local session through `/api/auth/me` at application
+entry to a guarded route. Home and every domain page wait for this result. A 401 starts browser
+navigation to `/api/auth/login`; Keycloak handles login or registration and
+redirects to `/api/auth/callback`. FastAPI validates identity, creates or reuses
+a local user, establishes a session and redirects to the fixed same-origin home
+path `/`. Existing valid sessions can open deep links directly; newly authenticated
+users always land home. No return URL is accepted.
 
-Successful login creates a persistent local application session. This does not
-replace the user selector or protect existing domain APIs. The frontend has no login integration yet.
-Authorization, AI Service authentication and inter-service authentication remain
-outside this slice.
+Temporary backend failures keep application content hidden and show an error,
+without automatic login loops or a retry action. Logout uses same-origin
+`POST /api/auth/logout`. Success or an already absent session (401) clears the
+frontend identity and opens `/signed-out`; other failures retain identity and show
+an error. The signed-out page contains only a short hint and explicit sign-in
+button, and reloading it does not initiate login. Keycloak sessions remain active,
+so the sign-in button may return directly home through the provider.
+
+Existing domain APIs remain unauthenticated. Authorization, provider revocation
+checks, AI Service authentication and inter-service authentication remain outside
+this slice. The AI identity header now comes from the authenticated local user,
+but remains browser-supplied identity rather than a service credential.
+
+Session state is managed by `ActiveUserService`, which neither inspects URLs nor
+navigates. Guards request a shared session check and initiate browser login when
+a session is absent. The unguarded signed-out page initiates login only through
+its button. The header delegates logout to `AuthNavigationService`, which navigates there
+only after the session service confirms logout. Merely injecting
+the session service does not initiate a request.
 
 ## Configuration
 
@@ -67,15 +84,13 @@ accounts remain unchanged.
 Updating Compose environment values
 requires recreating the backend container, rather than merely restarting it.
 
-Open `http://localhost:8000/api/auth/login`. Successful login ends on
-“Identity successfully verified.” The result deliberately shows no tokens or
-personal profile data. Provider errors, invalid/expired transactions and cancelled
-login show generic errors. Start a new login explicitly; there is no automatic
-request replay or redirect loop. The confirmation includes only the local numeric
-user ID. Repeat login should show the same ID. A separate provider account should
-show a different ID even when its display name or previously used email matches.
-Inspect `/api/users` to verify the name; the public user contract contains only
-`id` and `display_name`, without email or provider identity.
+Open the frontend on the configured app origin. After login, the callback redirects
+home; `/api/auth/me` returns local `id` and `display_name`, without email or provider
+identity. Repeat login should return the same ID. A separate provider account
+should have a different ID even if its display name or previously used email
+matches. Provider errors, invalid/expired transactions and cancelled login show
+generic callback error pages. Start a new login explicitly; there is no automatic
+request replay or redirect loop.
 
 The database uniquely maps `(issuer, subject)` and requires both identity fields
 and a non-null email snapshot on every user. Email is not unique. An atomic
@@ -84,8 +99,7 @@ name on every validated login. Email never
 links accounts and remains unverified profile data in the current provider setup.
 Display names are trimmed, allow duplicates, and require 1-50 characters without
 control characters. Manual user creation and profile editing are removed from
-the API and frontend; `POST /users` and `PATCH /users/{id}` return 405. The temporary
-selector remains for existing provider-linked users. Keycloak owns profile fields.
+the API and frontend; `POST /users` and `PATCH /users/{id}` return 405. The frontend no longer offers a selector. Keycloak owns profile fields.
 Domain APIs
 remain unauthenticated in this slice. Migration downgrade requires display names
 to be unique again and will fail if duplicates exist; resolve that separately
@@ -96,10 +110,16 @@ and `OIDC_CALLBACK_URL`, and add the exact callback to the identity provider's
 `KOCHWIKI_REDIRECT_URIS` before applying its configuration. This workspace's
 current local gateway uses `8002` and its ignored environment is aligned with it.
 
-For a backend on the host with Angular's existing development proxy, use
-`http://localhost:4200/api/auth/login` and set the callback to
-`http://localhost:4200/api/auth/callback`, which is already allowlisted locally.
-No frontend source change is needed for this manual navigation.
+For a backend on the host, Angular's development proxy provides the same-origin
+API path. The current `npm start` port is `4202`: use
+`http://localhost:4202` and configure `OIDC_CALLBACK_URL` as
+`http://localhost:4202/api/auth/callback`. The provider's exact redirect allowlist
+must contain that callback. Register it before using this port; earlier examples
+used `4200`. If serving Angular on another port, align the browser origin, callback
+and provider allowlist with that port. The browser app origin must equal the
+configured callback origin, including scheme and effective port, because local
+logout validates Origin against it. This slice does not change environment values
+or provider configuration.
 
 ## Transaction and token safeguards
 
@@ -176,9 +196,11 @@ are bearer secrets: keep cookie headers out of logs and error reports. The `/api
 cookie path is scoped for current HTTP APIs; future MCP authentication needs its
 own scope decision.
 
-For manual verification after login, open `/api/auth/me`. Then navigate to the
-frontend root page on the configured app origin and execute in its browser
-console (the callback page intentionally blocks fetch through its strict CSP):
+For manual verification after login, inspect `/api/auth/me`, then use the header
+menu to log out. The signed-out page must survive reload without starting login.
+The following browser-console request from a frontend page on the configured app
+origin also logs out. Do not run it on the `/api/auth/me` JSON page, whose strict
+Content Security Policy blocks fetch:
 
 ```javascript
 await fetch('/api/auth/logout', { method: 'POST' });
@@ -238,6 +260,11 @@ cleanup; the identity-provider README documents scoped cleanup commands.
 These HTTP/form checks emulate the browser's local Secure-cookie exception;
 they do not verify page rendering or replace a manual browser check.
 
-Frontend login wiring, protection of existing domain APIs and provider
-revocation checks remain subsequent slices. The temporary selector and
-`X-Application-User` AI identity header remain unchanged.
+Frontend regressions verify session-gated rendering/routing, rejection of forged
+stored identity, missing-session login, backend failures without retry actions,
+passive signed-out reload, explicit sign-in, logout failure/401/success and stale
+current-user responses. Conversation tests cover observer disposal and ignored
+late responses after identity loss, including explicit logout navigation.
+Protection of domain APIs and provider revocation checks remain subsequent slices;
+`/me` runs once on the first guarded navigation and there is no polling. AI Service authentication
+remains deferred.

@@ -72,6 +72,10 @@ class Browser:
     def follow(self, url: str, fields: dict[str, str] | None = None) -> Response:
         for _ in range(10):
             response = self.request(url, fields)
+            if urlsplit(url).path == "/api/auth/callback" and response.status == 302:
+                if response.location != "/":
+                    raise RuntimeError("Successful callback did not redirect to the fixed home page.")
+                return response
             if response.status not in (302, 303) or not response.location:
                 return response
             url = urljoin(url, response.location)
@@ -123,7 +127,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         "email": email, "password": password, "password-confirm": password,
         display_field: "KochWiki Verification",
     })
-    if registered.status != 200 or "Identity successfully verified." not in registered.body:
+    if registered.status != 302 or registered.location != "/":
         raise RuntimeError("Registration did not complete backend verification.")
     if any(cookie.name == "kochwiki_login" for cookie in browser.cookies):
         raise RuntimeError("The temporary login cookie was not cleared.")
@@ -144,13 +148,13 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     fresh_browser = Browser(base_url, provider_url)
     login = fresh_browser.login_page()
     signed_in = fresh_browser.follow(login.action, login.inputs | {"username": email, "password": password})
-    if signed_in.status != 200 or "Identity successfully verified." not in signed_in.body:
+    if signed_in.status != 302 or signed_in.location != "/":
         raise RuntimeError("Existing-account login failed backend verification.")
     print("PASS: existing-account email/password login through a fresh browser")
     if fresh_browser.users() != users:
         raise RuntimeError("Repeat login changed the local user mapping.")
     reused = browser.follow(base_url + "/api/auth/login")
-    if reused.status != 200 or "Identity successfully verified." not in reused.body:
+    if reused.status != 302 or reused.location != "/":
         raise RuntimeError("An existing provider session failed verification.")
     print("PASS: an existing Keycloak browser session completes a new login transaction")
     if browser.users() != users:
@@ -163,7 +167,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         "password-confirm": password, display_field: "KochWiki Verification",
     })
     duplicate_users = duplicate_browser.users()
-    if duplicate.status != 200 or "Identity successfully verified." not in duplicate.body or len(duplicate_users) != 2 or duplicate_users[0][0] == duplicate_users[1][0]:
+    if duplicate.status != 302 or duplicate.location != "/" or len(duplicate_users) != 2 or duplicate_users[0][0] == duplicate_users[1][0]:
         raise RuntimeError("A separate provider account did not receive a separate local identity.")
     if any(name != "KochWiki Verification" for _, name in duplicate_users):
         raise RuntimeError("Duplicate display names were not preserved.")
@@ -187,7 +191,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     if fresh_browser.request(base_url + "/api/auth/me").status != 200:
         raise RuntimeError("Logout unexpectedly invalidated another browser's session.")
     relogin = browser.follow(base_url + "/api/auth/login")
-    if relogin.status != 200 or browser.request(base_url + "/api/auth/me").status != 200:
+    if relogin.status != 302 or relogin.location != "/" or browser.request(base_url + "/api/auth/me").status != 200:
         raise RuntimeError("Local logout unexpectedly ended the Keycloak browser session.")
     print("PASS: persistent local session, private current-user contract, CSRF logout and preserved Keycloak session")
     print("PASS: temporary account created in the disposable provider; runner handles teardown")

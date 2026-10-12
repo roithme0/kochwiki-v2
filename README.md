@@ -51,18 +51,23 @@ Browser API access is same-origin through the gateway or Angular development
 proxy, so the backend has no CORS middleware. Server-to-server requests require
 no browser CORS permissions. MCP validates Host and Origin headers separately.
 
-FastAPI can verify a Keycloak login through a manually opened browser URL and
-create or reuse a local user by the validated issuer and subject. Each login
-refreshes the provider-owned email and non-unique display name. Every local user
-requires a provider identity and an email snapshot. Email remains non-unique and
-never links accounts. Manual user creation and local profile editing are
-removed. The temporary user selector lists existing provider-linked users.
-See [OIDC configuration and local verification](docs/authentication-verification.md).
+FastAPI manages Keycloak login and creates or reuses a local user by validated
+issuer and subject. Each login refreshes the provider-owned email and non-unique
+display name. Email never links accounts; manual user selection, creation and
+local profile editing are removed. Angular resolves the current user through
+`/api/auth/me` on the first guarded navigation, keeping content hidden until the session is verified.
+Absent sessions initiate browser login; successful callbacks redirect home.
+There is no return destination feature. Temporary failures show an error without
+automatic login or retry actions. See [OIDC configuration and verification](docs/authentication-verification.md).
+
 Successful login establishes a PostgreSQL-backed local session with a host-only,
 HttpOnly cookie and 30-day sliding inactivity expiry. `/api/auth/me` returns the
 current user and renews the session; same-origin `POST /api/auth/logout` ends only
-the local session. Frontend login wiring and protection of existing domain APIs
-remain subsequent slices; the temporary selector and AI identity header are unchanged.
+the local session. Logout opens `/signed-out`, with a short hint and explicit sign-in
+button; reloading that page does not automatically start login. The Keycloak
+session remains active. Existing domain APIs, provider revocation checks and AI
+Service authentication remain subsequent slices. Domain requests do not yet renew
+or enforce the session.
 
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 
@@ -108,9 +113,9 @@ save service and in-memory mapping; saving atomically creates required temporary
 foodstuffs and a draft, and repeat saves return that version. Recipe payloads
 contain no save identity, roles, or foodstuff IDs.
 
-Conversation requests, including SSE observation, carry the selected user's stable `kochwiki:<user.id>` identity in `X-Application-User`. A selected user is required before session creation; restoration does not start a session. Changing the selected user clears chat and detaches the previous observer. Late responses cannot update the new user's view; selecting another user starts a fresh conversation. Already admitted backend work continues. The locked `0.5.4` package provides the identity-aware chat UI constructor. Release verification uses the published registry package. The documented local-link workflow produced duplicate Angular injection contexts in tests.
+Conversation requests, including SSE observation, carry the authenticated user's stable `kochwiki:<user.id>` identity in `X-Application-User`. An authenticated user is required before session creation; authentication restoration alone does not start a conversation. Logout clears chat and detaches the observer. Late responses cannot update the signed-out view; a later login starts a fresh conversation. Already admitted backend work continues. The locked `0.5.4` package provides the identity-aware chat UI constructor. Release verification uses the published registry package. The documented local-link workflow produced duplicate Angular injection contexts in tests.
 
-Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving stops observing the event stream without cancelling remote work. New content and status changes scroll the history to the bottom. Context limits surface as initialization errors rather than silently reducing the snapshot.
+Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; explicit logout discards it without a separate leave confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving stops observing the event stream without cancelling remote work. New content and status changes scroll the history to the bottom. Context limits surface as initialization errors rather than silently reducing the snapshot.
 
 Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. Contract tests cover the public `/ui` and `/conversation` entry points and controlled request/response flows; these do not establish live-agent or mobile-keyboard readiness.
 

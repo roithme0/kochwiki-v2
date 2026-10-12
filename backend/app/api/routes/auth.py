@@ -76,12 +76,12 @@ def login() -> Response:
     return response
 
 
-@router.get("/callback", response_class=HTMLResponse, include_in_schema=False)
-def callback(request: Request) -> HTMLResponse:
+@router.get("/callback", response_model=None, include_in_schema=False)
+def callback(request: Request) -> Response:
     service = login_service()
     if service is None:
         return result("Login verification is not configured.", 503)
-    response: HTMLResponse
+    response: Response
     try:
         parameters = request.query_params
         if any(
@@ -110,10 +110,7 @@ def callback(request: Request) -> HTMLResponse:
                 secret, expires = establish_session(
                     session, user_id, request.cookies.get(SESSION_COOKIE)
                 )
-            response = result(
-                f"Identity successfully verified. Signed into KochWiki. Local user: {user_id}.",
-                200,
-            )
+            response = RedirectResponse("/", status_code=302, headers=HEADERS)
             set_session_cookie(response, secret, expires, service.secure_cookie)
     except LoginRejected:
         response = result(

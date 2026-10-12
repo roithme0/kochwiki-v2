@@ -6,8 +6,8 @@ Initial concept under discussion. The agreed provider is now self-hosted Keycloa
 replacing Microsoft Entra External ID. Start with Kochwiki authentication;
 AI Service authentication and cross-application SSO integration remain deferred.
 The first local provider slice now configures the `services` realm through a
-repeatable setup/update command in `../identity-provider`. Kochwiki application sessions, frontend authentication integration and production
-deployment remain unimplemented.
+repeatable setup/update command in `../identity-provider`. Kochwiki application sessions and frontend authentication are now implemented; production
+deployment remains deferred.
 The second local slice now provides dedicated PostgreSQL storage with a persistent Docker
 volume. Existing disposable demo accounts are not migrated. Backups are deferred
 from this slice.
@@ -24,9 +24,9 @@ Staging and production definitions have not been launched in their target enviro
 The provider-side Kochwiki OIDC client is now managed by the same repeatable
 configuration command. A standalone local callback verifies the login flow and
 identity claims before Kochwiki integration. FastAPI now implements the actual
-login/callback round trip, with manual browser URL entry and a minimal verification
-result. Local user mapping is implemented; application sessions and frontend
-authentication integration remain subsequent slices.
+login/callback round trip, now initiated by Angular with a fixed home redirect
+after successful login. Local user mapping, application sessions and frontend authentication
+integration are implemented.
 Local OIDC verification and the existing realm regression checks passed,
 including managed-setting repair and preservation of identities and the client
 secret. All three Compose definitions validate; the test callback is local-only.
@@ -37,9 +37,9 @@ nonce, PKCE verifier and expiry. A temporary HttpOnly, SameSite=Lax cookie binds
 the transaction to the initiating browser; it is Secure for HTTPS callbacks.
 Only one pending login flow per browser is supported initially. Backend-side
 code exchange and RS256 ID-token validation establish identity; tokens are
-then discarded. Success and failures show generic, non-cached verification
-pages without profile data or automatic retries. This does not yet establish
-a Kochwiki application session, replace user selection or protect domain APIs.
+then discarded. Success creates a local session and redirects to the fixed home
+path `/`; failures show generic, non-cached pages without automatic retries.
+Frontend user selection is removed; domain API protection remains deferred.
 Configuration is environment-driven, with an optional separate local Docker
 backchannel address preserving the canonical issuer. The current local gateway
 uses port 8002; its callback and the provider's exact allowlist are aligned.
@@ -56,12 +56,12 @@ database and backend/frontend user contract now use `display_name` instead of
 `username`; public responses omit email and provider identity. Every user requires
 a non-null issuer, subject and email snapshot. Email remains non-unique and
 never links accounts. Manual user creation and local profile editing are
-removed from the backend/frontend contract; the selector remains temporarily for
-existing provider-linked users. The single user mapping migration requires an
+removed from the backend/frontend contract; the selector has also been removed. The single user mapping migration requires an
 empty local user table and stops explicitly if existing users remain, requiring
 the agreed operator reset without deleting data, assigning identities or
 backfilling profile values.
-The callback shows only the local numeric user ID for repeat-login verification.
+The callback redirects home; `/api/auth/me` provides the current-user
+contract containing only local ID and display name.
 The operator will reset local/staging Kochwiki databases separately; this slice
 does not delete data, migrate/link old accounts or change Keycloak identities.
 
@@ -88,10 +88,12 @@ sharing, or application entitlements.
 Kochwiki is a private Angular application backed by FastAPI. Browser API traffic
 is same-origin through the deployment gateway or Angular development proxy.
 
-The frontend stores a selected local user ID in local storage and restores the
-corresponding user. Its `AuthGuard` checks whether a user is selected; this does
-not prove identity. AI conversation requests carry the selected user's identity
-through `X-Application-User`; that browser-supplied identity is not authentication.
+Angular restores the authenticated current user through `/api/auth/me` on the first guarded navigation,
+with content hidden until validation finishes. Local storage no longer supplies
+identity. Every domain page, including home, requires this current user. Absent
+sessions initiate browser login; temporary failures show an error without login
+or retry loops. AI requests use the authenticated local user's
+`X-Application-User` identity, which still does not authenticate AI Service.
 
 The gateway forwards selected AI Service routes directly, bypassing FastAPI,
 without authentication. Kochwiki also exposes MCP and resolver capabilities used
@@ -227,9 +229,10 @@ rotation requiring a coordinated backend update.
 
 Use `/api/auth/callback` as the fixed Kochwiki callback path and configure exact
 allowed URLs through the space-separated `KOCHWIKI_REDIRECT_URIS` environment
-variable. Local URLs are `http://localhost:8000/api/auth/callback` for Docker and
-`http://localhost:4200/api/auth/callback` for Angular development. Kochwiki will
-configure its public URL separately to construct a matching callback.
+variable. The provider's original examples use `http://localhost:8000/api/auth/callback`
+for Docker and `http://localhost:4200/api/auth/callback` for Angular development.
+Use the actual app origin: this workspace's gateway uses `8002` and `npm start`
+uses `4202`. Register the matching exact callback before using either origin.
 
 Use `/signed-out` as the fixed return path after logout, with a Sign in button
 and no automatic login redirect. Configure its exact allowed URLs through
@@ -237,8 +240,9 @@ and no automatic login redirect. Configure its exact allowed URLs through
 `http://localhost:8000/signed-out` and `http://localhost:4200/signed-out`.
 Staging and production supply HTTPS callback and logout URLs. The wrapper
 rejects wildcards, URL credentials, queries and fragments, and permits HTTP only
-on loopback hosts in the local deployment. The Kochwiki endpoints and signed-out
-page are not implemented by this slice.
+on loopback hosts in the local deployment. Kochwiki's endpoints and signed-out
+page are now implemented. Local logout does not use Keycloak's logout endpoint
+or its redirect allowlist; it preserves the provider session.
 
 Consume validated ID-token claims `iss`, `sub`, `email`, `email_verified`, and
 `displayName`. Keycloak supplies the protocol identity claims; three managed
@@ -370,13 +374,28 @@ the home page and direct links to recipes or other features. On entry, restore
 the current session; if no valid session exists, initiate the Keycloak login flow.
 Users with a valid session proceed directly to the requested page.
 
-After successful login, return users to their intended Kochwiki page using a
-validated local return destination. Do not allow arbitrary external return URLs.
-Failed or cancelled login should present a recoverable signed-out state rather
-than repeatedly redirecting automatically.
+Successful login always redirects to the fixed home path `/`; no return URL is
+implemented or accepted. An already valid session can open the requested deep
+link directly. Failed or cancelled login shows a generic backend error page and
+does not automatically restart login.
 
-Require authenticated identity for Kochwiki's application API routes, not only
-Angular navigation. Unauthenticated API calls return an HTTP 401 response;
+Explicit logout clears only the local session, then opens `/signed-out` with a
+short hint and an `Anmelden` button. That route is excluded from automatic login,
+including on reload. The button initiates `/api/auth/login`; Keycloak's existing
+session may immediately authenticate again. Logout failures retain the current
+user and show an error; a 401 counts as already signed out. Clearing identity
+detaches chat observation and invalidates late feedback without cancelling already
+admitted remote work. There is no user-switch action or session/provider polling.
+Session management does not inspect URLs or navigate. The guard initiates a
+shared session check and starts browser login for an absent session; the
+signed-out button starts login explicitly. The header delegates logout to `AuthNavigationService`, which navigates to the
+signed-out page only after the session service confirms logout. The unguarded signed-out route does not initiate
+a session check.
+The browser app origin and configured callback origin must match for logout.
+
+A subsequent slice must require authenticated identity for Kochwiki's application
+API routes in addition to Angular navigation. Current domain APIs remain unprotected.
+Future protected API calls without authentication must return HTTP 401;
 browser page navigation handles the interactive login redirect. Login initiation,
 OIDC callbacks, the signed-out landing state, required frontend assets, and
 necessary operational health endpoints must remain reachable without a session.

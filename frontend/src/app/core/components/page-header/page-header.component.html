@@ -1,22 +1,23 @@
 <mat-toolbar class="toolbar">
   <!-- home -->
-  @if(pageHeaderService.showHome()){
-  <button
-    mat-icon-button
-    color="accent"
-    aria-setsize=""
-    routerLink=""
-    routerLinkActive="active"
-    class="medium-size-button"
-  >
-    <mat-icon aria-hidden="false" aria-label="Home" fontIcon="home" /></button
-  >}
+  @if (pageHeaderService.showHome()) {
+    <button
+      mat-icon-button
+      color="accent"
+      aria-setsize=""
+      routerLink=""
+      routerLinkActive="active"
+      class="medium-size-button"
+    >
+      <mat-icon aria-hidden="false" aria-label="Home" fontIcon="home" />
+    </button>
+  }
 
   <div class="headline-wrapper">
     <div class="heading-text">
       <div class="headline-row">
         <span class="headline">{{ pageHeaderService.headline() }}</span>
-        @if(environmentName != 'prod' ){
+        @if (environmentName != "prod") {
           <span class="environment">{{ environmentName }}</span>
         }
       </div>
@@ -29,45 +30,53 @@
   <span class="spacer"></span>
 
   <!-- back arrow -->
-  @if(pageHeaderService.showBack() == true){
-  <button
-    mat-icon-button
-    color="accent"
-    class="medium-size-button"
-    routerLinkActive="active"
-    [routerLink]="pageHeaderService.back()"
-  >
-    <mat-icon aria-hidden="false" aria-label="Zurück" fontIcon="arrow_back" />
-  </button>
+  @if (pageHeaderService.showBack() == true) {
+    <button
+      mat-icon-button
+      color="accent"
+      class="medium-size-button"
+      routerLinkActive="active"
+      [routerLink]="pageHeaderService.back()"
+    >
+      <mat-icon aria-hidden="false" aria-label="Zurück" fontIcon="arrow_back" />
+    </button>
   }
 
-  @if(pageHeaderService.showUserOptions()){
-  <button
-    mat-icon-button
-    color="accent"
-    [matMenuTriggerFor]="userOptionsMenu"
-    aria-label="Benutzeroptionen öffnen"
-    class="medium-size-button"
-  >
-    <mat-icon aria-hidden="true" fontIcon="more_vert" />
-  </button>
+  @if (pageHeaderService.showUserOptions()) {
+    <button
+      mat-icon-button
+      color="accent"
+      [matMenuTriggerFor]="userOptionsMenu"
+      aria-label="Benutzeroptionen öffnen"
+      class="medium-size-button"
+    >
+      <mat-icon aria-hidden="true" fontIcon="more_vert" />
+    </button>
 
-  <mat-menu #userOptionsMenu="matMenu">
-    <div class="user-options-display_name" aria-label="Aktiver Benutzer">
-      {{ activeUserService.activeUser()?.display_name }}
-    </div>
-    <button mat-menu-item (click)="themeService.toggle()">
-      <span class="user-options-action">
-        <span>{{ themeService.isDark() ? 'Helles Design' : 'Dunkles Design' }}</span>
-        <mat-icon aria-hidden="true">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
-      </span>
-    </button>
-    <button mat-menu-item (click)="activeUserService.switchUser()">
-      <span class="user-options-action">
-        <span>Benutzer wechseln</span>
-        <mat-icon aria-hidden="true">switch_account</mat-icon>
-      </span>
-    </button>
-  </mat-menu>
+    <mat-menu #userOptionsMenu="matMenu">
+      <div class="user-options-display_name" aria-label="Aktiver Benutzer">
+        {{ activeUserService.activeUser()?.display_name }}
+      </div>
+      <button mat-menu-item (click)="themeService.toggle()">
+        <span class="user-options-action">
+          <span>{{
+            themeService.isDark() ? "Helles Design" : "Dunkles Design"
+          }}</span>
+          <mat-icon aria-hidden="true">{{
+            themeService.isDark() ? "light_mode" : "dark_mode"
+          }}</mat-icon>
+        </span>
+      </button>
+      <button
+        mat-menu-item
+        [disabled]="activeUserService.logoutPending()"
+        (click)="logout()"
+      >
+        <span class="user-options-action">
+          <span>Abmelden</span>
+          <mat-icon aria-hidden="true">logout</mat-icon>
+        </span>
+      </button>
+    </mat-menu>
   }
 </mat-toolbar>

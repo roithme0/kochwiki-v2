@@ -1,24 +1,24 @@
 import { inject, Injectable } from '@angular/core';
-import { CanActivate, Router } from '@angular/router';
-import type { UrlTree } from '@angular/router';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { filter, map, Observable, take } from 'rxjs';
+import { CanActivate } from '@angular/router';
+import { from, map, Observable } from 'rxjs';
 import { ActiveUserService } from '../services/active-user.service';
+import { AuthNavigationService } from '../services/auth-navigation.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthGuard implements CanActivate {
   readonly activeUserService = inject(ActiveUserService);
-  readonly router = inject(Router);
-  private readonly restorationState = toObservable(this.activeUserService.restorationState);
+  private readonly navigation = inject(AuthNavigationService);
 
-  canActivate(): Observable<boolean | UrlTree> {
-    return this.restorationState.pipe(
-      filter((state) => state === 'idle'),
-      take(1),
-      map(() => this.activeUserService.activeUser() !== null
-        ? true : this.router.createUrlTree(['/userSelection']))
+  canActivate(): Observable<boolean> {
+    return from(this.activeUserService.ensureSession()).pipe(
+      map(() => {
+        if (this.activeUserService.activeUser() !== null) return true;
+        if (this.activeUserService.restorationState() === 'signed-out')
+          this.navigation.signIn();
+        return false;
+      }),
     );
   }
 }

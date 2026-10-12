@@ -19,8 +19,8 @@ from test_oidc_login import Provider, begin, browser, finish, provider, settings
 
 def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: Provider) -> None:
     query = begin(browser, provider)
-    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code"})
-    assert response.status_code == 200
+    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code"}, follow_redirects=False)
+    assert response.status_code == 302 and response.headers["location"] == "/"
     secret = browser.cookies.get(SESSION_COOKIE)
     assert secret and len(secret) == 43 and secret not in response.text
     cookie = next(value for value in response.headers.get_list("set-cookie") if value.startswith(SESSION_COOKIE + "="))
@@ -41,7 +41,7 @@ def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: 
 
 
 def test_activity_slides_database_and_cookie_expiry(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
     old_activity = datetime.now(timezone.utc) - timedelta(days=29)
     with SessionLocal.begin() as session:
@@ -66,7 +66,7 @@ def test_invalid_session_cleared(browser: TestClient, secret: str | None) -> Non
 
 @pytest.mark.parametrize("days", [30, 31])
 def test_expired_cannot_be_revived(browser: TestClient, provider: Provider, days: int) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
     old_activity = datetime.now(timezone.utc) - timedelta(days=days)
     with SessionLocal.begin() as session:
@@ -81,7 +81,7 @@ def test_expired_cannot_be_revived(browser: TestClient, provider: Provider, days
 
 @pytest.mark.parametrize("origin", [None, "null", "http://localhost:8006", "https://attacker.invalid", "http://localhost:8000/", "http://localhost:8000@attacker.invalid", "http://localhost:bad", "http://localhost:0", " http://localhost:8000"])
 def test_logout_csrf_rejection_preserves_session(browser: TestClient, provider: Provider, origin: str | None) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         previous = session.scalars(select(ApplicationSession)).one().last_activity_at
     response = browser.post("/api/auth/logout", headers={"Origin": origin} if origin else {})
@@ -92,7 +92,7 @@ def test_logout_csrf_rejection_preserves_session(browser: TestClient, provider: 
 
 
 def test_logout_invalidates_only_local_session_and_rejects_reuse(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
     calls = provider.calls
     assert browser.get("/api/auth/logout").status_code == 405
@@ -110,7 +110,7 @@ def test_logout_invalidates_only_local_session_and_rejects_reuse(browser: TestCl
 
 
 def test_login_rotates_only_after_successful_validation(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     original = browser.cookies.get(SESSION_COOKIE)
     query = begin(browser, provider)
     provider.override = {"nonce": "wrong"}
@@ -118,7 +118,7 @@ def test_login_rotates_only_after_successful_validation(browser: TestClient, pro
     assert browser.cookies.get(SESSION_COOKIE) == original
     assert browser.get("/api/auth/me").status_code == 200
     provider.override = {}
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     assert browser.cookies.get(SESSION_COOKIE) != original
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 1
@@ -131,7 +131,7 @@ def test_https_cookie_and_default_origin_port(browser: TestClient, provider: Pro
     monkeypatch.setattr(auth, "get_settings", lambda: settings.model_copy(update={"oidc_callback_url": "https://cook.example/api/auth/callback"}))
     with TestClient(browser.app, base_url="https://cook.example") as secure_browser:
         query = begin(secure_browser, provider)
-        response = secure_browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code"})
+        response = secure_browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code"}, follow_redirects=False)
         cookie = next(value for value in response.headers.get_list("set-cookie") if value.startswith(SESSION_COOKIE + "="))
         assert "Secure" in cookie and "Domain=" not in cookie
         assert secure_browser.get("/api/auth/me").status_code == 200
@@ -139,7 +139,7 @@ def test_https_cookie_and_default_origin_port(browser: TestClient, provider: Pro
 
 
 def test_user_deletion_invalidates_sessions(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal.begin() as session:
         session.execute(delete(User))
     assert browser.get("/api/auth/me").status_code == 401
@@ -148,7 +148,7 @@ def test_user_deletion_invalidates_sessions(browser: TestClient, provider: Provi
 
 
 def test_concurrent_renewal_and_logout_cannot_resurrect_session(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
     barrier = Barrier(4)
 
@@ -169,7 +169,7 @@ def test_concurrent_renewal_and_logout_cannot_resurrect_session(browser: TestCli
 
 
 def test_stored_hash_is_not_a_session_credential(browser: TestClient, provider: Provider) -> None:
-    assert finish(browser, begin(browser, provider)) == 200
+    assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         hashed = session.scalars(select(ApplicationSession)).one().secret_hash
     browser.cookies.set(SESSION_COOKIE, hashed, domain="localhost.local", path=SESSION_PATH)

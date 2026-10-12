@@ -47,10 +47,8 @@
   <div class="initial-state" role="status">
     @switch (phase()) {
       @case ("waiting-for-user") {
-        <p>
-          Bitte wähle einen Benutzer aus, bevor du eine Unterhaltung startest.
-        </p>
-        <a mat-button routerLink="/userSelection">Benutzer auswählen</a>
+        <p>Bitte melde dich an, bevor du eine Unterhaltung startest.</p>
+        <a mat-button routerLink="/signed-out">Anmelden</a>
       }
       @case ("loading") {
         <p>Rezept und Lebensmittel werden geladen …</p>
