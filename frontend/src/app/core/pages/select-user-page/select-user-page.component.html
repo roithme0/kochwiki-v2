@@ -15,18 +15,11 @@
       </mat-card-content>
 
       <mat-card-header>
-        <mat-card-title>{{ user.username }}</mat-card-title>
+        <mat-card-title>{{ user.display_name }}</mat-card-title>
       </mat-card-header>
     </mat-card>
     }
   </nav>
 
-  <button
-    mat-mini-fab
-    (click)="openUserCreateDialog()"
-    class="create-user-button medium-size-button"
-  >
-    <mat-icon aria-hidden="false" aria-label="Nutzer*in hinzufügen" fontIcon="add" />
-  </button>
   }
 </main>

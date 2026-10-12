@@ -462,37 +462,17 @@ export type StepWrite = {
 export type Unit = 'G' | 'ML' | 'PIECE';
 
 /**
- * UserCreate
- */
-export type UserCreate = {
-    /**
-     * Username
-     */
-    username: string;
-};
-
-/**
  * UserOut
  */
 export type UserOut = {
     /**
+     * Display Name
+     */
+    display_name: string;
+    /**
      * Id
      */
     id: number;
-    /**
-     * Username
-     */
-    username: string;
-};
-
-/**
- * UserUpdate
- */
-export type UserUpdate = {
-    /**
-     * Username
-     */
-    username?: string | null;
 };
 
 /**
@@ -1220,35 +1200,6 @@ export type GetUsersUsersGetResponses = {
 
 export type GetUsersUsersGetResponse = GetUsersUsersGetResponses[keyof GetUsersUsersGetResponses];
 
-export type PostUserUsersPostData = {
-    body: UserCreate;
-    path?: never;
-    query?: never;
-    url: '/users';
-};
-
-export type PostUserUsersPostErrors = {
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type PostUserUsersPostError = PostUserUsersPostErrors[keyof PostUserUsersPostErrors];
-
-export type PostUserUsersPostResponses = {
-    /**
-     * Successful Response
-     */
-    201: UserOut;
-};
-
-export type PostUserUsersPostResponse = PostUserUsersPostResponses[keyof PostUserUsersPostResponses];
-
 export type DeleteUserUsersUserIdDeleteData = {
     body?: never;
     path: {
@@ -1316,41 +1267,3 @@ export type GetUserUsersUserIdGetResponses = {
 };
 
 export type GetUserUsersUserIdGetResponse = GetUserUsersUserIdGetResponses[keyof GetUserUsersUserIdGetResponses];
-
-export type PatchUserUsersUserIdPatchData = {
-    body: UserUpdate;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: number;
-    };
-    query?: never;
-    url: '/users/{user_id}';
-};
-
-export type PatchUserUsersUserIdPatchErrors = {
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type PatchUserUsersUserIdPatchError = PatchUserUsersUserIdPatchErrors[keyof PatchUserUsersUserIdPatchErrors];
-
-export type PatchUserUsersUserIdPatchResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserOut;
-};
-
-export type PatchUserUsersUserIdPatchResponse = PatchUserUsersUserIdPatchResponses[keyof PatchUserUsersUserIdPatchResponses];

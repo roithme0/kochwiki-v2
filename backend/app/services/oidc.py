@@ -2,7 +2,6 @@ import base64
 import hashlib
 import json
 import secrets
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
@@ -14,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from sqlalchemy import delete
 
 from app.core.config import Settings
+from app.core.profile import normalize_display_name
 from app.db.session import SessionLocal
 from app.models.login_transaction import LoginTransaction
 
@@ -49,14 +49,10 @@ class Identity(BaseModel):
     display_name: str = Field(alias="displayName", min_length=1, max_length=50)
     nonce: str
 
-    @field_validator("display_name")
+    @field_validator("display_name", mode="before")
     @classmethod
-    def validate_display_name(cls, value: str) -> str:
-        if not value.strip() or any(
-            unicodedata.category(char) == "Cc" for char in value
-        ):
-            raise ValueError("Invalid display name")
-        return value.strip()
+    def validate_display_name(cls, value: object) -> object:
+        return normalize_display_name(value)
 
 
 @dataclass(frozen=True)

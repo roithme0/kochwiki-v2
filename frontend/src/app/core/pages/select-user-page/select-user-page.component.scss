@@ -1,4 +1,3 @@
-@use "../../../../styles/style-tokens" as tokens;
 @use "../../../../styles/mat-card-styles.scss" as *;
 
 main {
@@ -43,10 +42,4 @@ mat-card-header {
 
 mat-card-title {
   text-align: center;
-}
-
-.create-user-button {
-  position: absolute;
-  bottom: tokens.$floating-button-position;
-  right: tokens.$floating-button-position;
 }

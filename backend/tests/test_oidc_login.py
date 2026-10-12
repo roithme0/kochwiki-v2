@@ -6,6 +6,7 @@ import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from threading import Barrier
 from urllib.parse import parse_qs, urlsplit
 
 import jwt
@@ -15,13 +16,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.api.routes import auth
 from app.core.auth_logging import AuthQueryFilter
 from app.core.config import Settings
 from app.db.session import SessionLocal
 from app.models.login_transaction import LoginTransaction
+from app.models.user import User
 from app.services import oidc
+from app.services.users import map_identity
 
 ISSUER = "http://localhost:8006/realms/services"
 CALLBACK = "http://localhost:8000/api/auth/callback"
@@ -33,6 +37,7 @@ class Provider:
         self.key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         self.nonce = ""
         self.override: dict[str, object] = {}
+        self.omit_email = False
         self.token_form: dict[str, str] = {}
         self.unavailable = False
         self.invalid_signature = False
@@ -61,6 +66,8 @@ class Provider:
                 "displayName": "Kitchen Friend",
             }
             claims.update(self.override)
+            if self.omit_email:
+                claims.pop("email")
             key = rsa.generate_private_key(public_exponent=65537, key_size=2048) if self.invalid_signature else self.key
             token = jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-key"})
             return json.dumps({"id_token": token, "access_token": "must-stay-server-side", "refresh_token": "must-also-stay-server-side"}).encode()
@@ -144,12 +151,103 @@ def test_invalid_identity_rejected(browser: TestClient, provider: Provider, over
     provider.override = override
     assert finish(browser, query) == 400
     assert not provider.unavailable
+    with SessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(User)) == 0
+
+
+def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: Provider) -> None:
+    provider.override = {"displayName": "  " + "a" * 50 + "  "}
+    assert finish(browser, begin(browser, provider)) == 200
+    with SessionLocal() as session:
+        first = session.scalars(select(User)).one()
+        first_id = first.id
+        assert first.display_name == "a" * 50
+        assert first.email == "cook@example.invalid"
+        assert (first.issuer, first.subject) == (ISSUER, "provider-user")
+    provider.override = {"displayName": "Shared Name", "email": "new@example.invalid"}
+    assert finish(browser, begin(browser, provider)) == 200
+    provider.override = {"sub": "recreated-account", "displayName": "Shared Name", "email": "new@example.invalid"}
+    assert finish(browser, begin(browser, provider)) == 200
+    with SessionLocal() as session:
+        users = session.scalars(select(User).order_by(User.id)).all()
+        assert len(users) == 2
+        assert users[0].id == first_id
+        assert users[0].display_name == users[1].display_name == "Shared Name"
+        assert users[0].email == users[1].email == "new@example.invalid"
+        assert users[0].subject != users[1].subject
+
+
+@pytest.mark.parametrize("problem", ["missing", "null", "empty"])
+def test_email_claim_is_required(browser: TestClient, provider: Provider, problem: str) -> None:
+    query = begin(browser, provider)
+    if problem == "missing":
+        provider.omit_email = True
+    else:
+        provider.override = {"email": None if problem == "null" else ""}
+    assert finish(browser, query) == 400
+    with SessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(User)) == 0
+
+
+def test_concurrent_first_login_and_issuer_separation() -> None:
+    identity = oidc.Identity(iss=ISSUER, sub="same-subject", email="cook@example.invalid",
+                             email_verified=False, displayName="Shared Name", nonce="test")
+
+    barrier = Barrier(4)
+
+    def map_user() -> int:
+        with SessionLocal.begin() as session:
+            barrier.wait(timeout=10)
+            return map_identity(session, identity).id
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(map_user) for _ in range(4)]
+        ids = [future.result() for future in futures]
+    assert len(set(ids)) == 1
+    with SessionLocal.begin() as session:
+        other = map_identity(session, identity.model_copy(update={"iss": "https://other.example/realm"}))
+        assert other.id != ids[0]
+        assert session.scalar(select(func.count()).select_from(User)) == 2
+
+
+def test_user_creation_and_profile_edit_are_not_exposed(client: TestClient) -> None:
+    identity = oidc.Identity(iss=ISSUER, sub="provider-user", email="cook@example.invalid",
+                             email_verified=False, displayName="Shared Name", nonce="test")
+    with SessionLocal.begin() as session:
+        user_id = map_identity(session, identity).id
+    assert client.get(f"/users/{user_id}").json() == {"id": user_id, "display_name": "Shared Name"}
+    assert client.patch(f"/users/{user_id}", json={"display_name": "Local override"}).status_code == 405
+    assert client.post("/users", json={"display_name": "Shared Name", "issuer": ISSUER, "subject": "fake"}).status_code == 405
+    paths = client.get("/api/openapi.json").json()["paths"]
+    assert "post" not in paths["/users"]
+    assert "patch" not in paths["/users/{user_id}"]
+
+
+@pytest.mark.parametrize("issuer,subject", [(None, None), (ISSUER, None), (None, "provider-user")])
+def test_users_require_provider_identity(issuer: str | None, subject: str | None) -> None:
+    with SessionLocal.begin() as session:
+        with pytest.raises(IntegrityError):
+            with session.begin_nested():
+                session.add(User(display_name="Unlinked", issuer=issuer, subject=subject, email="cook@example.invalid"))
+                session.flush()
+        assert session.scalar(select(func.count()).select_from(User)) == 0
+
+
+def test_users_require_email() -> None:
+    with SessionLocal.begin() as session:
+        with pytest.raises(IntegrityError):
+            with session.begin_nested():
+                session.add(User(display_name="No email", issuer=ISSUER, subject="provider-user", email=None))
+                session.flush()
+        assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
 def test_invalid_signature(browser: TestClient, provider: Provider) -> None:
     query = begin(browser, provider)
     provider.invalid_signature = True
     assert finish(browser, query) == 400
+    with SessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
 @pytest.mark.parametrize("problem", ["missing-cookie", "wrong-cookie", "wrong-state", "expired", "duplicate-state"])

@@ -2,6 +2,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.services.users import map_identity
 from app.services.oidc import LoginRejected, OIDCLogin, ProviderUnavailable, TRANSACTION_SECONDS
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -64,8 +66,11 @@ def callback(request: Request) -> HTMLResponse:
             code = parameters.get("code")
             if not code or len(code) > 4096:
                 raise LoginRejected()
-            service.finish(transaction, code)
-            response = result("Identity successfully verified.", 200)
+            identity = service.finish(transaction, code)
+            with SessionLocal.begin() as session:
+                user = map_identity(session, identity)
+                user_id = user.id
+            response = result(f"Identity successfully verified. Local user: {user_id}.", 200)
     except LoginRejected:
         response = result("Login verification failed or expired. Start a new login to try again.", 400)
     except ProviderUnavailable:

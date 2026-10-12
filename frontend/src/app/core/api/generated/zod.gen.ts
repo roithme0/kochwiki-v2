@@ -236,25 +236,11 @@ export const zRecipeVersionOut = z.strictObject({
 });
 
 /**
- * UserCreate
- */
-export const zUserCreate = z.object({
-    username: z.string().check(z.minLength(1), z.maxLength(50))
-});
-
-/**
  * UserOut
  */
 export const zUserOut = z.strictObject({
-    id: z.int(),
-    username: z.string()
-});
-
-/**
- * UserUpdate
- */
-export const zUserUpdate = z.object({
-    username: z.nullish(z.string().check(z.minLength(1), z.maxLength(50)))
+    display_name: z.string(),
+    id: z.int()
 });
 
 /**

@@ -53,8 +53,8 @@
   </button>
 
   <mat-menu #userOptionsMenu="matMenu">
-    <div class="user-options-username" aria-label="Aktiver Benutzer">
-      {{ activeUserService.activeUser()?.username }}
+    <div class="user-options-display_name" aria-label="Aktiver Benutzer">
+      {{ activeUserService.activeUser()?.display_name }}
     </div>
     <button mat-menu-item (click)="themeService.toggle()">
       <span class="user-options-action">

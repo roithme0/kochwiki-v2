@@ -45,7 +45,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   const snackbar = vi.fn<SnackBarService['open']>();
   const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
   const fetchMock = vi.fn<typeof fetch>();
-  const user = signal<{ id: number; username: string } | null>({ id: 1, username: 'Test' });
+  const user = signal<{ id: number; display_name: string } | null>({ id: 1, display_name: 'Test' });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let timeline: SessionSnapshotResponse['timeline'];
   let messages: SessionSnapshotResponse['messages'];
@@ -58,7 +58,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     artifacts = [];
     snackbar.mockReturnValue({ dismiss });
     save.mockResolvedValue({ ...conversationRecipe(), state: 'draft', recipeVersionId: 'saved' });
-    user.set({ id: 1, username: 'Test' });
+    user.set({ id: 1, display_name: 'Test' });
     source = conversationRecipe();
     params = new BehaviorSubject(convertToParamMap({ lineageId: source.recipeLineageId, recipeVersionId: source.recipeVersionId }));
     getRecipe.mockResolvedValue(source);
@@ -493,7 +493,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
 
   it('sends the stable selected identity on initialization, submissions, turn starts and SSE', async () => {
     const page = await open();
-    user.set({ id: 1, username: 'Renamed' });
+    user.set({ id: 1, display_name: 'Renamed' });
     fixture.detectChanges();
     await submit(page);
     expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -510,7 +510,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(page.phase()).toBe('waiting-for-user');
     expect(fixture.nativeElement.textContent).toContain('Benutzer auswählen');
     expect(page.original()).toBeNull();
-    user.set({ id: 2, username: 'Restored' });
+    user.set({ id: 2, display_name: 'Restored' });
     fixture.detectChanges();
     await fixture.whenStable();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -525,7 +525,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const acknowledge = vi.fn();
     const operation = page.submit({ text: 'Old owner', acknowledge });
     const requests = fetchMock.mock.calls.length;
-    user.set({ id: 2, username: 'Next' });
+    user.set({ id: 2, display_name: 'Next' });
     await page.submit({ text: 'Must not use old session', acknowledge: vi.fn() });
     await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
     expect(fetchMock).toHaveBeenCalledTimes(requests);
@@ -547,7 +547,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = fixture.componentInstance;
     fixture.detectChanges();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    user.set({ id: 2, username: 'Next' });
+    user.set({ id: 2, display_name: 'Next' });
     fixture.detectChanges();
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));

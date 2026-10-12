@@ -22,7 +22,7 @@ interface DeferredUser {
     reject: (reason: unknown) => void;
 }
 
-const USER: UserOut = { id: 7, username: 'Roi' };
+const USER: UserOut = { id: 7, display_name: 'Roi' };
 
 function createDeferredUser(): DeferredUser {
     let resolve!: (user: UserOut) => void;
@@ -101,7 +101,7 @@ describe('ActiveUserService', () => {
 
     it('restores and refreshes a persisted user without a selection notification', async () => {
         localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify(USER));
-        const refreshedUser: UserOut = { id: USER.id, username: 'Renamed Roi' };
+        const refreshedUser: UserOut = { id: USER.id, display_name: 'Renamed Roi' };
         const { service, snackBarService, userBackendService } = createContext((): Promise<UserOut> => Promise.resolve(refreshedUser));
 
         expect(service.activeUser()).toBeNull();
@@ -144,7 +144,7 @@ describe('ActiveUserService', () => {
         const deferredUser: DeferredUser = createDeferredUser();
         localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify(USER));
         const { service, router } = createContext((): Promise<UserOut> => deferredUser.promise);
-        const nextUser: UserOut = { id: 8, username: 'Mara' };
+        const nextUser: UserOut = { id: 8, display_name: 'Mara' };
 
         service.selectUser(nextUser);
         deferredUser.resolve(USER);
@@ -159,7 +159,7 @@ describe('ActiveUserService', () => {
         const deferredUser: DeferredUser = createDeferredUser();
         localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify(USER));
         const { service, router } = createContext((): Promise<UserOut> => deferredUser.promise);
-        const nextUser: UserOut = { id: 8, username: 'Mara' };
+        const nextUser: UserOut = { id: 8, display_name: 'Mara' };
 
         service.selectUser(nextUser);
         deferredUser.reject(new HttpErrorResponse({ status: 404 }));
@@ -174,7 +174,7 @@ describe('ActiveUserService', () => {
         const deferredUser = createDeferredUser();
         localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify({ id: USER.id }));
         const { service } = createContext(() => deferredUser.promise);
-        const selectedUser = { ...USER, username: 'Current name' };
+        const selectedUser = { ...USER, display_name: 'Current name' };
         service.selectUser(selectedUser);
         deferredUser.resolve(USER);
         await settle();
@@ -252,7 +252,7 @@ describe('ActiveUserService HTTP reconciliation', () => {
     });
 
     it('refreshes storage only with a validated user response', async () => {
-        const refreshed = { ...USER, username: 'Renamed Roi' };
+        const refreshed = { ...USER, display_name: 'Renamed Roi' };
         httpTesting.expectOne(`${backendUrl}/users/${USER.id}`).flush(refreshed);
         await settle();
         expect(service.activeUser()).toEqual(refreshed);
@@ -260,7 +260,7 @@ describe('ActiveUserService HTTP reconciliation', () => {
     });
 
     it('keeps the user inactive when a successful response violates the contract', async () => {
-        httpTesting.expectOne(`${backendUrl}/users/${USER.id}`).flush({ ...USER, username: 'Unchecked name', unexpected: true });
+        httpTesting.expectOne(`${backendUrl}/users/${USER.id}`).flush({ ...USER, display_name: 'Unchecked name', unexpected: true });
         await settle();
         expect(service.activeUser()).toBeNull();
         expect(service.restorationState()).toBe('error');
@@ -270,7 +270,7 @@ describe('ActiveUserService HTTP reconciliation', () => {
     });
 
     it('does not let a stale contract failure affect a newer selection', async () => {
-        const nextUser: UserOut = { id: 8, username: 'Mara' };
+        const nextUser: UserOut = { id: 8, display_name: 'Mara' };
         service.selectUser(nextUser);
         httpTesting.expectOne(`${backendUrl}/users/${USER.id}`).flush({ id: USER.id });
         await settle();

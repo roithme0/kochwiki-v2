@@ -46,7 +46,7 @@ export class ActiveUserService {
   }
 
   selectUser(value: UserOut): void {
-    if (!this.isStoredSelection(value) || typeof value.username !== 'string') {
+    if (!this.isStoredSelection(value) || typeof value.display_name !== 'string') {
       return;
     }
 
@@ -55,7 +55,7 @@ export class ActiveUserService {
     this._activeUser.set(value);
     this._restorationState.set('idle');
     this.storeUser(value);
-    this.snackBarService.open('Als ' + value.username + ' angemeldet');
+    this.snackBarService.open('Als ' + value.display_name + ' angemeldet');
   }
 
   //#region Public Methods

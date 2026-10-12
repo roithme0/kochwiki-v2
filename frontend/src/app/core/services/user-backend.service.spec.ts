@@ -6,7 +6,7 @@ import type { UserOut } from '../api/generated';
 import { UserBackendService } from './user-backend.service';
 import { ApiContractError } from '../api/api-contract-error';
 
-const user: UserOut = { id: 7, username: 'Roi' };
+const user: UserOut = { id: 7, display_name: 'Roi' };
 const operations: {
     method: string;
     path: string;
@@ -15,14 +15,13 @@ const operations: {
 }[] = [
     { method: 'GET', path: '/users', list: true, run: (service) => service.getAllUsers() },
     { method: 'GET', path: '/users/7', list: false, run: (service) => service.getUserById(7) },
-    { method: 'POST', path: '/users', list: false, run: (service) => service.postUser({ username: user.username }) },
 ];
 
 const malformedResponses = [
-    { reason: 'missing username', body: { id: 7 } },
+    { reason: 'missing display_name', body: { id: 7 } },
     { reason: 'string id', body: { ...user, id: '7' } },
     { reason: 'fractional id', body: { ...user, id: 7.5 } },
-    { reason: 'null username', body: { ...user, username: null } },
+    { reason: 'null display_name', body: { ...user, display_name: null } },
     { reason: 'undocumented field', body: { ...user, unexpected: true } },
 ];
 
@@ -43,7 +42,7 @@ describe('UserBackendService', () => {
     });
 
     it('fetches one user by stable id', async () => {
-        const user: UserOut = { id: 7, username: 'Roi' };
+        const user: UserOut = { id: 7, display_name: 'Roi' };
 
         const responsePromise: Promise<UserOut> = service.getUserById(user.id);
 
@@ -59,9 +58,6 @@ describe('UserBackendService', () => {
             const response = operation.run(service);
             const request = httpTesting.expectOne(backendUrl + operation.path);
             expect(request.request.method).toBe(operation.method);
-            if (operation.method === 'POST') {
-                expect(request.request.body).toEqual({ username: user.username });
-            }
             const body = operation.list ? [user] : user;
             request.flush(body);
             await expect(response).resolves.toEqual(body);
@@ -96,8 +92,6 @@ describe('UserBackendService', () => {
 
     it.each([
         { status: 404, statusText: 'Not Found', body: { detail: 'User not found' }, run: (service: UserBackendService) => service.getUserById(7), path: '/users/7' },
-        { status: 409, statusText: 'Conflict', body: { detail: 'Duplicate user' }, run: (service: UserBackendService) => service.postUser({ username: 'Roi' }), path: '/users' },
-        { status: 422, statusText: 'Unprocessable Entity', body: { detail: [{ loc: ['body', 'username'], msg: 'Invalid name', type: 'value_error' }] }, run: (service: UserBackendService) => service.postUser({ username: '' }), path: '/users' },
     ])('preserves HTTP failure $status and its body', async ({ status, statusText, body, run, path }) => {
         const response = run(service);
         const rejection = expect(response).rejects.toBeInstanceOf(HttpErrorResponse);

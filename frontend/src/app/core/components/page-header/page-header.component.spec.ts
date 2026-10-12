@@ -9,7 +9,7 @@ import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
 import type { UserOut } from '../../api/generated';
 
-const USER: UserOut = { id: 7, username: 'Roi' };
+const USER: UserOut = { id: 7, display_name: 'Roi' };
 
 describe('PageHeaderComponent', () => {
     let fixture: ComponentFixture<PageHeaderComponent>;

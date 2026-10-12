@@ -69,12 +69,12 @@ describe('User restoration routing and recovery', () => {
     page.querySelector<HTMLButtonElement>('button')?.click();
     fixture.detectChanges();
     expect(page.querySelector('[role="status"]')).not.toBeNull();
-    http.expectOne(`${backendUrl}/users/7`).flush({ id: 7, username: 'Fresh name' });
+    http.expectOne(`${backendUrl}/users/7`).flush({ id: 7, display_name: 'Fresh name' });
     await navigation;
     fixture.detectChanges();
     expect(router.url).toBe('/protected');
     expect(page.textContent).toContain('Protected page');
-    expect(TestBed.inject(ActiveUserService).activeUser()?.username).toBe('Fresh name');
+    expect(TestBed.inject(ActiveUserService).activeUser()?.display_name).toBe('Fresh name');
     expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBe('{"id":7}');
   });
 
@@ -100,7 +100,7 @@ describe('User restoration routing and recovery', () => {
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button')?.click();
     await navigation;
     await vi.waitFor(() => expect(router.url).toBe('/userSelection'));
-    TestBed.inject(HttpTestingController).expectOne(`${backendUrl}/users/7`).flush({ id: 7, username: 'Late user' });
+    TestBed.inject(HttpTestingController).expectOne(`${backendUrl}/users/7`).flush({ id: 7, display_name: 'Late user' });
     fixture.detectChanges();
     expect(TestBed.inject(ActiveUserService).activeUser()).toBeNull();
     expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBeNull();

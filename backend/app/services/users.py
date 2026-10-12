@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
-from app.services.exceptions import ConflictError, NotFoundError
-from app.services.integrity import flush_for_unique_conflict
+from app.services.exceptions import NotFoundError
+from app.services.oidc import Identity
 
 
 def list_users(session: Session) -> Sequence[User]:
@@ -20,19 +20,23 @@ def get_user(session: Session, user_id: int) -> User:
     return user
 
 
-def create_user(session: Session, payload: UserCreate) -> User:
-    user = User(username=payload.username)
-    session.add(user)
-    flush_for_unique_conflict(session, "custom_user_username_key", "A user with the same username already exists")
-    return user
-
-
-def update_user(session: Session, user_id: int, payload: UserUpdate) -> User:
-    user = get_user(session, user_id)
-    if "username" in payload.model_fields_set:
-        user.username = payload.username or user.username
-    flush_for_unique_conflict(session, "custom_user_username_key", "A user with the same username already exists")
-    return user
+def map_identity(session: Session, identity: Identity) -> User:
+    statement = insert(User).values(
+        issuer=identity.iss,
+        subject=identity.sub,
+        email=identity.email,
+        display_name=identity.display_name,
+    )
+    statement = statement.on_conflict_do_update(
+        constraint="uq_custom_user_identity",
+        set_={
+            "email": statement.excluded.email,
+            "display_name": statement.excluded.display_name,
+        },
+    ).returning(User)
+    return session.scalars(
+        statement, execution_options={"populate_existing": True}
+    ).one()
 
 
 def delete_user(session: Session, user_id: int) -> None:

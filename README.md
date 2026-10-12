@@ -51,7 +51,12 @@ Browser API access is same-origin through the gateway or Angular development
 proxy, so the backend has no CORS middleware. Server-to-server requests require
 no browser CORS permissions. MCP validates Host and Origin headers separately.
 
-FastAPI can verify a Keycloak login through a manually opened browser URL.
+FastAPI can verify a Keycloak login through a manually opened browser URL and
+create or reuse a local user by the validated issuer and subject. Each login
+refreshes the provider-owned email and non-unique display name. Every local user
+requires a provider identity and an email snapshot. Email remains non-unique and
+never links accounts. Manual user creation and local profile editing are
+removed. The temporary user selector lists existing provider-linked users.
 See [OIDC configuration and local verification](docs/authentication-verification.md).
 This initial slice does not yet establish an application session or protect APIs.
 

@@ -973,57 +973,23 @@
         "title": "Unit",
         "type": "string"
       },
-      "UserCreate": {
-        "properties": {
-          "username": {
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username"
-        ],
-        "title": "UserCreate",
-        "type": "object"
-      },
       "UserOut": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
           }
         },
         "required": [
           "id",
-          "username"
+          "display_name"
         ],
         "title": "UserOut",
-        "type": "object"
-      },
-      "UserUpdate": {
-        "properties": {
-          "username": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "title": "UserUpdate",
         "type": "object"
       },
       "ValidationError": {
@@ -2124,52 +2090,6 @@
           }
         },
         "summary": "Get Users"
-      },
-      "post": {
-        "operationId": "post_user_users_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Post User"
       }
     },
     "/users/{user_id}": {
@@ -2259,73 +2179,6 @@
           }
         },
         "summary": "Get User"
-      },
-      "patch": {
-        "operationId": "patch_user_users__user_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Patch User"
       }
     }
   }

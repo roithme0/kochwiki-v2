@@ -23,10 +23,10 @@ provider data also survived PostgreSQL/Keycloak replacement through the proxy.
 Staging and production definitions have not been launched in their target environments.
 The provider-side Kochwiki OIDC client is now managed by the same repeatable
 configuration command. A standalone local callback verifies the login flow and
-identity claims before Kochwiki integration. The next agreed slice implements
-the actual FastAPI login/callback round trip, with manual browser URL entry and a
-minimal verification result. Local user mapping, application sessions and frontend
-integration remain subsequent slices.
+identity claims before Kochwiki integration. FastAPI now implements the actual
+login/callback round trip, with manual browser URL entry and a minimal verification
+result. Local user mapping is implemented; application sessions and frontend
+authentication integration remain subsequent slices.
 Local OIDC verification and the existing realm regression checks passed,
 including managed-setting repair and preservation of identities and the client
 secret. All three Compose definitions validate; the test callback is local-only.
@@ -48,6 +48,22 @@ Actual hosted registration and login through Keycloak, Nginx and FastAPI passed;
 callback query values are redacted from backend access logs and gateway auth
 access logging is disabled. See `docs/authentication-verification.md` for the
 tracked configuration and verification instructions.
+
+The local identity slice creates or reuses a Kochwiki user uniquely by validated
+issuer and subject, including concurrent first logins. Every successful callback
+refreshes the provider-owned email and trimmed non-unique `display_name`. The
+database and backend/frontend user contract now use `display_name` instead of
+`username`; public responses omit email and provider identity. Every user requires
+a non-null issuer, subject and email snapshot. Email remains non-unique and
+never links accounts. Manual user creation and local profile editing are
+removed from the backend/frontend contract; the selector remains temporarily for
+existing provider-linked users. The single user mapping migration requires an
+empty local user table and stops explicitly if existing users remain, requiring
+the agreed operator reset without deleting data, assigning identities or
+backfilling profile values.
+The callback shows only the local numeric user ID for repeat-login verification.
+The operator will reset local/staging Kochwiki databases separately; this slice
+does not delete data, migrate/link old accounts or change Keycloak identities.
 
 The agreed full implementation will have FastAPI manage OIDC login and issue an
 opaque browser session cookie.
@@ -334,7 +350,8 @@ Reference: [Keycloak authentication, registration, and session settings](https:/
   service entitlements. Their design is not a prerequisite for this work.
 - Start with fresh local user records for authenticated accounts. Linking or
   migrating existing selected users and their associations is out of scope.
-  This concept decision does not authorize deleting existing data.
+  The operator performs the agreed local/staging Kochwiki database reset;
+  the agent and application do not delete data. Keycloak accounts remain intact.
 - Focus this stage on Kochwiki functionality handled by FastAPI. `/ai` gateway
   authentication, AI Service authentication, cross-application SSO integration,
   and inter-service authentication are deferred to the next stage. These are
@@ -406,7 +423,7 @@ concurrent first logins. Verify subject configuration across future clients
 before relying on it for cross-application correlation. The public issuer URL
 must be stable; hostname or realm migrations need an explicit identity migration.
 
-Email is profile information, not an identity key. Never automatically merge or
+Email is required, non-unique profile information, not an identity key. Never automatically merge or
 link accounts by email. Deleting and recreating a provider account must produce
 a distinct identity even when its email is reused. Refresh the local email on
 every successful login from validated claims, without requiring `email_verified`
@@ -414,8 +431,8 @@ to be true in the initial setup. Token validation proves the claim came from
 Keycloak, not that the user owns that mailbox. Do not treat this email as a
 verified recovery address or trusted recipient for sensitive information.
 
-Replace the current required unique `username` (50-character limit) with a
-required non-unique display name. Collect it during provider registration;
+The local contract now replaces the former required unique `username` with a
+required non-unique `display_name` (50-character limit). Collect it during provider registration;
 users must not have to find an unused display name or expose email as that name.
 Keycloak uses the email address as its internal username, but neither field is
 the local identity key or the name shown throughout Kochwiki.
@@ -431,9 +448,10 @@ together. Already signed-in apps may retain older values until their next login.
 Faster cross-application synchronization remains optional and undecided.
 Profile synchronization does not require an administrative API read on login.
 
-Existing recipes and other domain data are not disposable. Check old-user
-references against the actual data model before implementation; destructive
-cleanup is not authorized.
+The operator has agreed to reset the local and staging Kochwiki databases
+manually before using this slice; preservation or linking of old local users and
+their data is not required. Keycloak accounts remain intact. The application and
+migration do not perform a reset, and agent-driven deletion is not authorized.
 
 References: [OIDC subject identifiers](https://openid.net/specs/openid-connect-core-1_0.html#SubjectIDTypes)
 and [Keycloak user profiles and claim mapping](https://www.keycloak.org/docs/26.8.0/server_admin/).

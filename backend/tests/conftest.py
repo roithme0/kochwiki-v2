@@ -1,4 +1,6 @@
 import os
+from collections.abc import Callable
+from uuid import uuid4
 
 import pytest
 from alembic import command
@@ -15,8 +17,11 @@ for variable in ("OIDC_ISSUER", "OIDC_CLIENT_SECRET", "OIDC_CALLBACK_URL", "OIDC
     os.environ[variable] = ""
 os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 
-from app.db.session import engine
+from app.db.session import SessionLocal, engine
 from app.main import create_app
+from app.schemas.user import UserOut
+from app.services.oidc import Identity
+from app.services.users import map_identity
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -30,6 +35,21 @@ def clear_database() -> None:
         connection.execute(
             text('TRUNCATE TABLE login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
         )
+
+
+@pytest.fixture
+def provider_user() -> Callable[[str], UserOut]:
+    def create(display_name: str) -> UserOut:
+        subject = str(uuid4())
+        identity = Identity(
+            iss="http://localhost:8006/realms/services", sub=subject,
+            email=f"{subject}@example.invalid", email_verified=False,
+            displayName=display_name, nonce="test-fixture",
+        )
+        with SessionLocal.begin() as session:
+            return UserOut.model_validate(map_identity(session, identity))
+
+    return create
 
 
 @pytest.fixture
