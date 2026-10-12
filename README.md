@@ -58,7 +58,11 @@ requires a provider identity and an email snapshot. Email remains non-unique and
 never links accounts. Manual user creation and local profile editing are
 removed. The temporary user selector lists existing provider-linked users.
 See [OIDC configuration and local verification](docs/authentication-verification.md).
-This initial slice does not yet establish an application session or protect APIs.
+Successful login establishes a PostgreSQL-backed local session with a host-only,
+HttpOnly cookie and 30-day sliding inactivity expiry. `/api/auth/me` returns the
+current user and renews the session; same-origin `POST /api/auth/logout` ends only
+the local session. Frontend login wiring and protection of existing domain APIs
+remain subsequent slices; the temporary selector and AI identity header are unchanged.
 
 The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
 

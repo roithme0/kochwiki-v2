@@ -523,6 +523,64 @@ export type HelloWorldGetResponses = {
 
 export type HelloWorldGetResponse = HelloWorldGetResponses[keyof HelloWorldGetResponses];
 
+export type LogoutAuthLogoutPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
+};
+
+export type LogoutAuthLogoutPostErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: unknown;
+    /**
+     * Missing or untrusted Origin
+     */
+    403: unknown;
+    /**
+     * Login not configured
+     */
+    503: unknown;
+};
+
+export type LogoutAuthLogoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type LogoutAuthLogoutPostResponse = LogoutAuthLogoutPostResponses[keyof LogoutAuthLogoutPostResponses];
+
+export type CurrentUserAuthMeGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/me';
+};
+
+export type CurrentUserAuthMeGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: unknown;
+    /**
+     * Login not configured
+     */
+    503: unknown;
+};
+
+export type CurrentUserAuthMeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserOut;
+};
+
+export type CurrentUserAuthMeGetResponse = CurrentUserAuthMeGetResponses[keyof CurrentUserAuthMeGetResponses];
+
 export type GetFoodstuffsFoodstuffsGetData = {
     body?: never;
     path?: never;

@@ -6,8 +6,8 @@ login or registration and redirects to `/api/auth/callback`. The backend validat
 the identity, creates or reuses a local KochWiki user, and displays a minimal
 confirmation with the local user number or an error page.
 
-This does not create an application session, replace the user
-selector, or protect existing APIs. The frontend has no login integration yet.
+Successful login creates a persistent local application session. This does not
+replace the user selector or protect existing domain APIs. The frontend has no login integration yet.
 Authorization, AI Service authentication and inter-service authentication remain
 outside this slice.
 
@@ -25,7 +25,7 @@ when running FastAPI on the host:
 | `OIDC_BACKCHANNEL_URL` | Docker only: `http://host.docker.internal:8006/realms/services` |
 
 Issuer, secret and callback must be configured together. Leave them blank to
-disable verification; both endpoints then return 503. Partial or unsafe
+disable verification; login and session endpoints then return 503. Partial or unsafe
 configuration prevents startup. Secrets belong only in ignored `.env` files.
 The client secret must match the provider configuration; changing it on just
 one side breaks the code exchange.
@@ -55,7 +55,7 @@ Set the variables above, then run from the KochWiki root:
 docker compose -f deployment/docker-compose-local.yml up -d --build
 ```
 
-The backend applies Alembic migrations creating `login_transaction` and mapping
+The backend applies Alembic migrations creating `login_transaction` and `application_session`, and mapping
 provider identities on `custom_user`. The single user mapping migration requires
 an empty user table, renames `username` to non-unique `display_name`, and adds
 required email, issuer and subject fields with a unique issuer/subject pair.
@@ -130,10 +130,62 @@ No frontend source change is needed for this manual navigation.
   in Uvicorn access logs. Preserve equivalent redaction if adding other proxies
   or request logging. Result pages disable caching, framing and referrer sharing.
 - Tokens are discarded after validation and local profile mapping. No token
-  refresh, revocation checks, application session or logout endpoint is implemented.
+  refresh or provider revocation checks are implemented.
 
 Validation follows [OIDC ID-token validation](https://openid.net/specs/openid-connect-core-1_0.html#IDTokenValidation)
 using [PyJWT verification](https://pyjwt.readthedocs.io/en/stable/usage.html).
+
+## Local application sessions
+
+A successful callback generates a fresh 256-bit random opaque `kochwiki_session`
+cookie and stores only its SHA-256 hash in PostgreSQL. Its host-only scope has no
+Domain attribute; its path is `/api`, with HttpOnly, SameSite=Lax and Secure for
+HTTPS callback URLs (loopback HTTP development omits Secure). The login callback
+maps the validated user and creates the session in one transaction, invalidating
+any previous session identified by that browser cookie. Failed logins preserve an
+existing application session. No provider credentials or duplicated profile
+fields are stored on session records.
+
+`GET /api/auth/me` returns only `id` and `display_name`. It is the qualifying
+authenticated endpoint in this slice: an atomic database update checks the
+30-day inactivity deadline **before** renewing `last_activity_at`, then refreshes
+the browser cookie Max-Age and absolute Expires to another 30 days. Other existing
+API usage does not renew a session yet. PostgreSQL time is authoritative. Invalid,
+missing or expired session secrets return 401 and clear the cookie; all auth
+responses disable caching. Renewals and logout serialize on the session row,
+so concurrent renewal cannot recreate a logged-out or expired session. Concurrent
+browser responses may set slightly different cookie expiry times; the database
+expiry always governs validity.
+
+`POST /api/auth/logout` invalidates only the current local session and clears its
+cookie (204); invalid/expired sessions return 401 and clear it. Keycloak sessions
+are preserved. Logout requires exactly one Origin matching the configured
+`OIDC_CALLBACK_URL` scheme, hostname and effective port (default 80/443 are
+normalized). Missing, null, malformed, duplicate and foreign Origin headers
+return 403 without modifying the session. This is the configured public app
+origin; request Host and forwarded headers never determine trust. Command-line
+verification must explicitly send this Origin. No additional configuration is
+required; `/auth/me` and `/auth/logout` return 503 when OIDC is disabled.
+
+Session records contain internal id, unique secret hash, local-user foreign key,
+creation time, last activity and nullable `last_provider_check_at`. The latter
+remains null: no provider session checks or revocation detection run yet. Deleting
+a local user cascades to its sessions. Expired rows remain in PostgreSQL until
+operator cleanup; this slice introduces no background cleanup. Session cookies
+are bearer secrets: keep cookie headers out of logs and error reports. The `/api`
+cookie path is scoped for current HTTP APIs; future MCP authentication needs its
+own scope decision.
+
+For manual verification after login, open `/api/auth/me`. Then navigate to the
+frontend root page on the configured app origin and execute in its browser
+console (the callback page intentionally blocks fetch through its strict CSP):
+
+```javascript
+await fetch('/api/auth/logout', { method: 'POST' });
+```
+
+The browser supplies Origin automatically. `/api/auth/me` should then return 401;
+a fresh explicit login can reuse the still-active Keycloak session.
 
 ## Verification
 
@@ -153,7 +205,9 @@ refresh, separate subjects and issuers, reused emails, duplicate names, concurre
 first logins, private response fields, database rejection of missing identities
 and email snapshots, missing/null/empty email-claim rejection, non-destructive
 migration guards, and removal of manual user creation/profile-edit routes.
-The normal backend suite checks existing behavior.
+Session tests cover hash-only persistence, cookie flags, current-user privacy,
+sliding renewal, expired-session rejection, rotation, user deletion, CSRF checks,
+local logout and concurrent renewal/logout. The normal backend suite checks existing behavior.
 
 End-to-end verification uses disposable Keycloak and KochWiki stacks. From the
 KochWiki root, with PyJWT/cryptography available in the backend environment:
@@ -170,7 +224,8 @@ with a static Nginx placeholder for the frontend; no frontend build is needed.
 The KochWiki verifier exercises registration, email/password login in a fresh
 cookie jar, reuse of a provider browser session and rejection of an unbound
 callback. It verifies local user creation and reuse, the public user contract and
-separate accounts sharing a display name. All scripts reject regular local deployment targets.
+separate accounts sharing a display name, persistent local sessions, authenticated-user
+lookup, CSRF logout and preserved Keycloak/browser sessions. All scripts reject regular local deployment targets.
 
 Test credentials are fixed public fixtures in the test Compose files. No regular
 local environment files or running application containers are changed. Temporary
@@ -183,6 +238,6 @@ cleanup; the identity-provider README documents scoped cleanup commands.
 These HTTP/form checks emulate the browser's local Secure-cookie exception;
 they do not verify page rendering or replace a manual browser check.
 
-Persistent KochWiki sessions, frontend login wiring and API
-authentication are the subsequent implementation slices. Provider revocation,
-session renewal and CSRF policies still need their agreed details resolved.
+Frontend login wiring, protection of existing domain APIs and provider
+revocation checks remain subsequent slices. The temporary selector and
+`X-Application-User` AI identity header remain unchanged.

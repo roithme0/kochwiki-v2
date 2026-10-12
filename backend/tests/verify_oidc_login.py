@@ -57,12 +57,12 @@ class Browser:
         self.cookies = CookieJar(policy)
         self.opener = build_opener(HTTPCookieProcessor(self.cookies), NoRedirect())
 
-    def request(self, url: str, fields: dict[str, str] | None = None, method: str | None = None) -> Response:
+    def request(self, url: str, fields: dict[str, str] | None = None, method: str | None = None, headers: dict[str, str] | None = None) -> Response:
         if urlsplit(url).netloc not in self.origins or urlsplit(url).scheme != "http":
             raise RuntimeError("Unexpected redirect destination.")
         data = urlencode(fields).encode() if fields is not None else None
         try:
-            with self.opener.open(Request(url, data=data, method=method), timeout=30) as response:
+            with self.opener.open(Request(url, data=data, method=method, headers=headers or {}), timeout=30) as response:
                 return Response(response.status, response.read().decode(), response.headers.get("Location", ""))
         except HTTPError as error:
             return Response(error.code, error.read().decode(), error.headers.get("Location", ""))
@@ -170,7 +170,26 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     print("PASS: separate provider accounts can share a display name")
     if browser.request(base_url + "/api/auth/callback?state=unknown&code=unknown").status != 400:
         raise RuntimeError("An unbound callback was accepted.")
-    print("PASS: unbound callback rejected; no application login session issued")
+    current = browser.request(base_url + "/api/auth/me")
+    if current.status != 200 or json.loads(current.body) != {"id": users[0][0], "display_name": users[0][1]}:
+        raise RuntimeError("Authenticated-user lookup failed or an invalid callback lost the existing session.")
+    session_cookie = next((cookie for cookie in browser.cookies if cookie.name == "kochwiki_session"), None)
+    if session_cookie is None or session_cookie.path != "/api" or session_cookie.expires is None:
+        raise RuntimeError("The callback did not establish a persistent application session.")
+    if browser.request(base_url + "/api/auth/logout", method="POST").status != 403:
+        raise RuntimeError("Logout accepted a request without its CSRF Origin check.")
+    if browser.request(base_url + "/api/auth/logout", method="POST", headers={"Origin": base_url}).status != 204:
+        raise RuntimeError("Local logout failed.")
+    if browser.request(base_url + "/api/auth/me").status != 401:
+        raise RuntimeError("The application session survived logout.")
+    if any(cookie.name == "kochwiki_session" for cookie in browser.cookies):
+        raise RuntimeError("The application session cookie survived logout.")
+    if fresh_browser.request(base_url + "/api/auth/me").status != 200:
+        raise RuntimeError("Logout unexpectedly invalidated another browser's session.")
+    relogin = browser.follow(base_url + "/api/auth/login")
+    if relogin.status != 200 or browser.request(base_url + "/api/auth/me").status != 200:
+        raise RuntimeError("Local logout unexpectedly ended the Keycloak browser session.")
+    print("PASS: persistent local session, private current-user contract, CSRF logout and preserved Keycloak session")
     print("PASS: temporary account created in the disposable provider; runner handles teardown")
 
 
