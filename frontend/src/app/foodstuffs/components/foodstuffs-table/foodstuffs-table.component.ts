@@ -30,8 +30,6 @@ import { FoodstuffBackendService } from '../../services/foodstuff-backend.servic
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { ElementWidthService } from '../../../core/services/element-width.service';
 
-const DEFAULT_PAGE_SIZE: number = 12;
-
 @Component({
   selector: 'app-foodstuffs-table',
   imports: [
@@ -166,11 +164,12 @@ export class FoodstuffsTableComponent implements OnDestroy {
     const availableHeight: number =
       wrapperHeight - headerHeight - paginatorHeight;
     const rowsPerPage: number = Math.floor(availableHeight / rowHeight);
-    const newPageSize: number =
-      rowsPerPage > 0 ? rowsPerPage : DEFAULT_PAGE_SIZE;
+    const newPageSize: number = Math.max(1, rowsPerPage);
     if (this.paginator.pageSize !== newPageSize) {
+      const firstRowIndex = this.paginator.pageIndex * this.paginator.pageSize;
+      this.paginator.pageIndex = Math.floor(firstRowIndex / newPageSize);
       this.paginator.pageSize = newPageSize;
-      this.tableDataSource.paginator = this.paginator; // updates the table to reflect the new page size
+      this.tableDataSource.paginator = this.paginator;
     }
   }
 }

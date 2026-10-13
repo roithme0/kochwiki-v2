@@ -7,6 +7,7 @@
   display: inline-block;
   height: 100%;
   width: 100%;
+  container-type: inline-size;
   @include page-background.illustrated();
 }
 
@@ -39,7 +40,7 @@ main {
 }
 
 .bottom-elements-placeholder {
-  height: 88px;
+  height: max(88px, calc(50cqw + 1rem));
   flex-shrink: 0;
 }
 
