@@ -1,0 +1,51 @@
+name: kochwiki-auth-test
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.2-pg16
+    environment:
+      POSTGRES_DB: kochwiki_test
+      POSTGRES_PASSWORD: disposable-test-admin
+      APP_DB_USER: test
+      APP_DB_PASSWORD: disposable-test-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U test -d kochwiki_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - ../postgres/init-kochwiki.sh:/docker-entrypoint-initdb.d/10-kochwiki.sh:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ../../backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      OPENAI_API_KEY: ""
+      OIDC_ISSUER: http://localhost:8016/realms/services
+      OIDC_CLIENT_ID: kochwiki
+      OIDC_CLIENT_SECRET: disposable-test-client-secret-not-for-production
+      OIDC_CALLBACK_URL: http://localhost:8012/api/auth/callback
+      OIDC_BACKCHANNEL_URL: http://host.docker.internal:8016/realms/services
+      DATABASE_URL: postgresql+psycopg://test:disposable-test-db@db:5432/kochwiki_test
+
+  frontend:
+    image: nginx:1.25
+
+  gateway:
+    image: nginx:1.25
+    environment:
+      AI_GATEWAY_URL: ""
+    entrypoint: ["/bin/sh", "-c", "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
+    ports:
+      - "127.0.0.1:8012:80"
+    volumes:
+      - ../gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ../gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
+    depends_on:
+      - backend
+      - frontend

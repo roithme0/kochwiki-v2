@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from uuid import UUID
 
 import pytest
@@ -453,8 +454,6 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
         ("/foodstuffs/{foodstuff_id}", "patch"): {404, 409},
         ("/foodstuffs/{foodstuff_id}", "delete"): {404, 409},
         ("/users/{user_id}", "get"): {404},
-        ("/users", "post"): {409},
-        ("/users/{user_id}", "patch"): {404, 409},
         ("/users/{user_id}", "delete"): {404},
     }
     for (path, method), statuses in expected_responses.items():
@@ -463,7 +462,7 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
             assert responses[str(status)]["content"]["application/json"]["schema"] == error_schema
 
 
-def test_success_response_media_types_and_bodies_match_openapi(client: TestClient) -> None:
+def test_success_response_media_types_and_bodies_match_openapi(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
     paths = client.get("/api/openapi.json").json()["paths"]
 
     version = client.get("/meta/version")
@@ -487,14 +486,13 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
     draft = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft"))
     assert draft.status_code == 201
     foodstuff = create_foodstuff(client)
-    user = client.post("/users", json={"username": "To delete"})
-    assert user.status_code == 201
+    user = provider_user("To delete")
 
     for response in (
         client.delete(f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"),
         client.delete(f"/recipes/{lineage_id}"),
         client.delete(f"/foodstuffs/{foodstuff['id']}"),
-        client.delete(f"/users/{user.json()['id']}"),
+        client.delete(f"/users/{user.id}"),
     ):
         assert response.status_code == 204
         assert response.content == b""
@@ -565,27 +563,21 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
-def test_user_success_responses_follow_closed_schema(client: TestClient) -> None:
+def test_user_success_responses_follow_closed_schema(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
     schema = client.get("/api/openapi.json").json()["components"]["schemas"]["UserOut"]
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == set(schema["properties"])
 
-    created = client.post("/users", json={"username": "Roi"})
-    assert created.status_code == 201
-    user_id = created.json()["id"]
-    patched = client.patch(f"/users/{user_id}", json={"username": "Renamed Roi"})
-    assert patched.status_code == 200
+    user = provider_user("Roi")
     for body in (
-        created.json(),
         client.get("/users").json()[0],
-        client.get(f"/users/{user_id}").json(),
-        patched.json(),
+        client.get(f"/users/{user.id}").json(),
     ):
         assert set(body) == set(schema["properties"])
         UserOut.model_validate(body)
 
     with pytest.raises(ValidationError) as error:
-        UserOut.model_validate({**created.json(), "unexpected": True})
+        UserOut.model_validate({**user.model_dump(), "unexpected": True})
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
@@ -709,12 +701,11 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
     assert duplicate_step_position.status_code == 422
 
 
-def test_user_contract_has_no_shopping_list_side_effect(client: TestClient) -> None:
-    created = client.post("/users", json={"username": "Roi"})
+def test_user_contract_has_no_shopping_list_side_effect(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+    created = provider_user("Roi")
 
-    assert created.status_code == 201
-    assert created.json() == {"id": 1, "username": "Roi"}
-    assert client.get("/users/1").json() == {"id": 1, "username": "Roi"}
+    assert created.model_dump() == {"id": 1, "display_name": "Roi"}
+    assert client.get("/users/1").json() == {"id": 1, "display_name": "Roi"}
     assert client.get("/users/999").status_code == 404
     assert client.get("/shoppingLists/1").status_code == 404
 

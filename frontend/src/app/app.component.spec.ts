@@ -1,119 +1,130 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router, RouterOutlet } from '@angular/router';
-import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AppComponent } from './app.component';
 import { AuthGuard } from './core/classes/auth-guard';
-import { ACTIVE_USER_STORAGE_KEY, ActiveUserService } from './core/services/active-user.service';
-import { SnackBarService } from './core/services/snack-bar.service';
-import { backendUrl } from './core/constants/api';
+import { ActiveUserService } from './core/services/active-user.service';
+import { AuthNavigationService } from './core/services/auth-navigation.service';
+import { SignedOutPageComponent } from './core/pages/signed-out-page/signed-out-page.component';
+import { routes } from './app.routes';
 
-@Component({ selector: 'app-page-header', template: '' })
+@Component({ selector: 'app-page-header', template: '<p>Authenticated header</p>' })
 class HeaderStub {}
-
 @Component({ template: '<p>Protected page</p>' })
 class ProtectedPage {}
 
-@Component({ template: '<p>User selection</p>' })
-class SelectionPage {}
-
-describe('User restoration routing and recovery', () => {
+describe('Session-gated application routing', () => {
+  const navigation = { redirecting: signal(false), signIn: vi.fn() };
   beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem(ACTIVE_USER_STORAGE_KEY, JSON.stringify({ id: 7 }));
-    vi.spyOn(console, 'warn').mockReturnValue(undefined);
-    TestBed.configureTestingModule({
-      imports: [AppComponent],
-      providers: [
-        provideHttpClient(), provideHttpClientTesting(),
-        provideRouter([
-          { path: 'protected', component: ProtectedPage, canActivate: [AuthGuard] },
-          { path: 'userSelection', component: SelectionPage },
-        ]),
-        { provide: SnackBarService, useValue: { open: vi.fn() } },
-      ],
-    });
+    navigation.redirecting.set(false);
+    navigation.signIn.mockClear();
+    TestBed.configureTestingModule({ imports: [AppComponent], providers: [
+      provideHttpClient(), provideHttpClientTesting(),
+      provideRouter([
+        { path: 'protected', component: ProtectedPage, canActivate: [AuthGuard] },
+        { path: 'signed-out', component: SignedOutPageComponent },
+      ]),
+      { provide: AuthNavigationService, useValue: navigation },
+    ] });
     TestBed.overrideComponent(AppComponent, {
-      set: { imports: [RouterOutlet, HeaderStub, MatButtonModule, MatProgressSpinnerModule] },
+      set: { imports: [RouterOutlet, HeaderStub, MatProgressSpinnerModule] },
     });
   });
+  afterEach(() => { TestBed.inject(HttpTestingController).verify(); });
 
-  afterEach(() => {
-    TestBed.inject(HttpTestingController).verify();
-    TestBed.resetTestingModule();
-    localStorage.clear();
-    vi.restoreAllMocks();
-  });
-
-  it('keeps the requested page pending through failure and retry, then uses fresh user data', async () => {
+  it('keeps header and content hidden until the current session is verified', async () => {
     const fixture = TestBed.createComponent(AppComponent);
     const page: HTMLElement = fixture.nativeElement;
     const router = TestBed.inject(Router);
-    const http = TestBed.inject(HttpTestingController);
-    const navigation = router.navigateByUrl('/protected');
+    const pending = router.navigateByUrl('/protected');
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('loading'));
     fixture.detectChanges();
     expect(page.querySelector('[role="status"]')).not.toBeNull();
     expect(page.textContent).not.toContain('Protected page');
-    expect(TestBed.inject(ActiveUserService).activeUser()).toBeNull();
-
-    http.expectOne(`${backendUrl}/users/7`).flush(null, { status: 503, statusText: 'Unavailable' });
-    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('error'));
+    expect(page.textContent).not.toContain('Authenticated header');
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/me').flush({ id: 7, display_name: 'Cook' });
+    expect(await pending).toBe(true);
     fixture.detectChanges();
-    expect(page.querySelector('[role="alert"]')).not.toBeNull();
-    expect(page.textContent).not.toContain('User selection');
-    expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBe('{"id":7}');
-
-    page.querySelector<HTMLButtonElement>('button')?.click();
-    fixture.detectChanges();
-    expect(page.querySelector('[role="status"]')).not.toBeNull();
-    http.expectOne(`${backendUrl}/users/7`).flush({ id: 7, username: 'Fresh name' });
-    await navigation;
-    fixture.detectChanges();
-    expect(router.url).toBe('/protected');
+    await fixture.whenStable();
     expect(page.textContent).toContain('Protected page');
-    expect(TestBed.inject(ActiveUserService).activeUser()?.username).toBe('Fresh name');
-    expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBe('{"id":7}');
+    expect(page.textContent).toContain('Authenticated header');
   });
 
-  it('redirects a deleted user to selection and clears the stored ID', async () => {
+  it('blocks protected navigation and shows backend failure without any actions', async () => {
     const fixture = TestBed.createComponent(AppComponent);
-    const router = TestBed.inject(Router);
-    const navigation = router.navigateByUrl('/protected');
+    const pending = TestBed.inject(Router).navigateByUrl('/protected');
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController).expectOne(`${backendUrl}/users/7`)
-      .flush({ detail: 'User not found' }, { status: 404, statusText: 'Not Found' });
-    await navigation;
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('loading'));
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/me').flush(null, { status: 503, statusText: 'Unavailable' });
+    expect(await pending).toBe(false);
     fixture.detectChanges();
-    expect(router.url).toBe('/userSelection');
-    expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBeNull();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('User selection');
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.querySelector('[role="alert"]')).not.toBeNull();
+    expect(page.querySelector('button')).toBeNull();
+    expect(page.textContent).not.toContain('Protected page');
+    expect(navigation.signIn).not.toHaveBeenCalled();
   });
 
-  it('allows choosing another user while restoration is pending and ignores its late response', async () => {
+  it('redirects unauthenticated site entry to login without rendering domain content', async () => {
     const fixture = TestBed.createComponent(AppComponent);
-    const router = TestBed.inject(Router);
-    const navigation = router.navigateByUrl('/protected');
+    const pending = TestBed.inject(Router).navigateByUrl('/protected');
     fixture.detectChanges();
-    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button')?.click();
-    await navigation;
-    await vi.waitFor(() => expect(router.url).toBe('/userSelection'));
-    TestBed.inject(HttpTestingController).expectOne(`${backendUrl}/users/7`).flush({ id: 7, username: 'Late user' });
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('loading'));
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+    expect(await pending).toBe(false);
     fixture.detectChanges();
+    expect(navigation.signIn).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Protected page');
+  });
+
+  it('renders only the signed-out hint and sign-in button after signed-out reload', async () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    await TestBed.inject(Router).navigateByUrl('/signed-out');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const page: HTMLElement = fixture.nativeElement;
+    expect(page.textContent).toContain('Du bist abgemeldet.');
+    expect(page.textContent).not.toContain('Authenticated header');
+    expect(navigation.signIn).not.toHaveBeenCalled();
+    expect(page.querySelectorAll('button')).toHaveLength(1);
+    page.querySelector<HTMLButtonElement>('button')?.click();
+    expect(navigation.signIn).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires login when navigating from signed-out to a protected page', async () => {
+    TestBed.createComponent(AppComponent);
+    const pending = TestBed.inject(Router).navigateByUrl('/protected');
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('loading'));
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+    expect(await pending).toBe(false);
+    expect(navigation.signIn).toHaveBeenCalledTimes(1);
     expect(TestBed.inject(ActiveUserService).activeUser()).toBeNull();
-    expect(localStorage.getItem(ACTIVE_USER_STORAGE_KEY)).toBeNull();
   });
 
-  it('redirects without fetching a user when no ID is stored', async () => {
-    localStorage.clear();
+  it('does not redirect for a cancelled guard after navigating to signed-out', async () => {
     const fixture = TestBed.createComponent(AppComponent);
     const router = TestBed.inject(Router);
-    const navigation = router.navigateByUrl('/protected');
+    const pending = router.navigateByUrl('/protected');
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('loading'));
+    const request = TestBed.inject(HttpTestingController).expectOne('/api/auth/me');
+    expect(await router.navigateByUrl('/signed-out')).toBe(true);
+    expect(await pending).toBe(false);
+    request.flush(null, { status: 401, statusText: 'Unauthorized' });
+    await vi.waitFor(() => expect(TestBed.inject(ActiveUserService).restorationState()).toBe('signed-out'));
     fixture.detectChanges();
-    await navigation;
-    expect(router.url).toBe('/userSelection');
-    TestBed.inject(HttpTestingController).expectNone(`${backendUrl}/users/7`);
+    await fixture.whenStable();
+    expect(navigation.signIn).not.toHaveBeenCalled();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain('Du bist abgemeldet.');
+  });
+
+  it('guards all content route roots, including home, and excludes the signed-out route', () => {
+    for (const path of ['', 'foodstuffs', 'recipes']) {
+      expect(routes.find(route => route.path === path)?.canActivate).toContain(AuthGuard);
+    }
+    expect(routes.find(route => route.path === 'signed-out')?.canActivate).toBeUndefined();
+    expect(routes.find(route => route.path === 'userSelection')).toBeUndefined();
   });
 });

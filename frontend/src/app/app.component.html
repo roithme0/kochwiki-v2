@@ -1,15 +1,27 @@
-@if (activeUserService.restorationState() === 'idle') {
+@if (authNavigation.redirecting()) {
+  <main class="user-restoration">
+    <p role="status">Weiterleitung zur Anmeldung …</p>
+  </main>
+} @else if (activeUserService.restorationState() === "idle") {
   <app-page-header />
+  @if (activeUserService.logoutError()) {
+    <p role="alert">Die Abmeldung konnte nicht bestätigt werden.</p>
+  }
+  <router-outlet />
+} @else if (
+  activeUserService.restorationState() === "signed-out" ||
+  activeUserService.restorationState() === "uninitialized"
+) {
   <router-outlet />
 } @else {
   <main class="user-restoration">
-    @if (activeUserService.restorationState() === 'loading') {
-      <mat-spinner diameter="40" aria-label="Benutzer wird geladen" />
-      <p role="status">Benutzer wird geladen …</p>
+    @if (activeUserService.restorationState() === "loading") {
+      <mat-spinner diameter="40" aria-label="Anmeldung wird geprüft" />
+      <p role="status">Anmeldung wird geprüft …</p>
+    } @else if (activeUserService.restorationState() === "error") {
+      <p role="alert">Die Anmeldung konnte nicht geprüft werden.</p>
     } @else {
-      <p role="alert">Der zuletzt ausgewählte Benutzer konnte nicht geladen werden.</p>
-      <button mat-flat-button type="button" (click)="activeUserService.retryRestoration()">Erneut versuchen</button>
+      <p role="status">Weiterleitung zur Anmeldung …</p>
     }
-    <button mat-button type="button" (click)="activeUserService.switchUser()">Anderen Benutzer auswählen</button>
   </main>
 }
