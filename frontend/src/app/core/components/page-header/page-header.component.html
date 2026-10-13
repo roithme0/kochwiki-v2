@@ -57,14 +57,10 @@
       <div class="user-options-display_name" aria-label="Aktiver Benutzer">
         {{ activeUserService.activeUser()?.display_name }}
       </div>
-      <button mat-menu-item (click)="themeService.toggle()">
+      <button mat-menu-item disabled>
         <span class="user-options-action">
-          <span>{{
-            themeService.isDark() ? "Helles Design" : "Dunkles Design"
-          }}</span>
-          <mat-icon aria-hidden="true">{{
-            themeService.isDark() ? "light_mode" : "dark_mode"
-          }}</mat-icon>
+          <span>Helles Design</span>
+          <mat-icon aria-hidden="true">light_mode</mat-icon>
         </span>
       </button>
       <button

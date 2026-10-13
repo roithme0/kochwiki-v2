@@ -77,19 +77,15 @@ describe('PageHeaderComponent', () => {
         expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
     });
 
-    it('toggles the theme through the menu and updates the icon and next action', async () => {
+    it('keeps the light theme action visible and disabled', async () => {
         const menu = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatMenuHarness);
-        const initiallyDark = fixture.componentInstance.themeService.isDark();
         await menu.open();
         const [toggle] = await menu.getItems();
-        expect(await toggle.getText()).toContain(initiallyDark ? 'Helles Design' : 'Dunkles Design');
-        expect(await toggle.getText()).toContain(initiallyDark ? 'light_mode' : 'dark_mode');
+        expect(await toggle.getText()).toContain('Helles Design');
+        expect(await toggle.getText()).toContain('light_mode');
+        expect(await toggle.isDisabled()).toBe(true);
         await toggle.click();
-        expect(await menu.isOpen()).toBe(false);
-        expect(document.documentElement.getAttribute('data-theme')).toBe(initiallyDark ? 'light' : 'dark');
-        await menu.open();
-        const [nextToggle] = await menu.getItems();
-        expect(await nextToggle.getText()).toContain(initiallyDark ? 'Dunkles Design' : 'Helles Design');
-        expect(await nextToggle.getText()).toContain(initiallyDark ? 'dark_mode' : 'light_mode');
+        expect(await menu.isOpen()).toBe(true);
+        expect(activeUserService.logout).not.toHaveBeenCalled();
     });
 });

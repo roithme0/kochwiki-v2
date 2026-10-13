@@ -15,49 +15,17 @@ $dark-theme: mat.define-theme(
   )
 );
 
-$light-theme: mat.define-theme(
-  (
-    color: (
-      theme-type: light,
-      primary: mat.$rose-palette,
-    ),
-    density: (
-      scale: -5,
-    ),
-  )
-);
-
-@mixin dark-colors {
+html {
   color-scheme: dark;
   --app-accent-container-color: #8f0045;
   --app-on-accent-container-color: #ffd9e1;
   --app-neutral-container-color: #3a3334;
   --app-on-neutral-container-color: #ece0e1;
 
-  @include mat.all-component-colors($dark-theme);
+  @include mat.all-component-themes($dark-theme);
   @include mat.card-overrides((
     elevated-container-color: #332d2e,
     filled-container-color: #332d2e,
     outlined-container-color: #332d2e,
   ));
-}
-
-html {
-  color-scheme: light;
-  --app-accent-container-color: #ffd9e1;
-  --app-on-accent-container-color: #3f001b;
-  --app-neutral-container-color: #f1e5e6;
-  --app-on-neutral-container-color: #3a2d30;
-
-  @include mat.all-component-themes($light-theme);
-
-  @media (prefers-color-scheme: dark) {
-    &:not([data-theme='light']) {
-      @include dark-colors;
-    }
-  }
-
-  &[data-theme='dark'] {
-    @include dark-colors;
-  }
 }
