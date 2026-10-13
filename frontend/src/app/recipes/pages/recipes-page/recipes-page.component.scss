@@ -37,7 +37,7 @@ main {
   &::after {
     content: "";
     display: block;
-    height: 70px;
+    height: 88px;
   }
 }
 
@@ -67,4 +67,16 @@ main {
   position: absolute;
   right: tokens.$floating-button-position;
   bottom: tokens.$floating-button-position;
+}
+
+.create-recipe-button {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
+
+  mat-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 28px;
+  }
 }
