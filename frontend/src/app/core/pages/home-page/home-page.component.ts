@@ -17,6 +17,6 @@ export class HomePageComponent {
 
   readonly frontendVersion: string = VERSION;
   ngOnInit(): void {
-    this.pageHeaderService.updateHeader(true, 'Home', '', false);
+    this.pageHeaderService.updateHeader(true, 'Kochwiki', '', false);
   }
 }
