@@ -1,10 +1,12 @@
 @use "../../../../styles/style-tokens" as tokens;
+@use "../../../../styles/page-background";
 
 :host {
   /* stretch hole page */
   display: inline-block;
   height: 100%;
   width: 100%;
+  @include page-background.illustrated();
 }
 
 main {
