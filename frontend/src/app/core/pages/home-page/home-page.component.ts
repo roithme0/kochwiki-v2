@@ -4,10 +4,11 @@ import { RouterLink } from '@angular/router';
 import { PageHeaderService } from '../../services/page-header.service';
 import { VERSION } from '../../../../version';
 import { BackendMetaService } from '../../services/backend-meta.service';
+import { TextRevealComponent } from '../../components/text-reveal/text-reveal.component';
 
 @Component({
   selector: 'app-home-page',
-  imports: [RouterLink],
+  imports: [RouterLink, TextRevealComponent],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',
 })

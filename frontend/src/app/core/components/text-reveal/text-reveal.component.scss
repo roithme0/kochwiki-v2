@@ -1,0 +1,32 @@
+:host {
+  white-space: pre-wrap;
+}
+
+.accessible-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.character {
+  opacity: 0;
+  animation: reveal 1ms steps(1, end) forwards;
+}
+
+@keyframes reveal {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .character {
+    animation: none;
+    opacity: 1;
+  }
+}

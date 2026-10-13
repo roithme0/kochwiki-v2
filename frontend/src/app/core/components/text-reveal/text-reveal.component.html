@@ -1,0 +1,8 @@
+<span class="accessible-text">{{ text() }}</span>
+<span aria-hidden="true">
+  @for (character of characters(); track character.key) {
+    <span class="character" [style.animation-delay.ms]="character.delay">{{
+      character.value
+    }}</span>
+  }
+</span>
