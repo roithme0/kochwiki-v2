@@ -15,6 +15,15 @@ SESSION_SECONDS = 30 * 24 * 60 * 60
 SESSION_LIFETIME = timedelta(seconds=SESSION_SECONDS)
 
 
+def cleanup_expired_sessions(session: Session) -> None:
+    session.execute(
+        delete(ApplicationSession).where(
+            ApplicationSession.last_activity_at
+            <= func.statement_timestamp() - SESSION_LIFETIME
+        )
+    )
+
+
 def secret_hash(secret: str | None) -> str | None:
     if secret is None or re.fullmatch(r"[A-Za-z0-9_-]{43}", secret) is None:
         return None

@@ -20,6 +20,7 @@ from app.services.sessions import (
     SESSION_PATH,
     SESSION_SECONDS,
     authenticated_user,
+    cleanup_expired_sessions,
     establish_session,
     invalidate_session,
 )
@@ -57,6 +58,8 @@ def login() -> Response:
     service = login_service()
     if service is None:
         return result("Login verification is not configured.", 503)
+    with SessionLocal.begin() as session:
+        cleanup_expired_sessions(session)
     try:
         start = service.start()
     except ProviderUnavailable:

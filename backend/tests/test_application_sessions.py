@@ -1,18 +1,23 @@
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
-from threading import Barrier
+from threading import Barrier, Event
+from time import monotonic, sleep
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, literal, select, text, update
 
 from app.api.routes import auth
 from app.core.config import Settings
 from app.db.session import SessionLocal
 from app.models.application_session import ApplicationSession
 from app.models.user import User
+from app.schemas.user import UserOut
+from app.services import sessions as session_services
 from app.services.sessions import (
-    SESSION_COOKIE, SESSION_PATH, SESSION_SECONDS, authenticated_user, invalidate_session, secret_hash,
+    SESSION_COOKIE, SESSION_LIFETIME, SESSION_PATH, SESSION_SECONDS, authenticated_user,
+    cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )
 from test_oidc_login import Provider, begin, browser, finish, provider, settings
 
@@ -53,6 +58,100 @@ def test_activity_slides_database_and_cookie_expiry(browser: TestClient, provide
         stored = session.scalars(select(ApplicationSession)).one()
         assert stored.last_activity_at > old_activity + timedelta(days=28)
         assert stored.last_provider_check_at is None
+
+
+@pytest.mark.parametrize("provider_unavailable", [False, True])
+def test_login_cleans_expired_sessions_across_users(
+    browser: TestClient, provider: Provider, provider_user: Callable[[str], UserOut],
+    provider_unavailable: bool,
+) -> None:
+    users = [provider_user("First"), provider_user("Second")]
+    with SessionLocal.begin() as session:
+        for user in users:
+            expired, _ = establish_session(session, user.id, None)
+            establish_session(session, user.id, None)
+            session.flush()
+            session.execute(
+                update(ApplicationSession)
+                .where(ApplicationSession.secret_hash == secret_hash(expired))
+                .values(last_activity_at=func.statement_timestamp() - timedelta(days=31))
+            )
+    provider.unavailable = provider_unavailable
+    response = browser.get("/api/auth/login", follow_redirects=False)
+    assert response.status_code == (503 if provider_unavailable else 302)
+    with SessionLocal() as session:
+        remaining = session.scalars(select(ApplicationSession)).all()
+        assert sorted(row.user_id for row in remaining) == [user.id for user in users]
+        assert session.scalar(select(func.count()).select_from(User)) == 2
+        assert all(row.last_activity_at > datetime.now(timezone.utc) - timedelta(days=1) for row in remaining)
+
+
+def test_cleanup_matches_exact_inactivity_boundary(
+    provider_user: Callable[[str], UserOut], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    user = provider_user("Boundary")
+    with SessionLocal.begin() as session:
+        now = session.scalar(select(func.statement_timestamp()))
+        assert isinstance(now, datetime)
+        secrets = [establish_session(session, user.id, None)[0] for _ in range(3)]
+        session.flush()
+        for secret, offset in zip(secrets, [-1, 0, 1], strict=True):
+            session.execute(
+                update(ApplicationSession)
+                .where(ApplicationSession.secret_hash == secret_hash(secret))
+                .values(last_activity_at=now - SESSION_LIFETIME + timedelta(microseconds=offset))
+            )
+    monkeypatch.setattr(session_services.func, "statement_timestamp", lambda: literal(now))
+    with SessionLocal.begin() as session:
+        cleanup_expired_sessions(session)
+        assert session.scalars(select(ApplicationSession.secret_hash)).all() == [secret_hash(secrets[2])]
+
+
+@pytest.mark.parametrize("logout", [False, True])
+def test_cleanup_rechecks_expiry_after_concurrent_session_change(
+    provider_user: Callable[[str], UserOut], logout: bool,
+) -> None:
+    user = provider_user("Concurrent")
+    with SessionLocal.begin() as session:
+        secret, _ = establish_session(session, user.id, None)
+        session.flush()
+        session.execute(update(ApplicationSession).values(
+            last_activity_at=func.statement_timestamp() - timedelta(days=31),
+        ))
+    started = Event()
+    worker_pid = 0
+
+    def cleanup() -> None:
+        nonlocal worker_pid
+        with SessionLocal.begin() as session:
+            pid = session.scalar(select(func.pg_backend_pid()))
+            assert isinstance(pid, int)
+            worker_pid = pid
+            started.set()
+            cleanup_expired_sessions(session)
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        with SessionLocal.begin() as session:
+            session.scalars(select(ApplicationSession).with_for_update()).one()
+            task = executor.submit(cleanup)
+            assert started.wait(timeout=5)
+            deadline = monotonic() + 5
+            while True:
+                with SessionLocal() as observer:
+                    waiting = observer.scalar(text(
+                        "SELECT wait_event_type FROM pg_stat_activity WHERE pid = :pid"
+                    ), {"pid": worker_pid})
+                if waiting == "Lock":
+                    break
+                assert monotonic() < deadline, "Cleanup did not wait for the session lock"
+                sleep(0.01)
+            if logout:
+                session.execute(delete(ApplicationSession))
+            else:
+                session.execute(update(ApplicationSession).values(last_activity_at=func.statement_timestamp()))
+        task.result(timeout=5)
+    with SessionLocal.begin() as session:
+        assert (authenticated_user(session, secret) is None) == logout
 
 
 @pytest.mark.parametrize("secret", [None, "unknown", "x" * 43])

@@ -2,78 +2,42 @@
 
 ## Status
 
-Initial concept under discussion. The agreed provider is now self-hosted Keycloak,
-replacing Microsoft Entra External ID. Start with Kochwiki authentication;
-AI Service authentication and cross-application SSO integration remain deferred.
-The first local provider slice now configures the `services` realm through a
-repeatable setup/update command in `../identity-provider`. Kochwiki application sessions and frontend authentication are now implemented; production
-deployment remains deferred.
-The second local slice now provides dedicated PostgreSQL storage with a persistent Docker
-volume. Existing disposable demo accounts are not migrated. Backups are deferred
-from this slice.
-The next deployment slice adds Nginx to local, staging and production Compose
-definitions. Only Nginx publishes a host port; Keycloak and PostgreSQL remain on
-Docker networks. Staging and production use `start`, fixed external URLs,
-automatic restart, deployment-specific environment values and independent persistent volumes.
-Certificates and HTTPS are explicitly deferred; these HTTP-only definitions are
-deployment preparation, not a public production rollout.
-All three definitions passed Compose validation. Local proxy verification passed
-registration, login, repeat apply and forwarded-header spoofing checks. Login and
-provider data also survived PostgreSQL/Keycloak replacement through the proxy.
-Staging and production definitions have not been launched in their target environments.
-The provider-side Kochwiki OIDC client is now managed by the same repeatable
-configuration command. A standalone local callback verifies the login flow and
-identity claims before Kochwiki integration. FastAPI now implements the actual
-login/callback round trip, now initiated by Angular with a fixed home redirect
-after successful login. Local user mapping, application sessions and frontend authentication
-integration are implemented.
-Local OIDC verification and the existing realm regression checks passed,
-including managed-setting repair and preservation of identities and the client
-secret. All three Compose definitions validate; the test callback is local-only.
-The Kochwiki verification slice now exposes `/api/auth/login` and
-`/api/auth/callback` through the existing gateway. Login uses a ten-minute,
-single-use PostgreSQL transaction containing state and browser-binding hashes,
-nonce, PKCE verifier and expiry. A temporary HttpOnly, SameSite=Lax cookie binds
-the transaction to the initiating browser; it is Secure for HTTPS callbacks.
-Only one pending login flow per browser is supported initially. Backend-side
-code exchange and RS256 ID-token validation establish identity; tokens are
-then discarded. Success creates a local session and redirects to the fixed home
-path `/`; failures show generic, non-cached pages without automatic retries.
-Frontend user selection is removed; domain API protection remains deferred.
-Configuration is environment-driven, with an optional separate local Docker
-backchannel address preserving the canonical issuer. The current local gateway
-uses port 8002; its callback and the provider's exact allowlist are aligned.
-Login transaction/identity safeguards and the existing backend suite passed.
-Actual hosted registration and login through Keycloak, Nginx and FastAPI passed;
-callback query values are redacted from backend access logs and gateway auth
-access logging is disabled. See `docs/authentication-verification.md` for the
-tracked configuration and verification instructions.
+Reconciled on 2026-10-13. The initial Kochwiki login implementation uses
+self-hosted Keycloak, replacing Microsoft Entra External ID. The `services`
+realm, registration/profile/password settings, and confidential Kochwiki OIDC
+client are managed through a repeatable setup/update command in
+`../identity-provider`. Persistent PostgreSQL storage and Nginx Compose
+configurations exist for local, staging and production. HTTPS and public
+production deployment remain deferred.
 
-The local identity slice creates or reuses a Kochwiki user uniquely by validated
-issuer and subject, including concurrent first logins. Every successful callback
-refreshes the provider-owned email and trimmed non-unique `display_name`. The
-database and backend/frontend user contract now use `display_name` instead of
-`username`; public responses omit email and provider identity. Every user requires
-a non-null issuer, subject and email snapshot. Email remains non-unique and
-never links accounts. Manual user creation and local profile editing are
-removed from the backend/frontend contract; the selector has also been removed. The single user mapping migration requires an
-empty local user table and stops explicitly if existing users remain, requiring
-the agreed operator reset without deleting data, assigning identities or
-backfilling profile values.
-The callback redirects home; `/api/auth/me` provides the current-user
-contract containing only local ID and display name.
-The operator will reset local/staging Kochwiki databases separately; this slice
-does not delete data, migrate/link old accounts or change Keycloak identities.
+FastAPI implements Authorization Code login with PKCE, a ten-minute single-use
+PostgreSQL login transaction, browser binding, and RS256 ID-token validation.
+Validated issuer and subject identify a local user; login refreshes required
+email and non-unique display name. Provider tokens are discarded after login.
+A PostgreSQL-backed opaque cookie establishes a persistent local session with
+a 30-day sliding inactivity timeout. Angular checks `/api/auth/me` once on the
+first guarded navigation in each newly loaded tab or page reload. That check
+renews a valid session; later navigation and domain API usage do not renew it.
+Manual user selection is removed. Successful login redirects home; explicit
+logout ends only the current local session and opens the passive signed-out
+page. The Keycloak browser session remains active.
 
-The agreed full implementation will have FastAPI manage OIDC login and issue an
-opaque browser session cookie.
-Open self-registration grants immediate Kochwiki access without invitation or
-manual approval. Use Keycloak's standard email-and-password login rather
-than introducing an email-code authenticator dependency.
-SMTP integration is optional and deferred; initial registration does not require
-email verification, and email-based password recovery is disabled.
-This is a concept, not an implementation specification. Authorization is
-explicitly outside this implementation's scope.
+Provider configuration, persistence, OIDC and backend session flows have passed
+disposable-instance verification. Backend and frontend regression suites have
+passed. HTTP/form integration checks use a frontend placeholder; complete real
+browser verification and deployment verification in the target staging and
+production environments remain deferred. Lockout settings were verified by
+readback, without exercising the full failed-login threshold.
+
+Expired application-session cleanup is now implemented opportunistically on
+every configured login initiation, across all users, before provider discovery.
+All remaining required work is explicitly deferred in the task inventory below. Deferral does not mean those
+requirements are implemented or that the application is production-ready.
+Authorization remains outside this concept's scope; AI Service authentication,
+inter-service authentication and cross-application SSO remain later work.
+
+This is a concept, not an implementation specification. Tracked implementation
+and verification details are in `docs/authentication-verification.md`.
 
 ## Goal
 
@@ -107,10 +71,8 @@ OAuth 2.0 provides delegated authorization to protected resources. OpenID Connec
 experience of using an existing identity-provider login across applications,
 rather than a third protocol layered onto OIDC.
 
-The provisional recommendation is to use OAuth 2.0 through OIDC for Kochwiki's
-first login, rather than introduce an OAuth-only login and add identity semantics
-later. Authorization Code flow with PKCE is the proposed starting point, managed
-by FastAPI. An ID token establishes the
+Use OIDC for Kochwiki login through the implemented Authorization Code flow
+with PKCE, managed by FastAPI. An ID token establishes the
 authenticated account for its intended client; it is not an API access token.
 The OAuth protocol is part of the authentication integration; designing domain
 authorization rules is outside this concept's current implementation scope.
@@ -143,7 +105,8 @@ separate secrets in the ignored deployment `.env`; initialization only runs on
 an empty volume, so changing the environment file does not rotate stored
 credentials. Start with a fresh database instead of migrating demo accounts.
 The realm configuration command remains separate and does not recreate
-containers. This is a local demo, not an established production deployment.
+containers. This is a local development deployment, not an established
+production deployment.
 `deployments/docker-compose-staging.yml` and `docker-compose-prod.yml` provide
 separate projects using the same realm configuration and database initialization.
 All Compose files use the generic ignored `deployments/.env`, based on a single
@@ -223,7 +186,7 @@ the client secret never reaches Angular.
 Supply `KOCHWIKI_CLIENT_SECRET` through the identity-provider deployment's
 ignored `.env`, using a different random value per environment. The wrapper
 rejects the placeholder and secrets shorter than 32 characters or containing
-whitespace. Kochwiki later receives the same value through its own backend
+whitespace. Kochwiki receives the same value through its own backend
 environment. Reapplying retains the configured secret; changing it is deliberate
 rotation requiring a coordinated backend update.
 
@@ -249,8 +212,8 @@ Consume validated ID-token claims `iss`, `sub`, `email`, `email_verified`, and
 client mappers supply email, verification status and the existing `displayName`
 attribute. No role or permission claims are required. New clients start without
 additional client scopes; existing scope assignments and unrelated mappers remain
-unmanaged. Email verification is not required initially. Kochwiki will map
-identity by `(iss, sub)` and refresh email and trimmed display name on login.
+unmanaged. Email verification is not required initially. Kochwiki maps
+identity by `(iss, sub)` and refreshes email and trimmed display name on login.
 
 The Compose `x-kochwiki` extension resolves client variables for the apply
 wrapper without adding the client secret to any container environment. Rendered
@@ -298,7 +261,7 @@ restrictions. Trim leading and trailing whitespace and require 1-50 characters
 after trimming; reject blank values and control characters. Keycloak's configured
 length validator trims for validation but retains surrounding whitespace in
 storage; Kochwiki must trim the claim before persisting or displaying it in the
-later application integration slice. Email
+local user record. Email
 verification is disabled initially because SMTP integration is deferred. Email
 addresses are self-reported profile data, not proof of mailbox ownership.
 Keycloak owns password storage, verification, and password-reset flows. Kochwiki
@@ -331,11 +294,12 @@ limits, and refresh-token lifetimes must be configured coherently. Built-in
 Remember Me presents a choice, so it cannot simply be assumed to implement our
 default-persistence requirement.
 
-Explicit logout invalidates the current local session, clears its cookie, and
-initiates Keycloak browser logout. Local logout remains effective if the
-provider is unavailable. Do not initiate account-wide revocation across devices.
-Avoid immediate automatic sign-in through the same provider browser session.
-Effects on later SSO applications remain for the SSO stage.
+Explicit logout invalidates only the current local session, clears its cookie,
+and opens `/signed-out` without initiating Keycloak browser logout. Local logout
+works without contacting the provider. The signed-out page never starts login
+automatically; its explicit sign-in button may reuse the existing Keycloak
+session. Do not initiate account-wide revocation across devices. Effects on later
+SSO applications remain for the SSO stage.
 
 Kochwiki and Keycloak sessions are distinct. Local activity alone does not renew
 the provider session or prove fresh email ownership. Provider reauthentication
@@ -393,8 +357,10 @@ signed-out page only after the session service confirms logout. The unguarded si
 a session check.
 The browser app origin and configured callback origin must match for logout.
 
-A subsequent slice must require authenticated identity for Kochwiki's application
-API routes in addition to Angular navigation. Current domain APIs remain unprotected.
+Application API authentication enforcement is explicitly deferred until the AI
+Service usage and inter-service boundary are addressed. Current domain APIs remain
+unprotected despite Angular login gating. This is authentication enforcement;
+application authorization remains separately out of scope.
 Future protected API calls without authentication must return HTTP 401;
 browser page navigation handles the interactive login redirect. Login initiation,
 OIDC callbacks, the signed-out landing state, required frontend assets, and
@@ -419,9 +385,20 @@ database. This avoids introducing an additional service solely for session
 storage. The browser cookie contains only an opaque session identifier, not
 provider tokens or user profile data.
 
-Renewal mechanics, cookie SameSite behavior, CSRF protection, and expired-session
-cleanup must be defined for a production implementation. Existing FastAPI can
-own this flow without requiring a separate authentication service.
+The implemented cookie is host-only, HttpOnly and SameSite=Lax, scoped to `/api`,
+with Secure enabled for HTTPS callback URLs. PostgreSQL validates inactivity
+expiry before atomically renewing activity. Only `/auth/me` currently renews it;
+logout validates the browser Origin against the configured callback origin.
+General activity renewal, write-request origin protection and handling expiry
+within an already loaded app remain deferred. Each configured `/auth/login`
+initiation deletes expired application-session rows across all users in a short
+committed transaction before provider discovery. Cleanup uses PostgreSQL time
+and the same inactivity boundary as validation, preserves valid sessions and
+user records, and rechecks concurrent row changes before deletion. It completes
+even when discovery subsequently fails. Without later login initiations, expired
+rows remain stored but unusable; no scheduler or background worker is introduced.
+Login-transaction cleanup remains separate. FastAPI owns session management
+without a separate authentication service.
 
 Future applications can maintain their own sessions and reuse the Keycloak login
 for SSO; sharing Kochwiki's session cookie across services is not required.
@@ -476,6 +453,10 @@ References: [OIDC subject identifiers](https://openid.net/specs/openid-connect-c
 and [Keycloak user profiles and claim mapping](https://www.keycloak.org/docs/26.8.0/server_admin/).
 
 ## Account Status and Session Revocation
+
+This entire capability is deferred. The following requirements remain the
+agreed target, rather than implemented behavior. `last_provider_check_at` is
+currently unused and no provider validation runs after login.
 
 Keep last qualifying activity separate from the last successful provider
 validation. Update activity for the sliding 30-day local inactivity window.
@@ -570,16 +551,36 @@ optional enhancements. No separate profile editor is required initially.
 
 Reference: [Keycloak Admin REST API](https://www.keycloak.org/docs-api/26.8.0/rest-api/index.html).
 
-## Decisions to Resolve
+## Remaining Required Tasks and Deferrals
 
-1. How should administrator-assisted password recovery establish ownership
-   while email-based recovery is disabled?
-2. Which Keycloak validation/revocation mechanism meets the 15-minute checks and
-   failure behavior? What tokens, permissions, and session settings does it require?
-3. Is periodic provider reauthentication or an absolute local session limit needed?
-4. What cookie, CSRF, and session lifecycle policies suit this deployment?
-5. What production hosting, backup/recovery, monitoring, and upgrade
-   arrangements belong in the identity-provider repository?
+Expired-session cleanup is complete. Every remaining item below is deferred,
+including unresolved decisions associated with it. Preserve these tasks for later
+work without expanding the current implementation.
+
+| Task | Status and remaining work |
+| --- | --- |
+| Keycloak account status and session revocation | **Deferred.** Select and verify the mechanism, provider/local-session mapping, required credentials or tokens and their storage. Implement the 15-minute successful-check cache, concurrent-check coordination, account/session invalidation and the agreed temporary failure behavior. |
+| Activity-based renewal | **Deferred.** Make qualifying regular usage renew the 30-day window. Currently a new tab or reload checks `/auth/me` on its first guarded navigation; further activity within the loaded app does not renew the session. Background polling must not count as activity. |
+| Expiry handling in an open app | **Deferred.** Detect expiry after the initial session check, clear stale frontend identity and consistently initiate login without replaying failed application requests. |
+| Provider session lifetime and reauthentication policy | **Deferred.** Align Keycloak browser persistence, SSO idle/max and any refresh-token lifetimes with the chosen revocation mechanism. Decide whether periodic reauthentication or an absolute local session limit is needed. Default persistence of the local cookie is already implemented. |
+| Application API authentication enforcement | **Deferred because of AI Service usage.** Determine browser versus service endpoint boundaries, enforce sessions on the selected Kochwiki APIs, extend origin/CSRF protection to writes, renew sessions on qualifying protected usage and handle authentication 401 responses centrally in Angular. Preserve login/operational exceptions. Authorization is outside scope. |
+| Administrator-assisted password recovery | **Deferred.** Define account-ownership verification and the administrator reset procedure while SMTP recovery is disabled. Self-reported email alone cannot establish ownership. |
+| Complete browser verification | **Deferred.** Verify actual Angular/Keycloak/backend navigation, registration, browser-restart persistence, deep links, local logout, expiry and failure states. Existing HTTP/form checks and Angular regressions do not replace this check. |
+| Local/staging database reset and rollout | **Deferred operator task; completion is unconfirmed.** Use fresh Kochwiki databases and apply migrations/configuration without migrating old selected users. The application and agent do not reset data; Keycloak accounts remain intact. |
+| Staging and production deployment verification | **Deferred.** Launch and verify the prepared definitions in their target environments with aligned callback/issuer URLs, secrets and proxy configuration. Compose validation and local tests alone do not establish deployment readiness. |
+| HTTPS and production operations | **Deferred.** Configure stable HTTPS issuer/app URLs, certificates and renewal, protected administrative access, secret rotation, monitoring, registration-abuse handling, upgrades and backup/restore/recovery arrangements. Production-grade operation remains a long-term requirement. |
+
+## Later Scope and Optional Enhancements
+
+AI Service authentication, inter-service authentication and cross-application SSO
+remain deferred later scope. Application authorization and anonymous recipe
+viewing are outside the current implementation. Authentication does not establish
+per-user data isolation or domain permissions.
+
+SMTP delivery with email verification/recovery, display-name editing within
+Kochwiki, and faster cross-application profile synchronization remain optional.
+They are not prerequisites for this implementation. Login-email editing within
+Kochwiki remains explicitly excluded, including from optional enhancements.
 
 ## Risks
 

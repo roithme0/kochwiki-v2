@@ -190,8 +190,14 @@ required; `/auth/me` and `/auth/logout` return 503 when OIDC is disabled.
 Session records contain internal id, unique secret hash, local-user foreign key,
 creation time, last activity and nullable `last_provider_check_at`. The latter
 remains null: no provider session checks or revocation detection run yet. Deleting
-a local user cascades to its sessions. Expired rows remain in PostgreSQL until
-operator cleanup; this slice introduces no background cleanup. Session cookies
+a local user cascades to its sessions. Every configured `/auth/login` initiation deletes expired application sessions
+across all users in a short committed transaction before provider discovery.
+Cleanup uses PostgreSQL time and the same 30-day inactivity boundary as session
+validation, including exactly 30 days. Valid sessions and user records are
+preserved; concurrent row changes are rechecked before deletion. Cleanup still
+commits when provider discovery subsequently fails. There is no background
+cleanup: without further login initiations, expired rows remain stored but
+unusable. Expired login transactions retain their separate existing cleanup. Session cookies
 are bearer secrets: keep cookie headers out of logs and error reports. The `/api`
 cookie path is scoped for current HTTP APIs; future MCP authentication needs its
 own scope decision.
@@ -229,7 +235,9 @@ and email snapshots, missing/null/empty email-claim rejection, non-destructive
 migration guards, and removal of manual user creation/profile-edit routes.
 Session tests cover hash-only persistence, cookie flags, current-user privacy,
 sliding renewal, expired-session rejection, rotation, user deletion, CSRF checks,
-local logout and concurrent renewal/logout. The normal backend suite checks existing behavior.
+local logout, concurrent renewal/logout, cross-user expired-session cleanup,
+the exact expiry boundary, provider failure after cleanup and concurrent
+cleanup versus session renewal/deletion. The normal backend suite checks existing behavior.
 
 End-to-end verification uses disposable Keycloak and KochWiki stacks. From the
 KochWiki root, with PyJWT/cryptography available in the backend environment:
