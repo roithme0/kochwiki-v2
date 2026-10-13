@@ -1,5 +1,6 @@
 @use "../../../../styles/style-tokens" as tokens;
 @use "../../../../styles/page-background";
+@use "../../../../styles/search-bar";
 
 :host {
   /* stretch hole page */
@@ -70,13 +71,5 @@ main {
 }
 
 .create-recipe-button {
-  flex: 0 0 56px;
-  width: 56px;
-  height: 56px;
-
-  mat-icon {
-    width: 28px;
-    height: 28px;
-    font-size: 28px;
-  }
+  @include search-bar.add-button();
 }

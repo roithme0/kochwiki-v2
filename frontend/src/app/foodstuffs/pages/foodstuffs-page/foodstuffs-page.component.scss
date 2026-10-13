@@ -1,5 +1,6 @@
 @use "../../../../styles/style-tokens" as tokens;
 @use "../../../../styles/page-background";
+@use "../../../../styles/search-bar";
 
 :host {
   /* stretch hole page */
@@ -38,7 +39,8 @@ main {
 }
 
 .bottom-elements-placeholder {
-  height: 70px;
+  height: 88px;
+  flex-shrink: 0;
 }
 
 .bottom-elements {
@@ -51,4 +53,8 @@ main {
   position: absolute;
   right: tokens.$floating-button-position;
   bottom: tokens.$floating-button-position;
+}
+
+.create-foodstuff-button {
+  @include search-bar.add-button();
 }

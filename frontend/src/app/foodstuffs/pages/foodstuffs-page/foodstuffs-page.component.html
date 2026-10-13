@@ -25,7 +25,9 @@
   <div class="bottom-elements-placeholder"></div>
   <div class="bottom-elements">
     <app-foodstuffs-search [foodstuffs]="foodstuffsState().data" />
-    <app-foodstuffs-table-create-foodstuff />
+    <button mat-mini-fab (click)="openCreateFoodstuffDialog()" class="create-foodstuff-button">
+      <mat-icon aria-hidden="false" aria-label="Lebensmittel hinzufügen" fontIcon="add" />
+    </button>
   </div>
   }
 </main>
