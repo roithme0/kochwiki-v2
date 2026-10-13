@@ -1,10 +1,13 @@
 @use "../../../../styles/style-tokens" as tokens;
+@use "../../../../styles/page-background";
+@use "../../../../styles/search-bar";
 
 :host {
   /* stretch hole page */
   display: inline-block;
   height: 100%;
   width: 100%;
+  @include page-background.illustrated();
 }
 
 main {
@@ -35,7 +38,7 @@ main {
   &::after {
     content: "";
     display: block;
-    height: 70px;
+    height: 88px;
   }
 }
 
@@ -65,4 +68,8 @@ main {
   position: absolute;
   right: tokens.$floating-button-position;
   bottom: tokens.$floating-button-position;
+}
+
+.create-recipe-button {
+  @include search-bar.add-button();
 }

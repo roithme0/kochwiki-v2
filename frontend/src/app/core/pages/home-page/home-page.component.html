@@ -1,5 +1,11 @@
 <main>
-  <h1 class="greeting">Schön,<br />dass du da bist.</h1>
+  <h1 class="greeting">
+    <app-text-reveal
+      text="Schön,&#10;dass du da bist."
+      [startDelay]="250"
+      [animate]="animateGreeting"
+    />
+  </h1>
   <nav class="navigation">
     <a
       routerLink="/recipes"
@@ -20,9 +26,10 @@
   </nav>
   <div class="versions-wrapper">
     <span class="version">Frontend {{ frontendVersion }}</span>
-    @if(backendMetaService.backendVersion()){
-    <span class="version"
-      >Backend {{ backendMetaService.backendVersion() }}</span
-    >}
+    @if (backendMetaService.backendVersion()) {
+      <span class="version"
+        >Backend {{ backendMetaService.backendVersion() }}</span
+      >
+    }
   </div>
 </main>
