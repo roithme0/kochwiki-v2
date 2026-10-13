@@ -28,7 +28,7 @@ main {
   margin: 0 0 1.5rem;
   color: tokens.$high-emphasis-font-color;
   font-size: clamp(2rem, 9vw, 2.75rem);
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.1;
 }
 
@@ -78,7 +78,8 @@ main {
 
 .navigation-label {
   font-size: clamp(1rem, 5vw, 1.5rem);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.2;
   text-align: center;
 }
 

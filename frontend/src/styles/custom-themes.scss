@@ -1,4 +1,5 @@
 @use "@angular/material" as mat;
+@use "./style-tokens" as tokens;
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -12,6 +13,13 @@ $dark-theme: mat.define-theme(
     density: (
       scale: -5,
     ),
+    typography: (
+      plain-family: tokens.$primary-font-family,
+      brand-family: tokens.$primary-font-family,
+      bold-weight: 800,
+      medium-weight: 600,
+      regular-weight: 400,
+    ),
   )
 );
 
@@ -23,9 +31,10 @@ html {
   --app-on-neutral-container-color: #ece0e1;
 
   @include mat.all-component-themes($dark-theme);
+  --mat-app-text-color: #f5f0e8;
   @include mat.card-overrides((
-    elevated-container-color: #332d2e,
-    filled-container-color: #332d2e,
-    outlined-container-color: #332d2e,
+    elevated-container-color: #3b3028,
+    filled-container-color: #3b3028,
+    outlined-container-color: #3b3028,
   ));
 }
