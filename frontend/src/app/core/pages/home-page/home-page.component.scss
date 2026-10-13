@@ -24,19 +24,29 @@ main {
 
 .navigation {
   flex: 0 0 auto;
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
 .navigation-link {
-  max-width: 8rem;
-  border-radius: 15%;
+  min-width: 0;
+  border-radius: 1rem;
   background-color: tokens.$base-container-color;
   box-shadow: tokens.$container-box-shadow;
+  color: tokens.$high-emphasis-font-color;
+  text-decoration: none;
   position: relative;
-  padding: 2%;
+  padding: 0.75rem;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+  }
 
   &:focus,
   &:hover {
@@ -48,13 +58,18 @@ main {
 }
 
 .image {
-  width: auto;
-  max-width: 100%;
+  width: 100%;
+  aspect-ratio: 1;
   height: auto;
-  max-height: 100%;
   object-fit: contain;
   display: block;
   z-index: 1;
+}
+
+.navigation-label {
+  font-size: clamp(1rem, 5vw, 1.5rem);
+  font-weight: 500;
+  text-align: center;
 }
 
 .versions-wrapper {
