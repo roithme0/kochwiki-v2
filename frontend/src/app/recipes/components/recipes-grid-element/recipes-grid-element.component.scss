@@ -23,6 +23,14 @@ mat-card-subtitle {
   height: 1lh;
 }
 
+mat-card-title {
+  height: auto;
+  max-height: 2lh;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
 .version-state-badge {
   position: absolute;
   top: 1rem;
