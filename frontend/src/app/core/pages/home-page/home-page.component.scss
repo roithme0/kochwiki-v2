@@ -3,6 +3,17 @@
 :host {
   display: flex;
   flex-direction: column;
+  background-image:
+    linear-gradient(
+      to bottom,
+      var(--mat-app-background-color) 0%,
+      color-mix(in srgb, var(--mat-app-background-color) 20%, transparent) 70%,
+      color-mix(in srgb, var(--mat-app-background-color) 45%, transparent) 100%
+    ),
+    url("../../../../assets/background.png");
+  background-position: center bottom;
+  background-size: 100% 100%, 100% auto;
+  background-repeat: no-repeat;
 }
 
 main {
@@ -44,10 +55,6 @@ main {
   object-fit: contain;
   display: block;
   z-index: 1;
-}
-
-.spacer {
-  flex: 1 0 0;
 }
 
 .versions-wrapper {
