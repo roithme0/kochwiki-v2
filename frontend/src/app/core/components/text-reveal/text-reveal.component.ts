@@ -4,9 +4,11 @@ import { Component, computed, input } from '@angular/core';
   selector: 'app-text-reveal',
   templateUrl: './text-reveal.component.html',
   styleUrl: './text-reveal.component.scss',
+  host: { '[class.instant]': '!animate()' },
 })
 export class TextRevealComponent {
   readonly text = input.required<string>();
+  readonly animate = input(true);
   readonly characterDelay = input(40);
   readonly startDelay = input(0);
   private readonly segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });

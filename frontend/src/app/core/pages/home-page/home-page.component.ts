@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 
 import { RouterLink } from '@angular/router';
 import { PageHeaderService } from '../../services/page-header.service';
@@ -13,10 +14,26 @@ import { TextRevealComponent } from '../../components/text-reveal/text-reveal.co
   styleUrl: './home-page.component.scss',
 })
 export class HomePageComponent {
+  private readonly document = inject(DOCUMENT);
   readonly pageHeaderService = inject(PageHeaderService);
   readonly backendMetaService = inject(BackendMetaService);
 
   readonly frontendVersion: string = VERSION;
+  readonly animateGreeting = this.claimGreetingReveal();
+
+  private claimGreetingReveal(): boolean {
+    if (this.document.defaultView === null) return false;
+    try {
+      const storage = this.document.defaultView.sessionStorage;
+      const key = 'kochwiki.home-greeting-revealed';
+      if (storage.getItem(key) === 'true') return false;
+      storage.setItem(key, 'true');
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
   ngOnInit(): void {
     this.pageHeaderService.updateHeader(true, 'Kochwiki', '', false);
   }

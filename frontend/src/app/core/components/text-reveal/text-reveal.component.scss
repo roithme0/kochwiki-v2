@@ -24,6 +24,11 @@
   }
 }
 
+:host(.instant) .character {
+  animation: none;
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .character {
     animation: none;
