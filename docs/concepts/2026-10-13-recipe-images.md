@@ -12,7 +12,7 @@ Make recipes recognizable by a user-uploaded image in the recipe grid and on the
 
 Recipe data is organized into active, draft, and historical versions. Publishing an active edit creates a new version; an existing draft is updated in place. The shared create/edit editor groups inputs into Basis, Zutaten, and Zubereitung. Basis currently contains the recipe name. Grid cards display a macro chart and a version-state badge. The detail page uses a shared recipe presentation component that also serves AI artifacts.
 
-The README originally proposed SeaweedFS. The agreed storage-only slice now supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. Backend-issued short-lived upload/download URLs and PostgreSQL image metadata remain planned. The backend has no recipe image model or storage integration. Domain recipe endpoints currently do not enforce application sessions.
+The README originally proposed SeaweedFS. The storage-only slice supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. The subsequent backend storage slice adds explicit configuration and an adapter for short-lived upload/download URLs, internal object inspection and deletion. Its transfer round trip is verified locally through the gateway. The backend still has no recipe image model or public upload API; PostgreSQL image metadata remains planned. Domain recipe endpoints currently do not enforce application sessions.
 
 ## Proposed Direction
 
@@ -84,7 +84,11 @@ Direct browser transfers use the agreed same-origin gateway route, so no object-
 
 The first agreed slice is limited to deploying Garage file storage across local development, staging, and production. Cover persistent storage, private buckets, credentials, network exposure and the future presigned browser-transfer route, and operational verification. Use the current single-node topology with environment-specific data, credentials, and addresses. Existing server filesystem backups remain the backup mechanism; no additional backup or topology work is included. Recipe models, application upload endpoints, image validation, and UI changes are deferred. Configuration edits still require the concrete proposal and confirmation described above. Preparing deployment definitions and verifying a local instance do not establish successful rollout in staging or production; report verification for each target separately.
 
-Subsequent delivery boundaries remain provisional, without prescribing a task-level implementation plan:
+The agreed next slice connects the backend to Garage. Configure the internal storage endpoint, public gateway address, region, bucket and application credentials. Add a small storage adapter for issuing presigned upload/download URLs and inspecting or deleting objects. Verify the adapter through the public `/storage/` route: generate an upload URL, upload a PNG, inspect the object from the backend, generate a download URL, retrieve identical bytes, and delete the test object. Verify rejection of an expired URL as well. Keep credentials and signed URLs out of logs.
+
+This backend storage slice introduces no recipe fields, public upload endpoints, PNG validation rules, image associations, or UI changes. Its PNG transfer check establishes transport behavior, not content validation. No frontend contract changes are needed because the adapter exposes no application API. Implementation and local transfer verification completed on 2026-10-14; all three Compose definitions are configured, while staging and production deployment and public-origin verification remain pending.
+
+Delivery boundaries after that remain provisional, without prescribing a task-level implementation plan:
 
 1. Establish validation, image metadata, save/version lifecycle, and upload controls in Basis, using the supplied editor visualization and deployed storage.
 2. Replace grid nutrition with image display and the agreed fallback. Obtain the user's grid visualization before implementation.

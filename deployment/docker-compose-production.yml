@@ -56,6 +56,12 @@ services:
   backend:
     image: roithme0/kochwiki-v2-backend:latest
     environment:
+      STORAGE_ENDPOINT_URL: http://file-storage:3900
+      STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:?Set STORAGE_PUBLIC_ORIGIN in deployment/.env}
+      STORAGE_REGION: garage
+      STORAGE_BUCKET_RECIPE_IMAGES: recipe-images
+      STORAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in deployment/.env}
+      STORAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in deployment/.env}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OIDC_ISSUER: ${OIDC_ISSUER:-}
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-kochwiki}

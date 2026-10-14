@@ -2,8 +2,9 @@
 
 Local, staging, and production Compose deployments each run a `file-storage` service using their own pinned
 `dxflrs/garage:v2.4.1` instance with a private `recipe-images` bucket. This slice
-provides storage infrastructure only: recipes do not yet upload or display images,
-and the backend does not yet issue presigned URLs or validate uploaded images.
+provides storage infrastructure and an internal backend adapter for presigned
+upload/download URLs, object inspection and deletion. Recipes do not yet upload
+or display images, and the backend does not validate uploaded images.
 
 ## Configuration and startup
 
@@ -16,6 +17,12 @@ values for every environment:
 | `GARAGE_ADMIN_TOKEN` | Separate private administration token: 32 random bytes, hex encoded |
 | `GARAGE_ACCESS_KEY_ID` | `GK` followed by 16 random bytes, hex encoded |
 | `GARAGE_SECRET_ACCESS_KEY` | 32 random bytes, hex encoded (64 characters) |
+| `STORAGE_PUBLIC_ORIGIN` | Public application origin, such as `https://kochwiki.example`; required for staging/production, without `/storage` or another path |
+
+Local Compose defaults the public origin to `http://localhost:${GATEWAY_PORT:-8000}`
+when `STORAGE_PUBLIC_ORIGIN` is unset or empty. Set it explicitly when accessing
+the gateway through another hostname or HTTPS. The signer must use the exact
+origin used by the browser, including a non-default port.
 
 For example, use `openssl rand -hex 32` for each secret, and prefix the output of
 `openssl rand -hex 16` with `GK` for the access key ID. Keep the values private;
@@ -63,8 +70,36 @@ the storage container's network namespace to reach administration at
 not available to other Compose services or the public gateway. The initializer
 requires no access to Garage's data volumes. The public website endpoint is disabled.
 Only the private S3 API at `http://file-storage:3900`, region `garage`, is available on
-the Compose network. Future backend storage calls can use that address with
-path-style S3 addressing. No backend configuration or SDK is introduced yet.
+the Compose network. The backend adapter uses that address with
+path-style S3 addressing.
+
+Compose forwards the application's Garage credentials as `STORAGE_ACCESS_KEY_ID`
+and `STORAGE_SECRET_ACCESS_KEY`, with `STORAGE_ENDPOINT_URL=http://file-storage:3900`,
+`STORAGE_REGION=garage`, `STORAGE_BUCKET_RECIPE_IMAGES=recipe-images`, and the configured
+`STORAGE_PUBLIC_ORIGIN`. The backend receives no Garage administration credentials.
+For a backend outside Compose, supply these six `STORAGE_*` settings directly in
+its environment or ignored `.env`. All six are required together; leaving all six
+absent disables storage configuration. Both addresses must be HTTP(S) origins
+without paths, queries, fragments or embedded credentials.
+
+`Settings.storage_config` supplies the strictly typed configuration to
+`app.services.storage.Storage`. The adapter uses boto3 with explicit credentials,
+Signature V4 and path-style addressing. It uses separate internal and public
+clients; presigning performs no network request. Call `close()` after use.
+`presign_upload` and `presign_download` return the URL, method and lifetime
+(default 300 seconds, allowed range 1 to 3600). These URLs are reusable bearer
+credentials until expiry; upload signing does not bind or validate image content.
+No application endpoints expose this adapter yet.
+
+`inspect` returns object size, content type and ETag, or `None` for an absent
+object. Permission and transport failures raise a sanitized `StorageUnavailable`;
+`delete` is idempotent for absent keys and likewise reports failures. Internal
+requests use a 5-second connect timeout, 15-second read timeout and one attempt.
+The adapter rejects ambiguous key segments (`.`, `..`, empty segments),
+backslashes, control characters and keys exceeding S3's 1024-byte limit.
+Do not enable boto3/botocore HTTP debug logging: it can expose signed requests.
+The transfer result omits its URL from its default representation, but callers
+must also avoid logging or persisting the URL explicitly.
 
 ## Persistence
 
@@ -100,7 +135,7 @@ signatures. Garage's request logger is disabled through the scoped
 `RUST_LOG=info,garage_api_common::generic_server=off` filter because it also logs
 signed query strings; other operational logging remains enabled.
 
-For the later backend integration:
+The backend adapter implements this signing sequence:
 
 1. Create a path-style S3 signer using the **public application origin**, without
    `/storage`, region `garage`, Signature V4, and the environment's application key.
@@ -119,6 +154,36 @@ URLs do not implement recipe ownership or permissions. Upload completion and
 image validation before recipe attachment belong to a later application slice.
 
 ## Verification
+
+Run the adapter regression checks without a database from the repository root:
+
+```sh
+PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_storage_adapter.py
+```
+
+On Windows, use `backend/.venv/Scripts/python.exe` and set `PYTHONPATH=backend`
+in the shell. The normal backend pytest suite includes these checks too, and
+requires its dedicated test database.
+
+After building the backend image with the locked dependencies, verify the adapter
+against the running local stack from the repository root:
+
+```sh
+docker compose -f deployment/docker-compose-local.yml run --rm --no-deps \
+  -v "$PWD/backend/tests:/checks:ro" \
+  -e STORAGE_VERIFY_CONNECT_ORIGIN=http://gateway:80 \
+  backend python /checks/verify_storage_adapter.py
+```
+
+The verifier uses the backend's private network for HEAD/DELETE and connects to
+the gateway for signed PNG PUT/GET, preserving the configured public Host and port.
+It compares downloaded bytes, checks real URL expiry, and deletes its unique
+temporary object in a `finally` block. Garage reports expiration as HTTP 400
+`InvalidRequest` / `Date is too old`; this is checked explicitly. It prints
+neither credentials nor URLs. Omit `STORAGE_VERIFY_CONNECT_ORIGIN` to connect
+directly through the configured public origin, including external TLS termination.
+The internal gateway override verifies local routing and signing, not external
+DNS, TLS or an outer reverse proxy.
 
 Run the isolated integration check from the repository root with Python 3.12+
 and Docker Compose available:
@@ -155,6 +220,16 @@ repeat runs, second-bucket read/write with a separate key, denied access with th
 recipe key, and rejected secret mismatches passed. Existing local bucket access
 survived the migration, and the backend container could not reach the loopback-only
 administration endpoint.
+
+The backend adapter was verified on 2026-10-14 against the actual local Garage
+and gateway using a disposable backend container: encoded-key PNG PUT, private
+HEAD metadata, identical-byte GET, expired-URL rejection and confirmed deletion
+passed. The running application container was not rebuilt or modified. The five
+adapter regression tests and complete backend suite passed (285 passed, one
+skipped), and all three Compose definitions passed synthetic storage-setting
+checks, including the local custom-port fallback. Staging and production have
+configuration only; adapter rollout and verification through their external
+public origins remain pending.
 
 References: [Garage quick start](https://garagehq.deuxfleurs.fr/documentation/quick-start/),
 [configuration](https://garagehq.deuxfleurs.fr/documentation/reference-manual/configuration/),

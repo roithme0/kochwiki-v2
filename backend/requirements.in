@@ -1,4 +1,5 @@
 alembic
+boto3
 fastapi
 mcp==2.2.0
 psycopg[binary]
