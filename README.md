@@ -14,8 +14,8 @@ Kochwiki is a personal, private, mobile-first recipe app. This next iteration bu
 - **Frontend**: Angular, built mobile-first as an installable PWA.
 - **Backend**: A single Python FastAPI service.
 - **Database**: PostgreSQL for recipes, ingredients, nutrition data, and image metadata.
-- **Image storage**: Self-managed SeaweedFS, accessed through its S3-compatible API. Images are stored as objects; PostgreSQL stores metadata and object references.
-- **Image access**: Private buckets with short-lived presigned upload and download URLs issued by the backend.
+- **Image storage**: Self-managed Garage, accessed through its S3-compatible API. Local, staging, and production Compose definitions provide separate instances and private `recipe-images` buckets. Recipe image metadata and associations remain planned.
+- **Image access**: The gateway exposes the S3 API at `/storage/`. Backend-issued short-lived presigned upload and download URLs remain planned.
 
 ## AI and API Direction
 
@@ -24,6 +24,10 @@ AI suggestions must be explainable and individually reviewable. Accepted changes
 The project may later expose a constrained API for general-purpose agents. This will be treated as a security boundary: capabilities, authentication, authorization, and auditability must be designed before agent write access is introduced.
 
 ## Operational Notes
+
+See [file storage configuration and verification](docs/file-storage.md) for Garage
+credentials, persistence, automatic initialization, and the presigned URL routing
+contract. Recipe upload endpoints and image UI are not implemented yet.
 
 Compose gives the backend a restricted PostgreSQL database owner and installs
 pgvector separately during database initialization. Local and staging will start
@@ -69,7 +73,7 @@ session remains active. Existing domain APIs, provider revocation checks and AI
 Service authentication remain subsequent slices. Domain requests do not yet renew
 or enforce the session.
 
-The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
+The initial service layout intentionally stays small: FastAPI, PostgreSQL, and Garage. The accepted single-node Garage deployment relies on the existing server filesystem backup covering its metadata and object data. Replication and additional backup tooling are outside the current storage slice.
 
 ## AI Workflows
 

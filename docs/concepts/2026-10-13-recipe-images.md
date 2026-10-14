@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. PNG upload in the create/edit dialog's Basis section, images replacing the grid's nutrition display, and images on the recipe detail page are requested. One optional image per recipe version, initial inheritance of the source version's image, and a neutral placeholder in the grid, detail page, and editor are agreed. Drafts and the active version can have different images; saving a draft's image does not change the active version's image. Replacing an image does not require a separate image revision history for that version. Historical-version retention and upload limits remain to be confirmed. The user supplied detail-page and editor visualizations in this conversation; a grid visualization remains pending. This document records the concept; it does not authorize implementation or configuration changes.
+Draft. PNG upload in the create/edit dialog's Basis section, images replacing the grid's nutrition display, and images on the recipe detail page are requested. One optional image per recipe version, initial inheritance of the source version's image, and a neutral placeholder in the grid, detail page, and editor are agreed. Drafts and the active version can have different images; saving a draft's image does not change the active version's image. Replacing an image does not require a separate image revision history for that version. Historical-version retention and upload limits remain to be confirmed. The user supplied detail-page and editor visualizations in this conversation; a grid visualization remains pending. The first, storage-only slice was authorized and implemented on 2026-10-14: Garage configuration exists for all three environments, with local deployment verified. Staging and production rollout remain pending. Recipe image integration remains unimplemented; this concept does not authorize later slices.
 
 ## Goal
 
@@ -12,7 +12,7 @@ Make recipes recognizable by a user-uploaded image in the recipe grid and on the
 
 Recipe data is organized into active, draft, and historical versions. Publishing an active edit creates a new version; an existing draft is updated in place. The shared create/edit editor groups inputs into Basis, Zutaten, and Zubereitung. Basis currently contains the recipe name. Grid cards display a macro chart and a version-state badge. The detail page uses a shared recipe presentation component that also serves AI artifacts.
 
-The README proposes private SeaweedFS object storage with backend-issued short-lived upload and download URLs and PostgreSQL image metadata. The inspected backend has no image model or storage integration, and the deployment Compose files do not currently configure SeaweedFS. This is a new storage capability rather than wiring up an existing upload service. Domain recipe endpoints currently do not enforce application sessions.
+The README originally proposed SeaweedFS. The agreed storage-only slice now supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. Backend-issued short-lived upload/download URLs and PostgreSQL image metadata remain planned. The backend has no recipe image model or storage integration. Domain recipe endpoints currently do not enforce application sessions.
 
 ## Proposed Direction
 
@@ -40,7 +40,13 @@ The references guide image placement and editing controls. They do not expand th
 
 ## Storage and Save Lifecycle
 
-Follow the README's SeaweedFS direction unless a later decision changes it. Keep objects private and store stable object references and validated metadata in PostgreSQL. The backend controls upload admission, validation, attachment, and access URL issuance. Never trust a filename or browser MIME type alone: validate that uploaded bytes decode as PNG and enforce agreed byte and pixel limits.
+Garage replaces the README's earlier SeaweedFS direction as the selected S3-compatible object store. Use the current single-node topology across local, staging, and production, with separate environment data and credentials. Server filesystem backups cover Garage's persistent storage; this slice adds no backup tooling, backup automation, restore exercises, or replication. Persist both Garage metadata and object data within the filesystem covered by the existing backup. This records the accepted operational baseline, not a claim that live filesystem backup consistency or restore has been verified.
+
+Keep objects private and store stable object references and validated metadata in PostgreSQL. The backend controls upload admission, validation, attachment, and access URL issuance. Never trust a filename or browser MIME type alone: validate that uploaded bytes decode as PNG and enforce agreed byte and pixel limits.
+
+Agreed deployment layout: one Garage container per environment; named Docker volumes for local persistent storage, and `./garage/data` plus `./garage/meta` bind mounts for staging and production. Expose the S3 API through the existing application gateway at `/storage/` for presigned transfers. Keep Garage administration and internal RPC ports private. Verify presigned requests through the chosen proxy path, including signature handling when routing the prefix; browser transfers must work through the public gateway address. The backend guides transfer admission and later upload validation, while bytes transfer through the gateway to Garage. New user-level authorization rules remain deferred.
+
+Each environment has its own private `recipe-images` bucket and application access key. Keep secrets in the existing ignored `deployment/.env`; browser clients receive only presigned URLs, never storage credentials. A separate, repeatable `file-storage-init` service provisions named buckets and application keys from `deployment/garage/buckets.json`; Garage startup initializes only the single-node layout. The initializer preserves existing objects and credentials and rejects secret mismatches. The gateway waits for successful initialization. Additional buckets can use the same mechanism without designating any default bucket. Administration binds only to container loopback, uses a separate private token, and is reached by the initializer through a shared network namespace. No shared cross-environment Garage instance or additional service buckets are included.
 
 Recommend uploading to a temporary object before recipe save and attaching only a validated image reference in the recipe database transaction. Define completion explicitly: obtaining an upload URL or successfully transferring bytes alone does not make an image eligible for attachment. Uploads must not permit later overwrite of an object already referenced by a recipe.
 
@@ -62,7 +68,7 @@ The broader image initiative assigns image associations, metadata, access policy
 
 The longer-term direction is for uploaded, imported, and generated images to fit the same domain model. Keep stable image identity and storage metadata independent of an AI provider or upload transport. This does not add import, generation, generated-image provenance fields, a transfer contract, or a general media framework to this slice. Ingredient/foodstuff images also remain outside scope. The separate nutrition-label initiative does not require permanent photo storage and is not a dependency here.
 
-The plan intentionally leaves storage technology to service repositories, so it does not conflict with this repository's SeaweedFS direction. Its recipe-ownership direction is future context for image access policy, not authorization to implement ownership in this concept. Some planning notes still describe temporary user selection and an undecided identity provider; the implemented local session and Keycloak setup documented here supersede those descriptions for current-state reasoning. No files in `../plan` were changed.
+The plan intentionally leaves storage technology to service repositories, so it does not conflict with this repository's selected Garage direction. Its recipe-ownership direction is future context for image access policy, not authorization to implement ownership in this concept. Some planning notes still describe temporary user selection and an undecided identity provider; the implemented local session and Keycloak setup documented here supersede those descriptions for current-state reasoning. No files in `../plan` were changed.
 
 ## Integration Impact
 
@@ -72,13 +78,15 @@ Place detail-page image rendering deliberately: the shared recipe presentation c
 
 Image integration does not introduce authorization policy or expand session enforcement across recipe APIs. Existing authentication behavior remains the baseline. Upload validation and image-reference integrity checks protect data consistency without defining who owns a recipe or who may access it. Future authorization can apply to these operations separately.
 
-Direct browser uploads also require a decision on browser-reachable storage addresses and object-store CORS; backend connectivity alone is insufficient. Storage provisioning, credentials, gateway upload limits, dependencies, and deployment configuration will need a concrete proposal and confirmation before configuration edits, as required by AGENTS.md. Database and object storage backup/restore must preserve their references together.
+Direct browser transfers use the agreed same-origin gateway route, so no object-store CORS setup is required for this topology. Presigned URLs must follow the verified prefix and Host handling documented in file storage. Storage configuration edits for this slice were explicitly authorized; later build/tooling edits remain subject to AGENTS.md. Database and object storage recovery must preserve their references together, using the accepted existing filesystem-backup baseline.
 
 ## Delivery Boundaries
 
-The concept suggests three reviewable slices, without prescribing a task-level implementation plan:
+The first agreed slice is limited to deploying Garage file storage across local development, staging, and production. Cover persistent storage, private buckets, credentials, network exposure and the future presigned browser-transfer route, and operational verification. Use the current single-node topology with environment-specific data, credentials, and addresses. Existing server filesystem backups remain the backup mechanism; no additional backup or topology work is included. Recipe models, application upload endpoints, image validation, and UI changes are deferred. Configuration edits still require the concrete proposal and confirmation described above. Preparing deployment definitions and verifying a local instance do not establish successful rollout in staging or production; report verification for each target separately.
 
-1. Establish storage, validation, image metadata, save/version lifecycle, and upload controls in Basis, using the supplied editor visualization.
+Subsequent delivery boundaries remain provisional, without prescribing a task-level implementation plan:
+
+1. Establish validation, image metadata, save/version lifecycle, and upload controls in Basis, using the supplied editor visualization and deployed storage.
 2. Replace grid nutrition with image display and the agreed fallback. Obtain the user's grid visualization before implementation.
 3. Display the viewed version's image on the recipe detail page, using the supplied detail visualization.
 
@@ -88,7 +96,7 @@ Each implemented slice should ship its frontend/backend contract changes togethe
 
 - Should historical recipe versions retain their own image? Recommended to follow version ownership; this is distinct from retaining backups of replaced images within an existing draft.
 - What maximum file size and decoded dimensions should apply? Are animated PNG files allowed?
-- What browser upload route, retention interval, and cleanup mechanism fit the deployment?
+- What temporary-upload retention interval and cleanup mechanism fit the deployment? The browser storage-transfer route is settled.
 - Are generated thumbnails needed initially, or can one bounded original serve both grid and detail views?
 - Where should the editor's image-removal action appear alongside the supplied pencil action?
 - What grid image layout should the pending grid visualization establish?

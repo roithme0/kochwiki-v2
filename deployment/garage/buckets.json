@@ -1,0 +1,7 @@
+[
+  {
+    "name": "recipe-images",
+    "access_key_id_env": "GARAGE_ACCESS_KEY_ID",
+    "secret_access_key_env": "GARAGE_SECRET_ACCESS_KEY"
+  }
+]
