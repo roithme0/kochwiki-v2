@@ -23,10 +23,10 @@ from app.services.recipes import (
 def images() -> tuple[UUID, UUID]:
     ids = (uuid4(), uuid4())
     with SessionLocal.begin() as session:
-        for image_id in ids:
+        for index, image_id in enumerate(ids):
             session.add(RecipeImage(
                 id=image_id, object_key=f"recipe-images/{image_id}.png", content_type="image/png",
-                size=100, width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
+                size=100, width=800 + index * 200, height=600, sha256="a" * 64, created_at=datetime.now(timezone.utc),
             ))
     return ids
 
@@ -42,7 +42,29 @@ def test_new_recipe_without_image(client: TestClient) -> None:
     assert response.status_code == 201
     recipe = RecipeVersionOut.model_validate(response.json())
     assert recipe.imageId is None
+    assert recipe.imageDimensions is None
     assert client.get(f"/recipes/{recipe.recipeLineageId}").json()["imageId"] is None
+
+
+def test_dimensions_follow_version_image_and_refresh_after_replacement(images: tuple[UUID, UUID]) -> None:
+    from app.services.recipes import recipe_version_out
+
+    with SessionLocal.begin() as session:
+        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]))
+        original = recipe_version_out(active)
+        assert original.imageDimensions is not None
+        assert original.imageDimensions.model_dump() == {"width": 800, "height": 600}
+        draft = create_recipe_draft(session, active.lineage_id, RecipeVersionWrite(name="Draft", servings=2))
+        assert recipe_version_out(draft).imageDimensions == original.imageDimensions
+        replaced = update_recipe_draft(session, active.lineage_id, draft.version_id,
+            RecipeVersionWrite(name="Replaced", servings=2, imageId=images[1]))
+        dimensions = recipe_version_out(replaced).imageDimensions
+        assert dimensions is not None
+        assert dimensions.model_dump() == {"width": 1000, "height": 600}
+        assert recipe_version_out(active).imageDimensions == original.imageDimensions
+        removed = update_recipe_draft(session, active.lineage_id, draft.version_id,
+            RecipeVersionWrite(name="Removed", servings=2, imageId=None))
+        assert recipe_version_out(removed).imageDimensions is None
 
 
 def test_draft_replacement_removal_and_publication_are_independent(client: TestClient, images: tuple[UUID, UUID]) -> None:
@@ -51,9 +73,11 @@ def test_draft_replacement_removal_and_publication_are_independent(client: TestC
     draft = client.post(f"{path}/drafts", json={"name": "Draft", "servings": 2}).json()
     draft_path = f"{path}/drafts/{draft['recipeVersionId']}"
     assert draft["imageId"] == str(images[0])
+    assert draft["imageDimensions"] == {"width": 800, "height": 600}
     replacement = client.put(draft_path, json={"name": "Replaced", "servings": 2, "imageId": str(images[1])})
     assert replacement.status_code == 200
     assert replacement.json()["imageId"] == str(images[1])
+    assert replacement.json()["imageDimensions"] == {"width": 1000, "height": 600}
     kept = client.put(draft_path, json={"name": "Kept", "servings": 2})
     assert kept.json()["imageId"] == str(images[1])
     assert client.get(path).json()["imageId"] == str(images[0])
@@ -61,6 +85,7 @@ def test_draft_replacement_removal_and_publication_are_independent(client: TestC
     assert published.status_code == 200
     assert published.json()["imageId"] == str(images[1])
     assert client.get(f"{path}/history").json()[0]["imageId"] == str(images[0])
+    assert client.get(f"{path}/history").json()[0]["imageDimensions"] == {"width": 800, "height": 600}
     removed = client.post(f"{path}/drafts", json={"name": "Removed", "servings": 2, "imageId": None}).json()
     assert removed["imageId"] is None
     assert client.get(path).json()["imageId"] == str(images[1])
@@ -73,9 +98,12 @@ def test_draft_replacement_removal_and_publication_are_independent(client: TestC
         f"{path}/drafts/{removed['recipeVersionId']}", json={"name": "Cleared", "servings": 2, "imageId": None},
     )
     assert cleared.json()["imageId"] is None
+    assert cleared.json()["imageDimensions"] is None
     assert client.get(f"{path}/versions/{original.recipeVersionId}").json()["imageId"] == str(images[0])
     listed = {item["recipeVersionId"]: item["imageId"] for item in client.get("/recipes").json()}
     assert listed == {draft["recipeVersionId"]: str(images[1]), removed["recipeVersionId"]: None}
+    listed_dimensions = {item["recipeVersionId"]: item["imageDimensions"] for item in client.get("/recipes").json()}
+    assert listed_dimensions == {draft["recipeVersionId"]: {"width": 1000, "height": 600}, removed["recipeVersionId"]: None}
 
 
 @pytest.mark.parametrize("choice", ["omit", "replace", "remove"])

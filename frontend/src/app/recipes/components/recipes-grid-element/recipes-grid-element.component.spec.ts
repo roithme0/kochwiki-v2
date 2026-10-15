@@ -48,7 +48,9 @@ describe('RecipesGridElementComponent', () => {
   });
 
   it('displays the selected version image with natural height', async () => {
-    fixture.componentRef.setInput('recipeVersion', { ...draftRecipeVersion, imageId: 'draft-image' });
+    fixture.componentRef.setInput('recipeVersion', {
+      ...draftRecipeVersion, imageId: 'draft-image', imageDimensions: { width: 1254, height: 818 },
+    });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -56,13 +58,14 @@ describe('RecipesGridElementComponent', () => {
       .componentInstance as RecipeImageComponent;
     expect(image.imageId()).toBe('draft-image');
     expect(image.naturalHeight()).toBe(true);
+    expect(image.imageDimensions()).toEqual({ width: 1254, height: 818 });
     expect((fixture.nativeElement as HTMLElement).querySelector('img')!.getAttribute('src'))
       .toBe('/storage/image');
   });
 });
 
 const draftRecipeVersion: RecipeVersionOut = {
-  imageId: null,
+  imageId: null, imageDimensions: null,
   recipeLineageId: '00000000-0000-4000-8000-000000000001',
   recipeVersionId: '00000000-0000-4000-8000-000000000002',
   state: 'draft',

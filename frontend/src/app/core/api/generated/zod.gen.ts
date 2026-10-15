@@ -19,6 +19,14 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * RecipeImageDimensionsOut
+ */
+export const zRecipeImageDimensionsOut = z.strictObject({
+    height: z.int().check(z.gt(0)),
+    width: z.int().check(z.gt(0))
+});
+
+/**
  * RecipeImageDownloadOut
  */
 export const zRecipeImageDownloadOut = z.strictObject({
@@ -254,6 +262,7 @@ export const zRecipeVersionOut = z.strictObject({
     carbs: z.nullable(z.number()),
     createdAt: z.iso.datetime(),
     fat: z.nullable(z.number()),
+    imageDimensions: z.nullable(zRecipeImageDimensionsOut),
     imageId: z.nullable(z.uuid()),
     ingredients: z.array(zIngredientOut),
     kcal: z.nullable(z.number()),

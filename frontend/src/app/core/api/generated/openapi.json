@@ -488,6 +488,27 @@
         "title": "IngredientWrite",
         "type": "object"
       },
+      "RecipeImageDimensionsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "RecipeImageDimensionsOut",
+        "type": "object"
+      },
       "RecipeImageDownloadOut": {
         "additionalProperties": false,
         "properties": {
@@ -860,6 +881,16 @@
             ],
             "title": "Fat"
           },
+          "imageDimensions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeImageDimensionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "imageId": {
             "anyOf": [
               {
@@ -950,6 +981,7 @@
           "recipeLineageId",
           "recipeVersionId",
           "imageId",
+          "imageDimensions",
           "state",
           "createdAt",
           "lastModified",

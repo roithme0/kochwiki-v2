@@ -13,6 +13,7 @@ from app.models.enums import RecipeVersionState
 
 if TYPE_CHECKING:
     from app.models.foodstuff import Foodstuff
+    from app.models.recipe_image import RecipeImage
 
 
 class RecipeLineage(Base):
@@ -53,6 +54,7 @@ class RecipeVersion(Base):
     servings: Mapped[int] = mapped_column(nullable=False)
     preptime: Mapped[int | None] = mapped_column(nullable=True)
     image_id: Mapped[UUID | None] = mapped_column(ForeignKey("recipe_image.id", ondelete="RESTRICT"), nullable=True, index=True)
+    image: Mapped[RecipeImage | None] = relationship(viewonly=True)
     ingredients: Mapped[list[Ingredient]] = relationship(
         back_populates="recipe_version", cascade="all, delete-orphan", order_by="Ingredient.index"
     )

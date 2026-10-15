@@ -4,6 +4,7 @@
 }
 
 .image-area {
+  position: relative;
   height: clamp(12rem, 40vw, 22rem);
   width: 100%;
 }
@@ -16,6 +17,8 @@ img {
 }
 
 .image-status {
+  position: absolute;
+  inset: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -33,10 +36,7 @@ img {
   height: auto;
 
   img {
-    height: auto;
-  }
-
-  .image-status {
-    min-height: 12rem;
+    position: absolute;
+    inset: 0;
   }
 }

@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -9,6 +10,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { RecipeImageService } from '../../services/recipe-image.service';
+import type { RecipeImageDimensionsOut } from '../../../core/api/generated';
 
 @Component({
   selector: 'app-recipe-image',
@@ -19,6 +21,14 @@ import { RecipeImageService } from '../../services/recipe-image.service';
 export class RecipeImageComponent {
   readonly imageId = input.required<string | null>();
   readonly naturalHeight = input(false);
+  readonly imageDimensions = input<RecipeImageDimensionsOut | null>(null);
+  readonly placeholderDimensions = { width: 1254, height: 747 };
+  readonly dimensions = computed(() => this.imageId() === null
+    ? this.placeholderDimensions : this.imageDimensions());
+  readonly aspectRatio = computed(() => {
+    const dimensions = this.dimensions();
+    return dimensions ? `${dimensions.width} / ${dimensions.height}` : '1';
+  });
   readonly imageUrl = signal<string | null>(null);
   readonly loading = signal(false);
   readonly failed = signal(false);
@@ -37,9 +47,15 @@ export class RecipeImageComponent {
     void this.load(this.imageId());
   }
 
-  imageLoadFailed(): void {
-    if (this.imageUrl() === null) return;
+  imageLoaded(url: string): void {
+    if (this.imageUrl() !== url) return;
+    this.loading.set(false);
+  }
+
+  imageLoadFailed(url: string): void {
+    if (this.imageUrl() !== url) return;
     this.imageUrl.set(null);
+    this.loading.set(false);
     this.failed.set(true);
   }
 
@@ -57,9 +73,7 @@ export class RecipeImageComponent {
     } catch {
       if (this.destroyRef.destroyed || request !== this.request) return;
       this.failed.set(true);
-    } finally {
-      if (!this.destroyRef.destroyed && request === this.request)
-        this.loading.set(false);
+      this.loading.set(false);
     }
   }
 }

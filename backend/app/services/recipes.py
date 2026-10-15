@@ -12,6 +12,7 @@ from app.models.recipe_image import RecipeImage
 from app.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
+    RecipeImageDimensionsOut,
     RecipeLineageOut,
     RecipePresentationIngredientOut,
     RecipePresentationOut,
@@ -182,6 +183,10 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
         imageId=version.image_id,
+        imageDimensions=(
+            RecipeImageDimensionsOut(width=version.image.width, height=version.image.height)
+            if version.image is not None else None
+        ),
         state=version.state,
         createdAt=version.created_at,
         lastModified=version.last_modified,
@@ -258,7 +263,8 @@ def list_steps(session: Session) -> Sequence[Step]:
 
 
 def _recipe_version_statement() -> Select[tuple[RecipeVersion]]:
-    return select(RecipeVersion).options(
+    return select(RecipeVersion).execution_options(populate_existing=True).options(
+        selectinload(RecipeVersion.image),
         selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
         selectinload(RecipeVersion.steps),
     )

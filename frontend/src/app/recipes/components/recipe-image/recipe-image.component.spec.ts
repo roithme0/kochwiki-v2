@@ -88,7 +88,7 @@ describe('RecipeImageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(renderedSource()).toBe(nextId === null ? placeholder : '/storage/b');
-    expect(fixture.componentInstance.loading()).toBe(false);
+    expect(fixture.componentInstance.loading()).toBe(nextId !== null);
   });
 
   it('ignores a response after the view is destroyed', async () => {
@@ -102,7 +102,7 @@ describe('RecipeImageComponent', () => {
     expect(fixture.componentInstance.imageUrl()).toBeNull();
   });
 
-  it('shows the Material spinner inside the image area while requesting access', async () => {
+  it('keeps the Material spinner visible until the image bytes load', async () => {
     let resolveDownload!: (value: RecipeImageDownloadOut) => void;
     download.mockReturnValueOnce(new Promise(resolve => { resolveDownload = resolve; }));
     fixture.componentRef.setInput('imageId', 'image-a');
@@ -113,8 +113,13 @@ describe('RecipeImageComponent', () => {
     resolveDownload({ url: '/storage/a', expiresIn: 300 });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(element.querySelector('mat-spinner')).toBeNull();
+    expect(element.querySelector('mat-spinner')).not.toBeNull();
+    expect(element.querySelector('img')!.style.visibility).toBe('hidden');
     expect(renderedSource()).toBe('/storage/a');
+    element.querySelector('img')!.dispatchEvent(new Event('load'));
+    fixture.detectChanges();
+    expect(element.querySelector('mat-spinner')).toBeNull();
+    expect(element.querySelector('img')!.style.visibility).toBe('visible');
   });
 
   it('prevents retry clicks from navigating the surrounding recipe link', async () => {
@@ -135,5 +140,64 @@ describe('RecipeImageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(renderedSource()).toBe('/storage/fresh');
+  });
+
+  it.each([{ width: 1254, height: 818 }, { width: 600, height: 1200 }])(
+    'reserves the same aspect ratio during access, byte loading, failure and retry: %o', async dimensions => {
+      download.mockResolvedValue({ url: '/storage/a', expiresIn: 300 });
+      fixture.componentRef.setInput('naturalHeight', true);
+      fixture.componentRef.setInput('imageDimensions', dimensions);
+      fixture.componentRef.setInput('imageId', 'image-a');
+      fixture.detectChanges();
+      const element = fixture.nativeElement as HTMLElement;
+      const area = element.querySelector<HTMLElement>('.image-area')!;
+      const ratio = `${dimensions.width} / ${dimensions.height}`;
+      expect(area.style.aspectRatio).toBe(ratio);
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const image = element.querySelector('img')!;
+      expect(image.getAttribute('width')).toBe(String(dimensions.width));
+      expect(image.getAttribute('height')).toBe(String(dimensions.height));
+      expect(area.style.aspectRatio).toBe(ratio);
+      image.dispatchEvent(new Event('error'));
+      fixture.detectChanges();
+      expect(area.style.aspectRatio).toBe(ratio);
+      expect(element.querySelector('button')).not.toBeNull();
+      element.querySelector('button')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(area.style.aspectRatio).toBe(ratio);
+      element.querySelector('img')!.dispatchEvent(new Event('load'));
+      fixture.detectChanges();
+      expect(area.style.aspectRatio).toBe(ratio);
+      expect(element.querySelector('mat-spinner')).toBeNull();
+    });
+
+  it('reserves the placeholder aspect ratio before its bytes load', () => {
+    fixture.componentRef.setInput('naturalHeight', true);
+    fixture.componentRef.setInput('imageId', null);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector<HTMLElement>('.image-area')!.style.aspectRatio).toBe('1254 / 747');
+    expect(element.querySelector('img')!.getAttribute('width')).toBe('1254');
+    expect(element.querySelector('img')!.getAttribute('height')).toBe('747');
+  });
+
+  it('ignores load and error events from a previously selected image', async () => {
+    download.mockResolvedValueOnce({ url: '/storage/a', expiresIn: 300 });
+    download.mockResolvedValueOnce({ url: '/storage/b', expiresIn: 300 });
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.componentRef.setInput('imageId', 'image-b');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    fixture.componentInstance.imageLoaded('/storage/a');
+    fixture.componentInstance.imageLoadFailed('/storage/a');
+    expect(fixture.componentInstance.loading()).toBe(true);
+    expect(fixture.componentInstance.failed()).toBe(false);
+    expect(renderedSource()).toBe('/storage/b');
   });
 });

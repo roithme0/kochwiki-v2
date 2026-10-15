@@ -73,12 +73,20 @@ class StepOut(BaseModel):
     recipeVersionId: UUID
 
 
+class RecipeImageDimensionsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+
+
 class RecipeVersionOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     recipeLineageId: UUID
     recipeVersionId: UUID
     imageId: UUID | None
+    imageDimensions: RecipeImageDimensionsOut | None
     state: RecipeVersionState
     createdAt: datetime
     lastModified: datetime

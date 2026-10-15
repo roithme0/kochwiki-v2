@@ -154,7 +154,7 @@ class RecipeGridElementStubComponent {
 
 function recipeVersion(recipeVersionId: string, lastModified: string, state: RecipeVersionOut['state']): RecipeVersionOut {
   return {
-    imageId: null,
+    imageId: null, imageDimensions: null,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId,
     state,

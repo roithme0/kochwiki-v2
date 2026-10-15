@@ -210,6 +210,20 @@ export type IngredientWrite = {
 };
 
 /**
+ * RecipeImageDimensionsOut
+ */
+export type RecipeImageDimensionsOut = {
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
  * RecipeImageDownloadOut
  */
 export type RecipeImageDownloadOut = {
@@ -418,6 +432,7 @@ export type RecipeVersionOut = {
      * Fat
      */
     fat: number | null;
+    imageDimensions: RecipeImageDimensionsOut | null;
     /**
      * Imageid
      */

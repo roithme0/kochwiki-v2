@@ -10,7 +10,7 @@
           class="version-state-badge"
           [state]="recipeVersion.state"
         />
-        <app-recipe-image [imageId]="recipeVersion.imageId" />
+        <app-recipe-image [imageId]="recipeVersion.imageId" [imageDimensions]="recipeVersion.imageDimensions" />
         <app-recipe-presentation [recipe]="recipeVersion" />
         <div class="spacer"></div>
       </article>
