@@ -1,0 +1,19 @@
+<div class="image-area" [attr.aria-busy]="loading()">
+  @if (loading()) {
+    <div class="image-status" role="status" aria-label="Bild wird geladen">
+      <mat-spinner diameter="25" />
+    </div>
+  } @else if (failed()) {
+    <div class="image-status">
+      <p role="status">Rezeptbild konnte nicht geladen werden.</p>
+      <button mat-button type="button" (click)="retry()">Bild erneut laden</button>
+    </div>
+  } @else if (imageUrl(); as url) {
+    <img [src]="url" alt="Rezeptbild" (error)="imageLoadFailed()" />
+  } @else {
+    <img
+      src="assets/images/recipe-image-placeholder.png"
+      alt="Kein Rezeptbild vorhanden"
+    />
+  }
+</div>

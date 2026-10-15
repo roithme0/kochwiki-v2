@@ -22,15 +22,24 @@ prevents a subsequent recipe save. Saved-image delivery failures show the placeh
 with explicit fresh-URL retry. Grid/detail rendering, scheduled cleanup and
 staging/production rollout remain deferred.
 
+The narrow detail-display slice was authorized and implemented on 2026-10-15.
+Active, draft and historical detail pages show the viewed version's image directly
+above the ingredients card, with the shared placeholder for missing images, a
+centered Material loading spinner, and centered failure text above an explicit
+fresh-URL retry button with a 0.5rem gap. Title and badge placement remain unchanged; moving the title
+and adding a preparation-time/servings quick view are deferred. AI artifacts remain
+unchanged. Controlled frontend tests passed; live browser layout verification and
+staging/production rollout remain pending.
+
 ## Goal
 
 Make recipes recognizable by a user-uploaded image in the recipe grid and on their detail page. Keep image selection within the existing recipe editing flow.
 
 ## Current Context
 
-Recipe data is organized into active, draft, and historical versions. Publishing an active edit creates a new version; an existing draft is updated in place. The shared create/edit editor groups inputs into Basis, Zutaten, and Zubereitung. Basis currently contains the recipe name. Grid cards display a macro chart and a version-state badge. The detail page uses a shared recipe presentation component that also serves AI artifacts.
+Recipe data is organized into active, draft, and historical versions. Publishing an active edit creates a new version; an existing draft is updated in place. The shared create/edit editor groups inputs into Basis, Zutaten, and Zubereitung. Basis contains the recipe name and image editing controls. Grid cards display a macro chart and a version-state badge. The detail page uses a shared recipe presentation component that also serves AI artifacts.
 
-The README originally proposed SeaweedFS. The storage-only slice supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. The subsequent backend storage slice adds explicit configuration and an adapter for short-lived upload/download URLs, internal object inspection and deletion. Its transfer round trip is verified locally through the gateway. Upload-start and completion endpoints expose a service that validates temporary PNG uploads and stores the exact accepted bytes under fresh permanent keys, persisting validated metadata in the recipe_image table before completion succeeds. A typed frontend service coordinates uploads. Recipe versions now support validated image references, inheritance, replacement and removal. Image access endpoints and visible UI remain absent. Domain recipe endpoints currently do not enforce application sessions.
+The README originally proposed SeaweedFS. The storage-only slice supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. The subsequent backend storage slice adds explicit configuration and an adapter for short-lived upload/download URLs, internal object inspection and deletion. Its transfer round trip is verified locally through the gateway. Upload-start and completion endpoints expose a service that validates temporary PNG uploads and stores the exact accepted bytes under fresh permanent keys, persisting validated metadata in the recipe_image table before completion succeeds. A typed frontend service coordinates uploads. Recipe versions now support validated image references, inheritance, replacement and removal. Image access endpoints, Basis image editing and detail-page image rendering are implemented; grid image rendering remains pending. Domain recipe endpoints currently do not enforce application sessions.
 
 ## Proposed Direction
 
@@ -48,7 +57,7 @@ Display each version's saved image in its grid card in the area currently occupi
 
 The user supplied two visual references in this conversation: a recipe detail page and the shared editor showing an existing draft. Record their image-related direction here so implementation does not depend solely on the conversation attachments.
 
-On the detail page, place a large, centered image below the recipe title and above the preparation-time/servings information and recipe content. Keep the version-state badge visible near the upper-right side of the image area. The image has no separate visible card background in the reference; transparent PNG content sits on the existing page background. Keep detail-page nutrition available below the recipe content.
+The detail reference shows a large, centered image below the recipe title and above preparation-time/servings information and recipe content. The agreed initial implementation places only the image directly above the ingredients card; title relocation and the preparation-time/servings quick view remain deferred. Keep the version-state badge visible near the upper-right side of the image area. The image has no separate visible card background in the reference; transparent PNG content sits on the existing page background. Keep detail-page nutrition available below the recipe content.
 
 In the shared create/edit dialog's Basis section, place a large, centered preview below the Name field, within the section's existing surface. Place a circular pencil/edit action at the lower right of the preview area. It opens PNG selection for an initial upload or replacement and remains available when the placeholder is shown. Give this icon-only action an accessible label and keyboard access. Cancelling file selection preserves the current preview.
 
@@ -120,7 +129,7 @@ Delivery boundaries after that remain provisional, without prescribing a task-le
 
 1. Basis controls are implemented with local selection previews, upload on Save, removal and explicit failure recovery. No automatic retry or cleanup scheduling is included.
 2. Replace grid nutrition with image display and the agreed fallback. Obtain the user's grid visualization before implementation.
-3. Display the viewed version's image on the recipe detail page, using the supplied detail visualization.
+3. Detail-page image rendering is implemented above the ingredients card, with placeholder and explicit failure retry. Title relocation and the preparation-time/servings quick view remain deferred.
 
 Each implemented slice should ship its frontend/backend contract changes together. Meaningful regression coverage should focus on invalid uploads, failed or cancelled saves, independent draft/active images, publication, replacement/removal, retention of objects referenced by other versions, cleanup of unreferenced objects, presigned transfer behavior, and fallback behavior. Authorization-policy tests belong to the deferred access-management work.
 

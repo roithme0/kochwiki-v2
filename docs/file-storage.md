@@ -6,7 +6,7 @@ provides storage infrastructure and a backend adapter for presigned upload/downl
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
 flow. Recipe versions can reference validated images, and a download endpoint issues
-short-lived access URLs. Basis image editing is available; grid and detail display remain deferred.
+short-lived access URLs. Basis image editing and detail-page display are available; grid display remains deferred.
 
 ## Configuration and startup
 
@@ -299,7 +299,21 @@ versions start without images. PostgreSQL rejects deletion of referenced image
 metadata. Replacing/removing references, discarding drafts and deleting lineages
 leave image metadata and objects for the deferred cleanup slice. No storage access
 is required for recipe writes that keep/remove an image or reads of recipe metadata.
-Grid/detail image display and authorization changes remain deferred.
+## Detail-page image display
+
+Active, draft and historical detail pages display the viewed version's image above
+the ingredients card, outside the shared presentation used by AI artifacts. The
+existing title, version badge, preparation time, servings and nutrition stay in
+place. Images fit a stable area without stretching or cropping; missing images
+use `frontend/src/assets/images/recipe-image-placeholder.png`.
+
+The image component requests fresh download instructions when its image ID changes
+or the user explicitly retries after an access or image-loading failure. Loading shows a centered Material spinner. Failures
+show centered text above a retry button, separated by a 0.5rem gap. Stale responses and responses after view
+destruction are ignored. There is no automatic retry or expiry timer: URL expiry
+does not remove an already displayed image.
+
+Grid image display and authorization changes remain deferred.
 
 ## Verification
 

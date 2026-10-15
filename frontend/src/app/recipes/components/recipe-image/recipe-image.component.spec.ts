@@ -1,0 +1,119 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import type { RecipeImageDownloadOut } from '../../../core/api/generated';
+import { RecipeImageService } from '../../services/recipe-image.service';
+import { RecipeImageComponent } from './recipe-image.component';
+
+describe('RecipeImageComponent', () => {
+  let fixture: ComponentFixture<RecipeImageComponent>;
+  const download = vi.fn<(imageId: string) => Promise<RecipeImageDownloadOut>>();
+  const placeholder = 'assets/images/recipe-image-placeholder.png';
+
+  const renderedSource = (): string | null =>
+    (fixture.nativeElement as HTMLElement).querySelector('img')!.getAttribute('src');
+
+  beforeEach(() => {
+    download.mockReset();
+    TestBed.configureTestingModule({
+      imports: [RecipeImageComponent],
+      providers: [{ provide: RecipeImageService, useValue: { download } }],
+    });
+    fixture = TestBed.createComponent(RecipeImageComponent);
+  });
+
+  it('uses the shared placeholder without requesting access when no image exists', async () => {
+    fixture.componentRef.setInput('imageId', null);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(renderedSource()).toBe(placeholder);
+    expect(download).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.failed()).toBe(false);
+  });
+
+  it('loads the selected image and keeps it displayed after URL expiry without refreshing', async () => {
+    download.mockResolvedValue({ url: '/storage/image', expiresIn: 300 });
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(renderedSource()).toBe('/storage/image');
+    expect(download).toHaveBeenCalledExactlyOnceWith('image-a');
+    vi.useFakeTimers();
+    try {
+      await vi.advanceTimersByTimeAsync(301_000);
+      expect(renderedSource()).toBe('/storage/image');
+      expect(download).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each(['access', 'bytes'])('falls back after %s failure and obtains fresh access on explicit retry', async failure => {
+    if (failure === 'access') download.mockRejectedValueOnce(new Error('unavailable'));
+    else download.mockResolvedValueOnce({ url: '/storage/expired', expiresIn: 300 });
+    download.mockResolvedValueOnce({ url: '/storage/fresh', expiresIn: 300 });
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    if (failure === 'bytes') {
+      (fixture.nativeElement as HTMLElement).querySelector('img')!.dispatchEvent(new Event('error'));
+      fixture.detectChanges();
+    }
+    expect((fixture.nativeElement as HTMLElement).querySelector('img')).toBeNull();
+    expect(download).toHaveBeenCalledTimes(1);
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="status"]')!.textContent)
+      .toContain('konnte nicht geladen werden');
+    (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(download).toHaveBeenCalledTimes(2);
+    expect(renderedSource()).toBe('/storage/fresh');
+    expect(fixture.componentInstance.failed()).toBe(false);
+  });
+
+  it.each([null, 'image-b'])('ignores a stale result after changing the image to %s', async nextId => {
+    let resolveFirst!: (value: RecipeImageDownloadOut) => void;
+    download.mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve; }));
+    download.mockResolvedValueOnce({ url: '/storage/b', expiresIn: 300 });
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    fixture.componentRef.setInput('imageId', nextId);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    resolveFirst({ url: '/storage/a', expiresIn: 300 });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(renderedSource()).toBe(nextId === null ? placeholder : '/storage/b');
+    expect(fixture.componentInstance.loading()).toBe(false);
+  });
+
+  it('ignores a response after the view is destroyed', async () => {
+    let resolveDownload!: (value: RecipeImageDownloadOut) => void;
+    download.mockReturnValueOnce(new Promise(resolve => { resolveDownload = resolve; }));
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    fixture.destroy();
+    resolveDownload({ url: '/storage/a', expiresIn: 300 });
+    await Promise.resolve();
+    expect(fixture.componentInstance.imageUrl()).toBeNull();
+  });
+
+  it('shows the Material spinner inside the image area while requesting access', async () => {
+    let resolveDownload!: (value: RecipeImageDownloadOut) => void;
+    download.mockReturnValueOnce(new Promise(resolve => { resolveDownload = resolve; }));
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.image-area .image-status mat-spinner')).not.toBeNull();
+    expect(element.querySelector('img')).toBeNull();
+    resolveDownload({ url: '/storage/a', expiresIn: 300 });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element.querySelector('mat-spinner')).toBeNull();
+    expect(renderedSource()).toBe('/storage/a');
+  });
+});

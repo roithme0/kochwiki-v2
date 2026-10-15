@@ -16,6 +16,8 @@ import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePageComponent } from './recipe-page.component';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
+import { RecipeImageComponent } from '../../components/recipe-image/recipe-image.component';
+import { RecipeImageService } from '../../services/recipe-image.service';
 
 describe('RecipePageComponent', () => {
     let component: RecipePageComponent;
@@ -212,7 +214,8 @@ describe('RecipePageComponent presentation integration', () => {
         http.verify();
     });
 
-    it('passes the loaded recipe to the shared presentation', async () => {
+    it.each(['active', 'draft', 'historical'] as const)('displays the %s version image above the shared presentation', async state => {
+        const recipe = { ...draftRecipeVersion, state, imageId: `${state}-image` };
         const pageHeader = {
             updateHeader: vi.fn().mockName('updateHeader'),
             set headline(_value: string) { },
@@ -220,12 +223,14 @@ describe('RecipePageComponent presentation integration', () => {
         TestBed.configureTestingModule({
             imports: [RecipePageComponent],
             providers: [
+                { provide: RecipeImageService, useValue: { download: vi.fn().mockResolvedValue({ url: '/storage/image', expiresIn: 300 }) } },
                 {
                     provide: ActivatedRoute,
                     useValue: {
                         snapshot: {
                             paramMap: convertToParamMap({
                                 lineageId: draftRecipeVersion.recipeLineageId,
+                                ...(state === 'active' ? {} : { recipeVersionId: recipe.recipeVersionId }),
                             }),
                         },
                     },
@@ -234,7 +239,8 @@ describe('RecipePageComponent presentation integration', () => {
                     provide: RecipeBackendService,
                     useValue: {
                         recipesChanged$: EMPTY,
-                        getActiveRecipeVersion: vi.fn().mockName('getActiveRecipeVersion').mockResolvedValue(draftRecipeVersion),
+                        getActiveRecipeVersion: vi.fn().mockName('getActiveRecipeVersion').mockResolvedValue(recipe),
+                        getRecipeVersion: vi.fn().mockName('getRecipeVersion').mockResolvedValue(recipe),
                     },
                 },
                 { provide: PageHeaderService, useValue: pageHeader },
@@ -250,7 +256,11 @@ describe('RecipePageComponent presentation integration', () => {
 
         const presentation = fixture.debugElement.query(By.directive(RecipePresentationComponent)).componentInstance as RecipePresentationComponent;
 
-        expect(presentation.recipe()).toBe(draftRecipeVersion);
+        expect(presentation.recipe()).toBe(recipe);
+        const image = fixture.debugElement.query(By.directive(RecipeImageComponent));
+        expect((image.componentInstance as RecipeImageComponent).imageId()).toBe(recipe.imageId);
+        expect((fixture.nativeElement as HTMLElement).querySelector('app-recipe-image')!.nextElementSibling?.tagName)
+            .toBe('APP-RECIPE-PRESENTATION');
         expect(fixture.nativeElement.querySelector('app-recipe-version-state-badge')).not.toBeNull();
         expect(fixture.nativeElement.querySelector('.spacer')).not.toBeNull();
     });
