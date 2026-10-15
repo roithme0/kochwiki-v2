@@ -18,6 +18,7 @@ import { RecipeImageService } from '../../services/recipe-image.service';
 })
 export class RecipeImageComponent {
   readonly imageId = input.required<string | null>();
+  readonly naturalHeight = input(false);
   readonly imageUrl = signal<string | null>(null);
   readonly loading = signal(false);
   readonly failed = signal(false);

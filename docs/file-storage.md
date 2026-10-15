@@ -6,7 +6,7 @@ provides storage infrastructure and a backend adapter for presigned upload/downl
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
 flow. Recipe versions can reference validated images, and a download endpoint issues
-short-lived access URLs. Basis image editing and detail-page display are available; grid display remains deferred.
+short-lived access URLs. Basis image editing, detail-page display and grid image display are available.
 
 ## Configuration and startup
 
@@ -313,7 +313,12 @@ show centered text above a retry button, separated by a 0.5rem gap. Stale respon
 destruction are ignored. There is no automatic retry or expiry timer: URL expiry
 does not remove an already displayed image.
 
-Grid image display and authorization changes remain deferred.
+Grid cards reuse this image component in natural-height mode: images and the
+placeholder fill the existing content width and retain their aspect ratio without
+cropping. Loading and failure states reserve 12rem of height. The existing grid
+resize observer handles image-driven card height changes. Names, preparation
+time, badges and links retain their existing layout. Retry clicks prevent link
+navigation. Authorization changes remain deferred.
 
 ## Verification
 

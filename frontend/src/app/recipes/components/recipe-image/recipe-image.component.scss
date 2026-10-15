@@ -28,3 +28,15 @@ img {
 .image-status p {
   margin: 0;
 }
+
+.natural-height {
+  height: auto;
+
+  img {
+    height: auto;
+  }
+
+  .image-status {
+    min-height: 12rem;
+  }
+}

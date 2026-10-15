@@ -116,4 +116,24 @@ describe('RecipeImageComponent', () => {
     expect(element.querySelector('mat-spinner')).toBeNull();
     expect(renderedSource()).toBe('/storage/a');
   });
+
+  it('prevents retry clicks from navigating the surrounding recipe link', async () => {
+    download.mockRejectedValueOnce(new Error('unavailable'));
+    download.mockResolvedValueOnce({ url: '/storage/fresh', expiresIn: 300 });
+    fixture.componentRef.setInput('imageId', 'image-a');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const bubbledClick = vi.fn();
+    const element = fixture.nativeElement as HTMLElement;
+    element.addEventListener('click', bubbledClick);
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    element.querySelector('button')!.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(bubbledClick).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(renderedSource()).toBe('/storage/fresh');
+  });
 });
