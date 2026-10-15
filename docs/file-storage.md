@@ -5,7 +5,7 @@ Local, staging, and production Compose deployments each run a `file-storage` ser
 provides storage infrastructure and a backend adapter for presigned upload/download
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
-flow. Recipe associations and visible image controls/display remain deferred.
+flow. Recipe versions can reference validated images; visible image controls/display remain deferred.
 
 ## Configuration and startup
 
@@ -157,7 +157,7 @@ URLs do not implement recipe ownership or permissions.
 ## Internal recipe image uploads
 
 `app.services.recipe_image_uploads.RecipeImageUploads` implements validation and
-persistence behind the upload API, without recipe associations. Construct it with
+persistence behind the upload API. Recipe services attach its persisted image IDs separately. Construct it with
 the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
 `recipe-image-uploads/<uuid>`. The caller transfers bytes, waits for upload success,
@@ -226,7 +226,34 @@ Angular's `RecipeImageUploadService.upload(file)` coordinates start, raw-byte PU
 and completion, validates API responses against the generated contract and returns
 the persisted metadata. It propagates failures and performs no automatic retry.
 Completion is not idempotent: an ambiguous failure must not trigger an automatic
-repeat. No recipe association or visible upload control is included yet.
+repeat. No visible upload control is included yet.
+
+## Recipe image associations
+
+Recipe responses include a required nullable `imageId`; object keys and expiring
+download URLs are not part of the recipe contract. Recipe create, active-edit,
+draft-create and draft-update requests accept an optional nullable `imageId`:
+
+- Omitted: keep the draft's image on update, or inherit the active version's image
+  when creating a version. A new lineage, or a lineage without an active version,
+  has no image to inherit.
+- UUID: select an existing validated image metadata record. Unknown IDs return
+  404 and malformed UUIDs return 422; the recipe save does not commit.
+- `null`: save the version without an image.
+
+Draft publication preserves the draft's image. Historical versions keep their
+existing references. AI proposal saves inherit the specific source version's image,
+including a draft or historical source with no image. Multiple versions can share
+the same immutable image without duplicating stored bytes. The editor carries its
+loaded version's image ID, including explicit `null`, through existing save actions.
+AI presentation payloads remain unchanged.
+
+The nullable foreign key is added by migration `20261015_12`; existing recipe
+versions start without images. PostgreSQL rejects deletion of referenced image
+metadata. Replacing/removing references, discarding drafts and deleting lineages
+leave image metadata and objects for the deferred cleanup slice. No storage access
+is required for recipe saves or reads. Download URL endpoints, image UI and
+authorization changes remain deferred.
 
 ## Verification
 

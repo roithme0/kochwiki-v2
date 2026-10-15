@@ -14,8 +14,8 @@ Kochwiki is a personal, private, mobile-first recipe app. This next iteration bu
 - **Frontend**: Angular, built mobile-first as an installable PWA.
 - **Backend**: A single Python FastAPI service.
 - **Database**: PostgreSQL for recipes, ingredients, nutrition data, and image metadata.
-- **Image storage**: Self-managed Garage, accessed through its S3-compatible API. Local, staging, and production Compose definitions provide separate instances and private `recipe-images` buckets. Validated image metadata is persisted in PostgreSQL; recipe associations remain planned.
-- **Image access**: The gateway exposes the S3 API at `/storage/`. Upload-start and completion endpoints issue presigned URLs, validate temporary PNG uploads and store accepted bytes under separate permanent keys. A typed frontend service coordinates this flow; recipe image associations and UI remain planned.
+- **Image storage**: Self-managed Garage, accessed through its S3-compatible API. Local, staging, and production Compose definitions provide separate instances and private `recipe-images` buckets. Validated image metadata is persisted in PostgreSQL, with an optional image reference per recipe version.
+- **Image access**: The gateway exposes the S3 API at `/storage/`. Upload-start and completion endpoints issue presigned URLs, validate temporary PNG uploads and store accepted bytes under separate permanent keys. A typed frontend service coordinates this flow. Recipe saves support image selection, removal and version inheritance; visible image controls and display remain planned.
 
 ## AI and API Direction
 
@@ -27,7 +27,7 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 See [file storage configuration and verification](docs/file-storage.md) for Garage
 credentials, persistence, automatic initialization, and the presigned URL routing
-contract. Recipe image associations and image UI are not implemented yet.
+contract. Recipe versions reference validated images; image UI is not implemented yet.
 
 Compose gives the backend a restricted PostgreSQL database owner and installs
 pgvector separately during database initialization. Local and staging will start

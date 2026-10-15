@@ -840,6 +840,18 @@
             ],
             "title": "Fat"
           },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/IngredientOut"
@@ -917,6 +929,7 @@
         "required": [
           "recipeLineageId",
           "recipeVersionId",
+          "imageId",
           "state",
           "createdAt",
           "lastModified",
@@ -945,6 +958,19 @@
       "RecipeVersionWrite": {
         "additionalProperties": false,
         "properties": {
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to keep or inherit the source image; null removes it; an ID selects a validated image.",
+            "title": "Imageid"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/IngredientWrite"

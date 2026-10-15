@@ -40,7 +40,11 @@ class RecipeVersion(Base):
     version_id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     lineage_id: Mapped[UUID] = mapped_column(ForeignKey("recipe_lineage.id", ondelete="CASCADE"), nullable=False)
     state: Mapped[RecipeVersionState] = mapped_column(
-        Enum(RecipeVersionState, name="recipe_version_state_enum", values_callable=lambda states: [state.value for state in states]),
+        Enum(
+            RecipeVersionState,
+            name="recipe_version_state_enum",
+            values_callable=lambda states: [state.value for state in states],
+        ),
         nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -48,6 +52,7 @@ class RecipeVersion(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     servings: Mapped[int] = mapped_column(nullable=False)
     preptime: Mapped[int | None] = mapped_column(nullable=True)
+    image_id: Mapped[UUID | None] = mapped_column(ForeignKey("recipe_image.id", ondelete="RESTRICT"), nullable=True, index=True)
     ingredients: Mapped[list[Ingredient]] = relationship(
         back_populates="recipe_version", cascade="all, delete-orphan", order_by="Ingredient.index"
     )

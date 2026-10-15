@@ -157,6 +157,7 @@ describe('RecipePageComponent', () => {
 });
 
 const draftRecipeVersion: RecipeVersionOut = {
+    imageId: null,
     recipeLineageId: '00000000-0000-4000-8000-000000000007',
     recipeVersionId: '00000000-0000-0000-0000-000000000007',
     state: 'draft',

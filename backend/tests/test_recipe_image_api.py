@@ -48,6 +48,11 @@ def test_start_and_complete_persist_only_validated_metadata(client: TestClient, 
         assert saved is not None
         assert saved.size == image["size"] == len(png())
     storage.read.assert_called_once()
+    recipe = client.post("/recipes", json={"name": "Uploaded image", "servings": 2, "imageId": image["id"]})
+    assert recipe.status_code == 201
+    assert recipe.json()["imageId"] == image["id"]
+    assert client.get(f"/recipes/{recipe.json()['recipeLineageId']}").json()["imageId"] == image["id"]
+    storage.read.assert_called_once()
 
 
 @pytest.mark.parametrize("data,status,detail", [

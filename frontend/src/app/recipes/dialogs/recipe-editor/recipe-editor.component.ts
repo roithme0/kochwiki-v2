@@ -252,9 +252,11 @@ export class RecipeEditorComponent {
       return;
     }
 
+    const source = this.recipeVersion();
     this.submitted.emit({
       action,
       recipeVersion: {
+        ...(source === null ? {} : { imageId: source.imageId }),
         name: metaFormGroup.name,
         servings: ingredientsFormGroup.servings,
         ingredients: ingredientsFormGroup.ingredients.map((ingredient) => ({

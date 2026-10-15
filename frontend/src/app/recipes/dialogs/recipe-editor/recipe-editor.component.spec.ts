@@ -23,6 +23,7 @@ describe('RecipeEditorComponent', () => {
     };
 
     const recipeVersion: RecipeVersionOut = {
+        imageId: null,
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId: '00000000-0000-0000-0000-000000000001',
         state: 'active',
@@ -218,6 +219,25 @@ describe('RecipeEditorComponent', () => {
             },
         });
     });
+
+    it.each([null, '00000000-0000-4000-8000-000000000003'])(
+        'preserves the loaded image reference %s when publishing or saving a draft', (imageId) => {
+            component.recipeVersion.set({ ...recipeVersion, imageId });
+            component.recipeForm.controls.metaFormGroup.controls.name.setValue('Edited');
+            const emitted = vi.fn();
+            component.submitted.subscribe(emitted);
+
+            component.onSubmit('publish');
+            component.onSubmit('draft');
+
+            expect(emitted).toHaveBeenNthCalledWith(1, expect.objectContaining({
+                action: 'publish', recipeVersion: expect.objectContaining({ imageId }),
+            }));
+            expect(emitted).toHaveBeenNthCalledWith(2, expect.objectContaining({
+                action: 'draft', recipeVersion: expect.objectContaining({ imageId }),
+            }));
+        }
+    );
 
     it('does not submit an invalid step description', () => {
         component.recipeForm.controls.metaFormGroup.controls.name.setValue('Linsensuppe');

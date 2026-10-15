@@ -44,6 +44,7 @@ describe('RecipesGridElementComponent', () => {
 });
 
 const draftRecipeVersion: RecipeVersionOut = {
+  imageId: null,
   recipeLineageId: '00000000-0000-4000-8000-000000000001',
   recipeVersionId: '00000000-0000-4000-8000-000000000002',
   state: 'draft',

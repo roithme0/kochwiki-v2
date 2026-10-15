@@ -107,6 +107,7 @@ export const zStepWrite = z.strictObject({
  * RecipeVersionWrite
  */
 export const zRecipeVersionWrite = z.strictObject({
+    imageId: z.nullish(z.uuid()),
     ingredients: z.optional(z.array(zIngredientWrite)),
     name: z.string().check(z.minLength(1), z.maxLength(200)),
     preptime: z.nullish(z.int().check(z.gte(1), z.lte(999))),
@@ -245,6 +246,7 @@ export const zRecipeVersionOut = z.strictObject({
     carbs: z.nullable(z.number()),
     createdAt: z.iso.datetime(),
     fat: z.nullable(z.number()),
+    imageId: z.nullable(z.uuid()),
     ingredients: z.array(zIngredientOut),
     kcal: z.nullable(z.number()),
     lastModified: z.iso.datetime(),

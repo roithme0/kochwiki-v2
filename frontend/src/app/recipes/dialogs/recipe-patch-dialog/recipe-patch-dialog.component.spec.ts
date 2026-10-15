@@ -136,6 +136,7 @@ const draftRecipeVersion: RecipeVersionOut = createRecipeVersion('draft', '00000
 
 function createRecipeVersion(state: RecipeVersionOut['state'], recipeVersionId: string): RecipeVersionOut {
     return {
+        imageId: null,
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId,
         state,

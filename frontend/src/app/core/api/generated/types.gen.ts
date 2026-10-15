@@ -405,6 +405,10 @@ export type RecipeVersionOut = {
      */
     fat: number | null;
     /**
+     * Imageid
+     */
+    imageId: string | null;
+    /**
      * Ingredients
      */
     ingredients: Array<IngredientOut>;
@@ -456,6 +460,12 @@ export type RecipeVersionState = 'active' | 'draft' | 'historical';
  * RecipeVersionWrite
  */
 export type RecipeVersionWrite = {
+    /**
+     * Imageid
+     *
+     * Omit to keep or inherit the source image; null removes it; an ID selects a validated image.
+     */
+    imageId?: string | null;
     /**
      * Ingredients
      */

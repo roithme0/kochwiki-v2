@@ -12,6 +12,7 @@ export function conversationFoodstuff(): FoodstuffOut {
 
 export function conversationRecipe(): RecipeVersionOut {
   return {
+    imageId: null,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002', state: 'active',
     createdAt: '2026-09-27T00:00:00Z', lastModified: '2026-09-27T00:00:00Z',
