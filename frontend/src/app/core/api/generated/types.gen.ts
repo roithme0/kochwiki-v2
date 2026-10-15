@@ -210,6 +210,20 @@ export type IngredientWrite = {
 };
 
 /**
+ * RecipeImageDownloadOut
+ */
+export type RecipeImageDownloadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * RecipeImageOut
  */
 export type RecipeImageOut = {
@@ -906,6 +920,44 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses = {
 };
 
 export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponse = CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetData = {
+    body?: never;
+    path: {
+        /**
+         * Image Id
+         */
+        image_id: string;
+    };
+    query?: never;
+    url: '/recipe-images/{image_id}/download';
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetError = DownloadImageRecipeImagesImageIdDownloadGetErrors[keyof DownloadImageRecipeImagesImageIdDownloadGetErrors];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageDownloadOut;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponse = DownloadImageRecipeImagesImageIdDownloadGetResponses[keyof DownloadImageRecipeImagesImageIdDownloadGetResponses];
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
     body: RecipePresentationResolve;

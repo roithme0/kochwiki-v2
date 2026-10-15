@@ -15,7 +15,7 @@ Kochwiki is a personal, private, mobile-first recipe app. This next iteration bu
 - **Backend**: A single Python FastAPI service.
 - **Database**: PostgreSQL for recipes, ingredients, nutrition data, and image metadata.
 - **Image storage**: Self-managed Garage, accessed through its S3-compatible API. Local, staging, and production Compose definitions provide separate instances and private `recipe-images` buckets. Validated image metadata is persisted in PostgreSQL, with an optional image reference per recipe version.
-- **Image access**: The gateway exposes the S3 API at `/storage/`. Upload-start and completion endpoints issue presigned URLs, validate temporary PNG uploads and store accepted bytes under separate permanent keys. A typed frontend service coordinates this flow. Recipe saves support image selection, removal and version inheritance; visible image controls and display remain planned.
+- **Image access**: The gateway exposes the S3 API at `/storage/`. Upload-start and completion endpoints issue presigned URLs, validate temporary PNG uploads and store accepted bytes under separate permanent keys. A download endpoint issues five-minute image URLs with a non-cacheable API response. A typed frontend image service supports upload and download access. Recipe saves support image selection, removal and version inheritance; visible image controls and display remain planned.
 
 ## AI and API Direction
 

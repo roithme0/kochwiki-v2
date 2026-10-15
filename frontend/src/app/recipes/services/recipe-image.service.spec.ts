@@ -2,7 +2,7 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { backendUrl } from '../../core/constants/api';
-import { RecipeImageUploadService } from './recipe-image-upload.service';
+import { RecipeImageService } from './recipe-image.service';
 
 const uploadId = '00000000-0000-4000-8000-000000000001';
 const startUrl = backendUrl + '/recipe-image-uploads';
@@ -16,14 +16,14 @@ const image = {
   size: 3, width: 1, height: 1, createdAt: '2026-10-15T10:00:00Z',
 };
 
-describe('RecipeImageUploadService', () => {
-  let service: RecipeImageUploadService;
+describe('RecipeImageService upload', () => {
+  let service: RecipeImageService;
   let http: HttpTestingController;
   const file = new File(['png'], 'recipe.png', { type: 'image/png' });
 
   beforeEach(() => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-    service = TestBed.inject(RecipeImageUploadService);
+    service = TestBed.inject(RecipeImageService);
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => {
@@ -94,3 +94,50 @@ describe('RecipeImageUploadService', () => {
   });
 });
 
+const imageId = '00000000-0000-4000-8000-000000000001';
+const endpoint = `${backendUrl}/recipe-images/${imageId}/download`;
+const downloadInstructions = { url: '/storage/recipe-images/image.png?signature=test', expiresIn: 300 };
+
+describe('RecipeImageService download', () => {
+  let service: RecipeImageService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    service = TestBed.inject(RecipeImageService);
+    http = TestBed.inject(HttpTestingController);
+  });
+  afterEach(() => {
+    try { http.verify(); } finally { TestBed.resetTestingModule(); }
+  });
+
+  it('requests fresh instructions on each call without downloading image bytes', async () => {
+    for (const url of [downloadInstructions.url, downloadInstructions.url + '2']) {
+      const result = service.download(imageId);
+      const request = http.expectOne(endpoint);
+      expect(request.request.method).toBe('GET');
+      request.flush({ ...downloadInstructions, url });
+      await expect(result).resolves.toEqual({ ...downloadInstructions, url });
+    }
+    http.expectNone(downloadInstructions.url);
+  });
+
+  it.each([404, 503])('surfaces HTTP %s without retrying', async (status) => {
+    const result = service.download(imageId);
+    const rejected = expect(result).rejects.toBeInstanceOf(HttpErrorResponse);
+    http.expectOne(endpoint).flush({ detail: 'Unavailable' }, { status, statusText: 'Error' });
+    await rejected;
+    http.expectNone(endpoint);
+  });
+
+  it.each([
+    { expiresIn: 300 },
+    { ...downloadInstructions, expiresIn: 0 },
+    { ...downloadInstructions, objectKey: 'private/key' },
+  ])('rejects malformed download instructions %j', async (body) => {
+    const result = service.download(imageId);
+    const rejected = expect(result).rejects.toMatchObject({ name: 'ApiContractError' });
+    http.expectOne(endpoint).flush(body);
+    await rejected;
+  });
+});

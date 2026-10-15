@@ -24,3 +24,10 @@ class RecipeImageOut(BaseModel):
     width: int
     height: int
     createdAt: datetime
+
+
+class RecipeImageDownloadOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: str = Field(repr=False)
+    expiresIn: int = Field(gt=0)

@@ -488,6 +488,26 @@
         "title": "IngredientWrite",
         "type": "object"
       },
+      "RecipeImageDownloadOut": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresIn": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expiresin",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiresIn"
+        ],
+        "title": "RecipeImageDownloadOut",
+        "type": "object"
+      },
       "RecipeImageOut": {
         "additionalProperties": false,
         "properties": {
@@ -1606,6 +1626,66 @@
           }
         },
         "summary": "Complete Upload"
+      }
+    },
+    "/recipe-images/{image_id}/download": {
+      "get": {
+        "operationId": "download_image_recipe_images__image_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeImageDownloadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Download Image"
       }
     },
     "/recipe-presentations/resolve": {

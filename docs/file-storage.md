@@ -5,7 +5,8 @@ Local, staging, and production Compose deployments each run a `file-storage` ser
 provides storage infrastructure and a backend adapter for presigned upload/download
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
-flow. Recipe versions can reference validated images; visible image controls/display remain deferred.
+flow. Recipe versions can reference validated images, and a download endpoint issues
+short-lived access URLs; visible image controls/display remain deferred.
 
 ## Configuration and startup
 
@@ -222,11 +223,31 @@ storage configuration returns 503 without disabling unrelated application APIs.
 These routes follow the existing domain API authentication baseline; this slice
 adds no session enforcement or authorization policy.
 
-Angular's `RecipeImageUploadService.upload(file)` coordinates start, raw-byte PUT
+Angular's `RecipeImageService.upload(file)` coordinates start, raw-byte PUT
 and completion, validates API responses against the generated contract and returns
 the persisted metadata. It propagates failures and performs no automatic retry.
 Completion is not idempotent: an ambiguous failure must not trigger an automatic
 repeat. No visible upload control is included yet.
+
+## Image download access
+
+`GET /api/recipe-images/{imageId}/download` returns `url` and `expiresIn`
+(300 seconds). It resolves the persisted image ID to its private object key and
+signs a GET URL without reading or inspecting the object. Missing metadata returns
+404; missing storage configuration or signing failures return a sanitized 503.
+Malformed UUIDs return 422. A missing object behind existing metadata is detected
+when the browser requests the signed URL, not when the URL is issued.
+
+Successful instruction responses and explicit 404/503 errors use
+`Cache-Control: no-store`. This prevents storage of the URL response by compliant
+browsers and intermediary caches. It does not disable caching of image bytes or
+revoke bytes already downloaded when the URL expires. Images have immutable keys;
+replacement uses a new identity. Keep signed URLs out of logs and persistent state.
+
+Angular's `RecipeImageService.download(imageId)` requests and validates
+fresh instructions on every call, without caching, retrying or downloading image
+bytes. Rendering, expiry refresh and image-load fallback belong to subsequent UI
+slices. No authorization policy or session enforcement is added here.
 
 ## Recipe image associations
 
@@ -252,8 +273,7 @@ The nullable foreign key is added by migration `20261015_12`; existing recipe
 versions start without images. PostgreSQL rejects deletion of referenced image
 metadata. Replacing/removing references, discarding drafts and deleting lineages
 leave image metadata and objects for the deferred cleanup slice. No storage access
-is required for recipe saves or reads. Download URL endpoints, image UI and
-authorization changes remain deferred.
+is required for recipe saves or reads. Image UI and authorization changes remain deferred.
 
 ## Verification
 
@@ -275,6 +295,7 @@ against the running local stack from the repository root:
 ```sh
 docker compose -f deployment/docker-compose-local.yml run --rm --no-deps \
   -v "$PWD/backend/tests:/checks:ro" \
+  -e PYTHONPATH=/app \
   -e STORAGE_VERIFY_CONNECT_ORIGIN=http://gateway:80 \
   backend python /checks/verify_storage_adapter.py
 ```
@@ -301,13 +322,17 @@ local gateway; the added metadata persistence check requires a migrated database
 Staging and production verification remain pending.
 
 After deploying the current backend, run the same Compose verifier command with
-`/checks/verify_recipe_image_api.py` to exercise both API endpoints through the
+`/checks/verify_recipe_image_api.py` to exercise the upload and download endpoints through the
 gateway, direct PUT to Garage, committed metadata, identical permanent bytes,
-invalid PNG rejection and immediate temporary cleanup. It removes only its own
+invalid PNG rejection and immediate temporary cleanup. It also checks no-store
+download instructions, byte-identical signed downloads and denied unsigned access.
+It removes only its own
 test records and objects. API/metadata verification passed locally on 2026-10-15
 after rebuilding the backend and applying pending migrations. The frontend upload
 service has controlled HTTP tests for sequencing, contract validation and failures
-without retry; these do not establish live browser/UI readiness.
+without retry; these do not establish live browser/UI readiness. Download access
+and the extended gateway verifier passed locally on 2026-10-15 after rebuilding
+the backend; startup applied pending application migrations through `20261015_12`.
 
 Run the isolated integration check from the repository root with Python 3.12+
 and Docker Compose available:

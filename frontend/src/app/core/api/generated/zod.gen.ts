@@ -19,6 +19,14 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * RecipeImageDownloadOut
+ */
+export const zRecipeImageDownloadOut = z.strictObject({
+    expiresIn: z.int().check(z.gt(0)),
+    url: z.string()
+});
+
+/**
  * RecipeImageOut
  */
 export const zRecipeImageOut = z.strictObject({

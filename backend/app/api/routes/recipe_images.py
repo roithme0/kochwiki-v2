@@ -1,13 +1,19 @@
 from collections.abc import Iterator
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.recipe_images import IMAGE_CONTENT_TYPE
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, get_db
+from app.models.recipe_image import RecipeImage
 from app.schemas.errors import ErrorResponse
-from app.schemas.recipe_image import RecipeImageOut, RecipeImageUploadOut
+from app.schemas.recipe_image import (
+    RecipeImageDownloadOut,
+    RecipeImageOut,
+    RecipeImageUploadOut,
+)
 from app.services.recipe_image_uploads import (
     ImagePersistenceFailed,
     ImageUploadNotFound,
@@ -19,15 +25,48 @@ from app.services.storage import Storage, StorageUnavailable
 router = APIRouter()
 
 
-def get_recipe_image_uploads() -> Iterator[RecipeImageUploads]:
+def get_recipe_image_storage() -> Iterator[Storage]:
     config = get_settings().storage_config
     if config is None:
-        raise HTTPException(503, "Image storage is unavailable")
+        raise HTTPException(
+            503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
+        )
     storage = Storage(config)
     try:
-        yield RecipeImageUploads(storage, SessionLocal)
+        yield storage
     finally:
         storage.close()
+
+
+def get_recipe_image_uploads(
+    storage: Storage = Depends(get_recipe_image_storage),
+) -> RecipeImageUploads:
+    return RecipeImageUploads(storage, SessionLocal)
+
+
+@router.get(
+    "/recipe-images/{image_id}/download",
+    response_model=RecipeImageDownloadOut,
+    responses={status: {"model": ErrorResponse} for status in (404, 503)},
+)
+def download_image(
+    image_id: UUID,
+    response: Response,
+    session: Session = Depends(get_db),
+    storage: Storage = Depends(get_recipe_image_storage),
+) -> RecipeImageDownloadOut:
+    headers = {"Cache-Control": "no-store"}
+    image = session.get(RecipeImage, image_id)
+    if image is None:
+        raise HTTPException(404, "Recipe image not found", headers=headers)
+    try:
+        transfer = storage.presign_download(image.object_key)
+    except StorageUnavailable:
+        raise HTTPException(
+            503, "Image storage is unavailable", headers=headers
+        ) from None
+    response.headers.update(headers)
+    return RecipeImageDownloadOut(url=transfer.url, expiresIn=transfer.expires_in)
 
 
 @router.post(

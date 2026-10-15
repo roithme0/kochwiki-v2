@@ -10,12 +10,13 @@ from uuid import UUID
 from app.core.config import Settings
 from app.db.session import SessionLocal
 from app.models.recipe_image import RecipeImage
-from app.schemas.recipe_image import RecipeImageOut, RecipeImageUploadOut
+from app.schemas.recipe_image import RecipeImageDownloadOut, RecipeImageOut, RecipeImageUploadOut
 from app.services.storage import Storage
 
 
 def request(
     url: str, method: str, data: bytes | None = None, headers: dict[str, str] | None = None,
+    *, no_store: bool = False,
 ) -> tuple[int, bytes]:
     public = urlsplit(url)
     connect = urlsplit(os.environ.get("STORAGE_VERIFY_CONNECT_ORIGIN", f"{public.scheme}://{public.netloc}"))
@@ -27,6 +28,8 @@ def request(
             headers={**(headers or {}), "Host": public.netloc},
         )
         response = connection.getresponse()
+        if no_store:
+            assert response.getheader("Cache-Control") == "no-store", "Download instructions must not be cached"
         return response.status, response.read()
     finally:
         connection.close()
@@ -60,6 +63,17 @@ def main() -> None:
                     assert saved is not None, "Completion did not persist metadata"
                     keys.append(saved.object_key)
                     assert storage.read(saved.object_key, max_bytes=len(png)) == png
+                status, body = request(
+                    f"{config.public_origin}/api/recipe-images/{image.id}/download", "GET", no_store=True,
+                )
+                assert status == 200, f"Download instructions failed: {status}"
+                download = RecipeImageDownloadOut.model_validate_json(body)
+                assert download.expiresIn == 300
+                status, downloaded = request(download.url, "GET")
+                assert status == 200, f"Download failed: {status}"
+                assert downloaded == png, "Downloaded image differs from validated PNG"
+                status, _ = request(download.url.split("?", 1)[0], "GET")
+                assert status == 403, "Image unexpectedly allows anonymous download"
             else:
                 assert json.loads(body) == {"detail": "Image must be a valid PNG"}
             assert storage.inspect(temporary) is None
@@ -76,7 +90,7 @@ def main() -> None:
                 storage.delete(key)
         finally:
             storage.close()
-    print("Recipe image API verified through gateway: PNG transfer, completion, persistence, invalid rejection and temporary cleanup.")
+    print("Recipe image API verified through gateway: PNG upload/download, no-store instructions, private objects, persistence, invalid rejection and temporary cleanup.")
 
 
 if __name__ == "__main__":

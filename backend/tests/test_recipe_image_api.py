@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.routes.recipe_images import get_recipe_image_uploads
+from app.api.routes.recipe_images import get_recipe_image_storage, get_recipe_image_uploads
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.models.recipe_image import RecipeImage
@@ -20,15 +20,23 @@ def storage(client: TestClient) -> Iterator[Mock]:
     adapter.presign_upload.return_value = PresignedTransfer(
         url="http://localhost/storage/private/key?signature=secret", method="PUT", expires_in=300,
     )
+    adapter.presign_download.return_value = PresignedTransfer(
+        url="http://localhost/storage/private/key?signature=download", method="GET", expires_in=300,
+    )
+
+    def storage_dependency() -> Storage:
+        return adapter
 
     def dependency() -> RecipeImageUploads:
         return RecipeImageUploads(adapter, SessionLocal)
 
     client.app.dependency_overrides[get_recipe_image_uploads] = dependency
+    client.app.dependency_overrides[get_recipe_image_storage] = storage_dependency
     try:
         yield adapter
     finally:
         client.app.dependency_overrides.pop(get_recipe_image_uploads)
+        client.app.dependency_overrides.pop(get_recipe_image_storage)
 
 
 def test_start_and_complete_persist_only_validated_metadata(client: TestClient, storage: Mock) -> None:
@@ -100,8 +108,52 @@ def test_storage_not_configured(client: TestClient, monkeypatch: pytest.MonkeyPa
         monkeypatch.setattr(get_settings(), name, None)
     response = client.post("/recipe-image-uploads")
     assert response.status_code == 503
+    response = client.get(f"/recipe-images/{uuid4()}/download")
+    assert response.status_code == 503
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_malformed_upload_id(client: TestClient, storage: Mock) -> None:
     assert client.post("/recipe-image-uploads/invalid/complete").status_code == 422
     storage.read.assert_not_called()
+
+
+def test_download_uses_persisted_key_without_reading_object(client: TestClient, storage: Mock) -> None:
+    storage.read.return_value = png()
+    completed = client.post(f"/recipe-image-uploads/{uuid4()}/complete")
+    image_id = UUID(completed.json()["id"])
+    with SessionLocal() as session:
+        image = session.get(RecipeImage, image_id)
+        assert image is not None
+        key = image.object_key
+    storage.reset_mock()
+    for _ in range(2):
+        response = client.get(f"/recipe-images/{image_id}/download")
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json() == {
+            "url": "http://localhost/storage/private/key?signature=download", "expiresIn": 300,
+        }
+    assert storage.presign_download.call_count == 2
+    storage.presign_download.assert_called_with(key)
+    storage.read.assert_not_called()
+    storage.inspect.assert_not_called()
+
+
+def test_download_missing_image_and_invalid_id(client: TestClient, storage: Mock) -> None:
+    response = client.get(f"/recipe-images/{uuid4()}/download")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Recipe image not found"}
+    assert response.headers["cache-control"] == "no-store"
+    assert client.get("/recipe-images/invalid/download").status_code == 422
+    storage.presign_download.assert_not_called()
+
+
+def test_download_signing_failure_is_sanitized(client: TestClient, storage: Mock) -> None:
+    storage.read.return_value = png()
+    completed = client.post(f"/recipe-image-uploads/{uuid4()}/complete")
+    storage.presign_download.side_effect = StorageUnavailable("credentials and signed URL")
+    response = client.get(f"/recipe-images/{completed.json()['id']}/download")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Image storage is unavailable"}
+    assert response.headers["cache-control"] == "no-store"
