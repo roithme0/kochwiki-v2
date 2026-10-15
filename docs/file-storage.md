@@ -2,9 +2,10 @@
 
 Local, staging, and production Compose deployments each run a `file-storage` service using their own pinned
 `dxflrs/garage:v2.4.1` instance with a private `recipe-images` bucket. This slice
-provides storage infrastructure and an internal backend adapter for presigned
-upload/download URLs, object inspection and deletion, plus an internal PNG upload
-and validation service. Recipes do not yet upload or display images.
+provides storage infrastructure and a backend adapter for presigned upload/download
+URLs, object inspection and deletion, plus PNG validation and metadata persistence.
+Upload-start/completion endpoints and a typed frontend service expose the upload
+flow. Recipe associations and visible image controls/display remain deferred.
 
 ## Configuration and startup
 
@@ -89,7 +90,8 @@ clients; presigning performs no network request. Call `close()` after use.
 `presign_upload` and `presign_download` return the URL, method and lifetime
 (default 300 seconds, allowed range 1 to 3600). These URLs are reusable bearer
 credentials until expiry; upload signing does not bind or validate image content.
-No application endpoints expose this adapter yet.
+Upload-start and completion endpoints use this adapter through the PNG validation
+service; see the upload API section below.
 
 `inspect` returns object size, content type and ETag, or `None` for an absent
 object. Permission and transport failures raise a sanitized `StorageUnavailable`;
@@ -154,8 +156,8 @@ URLs do not implement recipe ownership or permissions.
 
 ## Internal recipe image uploads
 
-`app.services.recipe_image_uploads.RecipeImageUploads` is an internal service,
-with no HTTP endpoints, frontend changes or recipe associations. Construct it with
+`app.services.recipe_image_uploads.RecipeImageUploads` implements validation and
+persistence behind the upload API, without recipe associations. Construct it with
 the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
 `recipe-image-uploads/<uuid>`. The caller transfers bytes, waits for upload success,
@@ -203,6 +205,29 @@ does not revoke its upload URL. Abandoned uploads, recreated temporary objects,
 failed deletions and unattached permanent images require the explicitly deferred
 cleanup-policy slice. No scheduled cleanup or retention policy is added here.
 
+## Upload API and frontend service
+
+`POST /api/recipe-image-uploads` returns `uploadId`, `url`, `method` (`PUT`),
+`headers` and `expiresIn` (seconds). Send the raw file bytes to the returned URL
+with those headers, then call `POST /api/recipe-image-uploads/{uploadId}/complete`.
+Completion returns the committed image `id`, `contentType`, `size`, `width`,
+`height` and `createdAt`. Permanent object keys, storage credentials and internal
+cleanup status are not exposed. Temporary deletion failures do not invalidate
+the accepted permanent image or its metadata.
+
+Missing temporary objects return 404, rejected images return 400 with a validation
+message, and storage/persistence failures return 503 with a sanitized message.
+Malformed upload UUIDs use FastAPI's standard 422 validation response. An unset
+storage configuration returns 503 without disabling unrelated application APIs.
+These routes follow the existing domain API authentication baseline; this slice
+adds no session enforcement or authorization policy.
+
+Angular's `RecipeImageUploadService.upload(file)` coordinates start, raw-byte PUT
+and completion, validates API responses against the generated contract and returns
+the persisted metadata. It propagates failures and performs no automatic retry.
+Completion is not idempotent: an ambiguous failure must not trigger an automatic
+repeat. No recipe association or visible upload control is included yet.
+
 ## Verification
 
 Run the regression checks without PostgreSQL from the repository root (upload
@@ -247,6 +272,15 @@ database session and removes its own metadata records and test objects on comple
 The storage and validation flows previously passed against local Garage and the
 local gateway; the added metadata persistence check requires a migrated database.
 Staging and production verification remain pending.
+
+After deploying the current backend, run the same Compose verifier command with
+`/checks/verify_recipe_image_api.py` to exercise both API endpoints through the
+gateway, direct PUT to Garage, committed metadata, identical permanent bytes,
+invalid PNG rejection and immediate temporary cleanup. It removes only its own
+test records and objects. API/metadata verification passed locally on 2026-10-15
+after rebuilding the backend and applying pending migrations. The frontend upload
+service has controlled HTTP tests for sequencing, contract validation and failures
+without retry; these do not establish live browser/UI readiness.
 
 Run the isolated integration check from the repository root with Python 3.12+
 and Docker Compose available:

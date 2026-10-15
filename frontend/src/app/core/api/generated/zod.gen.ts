@@ -19,6 +19,29 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * RecipeImageOut
+ */
+export const zRecipeImageOut = z.strictObject({
+    contentType: z.literal('image/png'),
+    createdAt: z.iso.datetime(),
+    height: z.int(),
+    id: z.uuid(),
+    size: z.int(),
+    width: z.int()
+});
+
+/**
+ * RecipeImageUploadOut
+ */
+export const zRecipeImageUploadOut = z.strictObject({
+    expiresIn: z.int(),
+    headers: z.record(z.string(), z.string()),
+    method: z.literal('PUT'),
+    uploadId: z.uuid(),
+    url: z.string()
+});
+
+/**
  * RecipePresentationIngredientResolve
  */
 export const zRecipePresentationIngredientResolve = z.strictObject({

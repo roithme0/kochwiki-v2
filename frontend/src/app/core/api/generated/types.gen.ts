@@ -210,6 +210,64 @@ export type IngredientWrite = {
 };
 
 /**
+ * RecipeImageOut
+ */
+export type RecipeImageOut = {
+    /**
+     * Contenttype
+     */
+    contentType: 'image/png';
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * RecipeImageUploadOut
+ */
+export type RecipeImageUploadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Headers
+     */
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Method
+     */
+    method: 'PUT';
+    /**
+     * Uploadid
+     */
+    uploadId: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * RecipePresentationIngredientOut
  */
 export type RecipePresentationIngredientOut = {
@@ -771,6 +829,73 @@ export type GetVersionMetaVersionGetResponses = {
 };
 
 export type GetVersionMetaVersionGetResponse = GetVersionMetaVersionGetResponses[keyof GetVersionMetaVersionGetResponses];
+
+export type BeginUploadRecipeImageUploadsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/recipe-image-uploads';
+};
+
+export type BeginUploadRecipeImageUploadsPostErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type BeginUploadRecipeImageUploadsPostError = BeginUploadRecipeImageUploadsPostErrors[keyof BeginUploadRecipeImageUploadsPostErrors];
+
+export type BeginUploadRecipeImageUploadsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageUploadOut;
+};
+
+export type BeginUploadRecipeImageUploadsPostResponse = BeginUploadRecipeImageUploadsPostResponses[keyof BeginUploadRecipeImageUploadsPostResponses];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostData = {
+    body?: never;
+    path: {
+        /**
+         * Upload Id
+         */
+        upload_id: string;
+    };
+    query?: never;
+    url: '/recipe-image-uploads/{upload_id}/complete';
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostError = CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageOut;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponse = CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses];
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
     body: RecipePresentationResolve;
