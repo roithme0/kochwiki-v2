@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import base64
+from uuid import UUID
 
 from app.core.config import Settings
+from app.db.session import SessionLocal
+from app.models.recipe_image import RecipeImage
 from app.services.recipe_image_uploads import InvalidRecipeImage, RecipeImageUploads
 from app.services.storage import Storage
 from verify_storage_adapter import transfer
@@ -13,8 +16,9 @@ def main() -> None:
     if config is None:
         raise RuntimeError("Configure STORAGE_* settings before verification")
     storage = Storage(config)
-    uploads = RecipeImageUploads(storage)
+    uploads = RecipeImageUploads(storage, SessionLocal)
     keys: list[str] = []
+    image_ids: list[UUID] = []
     png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")
     try:
         upload = uploads.begin()
@@ -24,6 +28,11 @@ def main() -> None:
         assert status == 200, f"Upload failed: {status}"
         result = uploads.complete(upload.id)
         keys.append(result.object_key)
+        image_ids.append(result.id)
+        with SessionLocal() as session:
+            saved = session.get(RecipeImage, result.id)
+            assert saved is not None
+            assert (saved.object_key, saved.sha256) == (result.object_key, result.sha256)
         assert (result.width, result.height, result.size) == (1, 1, len(png))
         assert not result.cleanup_pending
         assert storage.inspect(temporary) is None
@@ -42,6 +51,11 @@ def main() -> None:
         assert status == 200 and downloaded == png, "Temporary upload changed permanent bytes"
     finally:
         try:
+            with SessionLocal.begin() as session:
+                for image_id in image_ids:
+                    saved = session.get(RecipeImage, image_id)
+                    if saved is not None:
+                        session.delete(saved)
             for key in keys:
                 storage.delete(key)
         finally:

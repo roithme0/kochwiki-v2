@@ -155,7 +155,8 @@ URLs do not implement recipe ownership or permissions.
 ## Internal recipe image uploads
 
 `app.services.recipe_image_uploads.RecipeImageUploads` is an internal service,
-with no HTTP endpoints, frontend changes, database metadata or recipe associations.
+with no HTTP endpoints, frontend changes or recipe associations. Construct it with
+the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
 `recipe-image-uploads/<uuid>`. The caller transfers bytes, waits for upload success,
 then explicitly calls `complete(upload.id)`; no Garage event is required.
@@ -168,8 +169,10 @@ No resizing, re-encoding or metadata stripping is performed.
 
 Accepted bytes are written unchanged to `recipe-images/<new-image-uuid>.png`
 with `image/png` content type. The returned immutable result contains image UUID,
-object key, size, dimensions, SHA-256 and content type. This result is not yet
-persisted to PostgreSQL or attachable through a recipe API. Completion never
+object key, size, dimensions, SHA-256, content type and UTC creation time. The
+`recipe_image` table persists these fields, with unique object keys and database
+constraints for format and size limits. Completion returns success only after
+the metadata transaction commits. Images are not yet attachable through a recipe API. Completion never
 copies the temporary object after validation: a concurrent upload cannot change
 the bytes being promoted. The service never issues PUT URLs for permanent keys.
 
@@ -179,6 +182,18 @@ delete the temporary object. `cleanup_pending` on the result or
 outcome. Missing uploads raise `ImageUploadNotFound`. Storage read/write failures
 raise sanitized `StorageUnavailable` and preserve the temporary upload for retry.
 A failed permanent write may have an ambiguous outcome and leave an orphan.
+
+If metadata persistence fails, a fresh database session checks whether the image
+was committed despite the error. A confirmed record allows completion to succeed.
+If no record exists after a failure without an invalidated connection, completion
+attempts to delete the permanent object, preserves
+the temporary upload for retry and raises sanitized `ImagePersistenceFailed`.
+Its `cleanup_pending` flag reports failed permanent-object deletion. If the database
+cannot confirm the commit outcome, or the original connection was invalidated and
+the record is not yet visible, the permanent object is retained and the error
+reports `cleanup_pending=True`; deleting it could break an already committed record.
+Scheduled reconciliation remains deferred. SHA-256 identifies the validated bytes;
+completion does not read back the permanent object to verify its checksum.
 
 There is no completion registry or durable idempotency yet. A repeated completion
 normally finds the temporary object missing; concurrent completion or re-upload
@@ -190,7 +205,8 @@ cleanup-policy slice. No scheduled cleanup or retention policy is added here.
 
 ## Verification
 
-Run the adapter regression checks without a database from the repository root:
+Run the regression checks without PostgreSQL from the repository root (upload
+tests use isolated in-memory SQLite databases):
 
 ```sh
 PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_storage_adapter.py
@@ -221,13 +237,16 @@ directly through the configured public origin, including external TLS terminatio
 The internal gateway override verifies local routing and signing, not external
 DNS, TLS or an outer reverse proxy.
 
-After rebuilding with the locked Pillow dependency, use the same Compose verifier
+After rebuilding with the locked Pillow dependency and applying database migrations,
+use the same Compose verifier
 command with `/checks/verify_recipe_image_uploads.py` to check upload completion.
 It verifies PNG metadata, byte-identical permanent downloads, immediate temporary
 deletion, invalid-image rejection, and permanent-image isolation when the original
-temporary PUT URL is reused. It removes its unique test objects on completion.
-Both verifier flows have passed against local Garage and the local gateway;
-staging and production verification remain pending.
+temporary PUT URL is reused. It also checks committed metadata through a separate
+database session and removes its own metadata records and test objects on completion.
+The storage and validation flows previously passed against local Garage and the
+local gateway; the added metadata persistence check requires a migrated database.
+Staging and production verification remain pending.
 
 Run the isolated integration check from the repository root with Python 3.12+
 and Docker Compose available:

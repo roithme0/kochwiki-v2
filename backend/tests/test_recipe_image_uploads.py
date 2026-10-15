@@ -6,10 +6,16 @@ from uuid import uuid4
 from zlib import crc32
 
 from PIL import Image
+from sqlalchemy import create_engine, event, select
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.recipe_images import MAX_IMAGE_BYTES
+from app.models.recipe_image import RecipeImage
 
 from app.services.recipe_image_uploads import (
-    MAX_IMAGE_BYTES,
     ImageUploadNotFound,
+    ImagePersistenceFailed,
     InvalidRecipeImage,
     RecipeImageUploads,
 )
@@ -31,7 +37,11 @@ def chunk(kind: bytes, data: bytes) -> bytes:
 class RecipeImageUploadTests(unittest.TestCase):
     def setUp(self) -> None:
         self.storage = Mock()
-        self.service = RecipeImageUploads(self.storage)
+        self.engine = create_engine("sqlite://")
+        RecipeImage.__table__.create(self.engine)
+        self.addCleanup(self.engine.dispose)
+        self.sessions = sessionmaker(self.engine)
+        self.service = RecipeImageUploads(self.storage, self.sessions)
         self.upload_id = uuid4()
         self.temporary_key = f"recipe-image-uploads/{self.upload_id}"
 
@@ -50,6 +60,15 @@ class RecipeImageUploadTests(unittest.TestCase):
         self.assertEqual(result.sha256, sha256(data).hexdigest())
         self.assertEqual(result.object_key, f"recipe-images/{result.id}.png")
         self.assertFalse(result.cleanup_pending)
+        with self.sessions() as session:
+            saved = session.get(RecipeImage, result.id)
+            self.assertIsNotNone(saved)
+            assert saved is not None
+            self.assertEqual(
+                (saved.object_key, saved.size, saved.width, saved.height, saved.sha256, saved.content_type),
+                (result.object_key, result.size, result.width, result.height, result.sha256, result.content_type),
+            )
+            self.assertEqual(saved.created_at, result.created_at.replace(tzinfo=None))
         self.storage.read.assert_called_once_with(self.temporary_key, max_bytes=MAX_IMAGE_BYTES)
         self.storage.write.assert_called_once_with(result.object_key, data, content_type="image/png")
         self.storage.delete.assert_called_once_with(self.temporary_key)
@@ -145,6 +164,69 @@ class RecipeImageUploadTests(unittest.TestCase):
         second = self.service.complete(self.upload_id)
         self.assertNotEqual(first.id, second.id)
         self.assertNotEqual(first.object_key, second.object_key)
+
+    def test_database_failure_removes_permanent_object_and_keeps_upload_retryable(self) -> None:
+        self.storage.read.return_value = png()
+
+        def fail_commit(session: Session) -> None:
+            raise OperationalError("commit", None, RuntimeError("private database error"))
+
+        event.listen(self.sessions, "before_commit", fail_commit)
+        with self.assertRaises(ImagePersistenceFailed) as failure:
+            self.service.complete(self.upload_id)
+        self.assertFalse(failure.exception.cleanup_pending)
+        self.assertNotIn("private", str(failure.exception))
+        key = self.storage.write.call_args.args[0]
+        self.storage.delete.assert_called_once_with(key)
+        with self.sessions() as session:
+            self.assertEqual(list(session.scalars(select(RecipeImage))), [])
+        event.remove(self.sessions, "before_commit", fail_commit)
+        self.assertFalse(self.service.complete(self.upload_id).cleanup_pending)
+
+    def test_unknown_database_outcome_retains_permanent_object(self) -> None:
+        self.storage.read.return_value = png()
+        RecipeImage.__table__.drop(self.engine)
+        with self.assertRaises(ImagePersistenceFailed) as failure:
+            self.service.complete(self.upload_id)
+        self.assertTrue(failure.exception.cleanup_pending)
+        self.storage.delete.assert_not_called()
+
+    def test_failed_compensation_reports_cleanup_pending(self) -> None:
+        self.storage.read.return_value = png()
+        self.storage.delete.side_effect = StorageUnavailable()
+
+        def fail_commit(session: Session) -> None:
+            raise OperationalError("commit", None, RuntimeError())
+
+        event.listen(self.sessions, "before_commit", fail_commit)
+        with self.assertRaises(ImagePersistenceFailed) as failure:
+            self.service.complete(self.upload_id)
+        self.assertTrue(failure.exception.cleanup_pending)
+        self.storage.delete.assert_called_once_with(self.storage.write.call_args.args[0])
+
+    def test_lost_connection_retains_object_even_if_record_is_not_yet_visible(self) -> None:
+        self.storage.read.return_value = png()
+
+        def lose_connection(session: Session) -> None:
+            raise OperationalError("commit", None, RuntimeError(), connection_invalidated=True)
+
+        event.listen(self.sessions, "before_commit", lose_connection)
+        with self.assertRaises(ImagePersistenceFailed) as failure:
+            self.service.complete(self.upload_id)
+        self.assertTrue(failure.exception.cleanup_pending)
+        self.storage.delete.assert_not_called()
+
+    def test_commit_acknowledgement_failure_does_not_delete_committed_image(self) -> None:
+        self.storage.read.return_value = png()
+
+        def fail_acknowledgement(session: Session) -> None:
+            raise OperationalError("commit acknowledgement", None, RuntimeError())
+
+        event.listen(self.sessions, "after_commit", fail_acknowledgement)
+        result = self.service.complete(self.upload_id)
+        with self.sessions() as session:
+            self.assertIsNotNone(session.get(RecipeImage, result.id))
+        self.storage.delete.assert_called_once_with(self.temporary_key)
 
 
 if __name__ == "__main__":

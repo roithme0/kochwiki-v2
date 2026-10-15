@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from hashlib import sha256
 from io import BytesIO
 from uuid import UUID, uuid4
@@ -8,7 +9,11 @@ from zlib import crc32, error as ZlibError
 
 from PIL import Image, UnidentifiedImageError
 from PIL.PngImagePlugin import PngImageFile
+from sqlalchemy.exc import DBAPIError, SQLAlchemyError
+from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.recipe_images import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
+from app.models.recipe_image import RecipeImage
 from app.services.storage import (
     PresignedTransfer,
     Storage,
@@ -16,12 +21,15 @@ from app.services.storage import (
     StorageUnavailable,
 )
 
-MAX_IMAGE_BYTES = 10 * 1024 * 1024
-MAX_IMAGE_SIDE = 4096
-
 
 class ImageUploadNotFound(Exception):
     pass
+
+
+class ImagePersistenceFailed(Exception):
+    def __init__(self, *, cleanup_pending: bool) -> None:
+        super().__init__("Image metadata could not be persisted")
+        self.cleanup_pending = cleanup_pending
 
 
 class InvalidRecipeImage(Exception):
@@ -44,13 +52,15 @@ class ValidatedRecipeImage:
     width: int
     height: int
     sha256: str
-    content_type: str = "image/png"
+    created_at: datetime
+    content_type: str = IMAGE_CONTENT_TYPE
     cleanup_pending: bool = False
 
 
 class RecipeImageUploads:
-    def __init__(self, storage: Storage) -> None:
+    def __init__(self, storage: Storage, sessions: sessionmaker[Session]) -> None:
         self._storage = storage
+        self._sessions = sessions
 
     def begin(self) -> ImageUpload:
         upload_id = uuid4()
@@ -63,7 +73,7 @@ class RecipeImageUploads:
             data = self._storage.read(temporary_key, max_bytes=MAX_IMAGE_BYTES)
         except StorageObjectTooLarge:
             raise InvalidRecipeImage(
-                "Image must not exceed 10 MiB",
+                f"Image must not exceed {MAX_IMAGE_BYTES / (1024 * 1024):g} MiB",
                 cleanup_pending=not self._cleanup(temporary_key),
             ) from None
         if data is None:
@@ -75,10 +85,42 @@ class RecipeImageUploads:
             raise
         image_id = uuid4()
         object_key = f"recipe-images/{image_id}.png"
-        self._storage.write(object_key, data, content_type="image/png")
+        self._storage.write(object_key, data, content_type=IMAGE_CONTENT_TYPE)
+        created_at = datetime.now(timezone.utc)
+        digest = sha256(data).hexdigest()
+        record = RecipeImage(
+            id=image_id,
+            object_key=object_key,
+            size=len(data),
+            width=width,
+            height=height,
+            sha256=digest,
+            content_type=IMAGE_CONTENT_TYPE,
+            created_at=created_at,
+        )
+        try:
+            with self._sessions.begin() as session:
+                session.add(record)
+        except SQLAlchemyError as error:
+            try:
+                with self._sessions() as session:
+                    persisted = session.get(RecipeImage, image_id) is not None
+            except SQLAlchemyError:
+                raise ImagePersistenceFailed(cleanup_pending=True) from None
+            if not persisted:
+                if isinstance(error, DBAPIError) and error.connection_invalidated:
+                    raise ImagePersistenceFailed(cleanup_pending=True) from None
+                raise ImagePersistenceFailed(
+                    cleanup_pending=not self._cleanup(object_key),
+                ) from None
         return ValidatedRecipeImage(
-            id=image_id, object_key=object_key, size=len(data),
-            width=width, height=height, sha256=sha256(data).hexdigest(),
+            id=image_id,
+            object_key=object_key,
+            size=len(data),
+            width=width,
+            height=height,
+            sha256=digest,
+            created_at=created_at,
             cleanup_pending=not self._cleanup(temporary_key),
         )
 
@@ -96,7 +138,9 @@ class RecipeImageUploads:
     @staticmethod
     def _validate(data: bytes) -> tuple[int, int]:
         if len(data) > MAX_IMAGE_BYTES:
-            raise InvalidRecipeImage("Image must not exceed 10 MiB")
+            raise InvalidRecipeImage(
+                f"Image must not exceed {MAX_IMAGE_BYTES / (1024 * 1024):g} MiB"
+            )
         RecipeImageUploads._validate_chunks(data)
         try:
             with Image.open(BytesIO(data), formats=("PNG",)) as image:
@@ -104,13 +148,22 @@ class RecipeImageUploads:
                     raise InvalidRecipeImage("Image must be a valid PNG")
                 width, height = image.size
                 if not (1 <= width <= MAX_IMAGE_SIDE and 1 <= height <= MAX_IMAGE_SIDE):
-                    raise InvalidRecipeImage("Image dimensions must not exceed 4096 pixels per side")
+                    raise InvalidRecipeImage(
+                        f"Image dimensions must not exceed {MAX_IMAGE_SIDE} pixels per side"
+                    )
                 if image.n_frames != 1 or "loop" in image.info:
                     raise InvalidRecipeImage("Animated PNG images are not supported")
                 image.verify()
             with Image.open(BytesIO(data), formats=("PNG",)) as decoded:
                 decoded.load()
-        except (UnidentifiedImageError, OSError, SyntaxError, ValueError, ZlibError, Image.DecompressionBombError):
+        except (
+            UnidentifiedImageError,
+            OSError,
+            SyntaxError,
+            ValueError,
+            ZlibError,
+            Image.DecompressionBombError,
+        ):
             raise InvalidRecipeImage("Image must be a valid PNG") from None
         return width, height
 
@@ -120,13 +173,13 @@ class RecipeImageUploads:
             raise InvalidRecipeImage("Image must be a valid PNG")
         offset = 8
         while offset + 12 <= len(data):
-            length = int.from_bytes(data[offset:offset + 4], "big")
+            length = int.from_bytes(data[offset : offset + 4], "big")
             end = offset + 12 + length
             if end > len(data):
                 break
-            chunk_type = data[offset + 4:offset + 8]
-            expected = int.from_bytes(data[end - 4:end], "big")
-            if crc32(memoryview(data)[offset + 4:end - 4]) != expected:
+            chunk_type = data[offset + 4 : offset + 8]
+            expected = int.from_bytes(data[end - 4 : end], "big")
+            if crc32(memoryview(data)[offset + 4 : end - 4]) != expected:
                 break
             if chunk_type == b"acTL":
                 raise InvalidRecipeImage("Animated PNG images are not supported")
