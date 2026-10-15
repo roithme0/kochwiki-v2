@@ -1,0 +1,65 @@
+name: kochwiki-storage-check
+services:
+  file-storage:
+    image: dxflrs/garage:v2.4.1
+    command: ["/garage", "server", "--single-node"]
+    environment:
+      GARAGE_ADMIN_TOKEN: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      GARAGE_RPC_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      RUST_LOG: info,garage_api_common::generic_server=off
+    volumes:
+      - ../garage/garage.toml:/etc/garage.toml:ro
+      - storage-check-explicit-data:/var/lib/garage/data
+      - storage-check-explicit-meta:/var/lib/garage/meta
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  file-storage-init:
+    image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+    restart: "no"
+    network_mode: service:file-storage
+    command: ["python", "/config/init_storage.py"]
+    environment:
+      GARAGE_ADMIN_TOKEN: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      GARAGE_ACCESS_KEY_ID: GK11111111111111111111111111111111
+      GARAGE_SECRET_ACCESS_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    volumes:
+      - ../garage/init_storage.py:/config/init_storage.py:ro
+      - ../garage/buckets.json:/config/buckets.json:ro
+    depends_on:
+      file-storage:
+        condition: service_healthy
+
+  backend:
+    image: nginx:1.25
+    volumes:
+      - ./ordinary.conf:/etc/nginx/conf.d/default.conf:ro
+  frontend:
+    image: nginx:1.25
+    volumes:
+      - ./ordinary.conf:/etc/nginx/conf.d/default.conf:ro
+  gateway:
+    image: nginx:1.25
+    entrypoint:
+      [
+        "/bin/sh",
+        "-c",
+        "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'",
+      ]
+    ports:
+      - "127.0.0.1:18994:80"
+    volumes:
+      - ../gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ../gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
+    depends_on:
+      file-storage-init:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+volumes:
+  storage-check-explicit-data:
+  storage-check-explicit-meta:

@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.enums import RecipeVersionState
 from app.models.foodstuff import Foodstuff
 from app.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.models.recipe_image import RecipeImage
 from app.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
+    RecipeImageDimensionsOut,
     RecipeLineageOut,
     RecipePresentationIngredientOut,
     RecipePresentationOut,
@@ -85,10 +87,11 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
 
 
 def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersion:
+    image_id = _resolve_image_id(session, payload)
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     now = _now()
     lineage = RecipeLineage(created_at=now)
-    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
+    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id)
     session.add(lineage)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
@@ -98,11 +101,12 @@ def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersio
 def publish_active_recipe_edit(session: Session, lineage_id: UUID, payload: RecipeVersionWrite) -> RecipeVersion:
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
+    image_id = _resolve_image_id(session, payload, active_version.image_id)
     now = _now()
     active_version.state = RecipeVersionState.HISTORICAL
     remove_recipe_embedding(session, active_version.version_id)
     session.flush()
-    version = _new_recipe_version(active_version.lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now)
+    version = _new_recipe_version(active_version.lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id)
     session.add(version)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
@@ -111,8 +115,14 @@ def publish_active_recipe_edit(session: Session, lineage_id: UUID, payload: Reci
 
 def create_recipe_draft(session: Session, lineage_id: UUID, payload: RecipeVersionWrite) -> RecipeVersion:
     lineage = _get_lineage(session, lineage_id)
+    source_image_id = session.scalar(
+        select(RecipeVersion.image_id)
+        .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.state == RecipeVersionState.ACTIVE)
+        .with_for_update()
+    )
+    image_id = _resolve_image_id(session, payload, source_image_id)
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
-    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now())
+    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now(), image_id)
     session.add(version)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
@@ -123,9 +133,11 @@ def update_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID, pa
     draft_version = _get_recipe_version_for_update(session, lineage_id, version_id)
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be updated")
+    image_id = _resolve_image_id(session, payload, draft_version.image_id)
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     previous_name = draft_version.name
     _apply_version_content(session, draft_version, payload, foodstuffs)
+    draft_version.image_id = image_id
     draft_version.last_modified = _now()
     session.flush()
     if previous_name != draft_version.name:
@@ -170,6 +182,11 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
+        imageId=version.image_id,
+        imageDimensions=(
+            RecipeImageDimensionsOut(width=version.image.width, height=version.image.height)
+            if version.image is not None else None
+        ),
         state=version.state,
         createdAt=version.created_at,
         lastModified=version.last_modified,
@@ -246,7 +263,8 @@ def list_steps(session: Session) -> Sequence[Step]:
 
 
 def _recipe_version_statement() -> Select[tuple[RecipeVersion]]:
-    return select(RecipeVersion).options(
+    return select(RecipeVersion).execution_options(populate_existing=True).options(
+        selectinload(RecipeVersion.image),
         selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
         selectinload(RecipeVersion.steps),
     )
@@ -287,6 +305,7 @@ def _new_recipe_version(
     foodstuffs: dict[int, Foodstuff],
     state: RecipeVersionState,
     timestamp: datetime,
+    image_id: UUID | None,
 ) -> RecipeVersion:
     version = RecipeVersion(
         state=state,
@@ -295,11 +314,22 @@ def _new_recipe_version(
         name=payload.name,
         servings=payload.servings,
         preptime=payload.preptime,
+        image_id=image_id,
     )
     version.ingredients = _new_ingredients(payload.ingredients, foodstuffs)
     version.steps = _new_steps(payload.steps)
     lineage.versions.append(version)
     return version
+
+
+def _resolve_image_id(
+    session: Session, payload: RecipeVersionWrite, source_image_id: UUID | None = None
+) -> UUID | None:
+    if "imageId" not in payload.model_fields_set:
+        return source_image_id
+    if payload.imageId is not None and session.get(RecipeImage, payload.imageId) is None:
+        raise NotFoundError(f"Recipe image with id {payload.imageId} not found")
+    return payload.imageId
 
 
 def _apply_version_content(

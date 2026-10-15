@@ -10,6 +10,7 @@ import { isUnconfirmedRecipeWrite } from '../../services/recipe-write-error';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
+import { RecipeImageComponent } from '../../components/recipe-image/recipe-image.component';
 import { RecipePatchDialogComponent } from '../../dialogs/recipe-patch-dialog/recipe-patch-dialog.component';
 import {
   ConfirmationDialogComponent,
@@ -22,6 +23,7 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
   selector: 'app-recipe-page',
   imports: [
     RecipePresentationComponent,
+    RecipeImageComponent,
     RouterLink,
     MatIconModule,
     MatButtonModule,

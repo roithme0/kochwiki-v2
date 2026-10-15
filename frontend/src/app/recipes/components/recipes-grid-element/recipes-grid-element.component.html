@@ -1,9 +1,9 @@
 <mat-card>
   <mat-card-content>
-    <app-macro-chart
-      class="macro-chart"
-      [nutrition]="recipeVersion()"
-      [showKcal]="false"
+    <app-recipe-image
+      [imageId]="recipeVersion().imageId"
+      [imageDimensions]="recipeVersion().imageDimensions"
+      [naturalHeight]="true"
     />
     <app-recipe-version-state-badge
       class="version-state-badge"

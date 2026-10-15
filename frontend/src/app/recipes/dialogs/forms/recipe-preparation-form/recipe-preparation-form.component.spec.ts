@@ -99,6 +99,7 @@ function createRecipeForm(): FormGroup {
 
 function recipeVersionWithSteps(): RecipeVersionOut {
     return {
+        imageId: null, imageDimensions: null,
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId: '00000000-0000-0000-0000-000000000001',
         state: 'active',

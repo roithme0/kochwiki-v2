@@ -1,0 +1,41 @@
+<div
+  class="image-area"
+  [class.natural-height]="naturalHeight()"
+  [style.aspect-ratio]="naturalHeight() ? aspectRatio() : null"
+  [attr.aria-busy]="loading()"
+>
+  @if (imageUrl(); as url) {
+    <img
+      [src]="url"
+      [attr.width]="dimensions()?.width"
+      [attr.height]="dimensions()?.height"
+      [style.visibility]="loading() ? 'hidden' : 'visible'"
+      alt="Rezeptbild"
+      (load)="imageLoaded(url)"
+      (error)="imageLoadFailed(url)"
+    />
+  } @else if (imageId() === null) {
+    <img
+      src="assets/images/recipe-image-placeholder.png"
+      [attr.width]="placeholderDimensions.width"
+      [attr.height]="placeholderDimensions.height"
+      alt="Kein Rezeptbild vorhanden"
+    />
+  }
+  @if (loading()) {
+    <div class="image-status" role="status" aria-label="Bild wird geladen">
+      <mat-spinner diameter="25" />
+    </div>
+  } @else if (failed()) {
+    <div class="image-status">
+      <p role="status">Rezeptbild konnte nicht geladen werden.</p>
+      <button
+        mat-button
+        type="button"
+        (click)="$event.preventDefault(); $event.stopPropagation(); retry()"
+      >
+        Bild erneut laden
+      </button>
+    </div>
+  }
+</div>

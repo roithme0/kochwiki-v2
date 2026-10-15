@@ -210,6 +210,92 @@ export type IngredientWrite = {
 };
 
 /**
+ * RecipeImageDimensionsOut
+ */
+export type RecipeImageDimensionsOut = {
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * RecipeImageDownloadOut
+ */
+export type RecipeImageDownloadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * RecipeImageOut
+ */
+export type RecipeImageOut = {
+    /**
+     * Contenttype
+     */
+    contentType: 'image/png';
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * RecipeImageUploadOut
+ */
+export type RecipeImageUploadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Headers
+     */
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Method
+     */
+    method: 'PUT';
+    /**
+     * Uploadid
+     */
+    uploadId: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * RecipePresentationIngredientOut
  */
 export type RecipePresentationIngredientOut = {
@@ -346,6 +432,11 @@ export type RecipeVersionOut = {
      * Fat
      */
     fat: number | null;
+    imageDimensions: RecipeImageDimensionsOut | null;
+    /**
+     * Imageid
+     */
+    imageId: string | null;
     /**
      * Ingredients
      */
@@ -398,6 +489,12 @@ export type RecipeVersionState = 'active' | 'draft' | 'historical';
  * RecipeVersionWrite
  */
 export type RecipeVersionWrite = {
+    /**
+     * Imageid
+     *
+     * Omit to keep or inherit the source image; null removes it; an ID selects a validated image.
+     */
+    imageId?: string | null;
     /**
      * Ingredients
      */
@@ -771,6 +868,111 @@ export type GetVersionMetaVersionGetResponses = {
 };
 
 export type GetVersionMetaVersionGetResponse = GetVersionMetaVersionGetResponses[keyof GetVersionMetaVersionGetResponses];
+
+export type BeginUploadRecipeImageUploadsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/recipe-image-uploads';
+};
+
+export type BeginUploadRecipeImageUploadsPostErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type BeginUploadRecipeImageUploadsPostError = BeginUploadRecipeImageUploadsPostErrors[keyof BeginUploadRecipeImageUploadsPostErrors];
+
+export type BeginUploadRecipeImageUploadsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageUploadOut;
+};
+
+export type BeginUploadRecipeImageUploadsPostResponse = BeginUploadRecipeImageUploadsPostResponses[keyof BeginUploadRecipeImageUploadsPostResponses];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostData = {
+    body?: never;
+    path: {
+        /**
+         * Upload Id
+         */
+        upload_id: string;
+    };
+    query?: never;
+    url: '/recipe-image-uploads/{upload_id}/complete';
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostError = CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageOut;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponse = CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetData = {
+    body?: never;
+    path: {
+        /**
+         * Image Id
+         */
+        image_id: string;
+    };
+    query?: never;
+    url: '/recipe-images/{image_id}/download';
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetError = DownloadImageRecipeImagesImageIdDownloadGetErrors[keyof DownloadImageRecipeImagesImageIdDownloadGetErrors];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageDownloadOut;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponse = DownloadImageRecipeImagesImageIdDownloadGetResponses[keyof DownloadImageRecipeImagesImageIdDownloadGetResponses];
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
     body: RecipePresentationResolve;

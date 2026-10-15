@@ -28,13 +28,21 @@ class RecipeVersionFields(BaseModel):
 
 
 class RecipeVersionWrite(RecipeVersionFields):
+    imageId: UUID | None = Field(
+        default=None,
+        description="Omit to keep or inherit the source image; null removes it; an ID selects a validated image.",
+    )
     ingredients: list[IngredientWrite] = Field(default_factory=list)
     steps: list[StepWrite] = Field(default_factory=list)
 
     @field_validator("ingredients")
     @classmethod
-    def validate_unique_ingredients(cls, value: list[IngredientWrite]) -> list[IngredientWrite]:
-        _validate_unique_indexes([ingredient.index for ingredient in value], "ingredient")
+    def validate_unique_ingredients(
+        cls, value: list[IngredientWrite]
+    ) -> list[IngredientWrite]:
+        _validate_unique_indexes(
+            [ingredient.index for ingredient in value], "ingredient"
+        )
         if len({ingredient.foodstuffId for ingredient in value}) != len(value):
             raise ValueError("foodstuffs must be unique per recipe")
         return value
@@ -65,11 +73,20 @@ class StepOut(BaseModel):
     recipeVersionId: UUID
 
 
+class RecipeImageDimensionsOut(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    width: int = Field(gt=0)
+    height: int = Field(gt=0)
+
+
 class RecipeVersionOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     recipeLineageId: UUID
     recipeVersionId: UUID
+    imageId: UUID | None
+    imageDimensions: RecipeImageDimensionsOut | None
     state: RecipeVersionState
     createdAt: datetime
     lastModified: datetime

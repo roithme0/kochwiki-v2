@@ -24,6 +24,7 @@ def save_recipe_proposal(
         with session.begin():
             source = _get_version(session, proposal.sourceRecipeVersionId)
             payload = _materialize_recipe(session, proposal.recipe)
+            payload.imageId = source.image_id
             draft = create_recipe_draft(session, source.lineage_id, payload)
             result = recipe_version_out(draft)
         store.record_saved_version(proposal_id, result.recipeVersionId)

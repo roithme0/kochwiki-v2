@@ -13,6 +13,7 @@ import { RecipeCreateDialogComponent } from './recipe-create-dialog.component';
 
 describe('RecipeCreateDialogComponent', () => {
     const recipeVersion: RecipeVersionWrite = {
+        imageId: '00000000-0000-4000-8000-000000000003',
         name: 'Linsensuppe',
         servings: 2,
         preptime: null,
@@ -26,6 +27,7 @@ describe('RecipeCreateDialogComponent', () => {
     let navigate: Mock;
     let close: Mock;
     let openSnackBar: Mock;
+    let dialogRef: Pick<MatDialogRef<RecipeCreateDialogComponent>, 'close' | 'disableClose'>;
 
     beforeEach(() => {
         createRecipe = vi.fn().mockName('createRecipe').mockResolvedValue({ recipeLineageId: '00000000-0000-4000-8000-000000000007' });
@@ -33,6 +35,7 @@ describe('RecipeCreateDialogComponent', () => {
         navigate = vi.fn().mockName('navigate').mockResolvedValue(true);
         close = vi.fn().mockName('close');
         openSnackBar = vi.fn().mockName('open');
+        dialogRef = { close, disableClose: false };
         component = Object.create(RecipeCreateDialogComponent.prototype) as RecipeCreateDialogComponent;
         Object.assign(component, {
             recipeBackendService: {
@@ -40,10 +43,24 @@ describe('RecipeCreateDialogComponent', () => {
                 notifyRecipesChanged,
             } as unknown as RecipeBackendService,
             router: { navigate } as unknown as Router,
-            dialogRef: { close } as unknown as MatDialogRef<RecipeCreateDialogComponent>,
+            dialogRef,
             snackBarService: { open: openSnackBar } as unknown as SnackBarService,
             isSubmitting: signal(false),
         });
+    });
+
+    it('prevents dismissal during the recipe write and restores it after rejection', async () => {
+        let reject!: (error: Error) => void;
+        createRecipe.mockReturnValue(new Promise<never>((_resolve, rejectPromise) => { reject = rejectPromise; }));
+        vi.spyOn(console, 'error').mockReturnValue(undefined);
+        const save = component.onSubmit({ recipeVersion, action: 'publish' });
+        expect(component.isSubmitting()).toBe(true);
+        expect(dialogRef.disableClose).toBe(true);
+        reject(new Error('Save failed'));
+        await save;
+        expect(component.isSubmitting()).toBe(false);
+        expect(dialogRef.disableClose).toBe(false);
+        expect(close).not.toHaveBeenCalled();
     });
 
     it('keeps creation successful when post-success navigation fails', async () => {
