@@ -133,6 +133,16 @@ Delivery boundaries after that remain provisional, without prescribing a task-le
 
 Each implemented slice should ship its frontend/backend contract changes together. Meaningful regression coverage should focus on invalid uploads, failed or cancelled saves, independent draft/active images, publication, replacement/removal, retention of objects referenced by other versions, cleanup of unreferenced objects, presigned transfer behavior, and fallback behavior. Authorization-policy tests belong to the deferred access-management work.
 
+## Deferred Storage Cleanup
+
+Storage cleanup is explicitly deferred. The remaining work covers:
+
+- Removing abandoned temporary uploads, including objects left after interrupted transfers or failed immediate cleanup.
+- Removing validated images never attached to a recipe after cancellation or failed saves.
+- Removing image metadata and objects no longer referenced after replacement, removal, draft discard or recipe deletion, including permanent objects left by failed persistence cleanup.
+
+Cleanup must preserve every image referenced by an active, draft or historical version and account for concurrent attachment before deleting anything. Retention intervals, scheduling, retry behavior and safe coordination of database and storage deletion remain decisions for a future slice. Existing immediate cleanup attempts remain in place; there is no scheduled cleanup today, so unused objects can accumulate. This records deferred work and does not authorize its implementation.
+
 ## Open Questions
 
 - What temporary-upload retention interval and cleanup mechanism fit the deployment? The browser storage-transfer route is settled.

@@ -299,6 +299,20 @@ versions start without images. PostgreSQL rejects deletion of referenced image
 metadata. Replacing/removing references, discarding drafts and deleting lineages
 leave image metadata and objects for the deferred cleanup slice. No storage access
 is required for recipe writes that keep/remove an image or reads of recipe metadata.
+## Deferred storage cleanup
+
+Scheduled storage cleanup is explicitly deferred. Remaining tasks are:
+
+- Delete abandoned temporary uploads and temporary objects left by failed immediate cleanup.
+- Delete validated but unattached images after cancelled or failed recipe saves.
+- Delete unreferenced image metadata and objects after replacement, removal, draft discard or recipe deletion, and permanent objects left by failed persistence cleanup.
+
+Any future cleanup must preserve images referenced by active, draft or historical
+versions and handle concurrent attachment safely. Retention intervals, scheduling,
+retry behavior and coordination of database and object deletion are not yet
+defined. Existing immediate cleanup attempts remain unchanged; unused objects
+can accumulate until the deferred work is implemented.
+
 ## Detail-page image display
 
 Active, draft and historical detail pages display the viewed version's image above
