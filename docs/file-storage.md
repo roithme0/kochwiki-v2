@@ -3,8 +3,8 @@
 Local, staging, and production Compose deployments each run a `file-storage` service using their own pinned
 `dxflrs/garage:v2.4.1` instance with a private `recipe-images` bucket. This slice
 provides storage infrastructure and an internal backend adapter for presigned
-upload/download URLs, object inspection and deletion. Recipes do not yet upload
-or display images, and the backend does not validate uploaded images.
+upload/download URLs, object inspection and deletion, plus an internal PNG upload
+and validation service. Recipes do not yet upload or display images.
 
 ## Configuration and startup
 
@@ -150,8 +150,43 @@ with exactly the same signature query. **Do not sign an endpoint containing
 Both fail verification. Prefix insertion is a routing step, not a new signature.
 
 User-level authorization remains outside this slice. Private buckets and signed
-URLs do not implement recipe ownership or permissions. Upload completion and
-image validation before recipe attachment belong to a later application slice.
+URLs do not implement recipe ownership or permissions.
+
+## Internal recipe image uploads
+
+`app.services.recipe_image_uploads.RecipeImageUploads` is an internal service,
+with no HTTP endpoints, frontend changes, database metadata or recipe associations.
+`begin()` returns an upload UUID and a 300-second presigned PUT transfer for
+`recipe-image-uploads/<uuid>`. The caller transfers bytes, waits for upload success,
+then explicitly calls `complete(upload.id)`; no Garage event is required.
+
+Completion reads at most 10 MiB plus one overflow-detection byte and validates
+PNG chunk integrity and full pixel decoding with Pillow. Only static PNG is
+accepted, with dimensions from 1 to 4096 pixels per side, inclusive. APNG is
+rejected even with a single frame. Filename and declared MIME type are not trusted.
+No resizing, re-encoding or metadata stripping is performed.
+
+Accepted bytes are written unchanged to `recipe-images/<new-image-uuid>.png`
+with `image/png` content type. The returned immutable result contains image UUID,
+object key, size, dimensions, SHA-256 and content type. This result is not yet
+persisted to PostgreSQL or attachable through a recipe API. Completion never
+copies the temporary object after validation: a concurrent upload cannot change
+the bytes being promoted. The service never issues PUT URLs for permanent keys.
+
+After successful promotion or invalid-image rejection, completion attempts to
+delete the temporary object. `cleanup_pending` on the result or
+`InvalidRecipeImage` reports a failed deletion without hiding the validation
+outcome. Missing uploads raise `ImageUploadNotFound`. Storage read/write failures
+raise sanitized `StorageUnavailable` and preserve the temporary upload for retry.
+A failed permanent write may have an ambiguous outcome and leave an orphan.
+
+There is no completion registry or durable idempotency yet. A repeated completion
+normally finds the temporary object missing; concurrent completion or re-upload
+through a still-valid temporary URL can create another independent permanent
+image, never overwrite a previous accepted image. Deleting a temporary object
+does not revoke its upload URL. Abandoned uploads, recreated temporary objects,
+failed deletions and unattached permanent images require the explicitly deferred
+cleanup-policy slice. No scheduled cleanup or retention policy is added here.
 
 ## Verification
 
@@ -159,6 +194,7 @@ Run the adapter regression checks without a database from the repository root:
 
 ```sh
 PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_storage_adapter.py
+PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_recipe_image_uploads.py
 ```
 
 On Windows, use `backend/.venv/Scripts/python.exe` and set `PYTHONPATH=backend`
@@ -184,6 +220,14 @@ neither credentials nor URLs. Omit `STORAGE_VERIFY_CONNECT_ORIGIN` to connect
 directly through the configured public origin, including external TLS termination.
 The internal gateway override verifies local routing and signing, not external
 DNS, TLS or an outer reverse proxy.
+
+After rebuilding with the locked Pillow dependency, use the same Compose verifier
+command with `/checks/verify_recipe_image_uploads.py` to check upload completion.
+It verifies PNG metadata, byte-identical permanent downloads, immediate temporary
+deletion, invalid-image rejection, and permanent-image isolation when the original
+temporary PUT URL is reused. It removes its unique test objects on completion.
+Both verifier flows have passed against local Garage and the local gateway;
+staging and production verification remain pending.
 
 Run the isolated integration check from the repository root with Python 3.12+
 and Docker Compose available:

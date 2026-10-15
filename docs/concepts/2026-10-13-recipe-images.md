@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft. PNG upload in the create/edit dialog's Basis section, images replacing the grid's nutrition display, and images on the recipe detail page are requested. One optional image per recipe version, initial inheritance of the source version's image, and a neutral placeholder in the grid, detail page, and editor are agreed. Drafts and the active version can have different images; saving a draft's image does not change the active version's image. Replacing an image does not require a separate image revision history for that version. Historical-version retention and upload limits remain to be confirmed. The user supplied detail-page and editor visualizations in this conversation; a grid visualization remains pending. The first, storage-only slice was authorized and implemented on 2026-10-14: Garage configuration exists for all three environments, with local deployment verified. Staging and production rollout remain pending. Recipe image integration remains unimplemented; this concept does not authorize later slices.
+Draft. PNG upload in the create/edit dialog's Basis section, images replacing the grid's nutrition display, and images on the recipe detail page are requested. One optional image per recipe version, initial inheritance of the source version's image, and a neutral placeholder in the grid, detail page, and editor are agreed. Drafts and the active version can have different images; saving a draft's image does not change the active version's image. Replacing an image does not require a separate image revision history for that version. Historical-version retention remains to be confirmed. Uploads are limited to static PNG, 10 MiB and 4096 pixels per side. The user supplied detail-page and editor visualizations in this conversation; a grid visualization remains pending. The first, storage-only slice was authorized and implemented on 2026-10-14: Garage configuration exists for all three environments, with local deployment verified. Staging and production rollout remain pending. The internal upload/validation slice was authorized and implemented on 2026-10-15, with immediate temporary cleanup and local gateway verification. Scheduled cleanup, public endpoints and recipe/UI integration remain deferred; this concept does not authorize later slices.
 
 ## Goal
 
@@ -12,7 +12,7 @@ Make recipes recognizable by a user-uploaded image in the recipe grid and on the
 
 Recipe data is organized into active, draft, and historical versions. Publishing an active edit creates a new version; an existing draft is updated in place. The shared create/edit editor groups inputs into Basis, Zutaten, and Zubereitung. Basis currently contains the recipe name. Grid cards display a macro chart and a version-state badge. The detail page uses a shared recipe presentation component that also serves AI artifacts.
 
-The README originally proposed SeaweedFS. The storage-only slice supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. The subsequent backend storage slice adds explicit configuration and an adapter for short-lived upload/download URLs, internal object inspection and deletion. Its transfer round trip is verified locally through the gateway. The backend still has no recipe image model or public upload API; PostgreSQL image metadata remains planned. Domain recipe endpoints currently do not enforce application sessions.
+The README originally proposed SeaweedFS. The storage-only slice supplies private Garage storage in all three Compose definitions and a gateway transfer route; see [file storage](../file-storage.md) for configuration and verification. The subsequent backend storage slice adds explicit configuration and an adapter for short-lived upload/download URLs, internal object inspection and deletion. Its transfer round trip is verified locally through the gateway. An internal service now validates temporary PNG uploads and stores the exact accepted bytes under fresh permanent keys, returning metadata without persisting it. The backend still has no recipe image model or public upload API; PostgreSQL image metadata remains planned. Domain recipe endpoints currently do not enforce application sessions.
 
 ## Proposed Direction
 
@@ -88,6 +88,8 @@ The agreed next slice connects the backend to Garage. Configure the internal sto
 
 This backend storage slice introduces no recipe fields, public upload endpoints, PNG validation rules, image associations, or UI changes. Its PNG transfer check establishes transport behavior, not content validation. No frontend contract changes are needed because the adapter exposes no application API. Implementation and local transfer verification completed on 2026-10-14; all three Compose definitions are configured, while staging and production deployment and public-origin verification remain pending.
 
+The next authorized slice provides an internal temporary upload and validation service, without public endpoints, recipe associations, database image metadata or UI. Uploads use unique temporary keys and explicit caller-driven completion. Accept static PNG only, at most 10 MiB and 4096 pixels per side. Validate chunk integrity and decode pixels, then write the exact validated bytes to a fresh permanent key. Return stable image identity and metadata for later integration. Attempt temporary deletion after acceptance or validation rejection and report failed deletion explicitly. Storage failures preserve the temporary upload for retry. The user explicitly deferred abandoned-upload cleanup policy and scheduling to a later slice; orphan and recreated objects can remain until then. Pillow dependency changes were explicitly approved.
+
 Delivery boundaries after that remain provisional, without prescribing a task-level implementation plan:
 
 1. Establish validation, image metadata, save/version lifecycle, and upload controls in Basis, using the supplied editor visualization and deployed storage.
@@ -99,7 +101,6 @@ Each implemented slice should ship its frontend/backend contract changes togethe
 ## Open Questions
 
 - Should historical recipe versions retain their own image? Recommended to follow version ownership; this is distinct from retaining backups of replaced images within an existing draft.
-- What maximum file size and decoded dimensions should apply? Are animated PNG files allowed?
 - What temporary-upload retention interval and cleanup mechanism fit the deployment? The browser storage-transfer route is settled.
 - Are generated thumbnails needed initially, or can one bounded original serve both grid and detail views?
 - Where should the editor's image-removal action appear alongside the supplied pencil action?

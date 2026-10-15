@@ -1,14 +1,16 @@
 import unittest
+from io import BytesIO
 from unittest.mock import patch
 from urllib.parse import parse_qs, quote, urlsplit
 
 from botocore.exceptions import EndpointConnectionError
 from botocore.stub import Stubber
+from botocore.response import StreamingBody
 from pydantic import SecretStr, ValidationError
 
 from app.core.config import Settings
 from app.core.storage import StorageConfig
-from app.services.storage import Storage, StorageUnavailable
+from app.services.storage import Storage, StorageObjectTooLarge, StorageUnavailable
 
 
 def configuration() -> StorageConfig:
@@ -76,6 +78,38 @@ class StorageTests(unittest.TestCase):
         for expiry in (0, -1, 3601, True):
             with self.subTest(expiry=expiry), self.assertRaises(ValueError):
                 self.storage.presign_download("test.png", expires_in=expiry)
+
+    def test_bounded_read_and_write(self) -> None:
+        with Stubber(self.storage._internal) as stub:
+            body = StreamingBody(BytesIO(b"png"), 3)
+            stub.add_response("get_object", {"ContentLength": 3, "Body": body}, {"Bucket": "explicit-bucket", "Key": "temporary"})
+            self.assertEqual(self.storage.read("temporary", max_bytes=3), b"png")
+            self.assertTrue(body._raw_stream.closed)
+            stub.add_response("put_object", {}, {"Bucket": "explicit-bucket", "Key": "permanent", "Body": b"png", "ContentType": "image/png"})
+            self.storage.write("permanent", b"png", content_type="image/png")
+            stub.assert_no_pending_responses()
+
+    def test_read_closes_oversized_or_incomplete_stream_and_sanitizes_errors(self) -> None:
+        with Stubber(self.storage._internal) as stub:
+            for advertised_size, data in ((4, b"four"), (3, b"four")):
+                body = StreamingBody(BytesIO(data), len(data))
+                stub.add_response("get_object", {"ContentLength": advertised_size, "Body": body})
+                with self.assertRaises(StorageObjectTooLarge):
+                    self.storage.read("temporary", max_bytes=3)
+                self.assertTrue(body._raw_stream.closed)
+            body = StreamingBody(BytesIO(b"x"), 3)
+            stub.add_response("get_object", {"ContentLength": 3, "Body": body})
+            with self.assertRaises(StorageUnavailable):
+                self.storage.read("temporary", max_bytes=3)
+            self.assertTrue(body._raw_stream.closed)
+            stub.add_client_error("get_object", service_error_code="NoSuchKey", http_status_code=404)
+            self.assertIsNone(self.storage.read("missing", max_bytes=3))
+            stub.add_client_error("get_object", service_error_code="AccessDenied", service_message="secret", http_status_code=403)
+            with self.assertRaisesRegex(StorageUnavailable, "^Storage object read failed$"):
+                self.storage.read("denied", max_bytes=3)
+            stub.add_client_error("put_object", service_error_code="AccessDenied", service_message="secret", http_status_code=403)
+            with self.assertRaisesRegex(StorageUnavailable, "^Storage object write failed$"):
+                self.storage.write("denied", b"png", content_type="image/png")
 
     def test_configuration_rejects_partial_or_invalid_addresses(self) -> None:
         with patch.dict("os.environ", {}, clear=True):
