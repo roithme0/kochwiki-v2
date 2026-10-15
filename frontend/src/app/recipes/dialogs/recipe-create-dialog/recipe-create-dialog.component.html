@@ -1,5 +1,11 @@
-<app-dialog-header title="Rezept erstellen" [showCloseButon]="true" />
+<app-dialog-header
+  title="Rezept erstellen"
+  [showCloseButon]="!isSubmitting()"
+/>
 
 <mat-dialog-content class="mat-dialog-content">
-  <app-recipe-editor [submitting]="isSubmitting()" (submitted)="onSubmit($event)" />
+  <app-recipe-editor
+    [submitting]="isSubmitting()"
+    (submitted)="onSubmit($event)"
+  />
 </mat-dialog-content>

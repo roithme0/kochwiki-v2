@@ -1,9 +1,20 @@
-<app-dialog-header [title]="data.recipeVersion.state === 'draft' ? 'Entwurf bearbeiten' : 'Rezept bearbeiten'" [showCloseButon]="true" />
+<app-dialog-header
+  [title]="
+    data.recipeVersion.state === 'draft'
+      ? 'Entwurf bearbeiten'
+      : 'Rezept bearbeiten'
+  "
+  [showCloseButon]="!isSubmitting()"
+/>
 
 <mat-dialog-content class="mat-dialog-content">
   <app-recipe-editor
     [recipeLineageId]="data.recipeVersion.recipeLineageId"
-    [recipeVersionId]="data.recipeVersion.state === 'draft' ? data.recipeVersion.recipeVersionId : null"
+    [recipeVersionId]="
+      data.recipeVersion.state === 'draft'
+        ? data.recipeVersion.recipeVersionId
+        : null
+    "
     [mode]="data.recipeVersion.state === 'draft' ? 'draft' : 'active'"
     [submitting]="isSubmitting()"
     (submitted)="onSubmit($event)"

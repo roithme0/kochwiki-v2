@@ -6,7 +6,7 @@ provides storage infrastructure and a backend adapter for presigned upload/downl
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
 flow. Recipe versions can reference validated images, and a download endpoint issues
-short-lived access URLs; visible image controls/display remain deferred.
+short-lived access URLs. Basis image editing is available; grid and detail display remain deferred.
 
 ## Configuration and startup
 
@@ -227,7 +227,7 @@ Angular's `RecipeImageService.upload(file)` coordinates start, raw-byte PUT
 and completion, validates API responses against the generated contract and returns
 the persisted metadata. It propagates failures and performs no automatic retry.
 Completion is not idempotent: an ambiguous failure must not trigger an automatic
-repeat. No visible upload control is included yet.
+repeat. The Basis editor uses this service when saving a selected PNG.
 
 ## Image download access
 
@@ -246,8 +246,33 @@ replacement uses a new identity. Keep signed URLs out of logs and persistent sta
 
 Angular's `RecipeImageService.download(imageId)` requests and validates
 fresh instructions on every call, without caching, retrying or downloading image
-bytes. Rendering, expiry refresh and image-load fallback belong to subsequent UI
-slices. No authorization policy or session enforcement is added here.
+bytes. The editor requests a URL when loading an existing image, shows the neutral
+placeholder on failure and offers an explicit retry that obtains a fresh URL.
+Loaded image bytes remain visible after URL expiry; no timer or automatic retry
+is needed for this editor flow. No authorization policy or session enforcement is added here.
+
+## Basis image editing
+
+The shared create/edit editor previews the saved image or
+`assets/images/recipe-image-placeholder.png` below Name. The pencil selects a static PNG;
+the adjacent trash action removes the image from the pending recipe save. Images
+fit within a stable area without cropping. Selection previews use local object
+URLs, released on replacement, removal or editor destruction.
+
+File selection checks PNG type and the 10 MiB byte limit locally; the backend
+enforces all limits, including full decoding, static PNG and 4096 pixels per side.
+An invalid selection blocks Save until replaced or explicitly discarded. Selecting
+a file does not upload it. After form validation, Save uploads and validates it
+before submitting the recipe with its image ID. Controls are unavailable during
+upload/save. Upload failure leaves entered data and the pending image in place for
+explicit retry. A successful upload is reused if recipe saving subsequently fails.
+
+Cancelling file selection keeps the preview. Closing the dialog before the recipe
+write leaves the saved recipe unchanged; an upload already in flight may finish but cannot trigger a
+recipe save after closing begins. Such unattached uploads, and images abandoned
+after a failed recipe save, remain for the deferred cleanup slice. No automatic
+upload or recipe-write retries are introduced. While the recipe write itself is
+pending, closing is unavailable; a failed save restores the close action.
 
 ## Recipe image associations
 
@@ -273,7 +298,8 @@ The nullable foreign key is added by migration `20261015_12`; existing recipe
 versions start without images. PostgreSQL rejects deletion of referenced image
 metadata. Replacing/removing references, discarding drafts and deleting lineages
 leave image metadata and objects for the deferred cleanup slice. No storage access
-is required for recipe saves or reads. Image UI and authorization changes remain deferred.
+is required for recipe writes that keep/remove an image or reads of recipe metadata.
+Grid/detail image display and authorization changes remain deferred.
 
 ## Verification
 

@@ -12,6 +12,16 @@ Recipe image associations were authorized and implemented on 2026-10-15. Recipe 
 
 The download-access slice was authorized and implemented on 2026-10-15. A dedicated image-ID endpoint returns a five-minute presigned GET URL and lifetime, with `Cache-Control: no-store` on the URL response. A typed frontend service requests fresh instructions without caching or retry. Local gateway checks verified identical downloaded bytes and denied unsigned access; application startup applied pending migrations through `20261015_12`. Visible UI, URL refresh during rendering, scheduled cleanup and staging/production rollout remain deferred.
 
+The Basis editor slice was authorized and implemented on 2026-10-15. The shared
+create/edit dialog provides a contained preview below Name, the neutral placeholder,
+pencil selection/replacement and adjacent removal. Files preview locally and upload
+only on Save after form validation. Invalid selections require replacement or
+explicit discard; upload failures retain entered data and block recipe submission.
+Validated uploads are reused after failed recipe saves. Closing during upload
+prevents a subsequent recipe save. Saved-image delivery failures show the placeholder
+with explicit fresh-URL retry. Grid/detail rendering, scheduled cleanup and
+staging/production rollout remain deferred.
+
 ## Goal
 
 Make recipes recognizable by a user-uploaded image in the recipe grid and on their detail page. Keep image selection within the existing recipe editing flow.
@@ -44,7 +54,7 @@ In the shared create/edit dialog's Basis section, place a large, centered previe
 
 Use the neutral placeholder in both these image areas when no image has been supplied, including after removal in the editor. Reserve a stable image area so the empty state and image load do not shift surrounding controls. Recommend fitting the full image within that area without stretching or cropping, matching the references' fully visible plate and transparent margins; exact dimensions and responsive sizing remain implementation decisions to validate.
 
-The references guide image placement and editing controls. They do not expand this feature into restyling navigation, ingredients, preparation, nutrition, or the save actions. The editor reference does not show a removal control; its accessible placement remains to be resolved without displacing the primary image-selection action. The grid reference is still pending.
+The references guide image placement and editing controls. They do not expand this feature into restyling navigation, ingredients, preparation, nutrition, or the save actions. The agreed removal control is an accessible trash action beside the pencil, shown when an image is selected. The grid reference is still pending.
 
 ## Storage and Save Lifecycle
 
@@ -108,7 +118,7 @@ The subsequent download-access slice is implemented: `GET /recipe-images/{image_
 
 Delivery boundaries after that remain provisional, without prescribing a task-level implementation plan:
 
-1. Add upload controls in Basis, using the supplied editor visualization and deployed storage, with image access support as needed.
+1. Basis controls are implemented with local selection previews, upload on Save, removal and explicit failure recovery. No automatic retry or cleanup scheduling is included.
 2. Replace grid nutrition with image display and the agreed fallback. Obtain the user's grid visualization before implementation.
 3. Display the viewed version's image on the recipe detail page, using the supplied detail visualization.
 
@@ -118,7 +128,6 @@ Each implemented slice should ship its frontend/backend contract changes togethe
 
 - What temporary-upload retention interval and cleanup mechanism fit the deployment? The browser storage-transfer route is settled.
 - Are generated thumbnails needed initially, or can one bounded original serve both grid and detail views?
-- Where should the editor's image-removal action appear alongside the supplied pencil action?
 - What grid image layout should the pending grid visualization establish?
 
 ## Risks

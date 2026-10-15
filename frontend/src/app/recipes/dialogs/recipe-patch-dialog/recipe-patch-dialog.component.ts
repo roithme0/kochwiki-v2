@@ -27,6 +27,7 @@ export class RecipePatchDialogComponent {
   async onSubmit(submission: RecipeEditorSubmission): Promise<void> {
     if (this.isSubmitting()) return;
     this.isSubmitting.set(true);
+    this.dialogRef.disableClose = true;
     let savedRecipeVersion: RecipeVersionOut;
     try {
       savedRecipeVersion = this.data.recipeVersion.state === 'draft'
@@ -44,6 +45,7 @@ export class RecipePatchDialogComponent {
         ? 'Speichern konnte nicht bestätigt werden. Möglicherweise wurden die Änderungen bereits gespeichert. Bitte vor erneutem Speichern die Rezeptliste prüfen.'
         : this.data.recipeVersion.state === 'draft' ? 'Entwurf konnte nicht gespeichert werden' : 'Rezept konnte nicht aktualisiert werden');
       this.isSubmitting.set(false);
+      this.dialogRef.disableClose = false;
       return;
     }
 
