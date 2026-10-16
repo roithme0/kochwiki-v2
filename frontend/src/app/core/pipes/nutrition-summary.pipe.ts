@@ -4,7 +4,7 @@ import { NutritionValues } from '../models/nutrition-values';
 
 @Pipe({ name: 'nutritionSummary' })
 export class NutritionSummaryPipe implements PipeTransform {
-  transform(nutrition: NutritionValues | NutritionSummary): NutritionSummary {
+  transform(nutrition: NutritionValues): NutritionSummary {
     return toNutritionSummary(nutrition);
   }
 }

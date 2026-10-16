@@ -1,13 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NutritionValues } from '../../models/nutrition-values';
-import { NutritionSummary } from '../../models/nutrition-result';
+import { NutritionSummary, toNutritionSummary } from '../../models/nutrition-result';
 import { By } from '@angular/platform-browser';
 import { MacroChartComponent } from '../macro-chart/macro-chart.component';
 import { NutritionCardComponent } from './nutrition-card.component';
 
 describe('NutritionCardComponent', () => {
   let fixture: ComponentFixture<NutritionCardComponent>;
-  const nutrition: NutritionValues = { kcal: 330, carbs: 40, protein: 20, fat: 10 };
+  const nutrition = toNutritionSummary({ kcal: 330, carbs: 40, protein: 20, fat: 10 });
 
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [NutritionCardComponent] });
@@ -16,7 +15,7 @@ describe('NutritionCardComponent', () => {
     fixture.componentRef.setInput('basis', 'pro Portion');
   });
 
-  function render(value: NutritionValues | NutritionSummary): HTMLElement {
+  function render(value: NutritionSummary): HTMLElement {
     fixture.componentRef.setInput('nutrition', value);
     fixture.detectChanges();
     TestBed.tick();
@@ -92,7 +91,7 @@ describe('NutritionCardComponent', () => {
   });
 
   it('keeps known absolute values and labels missing values with a gray chart and no percentages', () => {
-    const element = render({ kcal: 120.6, carbs: 0, protein: null, fat: 10 });
+    const element = render(toNutritionSummary({ kcal: 120.6, carbs: 0, protein: null, fat: 10 }));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(renderedChart().nutrition().kcal.value).toBe(120.6);
@@ -102,7 +101,7 @@ describe('NutritionCardComponent', () => {
   });
 
   it('shows all zero values with a gray chart and no percentages or missing indicators', () => {
-    const element = render({ kcal: 0, carbs: 0, protein: 0, fat: 0 });
+    const element = render(toNutritionSummary({ kcal: 0, carbs: 0, protein: 0, fat: 0 }));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(element.querySelectorAll('mat-icon').length).toBe(0);
@@ -111,7 +110,7 @@ describe('NutritionCardComponent', () => {
   });
 
   it('shows accessible missing indicators when all values are absent', () => {
-    const element = render({});
+    const element = render(toNutritionSummary({}));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(renderedChart().nutrition().kcal.status).toBe('unknown');
     expect(Array.from(element.querySelectorAll('.value-absolute')).map(el => el.textContent?.trim()))
@@ -121,15 +120,15 @@ describe('NutritionCardComponent', () => {
   });
 
   it('can show a complete macro distribution when calories are missing', () => {
-    const element = render({ ...nutrition, kcal: null });
+    const element = render({ ...nutrition, kcal: { status: 'unknown', value: null } });
     expect(element.querySelector('app-macro-chart')).not.toBeNull();
     expect(renderedChart().nutrition().kcal.status).toBe('unknown');
   });
 
   it('updates between complete, missing, zero and restored values without stale percentages', () => {
     render(nutrition);
-    expect(render({ ...nutrition, fat: null }).querySelector('.value-percentage')).toBeNull();
-    render({ carbs: 0, protein: 0, fat: 0 });
+    expect(render({ ...nutrition, fat: { status: 'unknown', value: null } }).querySelector('.value-percentage')).toBeNull();
+    render(toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(render(nutrition).querySelectorAll('.value-percentage').length).toBe(3);
   });

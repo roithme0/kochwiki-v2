@@ -18,16 +18,9 @@ export interface NutritionSummary {
   fat: NutritionResult;
 }
 
-export function isNutritionSummary(
-  nutrition: NutritionValues | NutritionSummary,
-): nutrition is NutritionSummary {
-  return typeof nutrition.kcal === 'object' && nutrition.kcal !== null;
-}
-
 export function toNutritionSummary(
-  nutrition: NutritionValues | NutritionSummary,
+  nutrition: NutritionValues,
 ): NutritionSummary {
-  if (isNutritionSummary(nutrition)) return nutrition;
   const result = (value: number | null | undefined): NutritionResult =>
     value == null
       ? { status: 'unknown', value: null }

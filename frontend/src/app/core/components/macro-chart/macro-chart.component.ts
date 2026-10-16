@@ -7,7 +7,6 @@ import {
   inject,
   LOCALE_ID,
   OnDestroy,
-  output,
   ViewChild,
 } from '@angular/core';
 import { Chart, DoughnutController, ArcElement } from 'chart.js';
@@ -32,8 +31,6 @@ const PLACEHOLDER_COLOR = 'rgb(200,200,200)';
 export class MacroChartComponent implements OnDestroy {
   nutrition = input.required<NutritionSummary>();
   showKcal = input<boolean>(true);
-
-  legendUpdated = output<Record<string, ChartLegendElement>>();
 
   private readonly locale = inject(LOCALE_ID);
   
@@ -62,7 +59,6 @@ export class MacroChartComponent implements OnDestroy {
       const legend = this.legend();
       const dataIncompleteOrInvalid = this.dataIncompleteOrInvalid();
 
-      this.legendUpdated.emit(legend);
       this.updateChart(nutrition, legend, dataIncompleteOrInvalid);
     });
   }

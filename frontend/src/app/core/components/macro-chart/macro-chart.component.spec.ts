@@ -88,9 +88,7 @@ describe('MacroChartComponent', () => {
     expect(fixture.nativeElement.querySelector('.kcal-wrapper')).toBeNull();
   });
 
-  it('keeps the emitted nutrient legend when the rendered chart falls back to gray', () => {
-    const emitted = vi.fn();
-    fixture.componentInstance.legendUpdated.subscribe(emitted);
+  it('keeps the nutrient legend when the rendered chart falls back to gray', () => {
     fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 12, protein: null, fat: 0 }));
     fixture.detectChanges();
 
@@ -103,7 +101,6 @@ describe('MacroChartComponent', () => {
     expect(legend['protein'].value).toEqual({ status: 'unknown', value: null });
     expect(legend['fat'].value).toEqual({ status: 'exact', value: 0 });
     expect(Object.values(legend).every(entry => entry.valuePercentage === null)).toBe(true);
-    expect(emitted).toHaveBeenLastCalledWith(legend);
 
     fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 12, protein: 6, fat: 2 }));
     fixture.detectChanges();
@@ -117,6 +114,5 @@ describe('MacroChartComponent', () => {
     expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(200,200,200)']);
     expect(Object.keys(fixture.componentInstance.legend())).toEqual(['carbs', 'protein', 'fat']);
     expect(Object.values(fixture.componentInstance.legend()).every(entry => entry.valuePercentage === null)).toBe(true);
-    expect(emitted).toHaveBeenLastCalledWith(fixture.componentInstance.legend());
   });
 });

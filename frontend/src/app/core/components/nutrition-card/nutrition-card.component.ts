@@ -1,10 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import {
-  NutritionSummary,
-  toNutritionSummary,
-} from '../../models/nutrition-result';
-import { NutritionValues } from '../../models/nutrition-values';
+import { NutritionSummary } from '../../models/nutrition-result';
 import { buildNutritionLegend } from '../../utils/nutrition-legend';
 import { ChartLegendElementComponent } from '../chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../macro-chart/macro-chart.component';
@@ -20,11 +16,10 @@ import { MacroChartComponent } from '../macro-chart/macro-chart.component';
   styleUrl: './nutrition-card.component.scss',
 })
 export class NutritionCardComponent {
-  readonly nutrition = input.required<NutritionValues | NutritionSummary>();
+  readonly nutrition = input.required<NutritionSummary>();
   readonly basis = input.required<string>();
   readonly showHeader = input(true);
   readonly showLegend = input(true);
 
-  readonly summary = computed(() => toNutritionSummary(this.nutrition()));
-  readonly nutrientLegend = computed(() => Object.values(buildNutritionLegend(this.summary())));
+  readonly nutrientLegend = computed(() => Object.values(buildNutritionLegend(this.nutrition())));
 }
