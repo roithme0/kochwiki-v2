@@ -3,7 +3,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.recipes.models.enums import RecipeVersionState
+from app.recipes.config import (
+    MAX_INGREDIENT_AMOUNT,
+    MAX_INGREDIENT_INDEX,
+    MAX_NAME_LENGTH,
+    MAX_PREPTIME_MINUTES,
+    MAX_SERVINGS,
+    MAX_STEP_DESCRIPTION_LENGTH,
+    MAX_STEP_INDEX,
+)
+from app.recipes.models.version_state import RecipeVersionState
 from app.core.schemas.common import JsonDecimal, NonnegativeJsonDecimal, PositiveJsonDecimal
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 
@@ -11,16 +20,16 @@ from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 class IngredientWrite(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int = Field(ge=1, le=99)
-    amount: JsonDecimal = Field(gt=0, le=9999)
+    index: int = Field(ge=1, le=MAX_INGREDIENT_INDEX)
+    amount: JsonDecimal = Field(gt=0, le=MAX_INGREDIENT_AMOUNT)
     foodstuffId: int = Field(gt=0)
 
 
 class StepWrite(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int = Field(ge=1, le=99)
-    description: str = Field(min_length=1, max_length=200)
+    index: int = Field(ge=1, le=MAX_STEP_INDEX)
+    description: str = Field(min_length=1, max_length=MAX_STEP_DESCRIPTION_LENGTH)
 
 
 class RecipePresentationIngredientResolve(IngredientWrite):
@@ -34,8 +43,8 @@ class RecipePresentationStepResolve(StepWrite):
 class RecipePresentationResolve(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    servings: int = Field(ge=1, le=99)
-    preptime: int | None = Field(ge=1, le=999)
+    servings: int = Field(ge=1, le=MAX_SERVINGS)
+    preptime: int | None = Field(ge=1, le=MAX_PREPTIME_MINUTES)
     ingredients: list[RecipePresentationIngredientResolve]
     steps: list[RecipePresentationStepResolve]
 
@@ -70,7 +79,7 @@ class RecipePresentationStepOut(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     index: int = Field(ge=1)
-    description: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=MAX_STEP_DESCRIPTION_LENGTH)
 
 
 class RecipePresentationOut(BaseModel):
@@ -94,9 +103,9 @@ def _validate_unique_indexes(indexes: list[int], item_name: str) -> None:
 class RecipeVersionFields(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str = Field(min_length=1, max_length=200)
-    servings: int = Field(ge=1, le=99)
-    preptime: int | None = Field(default=None, ge=1, le=999)
+    name: str = Field(min_length=1, max_length=MAX_NAME_LENGTH)
+    servings: int = Field(ge=1, le=MAX_SERVINGS)
+    preptime: int | None = Field(default=None, ge=1, le=MAX_PREPTIME_MINUTES)
 
 
 class RecipeVersionWrite(RecipeVersionFields):

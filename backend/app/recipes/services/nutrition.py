@@ -7,7 +7,7 @@ from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
-from app.recipes.schemas.recipe_proposal import ResolvedProposalFoodstuffFields
+from app.recipes.schemas.proposal import ResolvedProposalFoodstuffFields
 
 NutritionField = Literal["kcal", "carbs", "protein", "fat"]
 NutritionFoodstuff = Foodstuff | FoodstuffSummaryOut | ResolvedProposalFoodstuffFields

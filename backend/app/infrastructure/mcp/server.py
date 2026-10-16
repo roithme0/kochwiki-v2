@@ -21,12 +21,12 @@ from app.foodstuffs.services import foodstuffs
 from app.recipes.services import recipes
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut
-from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
-from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
-from app.recipes.services.recipe_proposal_saves import save_recipe_proposal as save_proposal
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
+from app.recipes.services.proposal_presentations import resolve_recipe_proposal_presentation
+from app.recipes.services.proposal_saves import save_recipe_proposal as save_proposal
+from app.recipes.services.proposal_store import RecipeProposalStore
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
-from app.recipes.services.recipe_search import RecipeSemanticSearch
+from app.recipes.services.search import RecipeSemanticSearch
 from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.core.exceptions import DomainError
 

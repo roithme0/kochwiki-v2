@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 from io import BytesIO
@@ -12,10 +11,10 @@ from PIL.PngImagePlugin import PngImageFile
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.recipes.image_config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
-from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
+from app.recipes.models.image import RecipeImage
+from app.recipes.schemas.image import ImageUpload, ValidatedRecipeImage
 from app.infrastructure.storage.storage import (
-    PresignedTransfer,
     Storage,
     StorageObjectTooLarge,
     StorageUnavailable,
@@ -36,25 +35,6 @@ class InvalidRecipeImage(Exception):
     def __init__(self, message: str, *, cleanup_pending: bool = False) -> None:
         super().__init__(message)
         self.cleanup_pending = cleanup_pending
-
-
-@dataclass(frozen=True)
-class ImageUpload:
-    id: UUID
-    transfer: PresignedTransfer
-
-
-@dataclass(frozen=True)
-class ValidatedRecipeImage:
-    id: UUID
-    object_key: str
-    size: int
-    width: int
-    height: int
-    sha256: str
-    created_at: datetime
-    content_type: str = IMAGE_CONTENT_TYPE
-    cleanup_pending: bool = False
 
 
 class RecipeImageUploads:

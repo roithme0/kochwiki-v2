@@ -11,7 +11,7 @@ from app.infrastructure.mcp.server import MCPServices, create_mcp_server
 from app.core.schemas.errors import ErrorResponse
 from app.infrastructure.embeddings.lifecycle import embedding_refresh_workers, semantic_search_services
 from app.core.exceptions import DomainError
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.proposal_store import RecipeProposalStore
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:

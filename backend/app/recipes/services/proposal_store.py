@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.schemas.recipe_proposal import (
+from app.recipes.schemas.proposal import (
     ExistingProposalFoodstuff,
     RecipeProposalCreate,
     RecipeProposalOut,

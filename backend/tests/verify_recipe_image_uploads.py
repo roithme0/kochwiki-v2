@@ -5,8 +5,8 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.recipe_image import RecipeImage
-from app.recipes.services.recipe_image_uploads import InvalidRecipeImage, RecipeImageUploads
+from app.recipes.models.image import RecipeImage
+from app.recipes.services.image_uploads import InvalidRecipeImage, RecipeImageUploads
 from app.infrastructure.storage.storage import Storage
 from verify_storage_adapter import transfer
 

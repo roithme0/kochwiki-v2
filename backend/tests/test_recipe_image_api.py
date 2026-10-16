@@ -5,11 +5,11 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.recipes.routes.recipe_images import get_recipe_image_storage, get_recipe_image_uploads
+from app.recipes.routes.images import get_recipe_image_storage, get_recipe_image_uploads
 from app.core.config import get_settings
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.recipe_image import RecipeImage
-from app.recipes.services.recipe_image_uploads import ImagePersistenceFailed, RecipeImageUploads
+from app.recipes.models.image import RecipeImage
+from app.recipes.services.image_uploads import ImagePersistenceFailed, RecipeImageUploads
 from app.infrastructure.storage.storage import PresignedTransfer, Storage, StorageUnavailable
 from test_recipe_image_uploads import png
 

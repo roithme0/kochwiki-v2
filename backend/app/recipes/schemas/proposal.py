@@ -7,6 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.foodstuffs.models.unit import Unit
 from app.core.schemas.common import JsonDecimal, NonnegativeJsonDecimal
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
+from app.recipes.config import (
+    MAX_INGREDIENT_AMOUNT,
+    MAX_INGREDIENT_INDEX,
+)
 from app.recipes.schemas.recipe import (
     RecipePresentationStepOut,
     RecipeVersionFields,
@@ -37,8 +41,8 @@ ProposalFoodstuff = Annotated[
 class ProposalIngredient(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int = Field(ge=1, le=99)
-    amount: JsonDecimal = Field(gt=0, le=9999)
+    index: int = Field(ge=1, le=MAX_INGREDIENT_INDEX)
+    amount: JsonDecimal = Field(gt=0, le=MAX_INGREDIENT_AMOUNT)
     foodstuff: ProposalFoodstuff
 
 
@@ -110,8 +114,8 @@ class ResolvedTemporaryProposalFoodstuff(ResolvedProposalFoodstuffFields):
 class ProposalPresentationIngredientOut(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
-    index: int = Field(ge=1, le=99)
-    amount: JsonDecimal = Field(gt=0, le=9999)
+    index: int = Field(ge=1, le=MAX_INGREDIENT_INDEX)
+    amount: JsonDecimal = Field(gt=0, le=MAX_INGREDIENT_AMOUNT)
     foodstuff: Annotated[
         ResolvedExistingProposalFoodstuff | ResolvedTemporaryProposalFoodstuff,
         Field(discriminator="kind"),

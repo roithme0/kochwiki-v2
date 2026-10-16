@@ -11,12 +11,12 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
-from app.recipes.models.enums import RecipeVersionState
+from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
-from app.recipes.services import recipe_proposal_saves
+from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
+from app.recipes.services import proposal_saves
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
 from app.recipes.services.recipes import create_recipe, discard_recipe_draft
 
@@ -150,7 +150,7 @@ def test_proposal_mcp_validation_and_missing_dependencies() -> None:
 
 def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:
     payload = proposal_payload()
-    original = recipe_proposal_saves.create_recipe_draft
+    original = proposal_saves.create_recipe_draft
 
     def fail(session: Session, lineage_id: UUID, recipe: RecipeVersionWrite) -> RecipeVersion:
         original(session, lineage_id, recipe)
@@ -167,14 +167,14 @@ def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: 
                     assert not result.is_error
                     proposal = RecipeProposalOut.model_validate(result.structured_content)
                     args = {"proposal_id": str(proposal.proposalId)}
-                    monkeypatch.setattr(recipe_proposal_saves, "create_recipe_draft", fail)
+                    monkeypatch.setattr(proposal_saves, "create_recipe_draft", fail)
                     failed = await client.call_tool("save_recipe_proposal", args)
                     assert failed.is_error and "Recipe proposal saving failed" in str(failed)
                     assert "private database details" not in str(failed)
                     with SessionLocal() as session:
                         assert len(list_foodstuffs(session)) == 1
                         assert session.query(RecipeVersion).count() == 1
-                    monkeypatch.setattr(recipe_proposal_saves, "create_recipe_draft", original)
+                    monkeypatch.setattr(proposal_saves, "create_recipe_draft", original)
                     assert not (await client.call_tool("save_recipe_proposal", args)).is_error
 
     asyncio.run(exercise())

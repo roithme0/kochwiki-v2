@@ -3,10 +3,19 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.recipes.models.enums import SEARCHABLE_RECIPE_STATES, RecipeVersionState
+from app.recipes.models.version_state import SEARCHABLE_RECIPE_STATES, RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.embedding import RecipeEmbedding
+from app.infrastructure.embeddings.embedding_refresh import RefreshCoordinator
 from app.infrastructure.embeddings.embedding_service import EmbeddingService
+
+
+recipe_refresh = RefreshCoordinator[UUID]("recipe_embedding_refresh", "Recipe")
+
+
+def mark_recipe_refresh(session: Session, recipe_id: UUID) -> None:
+    recipe_refresh.mark(session, recipe_id)
+
 
 def remove_recipe_embedding(session: Session, version_id: UUID) -> None:
     session.execute(delete(RecipeEmbedding).where(RecipeEmbedding.recipe_version_id == version_id))

@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.models.image import RecipeImage
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.recipe_proposal import RecipeProposalCreate
-from app.recipes.services.recipe_proposal_saves import save_recipe_proposal
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.schemas.proposal import RecipeProposalCreate
+from app.recipes.services.proposal_saves import save_recipe_proposal
+from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import (
     create_recipe, create_recipe_draft, publish_active_recipe_edit, update_recipe_draft,
 )

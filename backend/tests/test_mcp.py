@@ -15,7 +15,7 @@ from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.infrastructure.mcp.instructions import KOCHWIKI_INSTRUCTIONS
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
-from app.recipes.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.embedding import RecipeEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.services import foodstuffs

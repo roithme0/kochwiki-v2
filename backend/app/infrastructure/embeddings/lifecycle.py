@@ -12,9 +12,11 @@ from app.foodstuffs.services.embeddings import (
     foodstuff_refresh as foodstuff_refresh_coordinator,
 )
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
-from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
-from app.recipes.services.recipe_refresh import recipe_refresh as recipe_refresh_coordinator
-from app.recipes.services.recipe_search import RecipeSemanticSearch
+from app.recipes.services.embeddings import (
+    RecipeEmbeddingService,
+    recipe_refresh as recipe_refresh_coordinator,
+)
+from app.recipes.services.search import RecipeSemanticSearch
 
 
 @contextmanager

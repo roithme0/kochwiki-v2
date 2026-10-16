@@ -10,18 +10,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.enums import RecipeVersionState
+from app.recipes.models.version_state import RecipeVersionState
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
+from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
 from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
-from app.recipes.services.recipe_proposal_saves import save_recipe_proposal
-from app.recipes.services.recipe_proposals import RecipeProposalStore
-from app.recipes.services.recipe_refresh import recipe_refresh
+from app.recipes.services.proposal_saves import save_recipe_proposal
+from app.recipes.services.proposal_store import RecipeProposalStore
+from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.recipes import (
     create_recipe, create_recipe_draft, delete_recipe_lineage, discard_recipe_draft,
     get_recipe_version_by_id, publish_active_recipe_edit, publish_recipe_draft,
@@ -115,7 +115,7 @@ def test_failure_rolls_back_and_keeps_proposal_unsaved(failure: str, monkeypatch
         def fail_draft(session: Session, lineage_id: UUID, payload: RecipeVersionWrite) -> None:
             create_recipe_draft(session, lineage_id, payload)
             raise SQLAlchemyError("Draft creation failed")
-        monkeypatch.setattr("app.recipes.services.recipe_proposal_saves.create_recipe_draft", fail_draft)
+        monkeypatch.setattr("app.recipes.services.proposal_saves.create_recipe_draft", fail_draft)
 
     def fail_commit(session: Session) -> None:
         raise SQLAlchemyError("Commit failed")

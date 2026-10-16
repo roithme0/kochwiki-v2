@@ -9,11 +9,15 @@ from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Numer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.base import Base
-from app.recipes.models.enums import RecipeVersionState
+from app.recipes.config import (
+    MAX_NAME_LENGTH,
+    MAX_STEP_DESCRIPTION_LENGTH,
+)
+from app.recipes.models.version_state import RecipeVersionState
 
 if TYPE_CHECKING:
     from app.foodstuffs.models.foodstuff import Foodstuff
-    from app.recipes.models.recipe_image import RecipeImage
+    from app.recipes.models.image import RecipeImage
 
 
 class RecipeLineage(Base):
@@ -50,7 +54,7 @@ class RecipeVersion(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     last_modified: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False)
     servings: Mapped[int] = mapped_column(nullable=False)
     preptime: Mapped[int | None] = mapped_column(nullable=True)
     image_id: Mapped[UUID | None] = mapped_column(ForeignKey("recipe_image.id", ondelete="RESTRICT"), nullable=True, index=True)
@@ -91,6 +95,6 @@ class Step(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     index: Mapped[int] = mapped_column(nullable=False)
-    description: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(String(MAX_STEP_DESCRIPTION_LENGTH), nullable=False)
     recipe_version_id: Mapped[UUID] = mapped_column(ForeignKey("recipe_version.version_id", ondelete="CASCADE"), nullable=False)
     recipe_version: Mapped[RecipeVersion] = relationship(back_populates="steps")

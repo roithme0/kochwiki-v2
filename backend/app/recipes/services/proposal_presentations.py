@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.schemas.recipe import RecipePresentationStepOut
-from app.recipes.schemas.recipe_proposal import (
+from app.recipes.schemas.proposal import (
     ExistingProposalFoodstuff,
     ProposalFoodstuff,
     ProposalPresentationIngredientOut,
@@ -16,8 +16,8 @@ from app.recipes.schemas.recipe_proposal import (
 )
 from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
-from app.recipes.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.recipes.services.proposal_store import RecipeProposalStore
 
 
 def resolve_recipe_proposal_presentation(

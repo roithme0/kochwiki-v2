@@ -1,8 +1,12 @@
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.infrastructure.storage.storage import PresignedTransfer
+from app.recipes.config import IMAGE_CONTENT_TYPE
 
 
 class RecipeImageUploadOut(BaseModel):
@@ -31,3 +35,22 @@ class RecipeImageDownloadOut(BaseModel):
 
     url: str = Field(repr=False)
     expiresIn: int = Field(gt=0)
+
+
+@dataclass(frozen=True)
+class ImageUpload:
+    id: UUID
+    transfer: PresignedTransfer
+
+
+@dataclass(frozen=True)
+class ValidatedRecipeImage:
+    id: UUID
+    object_key: str
+    size: int
+    width: int
+    height: int
+    sha256: str
+    created_at: datetime
+    content_type: str = IMAGE_CONTENT_TYPE
+    cleanup_pending: bool = False

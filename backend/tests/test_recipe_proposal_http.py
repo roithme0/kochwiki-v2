@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
+from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import create_recipe, discard_recipe_draft
 from app.foodstuffs.services.foodstuffs import list_foodstuffs
 

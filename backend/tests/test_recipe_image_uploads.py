@@ -10,10 +10,10 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.recipes.image_config import MAX_IMAGE_BYTES
-from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.config import MAX_IMAGE_BYTES
+from app.recipes.models.image import RecipeImage
 
-from app.recipes.services.recipe_image_uploads import (
+from app.recipes.services.image_uploads import (
     ImageUploadNotFound,
     ImagePersistenceFailed,
     InvalidRecipeImage,

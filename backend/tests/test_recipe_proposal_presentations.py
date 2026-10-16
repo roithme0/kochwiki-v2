@@ -10,7 +10,7 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.recipes.schemas.recipe_proposal import (
+from app.recipes.schemas.proposal import (
     RecipeProposalCreate,
     RecipeProposalPresentationOut,
     ResolvedExistingProposalFoodstuff,
@@ -18,8 +18,8 @@ from app.recipes.schemas.recipe_proposal import (
 )
 from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
-from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
-from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.proposal_presentations import resolve_recipe_proposal_presentation
+from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import create_recipe, delete_recipe_lineage
 
 
