@@ -1,7 +1,7 @@
 from sqlalchemy import case, literal
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff import Foodstuff
 
 
 def source_text(name: str, brand: str | None) -> str:

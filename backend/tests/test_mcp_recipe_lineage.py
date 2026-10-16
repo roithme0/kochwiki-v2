@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import httpx2
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy import func, select
@@ -15,10 +15,10 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.main import create_app
 from app.recipes.models.recipe import RecipeVersion
-from app.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
 from app.recipes.services import recipes
-from app.services.foodstuffs import create_foodstuff
+from app.foodstuffs.services.foodstuffs import create_foodstuff
 
 
 def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings() -> None:

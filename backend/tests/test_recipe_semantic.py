@@ -5,7 +5,7 @@ from threading import Event
 from uuid import UUID
 
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,11 +13,11 @@ from app.db.session import SessionLocal
 from app.recipes.models.enums import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.recipe_embedding import RecipeEmbedding
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
-from app.services.foodstuffs import create_foodstuff, update_foodstuff
+from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
 from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
 from app.services.embedding_refresh import EmbeddingRefreshWorker
 from app.recipes.services.recipe_refresh import recipe_refresh

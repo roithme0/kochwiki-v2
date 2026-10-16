@@ -4,21 +4,21 @@ from threading import Barrier
 from uuid import UUID, uuid4
 
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.recipes.models.enums import RecipeVersionState
-from app.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
 from app.services.exceptions import ConflictError, NotFoundError
-from app.services.foodstuff_refresh import foodstuff_refresh
-from app.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
+from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
+from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 from app.recipes.services.recipe_proposal_saves import save_recipe_proposal
 from app.recipes.services.recipe_proposals import RecipeProposalStore
 from app.recipes.services.recipe_refresh import recipe_refresh

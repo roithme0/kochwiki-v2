@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.recipe_proposal import (
     ExistingProposalFoodstuff,

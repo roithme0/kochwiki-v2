@@ -9,7 +9,7 @@ from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
 from app.recipes.services.recipe_proposals import RecipeProposalStore
 from app.recipes.services.recipes import create_recipe, discard_recipe_draft
-from app.services.foodstuffs import list_foodstuffs
+from app.foodstuffs.services.foodstuffs import list_foodstuffs
 
 
 def prepare(client: TestClient) -> RecipeProposalOut:

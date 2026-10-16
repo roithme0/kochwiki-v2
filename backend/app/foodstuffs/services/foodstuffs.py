@@ -3,11 +3,11 @@ from collections.abc import Sequence
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.services.exceptions import ConflictError, NotFoundError
-from app.services.foodstuff_refresh import mark_foodstuff_refresh
+from app.foodstuffs.services.foodstuff_refresh import mark_foodstuff_refresh
 from app.services.integrity import flush_for_unique_conflict
 
 

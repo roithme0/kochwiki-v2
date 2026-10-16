@@ -1,7 +1,7 @@
-"""Operational commands: python -m app.foodstuff_semantic refresh|search."""
+"""Operational commands: python -m app.foodstuffs.semantic refresh|search."""
 from app.semantic_commands import run_command
-from app.services.foodstuff_embeddings import FoodstuffEmbeddingService
-from app.services.foodstuff_search import FoodstuffSearchCandidate, FoodstuffSemanticSearch
+from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
+from app.foodstuffs.services.foodstuff_search import FoodstuffSearchCandidate, FoodstuffSemanticSearch
 
 
 def format_candidate(rank: int, candidate: FoodstuffSearchCandidate) -> str:

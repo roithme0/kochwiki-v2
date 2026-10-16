@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import httpx2
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,11 +13,11 @@ from app.db.session import SessionLocal
 from app.main import create_app
 from app.recipes.models.enums import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
-from app.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
 from app.recipes.services import recipe_proposal_saves
-from app.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
+from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
 from app.recipes.services.recipes import create_recipe, discard_recipe_draft
 
 

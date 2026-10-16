@@ -4,22 +4,22 @@ import sys
 from collections.abc import Callable
 
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 
-from app import foodstuff_semantic
+from app.foodstuffs import semantic as foodstuff_semantic
 from app.recipes import semantic as recipe_semantic
 from app.core.embedding import DIMENSIONS
 from app.db.session import SessionLocal
-from app.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import EmbeddingClient
-from app.services.foodstuffs import create_foodstuff
+from app.foodstuffs.services.foodstuffs import create_foodstuff
 from app.recipes.services.recipes import create_recipe
 
 
 @pytest.mark.parametrize("module,description", [
     ("app.recipes.semantic", "Refresh recipe embeddings or search recipe names"),
-    ("app.foodstuff_semantic", "Refresh foodstuff embeddings or search ingredient aliases"),
+    ("app.foodstuffs.semantic", "Refresh foodstuff embeddings or search ingredient aliases"),
 ])
 def test_command_starts_with_registered_models_in_a_fresh_process(module: str, description: str) -> None:
     result = subprocess.run(

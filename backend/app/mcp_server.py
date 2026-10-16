@@ -16,15 +16,16 @@ from starlette.applications import Starlette
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
-from app.services import foodstuffs, greeting
+from app.services import greeting
+from app.foodstuffs.services import foodstuffs
 from app.recipes.services import recipes
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
 from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
 from app.recipes.services.recipe_proposal_saves import save_recipe_proposal as save_proposal
 from app.recipes.services.recipe_proposals import RecipeProposalStore
-from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_search import RecipeSemanticSearch
 from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.services.exceptions import DomainError

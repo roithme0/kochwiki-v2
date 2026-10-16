@@ -1,10 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.foodstuff import Foodstuff
-from app.models.foodstuff_embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
 from app.services.embedding_service import EmbeddingService
-from app.services.foodstuff_embedding_text import source_text
+from app.foodstuffs.services.foodstuff_embedding_text import source_text
 
 
 class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):

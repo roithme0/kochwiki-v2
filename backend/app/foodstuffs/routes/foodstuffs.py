@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db, get_write_db
 from app.schemas.errors import CONFLICT_RESPONSE, NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffUpdate
-from app.services import foodstuffs
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffUpdate
+from app.foodstuffs.services import foodstuffs
 
 router = APIRouter()
 

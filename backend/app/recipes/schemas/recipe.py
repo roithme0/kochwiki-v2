@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.recipes.models.enums import RecipeVersionState
 from app.schemas.common import JsonDecimal, NonnegativeJsonDecimal, PositiveJsonDecimal
-from app.schemas.foodstuff import FoodstuffSummaryOut
+from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 
 
 class IngredientWrite(BaseModel):

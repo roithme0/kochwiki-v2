@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from app.schemas.common import JsonDecimal, NonnegativeJsonDecimal
-from app.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import (
     RecipePresentationStepOut,
     RecipeVersionFields,

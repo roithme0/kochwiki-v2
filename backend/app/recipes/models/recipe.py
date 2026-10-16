@@ -12,7 +12,7 @@ from app.db.base import Base
 from app.recipes.models.enums import RecipeVersionState
 
 if TYPE_CHECKING:
-    from app.models.foodstuff import Foodstuff
+    from app.foodstuffs.models.foodstuff import Foodstuff
     from app.recipes.models.recipe_image import RecipeImage
 
 

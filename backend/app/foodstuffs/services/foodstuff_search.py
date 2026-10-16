@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 from sqlalchemy import select
 
-from app.models.foodstuff import Foodstuff
-from app.models.foodstuff_embedding import FoodstuffEmbedding
-from app.schemas.foodstuff import FoodstuffSummaryOut
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
+from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.services.semantic_search import SemanticSearch
-from app.services.foodstuff_embedding_text import current_source_text
-from app.services.foodstuffs import foodstuff_summary_out
+from app.foodstuffs.services.foodstuff_embedding_text import current_source_text
+from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 
 
 @dataclass(frozen=True)

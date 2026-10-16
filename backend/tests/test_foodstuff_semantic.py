@@ -4,23 +4,23 @@ from decimal import Decimal
 from threading import Event
 
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.db.session import SessionLocal
-from app.models.foodstuff import Foodstuff
-from app.models.foodstuff_embedding import FoodstuffEmbedding
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.services.embedding_refresh import EmbeddingRefreshWorker, next_nightly
-from app.services.foodstuff_refresh import foodstuff_refresh
-from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
+from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable
-from app.services.foodstuff_embedding_text import source_text
-from app.services.foodstuff_embeddings import FoodstuffEmbeddingService
-from app.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
+from app.foodstuffs.services.foodstuff_embedding_text import source_text
+from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
+from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 
 
 def vector(axis: int = 0) -> list[float]:

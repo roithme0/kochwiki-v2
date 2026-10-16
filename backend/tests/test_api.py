@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.schemas.errors import ErrorResponse
-from app.schemas.foodstuff import FoodstuffOut
+from app.foodstuffs.schemas.foodstuff import FoodstuffOut
 from app.schemas.user import UserOut
 from app.recipes.schemas.recipe import RecipePresentationOut, RecipeVersionOut
 

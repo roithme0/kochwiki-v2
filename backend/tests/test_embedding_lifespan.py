@@ -9,8 +9,8 @@ from app.main import create_app
 from app.mcp_server import MCPServices
 from app.services import embedding_refresh
 from app.services.embeddings import EmbeddingClient
-from app.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
-from app.services.foodstuff_search import FoodstuffSemanticSearch
+from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
+from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_search import RecipeSemanticSearch
 
 

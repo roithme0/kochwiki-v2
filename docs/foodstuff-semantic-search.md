@@ -1,6 +1,6 @@
 # Foodstuff semantic search
 
-The backend offers alias/name discovery through `app.services.foodstuff_search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
+The backend offers alias/name discovery through `app.foodstuffs.services.foodstuff_search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
 
 ## Configuration and database rollout
 
@@ -23,16 +23,16 @@ Run from `backend` after installing `requirements.txt` into your Python environm
 
 ```powershell
 .venv/Scripts/python.exe -m alembic upgrade head
-.venv/Scripts/python.exe -m app.foodstuff_semantic refresh
-.venv/Scripts/python.exe -m app.foodstuff_semantic search Moehre --limit 5
-.venv/Scripts/python.exe -m app.foodstuff_semantic search chickpeas --limit 5
+.venv/Scripts/python.exe -m app.foodstuffs.semantic refresh
+.venv/Scripts/python.exe -m app.foodstuffs.semantic search Moehre --limit 5
+.venv/Scripts/python.exe -m app.foodstuffs.semantic search chickpeas --limit 5
 ```
 
 For a deployed backend container, with the secret configured through `deployment/.env` or process environment:
 
 ```powershell
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuff_semantic refresh
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuff_semantic search chickpeas --limit 5
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuffs.semantic refresh
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuffs.semantic search chickpeas --limit 5
 ```
 
 Search defaults to five results and accepts limits 1?20. Blank queries, invalid limits, missing credentials and query embedding failures exit nonzero; an empty eligible catalogue is a successful empty result. Refresh reports refreshed/skipped/failed counts, exits nonzero when a record failed, and skips already current records. A failed item stays eligible for a later trigger or sweep.

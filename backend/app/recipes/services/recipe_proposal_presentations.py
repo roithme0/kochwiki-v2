@@ -4,7 +4,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.foodstuff import Foodstuff
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.schemas.recipe import RecipePresentationStepOut
 from app.recipes.schemas.recipe_proposal import (
     ExistingProposalFoodstuff,
@@ -15,7 +15,7 @@ from app.recipes.schemas.recipe_proposal import (
     ResolvedTemporaryProposalFoodstuff,
 )
 from app.services.exceptions import NotFoundError
-from app.services.foodstuffs import foodstuff_summary_out
+from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 from app.recipes.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
 from app.recipes.services.recipe_proposals import RecipeProposalStore
 

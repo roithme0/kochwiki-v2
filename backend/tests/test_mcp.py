@@ -4,7 +4,7 @@ from typing import Literal
 
 import httpx2
 import pytest
-from app.models.enums import Unit
+from app.foodstuffs.models.enums import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
@@ -14,15 +14,15 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.main import create_app
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
-from app.models.foodstuff_embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
 from app.recipes.models.recipe_embedding import RecipeEmbedding
-from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.models.foodstuff import Foodstuff
-from app.services import foodstuffs
-from app.services.foodstuff_refresh import foodstuff_refresh
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.services import foodstuffs
+from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
-from app.services.foodstuffs import create_foodstuff, foodstuff_summary_out
+from app.foodstuffs.services.foodstuffs import create_foodstuff, foodstuff_summary_out
 from app.recipes.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
 
 
