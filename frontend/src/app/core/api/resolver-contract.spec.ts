@@ -5,10 +5,10 @@ import { zRecipePresentationOut } from './generated/zod.gen';
 const presentation: RecipePresentationOut = {
     servings: 100,
     preptime: null,
-    kcal: 99980001,
-    carbs: 0,
-    protein: null,
-    fat: 0,
+    kcal: { status: 'exact' as const, value: 99980001 },
+    carbs: { status: 'exact' as const, value: 0 },
+    protein: { status: 'unknown' as const, value: null },
+    fat: { status: 'exact' as const, value: 0 },
     ingredients: [{
         index: 100,
         amount: 10000,
@@ -25,10 +25,14 @@ describe('generated resolver response validation', () => {
         expect(z.parse(zRecipePresentationOut, presentation)).toEqual(presentation);
     });
 
-    const invalid: RecipePresentationOut[] = [
+    const invalid: unknown[] = [
         { ...presentation, servings: 0 },
         { ...presentation, preptime: 0 },
-        { ...presentation, kcal: -1 },
+        { ...presentation, kcal: { status: 'exact', value: -1 } },
+        { ...presentation, kcal: 12 },
+        { ...presentation, kcal: { status: 'minimum', value: null } },
+        { ...presentation, kcal: { status: 'unknown', value: 0 } },
+        { ...presentation, kcal: { status: 'exact', value: 12, extra: true } },
         { ...presentation, ingredients: [{ ...presentation.ingredients[0], index: 0 }] },
         { ...presentation, ingredients: [{ ...presentation.ingredients[0], amount: 0 }] },
         { ...presentation, ingredients: [{ ...presentation.ingredients[0], foodstuff: {

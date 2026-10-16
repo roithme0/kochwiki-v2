@@ -19,10 +19,10 @@ describe('StepsGridComponent', () => {
     const recipe: RecipePresentation = {
       servings: 2,
       preptime: null,
-      kcal: null,
-      carbs: null,
-      protein: null,
-      fat: null,
+      kcal: { status: 'unknown' as const, value: null },
+      carbs: { status: 'unknown' as const, value: null },
+      protein: { status: 'unknown' as const, value: null },
+      fat: { status: 'unknown' as const, value: null },
       ingredients: [],
       steps: [
         { index: 2, description: 'Second' },

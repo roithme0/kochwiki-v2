@@ -13,8 +13,9 @@ from app.recipes.config import (
     MAX_STEP_INDEX,
 )
 from app.recipes.models.version_state import RecipeVersionState
-from app.core.schemas.common import JsonDecimal, NonnegativeJsonDecimal, PositiveJsonDecimal
+from app.core.schemas.common import JsonDecimal, PositiveJsonDecimal
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
+from app.recipes.schemas.nutrition import NutrientResult
 
 
 class IngredientWrite(BaseModel):
@@ -87,10 +88,10 @@ class RecipePresentationOut(BaseModel):
 
     servings: int = Field(ge=1)
     preptime: int | None = Field(ge=1)
-    kcal: NonnegativeJsonDecimal | None
-    carbs: NonnegativeJsonDecimal | None
-    protein: NonnegativeJsonDecimal | None
-    fat: NonnegativeJsonDecimal | None
+    kcal: NutrientResult
+    carbs: NutrientResult
+    protein: NutrientResult
+    fat: NutrientResult
     ingredients: list[RecipePresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
 
@@ -174,10 +175,10 @@ class RecipeVersionOut(BaseModel):
     name: str
     servings: int
     preptime: int | None
-    kcal: JsonDecimal | None
-    carbs: JsonDecimal | None
-    protein: JsonDecimal | None
-    fat: JsonDecimal | None
+    kcal: NutrientResult
+    carbs: NutrientResult
+    protein: NutrientResult
+    fat: NutrientResult
     ingredients: list[IngredientOut]
     steps: list[StepOut]
 

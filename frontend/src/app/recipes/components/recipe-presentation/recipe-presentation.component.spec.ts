@@ -18,10 +18,10 @@ describe('RecipePresentationComponent', () => {
     const recipe: RecipePresentation = {
       servings: 2,
       preptime: 25,
-      kcal: 450,
-      carbs: 50,
-      protein: 20,
-      fat: 12,
+      kcal: { status: 'exact' as const, value: 450 },
+      carbs: { status: 'exact' as const, value: 50 },
+      protein: { status: 'exact' as const, value: 20 },
+      fat: { status: 'exact' as const, value: 12 },
       ingredients: [
         {
           index: 1,

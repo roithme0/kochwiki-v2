@@ -115,6 +115,16 @@ Recipe artifacts use the recipe name as their title and render complete data
 through the shared recipe presentation component: servings, preparation time,
 ingredients, steps, and per-serving nutrition. Ingredient foodstuffs contain only
 name, unit label, and nutrition; catalogue IDs and proposal identity are excluded.
+Recipe aggregate nutrient fields use `{ value, status }` results: `exact`,
+`minimum` (the sum of known contributions), or `unknown` with a null value.
+Saved recipes and recipe presentations show minimum values with `≥` and unknown
+values with `—`. Incomplete macros use a gray ring without percentages; calories
+have their own completeness status. Ingredient foodstuff fields remain numeric
+or null. The editor's live preview retains its existing calculation for now.
+Standalone nutrition artifacts also retain their numeric/null format in this
+slice: only exact recipe values can populate it; minima remain null there and
+can be explained in text until the artifact contract is extended.
+
 Both existing recipes and resolved proposals can be presented. Presentation
 alone does not create or save a proposal or draft. The optional
 artifact metadata field `proposalId` identifies the stored proposal represented

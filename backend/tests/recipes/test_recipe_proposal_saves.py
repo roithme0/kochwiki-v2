@@ -71,7 +71,7 @@ def test_atomic_save_and_repeat_returns_current_version() -> None:
         assert result.state == RecipeVersionState.DRAFT
         assert result.recipeLineageId == lineage_id
         assert result.name == "Improved" and result.servings == 2 and result.preptime == 20
-        assert result.kcal == Decimal(130)
+        assert result.kcal.value == Decimal(130)
         assert [item.index for item in result.ingredients] == [1, 2]
         assert [item.description for item in result.steps] == ["Cook", "Serve"]
         created = result.ingredients[0].foodstuff

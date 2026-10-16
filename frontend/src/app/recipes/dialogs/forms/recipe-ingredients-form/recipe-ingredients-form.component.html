@@ -61,7 +61,7 @@
           <div class="nutrition-preview">
             <app-macro-chart
               class="macro-chart"
-              [nutrition]="state.nutrition"
+              [nutrition]="state.nutrition | nutritionSummary"
               (legendUpdated)="legend.set($event)"
             />
             @if (canShowLegend() && legend()['carbs'] && legend()['protein'] && legend()['fat']) {

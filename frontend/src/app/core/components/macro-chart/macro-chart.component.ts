@@ -4,48 +4,56 @@ import {
   effect,
   ElementRef,
   input,
+  inject,
+  LOCALE_ID,
   OnDestroy,
   output,
   ViewChild,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
 import { Chart, DoughnutController, ArcElement } from 'chart.js';
-import { NutritionValues } from '../../models/nutrition-values';
-import { buildNutritionLegend, hasMacroDistribution } from '../../utils/nutrition-legend';
+import {
+  NutritionSummary,
+  formatNutritionResult,
+} from '../../models/nutrition-result';
+import {
+  buildNutritionLegend,
+  hasMacroDistribution,
+} from '../../utils/nutrition-legend';
 import { ChartLegendElement } from '../../models/chart-legend-element';
 
 const PLACEHOLDER_VALUE: number = 1;
-const PLACEHOLDER_LEGEND: Record<string, ChartLegendElement> = {
-  placeholder: {
-    displayName: 'Placeholder',
-    color: 'rgb(200,200,200)',
-    valueAbsolute: PLACEHOLDER_VALUE,
-    valuePercentage: 100,
-  },
-};
+const PLACEHOLDER_COLOR = 'rgb(200,200,200)';
 
 @Component({
   selector: 'app-macro-chart',
-  imports: [DecimalPipe],
   templateUrl: './macro-chart.component.html',
   styleUrl: './macro-chart.component.scss',
 })
 export class MacroChartComponent implements OnDestroy {
-  nutrition = input.required<NutritionValues>();
+  nutrition = input.required<NutritionSummary>();
   showKcal = input<boolean>(true);
 
   legendUpdated = output<Record<string, ChartLegendElement>>();
+
+  private readonly locale = inject(LOCALE_ID);
+  
+  readonly displayedKcal = computed(
+    () =>
+      `${formatNutritionResult(this.nutrition().kcal, 0, this.locale)} kcal`,
+  );
 
   @ViewChild('canvas')
   readonly canvas: ElementRef<HTMLCanvasElement> | undefined;
 
   chart: Chart | null = null;
 
-  dataIncompleteOrInvalid = computed(() => !hasMacroDistribution(this.nutrition()));
+  dataIncompleteOrInvalid = computed(
+    () => !hasMacroDistribution(this.nutrition()),
+  );
 
   legend = computed(
     (): Record<string, ChartLegendElement> =>
-      this.buildLegend(this.nutrition())
+      buildNutritionLegend(this.nutrition()),
   );
 
   constructor() {
@@ -67,7 +75,7 @@ export class MacroChartComponent implements OnDestroy {
         canvasElement,
         this.nutrition(),
         this.legend(),
-        this.dataIncompleteOrInvalid()
+        this.dataIncompleteOrInvalid(),
       );
     }
   }
@@ -78,33 +86,27 @@ export class MacroChartComponent implements OnDestroy {
   }
 
   private updateChart(
-    nutrition: NutritionValues,
+    nutrition: NutritionSummary,
     legend: Record<string, ChartLegendElement>,
-    dataIncompleteOrInvalid: boolean
+    dataIncompleteOrInvalid: boolean,
   ): void {
     const chart = this.chart;
     const dataSet = chart?.data.datasets[0];
     if (chart == null || dataSet == null) return;
 
-    dataSet.data = this.getChartData(
-      nutrition,
-      dataIncompleteOrInvalid
-    );
+    dataSet.data = this.getChartData(nutrition, dataIncompleteOrInvalid);
     dataSet.backgroundColor = this.getChartColors(
       legend,
-      dataIncompleteOrInvalid
+      dataIncompleteOrInvalid,
     );
     chart.update();
   }
 
-  private buildLegend = (nutrition: NutritionValues): Record<string, ChartLegendElement> =>
-    this.dataIncompleteOrInvalid() ? PLACEHOLDER_LEGEND : buildNutritionLegend(nutrition);
-
   private createChart(
     canvas: HTMLCanvasElement,
-    nutrition: NutritionValues,
+    nutrition: NutritionSummary,
     legend: Record<string, ChartLegendElement>,
-    dataIncompleteOrInvalid: boolean
+    dataIncompleteOrInvalid: boolean,
   ): void {
     this.chart = new Chart(canvas, {
       type: 'doughnut',
@@ -115,13 +117,10 @@ export class MacroChartComponent implements OnDestroy {
       data: {
         datasets: [
           {
-            data: this.getChartData(
-              nutrition,
-              dataIncompleteOrInvalid
-            ),
+            data: this.getChartData(nutrition, dataIncompleteOrInvalid),
             backgroundColor: this.getChartColors(
               legend,
-              dataIncompleteOrInvalid
+              dataIncompleteOrInvalid,
             ),
             borderWidth: 0,
           },
@@ -131,29 +130,24 @@ export class MacroChartComponent implements OnDestroy {
   }
 
   private getChartData(
-    nutrition: NutritionValues,
-    dataIncompleteOrInvalid: boolean
+    nutrition: NutritionSummary,
+    dataIncompleteOrInvalid: boolean,
   ): number[] {
     return dataIncompleteOrInvalid
       ? [PLACEHOLDER_VALUE]
       : [
-          nutrition.carbs ?? 0,
-          nutrition.protein ?? 0,
-          nutrition.fat ?? 0,
+          nutrition.carbs.value ?? 0,
+          nutrition.protein.value ?? 0,
+          nutrition.fat.value ?? 0,
         ];
   }
 
   private getChartColors(
     legend: Record<string, ChartLegendElement>,
-    dataIncompleteOrInvalid: boolean
+    dataIncompleteOrInvalid: boolean,
   ): string[] {
     return dataIncompleteOrInvalid
-      ? [legend['placeholder'].color]
-      : [
-          legend['carbs'].color,
-          legend['protein'].color,
-          legend['fat'].color,
-        ];
+      ? [PLACEHOLDER_COLOR]
+      : [legend['carbs'].color, legend['protein'].color, legend['fat'].color];
   }
-
 }

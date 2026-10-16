@@ -20,7 +20,7 @@ const recipeMetadataSchema = z.strictObject({
 
 export const RECIPE_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   type: 'kochwiki-recipe',
-  description: 'Display a complete existing recipe or resolved recipe proposal: servings, preparation time, ingredients, steps and per-serving nutrition. Supply only the presentation fields in the schema, using null for unknown nutrition or preparation time. Displaying a recipe does not create or save domain data.',
+  description: 'Display a complete existing recipe or resolved recipe proposal: servings, preparation time, ingredients, steps and per-serving nutrition. Supply only the presentation fields in the schema, using value/status objects (exact, minimum, unknown) for aggregate nutrition and null for unknown preparation time. Preserve minimum values as lower bounds; ingredient foodstuff nutrition remains numeric or null. Displaying a recipe does not create or save domain data.',
   titleDescription: 'Use the recipe name as the title.',
   subtitleDescription: 'Omit the subtitle.',
   payloadSchema: z.record(z.string(), z.json()).parse(z.toJSONSchema(recipePresentationSchema)),

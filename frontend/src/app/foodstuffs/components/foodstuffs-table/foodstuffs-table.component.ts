@@ -1,3 +1,4 @@
+import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import {
   Component,
   DestroyRef,
@@ -33,6 +34,7 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
 @Component({
   selector: 'app-foodstuffs-table',
   imports: [
+    NutritionSummaryPipe,
     MatTableModule,
     MatSortModule,
     MatButtonModule,

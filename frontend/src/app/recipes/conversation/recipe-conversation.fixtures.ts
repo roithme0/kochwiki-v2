@@ -31,10 +31,10 @@ export function conversationRecipe(): RecipeVersionOut {
     name: 'Linsensuppe',
     servings: 2,
     preptime: 30,
-    kcal: 120,
-    carbs: 20,
-    protein: 8,
-    fat: null,
+    kcal: { status: 'exact' as const, value: 120 },
+    carbs: { status: 'exact' as const, value: 20 },
+    protein: { status: 'exact' as const, value: 8 },
+    fat: { status: 'unknown' as const, value: null },
     ingredients: [
       {
         id: 1,

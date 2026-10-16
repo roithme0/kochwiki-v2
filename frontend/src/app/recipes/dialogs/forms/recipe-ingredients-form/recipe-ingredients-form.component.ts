@@ -1,3 +1,4 @@
+import { NutritionSummaryPipe } from '../../../../core/pipes/nutrition-summary.pipe';
 import type { IngredientOut, RecipeVersionOut } from '../../../../core/api/generated';
 import {
   Component,
@@ -42,6 +43,7 @@ import {
 @Component({
   selector: 'app-recipe-ingredients-form',
   imports: [
+    NutritionSummaryPipe,
     IngredientFieldComponent,
     MatButtonModule,
     ReactiveFormsModule,

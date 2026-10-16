@@ -14,15 +14,15 @@
         </mat-card-content>
       </mat-card>
     }
-    @if (displayedValueAbsolute() != null) {
-      <p class="value-absolute">{{ displayedValueAbsolute() }}&nbsp;g</p>
-    } @else {
-      <mat-icon
-        class="value-absolute"
-        role="img"
-        [attr.aria-label]="legendElement().displayName + ': Angabe fehlt'"
-        >help_outline</mat-icon
-      >
-    }
+    <p
+      class="value-absolute"
+      [attr.aria-label]="
+        legendElement().value.status === 'unknown'
+          ? legendElement().displayName + ': Angabe fehlt'
+          : null
+      "
+    >
+      {{ displayedValue() }}
+    </p>
   </mat-card-content>
 </mat-card>

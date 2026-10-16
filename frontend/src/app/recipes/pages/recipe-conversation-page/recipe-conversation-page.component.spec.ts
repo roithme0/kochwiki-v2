@@ -245,7 +245,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
 
   it('renders a recipe with temporary ingredients and preparation time without saving or fetching', async () => {
     const page = await open();
-    const payload = { servings: 2, preptime: 25, kcal: null, carbs: null, protein: null, fat: null,
+    const payload = { servings: 2, preptime: 25, kcal: { status: 'unknown', value: null }, carbs: { status: 'unknown', value: null }, protein: { status: 'unknown', value: null }, fat: { status: 'unknown', value: null },
       ingredients: [{ index: 1, amount: 100, foodstuff: { name: 'Neue Zutat', unitVerbose: 'g',
         kcal: null, carbs: null, protein: null, fat: null } }],
       steps: [{ index: 1, description: 'Neue Zutat schneiden.' }] };

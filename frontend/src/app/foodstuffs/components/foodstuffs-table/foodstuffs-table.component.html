@@ -15,7 +15,7 @@
       <td mat-cell *matCellDef="let foodstuff">
         <app-macro-chart
           class="macro-chart"
-          [nutrition]="foodstuff"
+          [nutrition]="foodstuff | nutritionSummary"
           [showKcal]="false"
         />
       </td> </ng-container

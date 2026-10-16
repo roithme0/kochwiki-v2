@@ -16,10 +16,10 @@ def presentation() -> dict[str, object]:
     return {
         "servings": 2,
         "preptime": None,
-        "kcal": 12.5,
-        "carbs": None,
-        "protein": 0,
-        "fat": None,
+        "kcal": {"status": "exact", "value": 12.5},
+        "carbs": {"status": "unknown", "value": None},
+        "protein": {"status": "exact", "value": 0},
+        "fat": {"status": "unknown", "value": None},
         "ingredients": [{
             "index": 1,
             "amount": 12.5,
@@ -54,7 +54,7 @@ class PresentationValidationTests(unittest.TestCase):
         ]
         for field in ("kcal", "carbs", "protein", "fat"):
             cases.extend([
-                ((field,), (-1,)),
+                ((field,), ({"status": "exact", "value": -1},)),
                 (("ingredients", 0, "foodstuff", field), (-1,)),
             ])
         for path, values in cases:
@@ -78,7 +78,7 @@ class PresentationValidationTests(unittest.TestCase):
     def test_responses_do_not_inherit_request_upper_limits(self) -> None:
         parsed = RecipePresentationOut.model_validate(presentation())
         body = parsed.model_dump()
-        body.update(servings=100, preptime=1000, kcal=Decimal("1000000"))
+        body.update(servings=100, preptime=1000, kcal={"status": "exact", "value": Decimal("1000000")})
         body["ingredients"][0].update(index=100, amount=Decimal("10000"))
         body["steps"][0].update(index=100, description="x" * 200)
         result = RecipePresentationOut.model_validate(body)
@@ -90,9 +90,9 @@ class PresentationValidationTests(unittest.TestCase):
         for mode in ("validation", "serialization"):
             with self.subTest(mode=mode):
                 schema = RecipePresentationOut.model_json_schema(mode=mode)
-                self.assertEqual(schema["properties"]["kcal"]["anyOf"], [
-                    {"type": "number", "minimum": 0}, {"type": "null"},
-                ])
+                self.assertEqual(schema["properties"]["kcal"]["discriminator"]["propertyName"], "status")
+                self.assertEqual(schema["$defs"]["ExactNutrition"]["properties"]["value"],
+                                 {"title": "Value", "type": "number", "minimum": 0})
                 self.assertEqual(schema["$defs"]["FoodstuffSummaryOut"]["properties"]["fat"]["anyOf"], [
                     {"type": "number", "minimum": 0}, {"type": "null"},
                 ])
@@ -106,23 +106,23 @@ class PresentationValidationTests(unittest.TestCase):
                       Decimal("NaN"), Decimal("Infinity")):
             with self.subTest(value=value):
                 with self.assertRaises(ValidationError):
-                    RecipePresentationOut.model_validate({**presentation(), "kcal": value})
+                    RecipePresentationOut.model_validate({**presentation(), "kcal": {"status": "exact", "value": value}})
         for literal in ("1e309",):
-            body = json.dumps(presentation()).replace('"kcal": 12.5', f'"kcal": {literal}')
+            body = json.dumps(presentation()).replace('"value": 12.5', f'"value": {literal}')
             with self.subTest(json_number=literal):
                 with self.assertRaises(ValidationError):
                     RecipePresentationOut.model_validate_json(body)
-        body = json.dumps(presentation()).replace('"kcal": 12.5', '"kcal": 1e-400')
-        self.assertEqual(RecipePresentationOut.model_validate_json(body).kcal, Decimal("0"))
+        body = json.dumps(presentation()).replace('"value": 12.5', '"value": 1e-400')
+        self.assertEqual(RecipePresentationOut.model_validate_json(body).kcal.value, Decimal("0"))
         with self.assertRaises(ValidationError):
             RecipePresentationOut.model_validate(json.loads(body, parse_float=Decimal))
         for value in (Decimal("0"), Decimal("5e-324"), Decimal.from_float(sys.float_info.max),
                       Decimal("0.12345678901234567890123456789")):
             with self.subTest(value=value):
-                parsed = RecipePresentationOut.model_validate({**presentation(), "kcal": value})
-                self.assertEqual(parsed.kcal, value)
-                self.assertEqual(json.loads(parsed.model_dump_json())["kcal"], float(value))
-                self.assertEqual(parsed.model_dump(mode="json")["kcal"], float(value))
+                parsed = RecipePresentationOut.model_validate({**presentation(), "kcal": {"status": "exact", "value": value}})
+                self.assertEqual(parsed.kcal.value, value)
+                self.assertEqual(json.loads(parsed.model_dump_json())["kcal"]["value"], float(value))
+                self.assertEqual(parsed.model_dump(mode="json")["kcal"]["value"], float(value))
         parsed = RecipePresentationOut.model_validate(presentation())
         parsed.ingredients[0].amount = Decimal("1e-400")
         for dump in (parsed.model_dump_json, lambda: parsed.model_dump(mode="json")):

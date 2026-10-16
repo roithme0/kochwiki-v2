@@ -30,10 +30,10 @@ export function recipeArtifact(
   const presentation = {
     servings: recipe.servings,
     preptime: recipe.preptime,
-    kcal: recipe.kcal,
-    carbs: recipe.carbs,
-    protein: recipe.protein,
-    fat: recipe.fat,
+    kcal: { ...recipe.kcal },
+    carbs: { ...recipe.carbs },
+    protein: { ...recipe.protein },
+    fat: { ...recipe.fat },
     ingredients: recipe.ingredients.map(({ index, amount, foodstuff }) => ({
       index,
       amount,

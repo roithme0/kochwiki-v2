@@ -202,7 +202,7 @@ describe('RecipeIngredientsFormComponent', () => {
 });
 
 function legendElement(displayName: string): ChartLegendElement {
-    return { displayName, color: '#ffffff', valuePercentage: 33, valueAbsolute: 10 };
+    return { displayName, color: '#ffffff', valuePercentage: 33, value: { status: 'exact', value: 10 } };
 }
 
 function createRecipeForm(): FormGroup {
