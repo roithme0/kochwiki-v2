@@ -4,9 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from app.models.user import User
+from app.identity.models.user import User
 from app.services.exceptions import NotFoundError
-from app.services.oidc import Identity
+from app.identity.services.oidc import Identity
 
 
 def list_users(session: Session) -> Sequence[User]:

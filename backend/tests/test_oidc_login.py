@@ -18,14 +18,14 @@ from pydantic import ValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.api.routes import auth
-from app.core.auth_logging import AuthQueryFilter
+from app.identity.routes import auth
+from app.identity.core.auth_logging import AuthQueryFilter
 from app.core.config import Settings
 from app.db.session import SessionLocal
-from app.models.login_transaction import LoginTransaction
-from app.models.user import User
-from app.services import oidc
-from app.services.users import map_identity
+from app.identity.models.login_transaction import LoginTransaction
+from app.identity.models.user import User
+from app.identity.services import oidc
+from app.identity.services.users import map_identity
 
 ISSUER = "http://localhost:8006/realms/services"
 CALLBACK = "http://localhost:8000/api/auth/callback"

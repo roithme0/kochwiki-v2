@@ -8,14 +8,14 @@ from fastapi.security import APIKeyCookie
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.schemas.user import UserOut
-from app.services.oidc import (
+from app.identity.schemas.user import UserOut
+from app.identity.services.oidc import (
     LoginRejected,
     OIDCLogin,
     ProviderUnavailable,
     TRANSACTION_SECONDS,
 )
-from app.services.sessions import (
+from app.identity.services.sessions import (
     SESSION_COOKIE,
     SESSION_PATH,
     SESSION_SECONDS,
@@ -24,7 +24,7 @@ from app.services.sessions import (
     establish_session,
     invalidate_session,
 )
-from app.services.users import map_identity
+from app.identity.services.users import map_identity
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 COOKIE = "kochwiki_login"

@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db, get_write_db
 from app.schemas.errors import NOT_FOUND_RESPONSE
-from app.schemas.user import UserOut
-from app.services import users
+from app.identity.schemas.user import UserOut
+from app.identity.services import users
 
 router = APIRouter()
 

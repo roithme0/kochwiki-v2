@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from app.models.application_session import ApplicationSession
-from app.models.user import User
+from app.identity.models.application_session import ApplicationSession
+from app.identity.models.user import User
 
 SESSION_COOKIE = "kochwiki_session"
 SESSION_PATH = "/api"

@@ -8,14 +8,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, literal, select, text, update
 
-from app.api.routes import auth
+from app.identity.routes import auth
 from app.core.config import Settings
 from app.db.session import SessionLocal
-from app.models.application_session import ApplicationSession
-from app.models.user import User
-from app.schemas.user import UserOut
-from app.services import sessions as session_services
-from app.services.sessions import (
+from app.identity.models.application_session import ApplicationSession
+from app.identity.models.user import User
+from app.identity.schemas.user import UserOut
+from app.identity.services import sessions as session_services
+from app.identity.services.sessions import (
     SESSION_COOKIE, SESSION_LIFETIME, SESSION_PATH, SESSION_SECONDS, authenticated_user,
     cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )

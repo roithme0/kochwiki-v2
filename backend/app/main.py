@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.router import router
-from app.core.auth_logging import configure_auth_logging
+from app.identity.core.auth_logging import configure_auth_logging
 from app.core.config import get_settings
 from app.mcp_server import MCPServices, create_mcp_server
 from app.schemas.errors import ErrorResponse

@@ -13,9 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from sqlalchemy import delete
 
 from app.core.config import Settings
-from app.core.profile import normalize_display_name
+from app.identity.core.profile import normalize_display_name
 from app.db.session import SessionLocal
-from app.models.login_transaction import LoginTransaction
+from app.identity.models.login_transaction import LoginTransaction
 
 TRANSACTION_SECONDS = 600
 

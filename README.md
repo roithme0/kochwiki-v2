@@ -45,10 +45,11 @@ recipe proposal creation, retrieval and saving. See
 [MCP integration and local verification](docs/mcp.md).
 
 Backend API models and validation live in `backend/app`; no separate contract
-package installation is required. Recipe and foodstuff models, schemas, services,
-HTTP routes, and search commands live in `backend/app/recipes` and
-`backend/app/foodstuffs`, respectively; database, storage, and embedding
-infrastructure remain shared. Install `backend/requirements.txt` before
+package installation is required. Domain models, schemas, services, and HTTP
+routes live in `backend/app/recipes`, `backend/app/foodstuffs`, and
+`backend/app/identity`. Identity includes users, OIDC login, and application
+sessions. Search commands stay with their recipe and foodstuff domains;
+database, storage, and embedding infrastructure remain shared. Install `backend/requirements.txt` before
 running the backend or OpenAPI generation. From `frontend`, run
 `npm run check:kochwiki-contract` to verify that the generated OpenAPI document
 and frontend types match the backend schemas.

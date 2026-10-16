@@ -19,9 +19,9 @@ os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 
 from app.db.session import SessionLocal, engine
 from app.main import create_app
-from app.schemas.user import UserOut
-from app.services.oidc import Identity
-from app.services.users import map_identity
+from app.identity.schemas.user import UserOut
+from app.identity.services.oidc import Identity
+from app.identity.services.users import map_identity
 
 
 @pytest.fixture(scope="session", autouse=True)
