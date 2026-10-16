@@ -4,8 +4,8 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
-from app.infrastructure.mcp.server import MCPServices
-from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
+from app.infrastructure.mcp.services import MCPServices
+from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.embeddings import (
     FoodstuffEmbeddingService,

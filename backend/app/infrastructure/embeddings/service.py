@@ -7,7 +7,7 @@ from typing import Generic, TypeVar
 from sqlalchemy.orm import Session
 
 from app.infrastructure.embeddings.models import EmbeddingMixin
-from app.infrastructure.embeddings.embedding_refresh import RefreshId, RefreshReport
+from app.infrastructure.embeddings.refresh import RefreshId, RefreshReport
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
 
 EmbeddingRecord = TypeVar("EmbeddingRecord", bound=EmbeddingMixin)

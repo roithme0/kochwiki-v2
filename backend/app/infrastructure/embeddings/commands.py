@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.infrastructure.database.session import SessionLocal
-from app.infrastructure.embeddings.embedding_refresh import RefreshReport
+from app.infrastructure.embeddings.refresh import RefreshReport
 from app.infrastructure.embeddings.embeddings import EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
 from app.infrastructure.embeddings.semantic_search import SemanticSearch
 

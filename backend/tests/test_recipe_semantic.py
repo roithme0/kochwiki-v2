@@ -19,7 +19,7 @@ from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, Embeddin
 from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
 from app.recipes.services.embeddings import RecipeEmbeddingService, recipe_refresh
-from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
+from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
 from app.recipes.services.search import RecipeSemanticSearch
 from app.recipes.services.recipes import (
     create_recipe, create_recipe_draft, delete_recipe_lineage, discard_recipe_draft,

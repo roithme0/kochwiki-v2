@@ -14,7 +14,7 @@ from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker, next_nightly
+from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker, next_nightly
 from app.foodstuffs.services.embeddings import FoodstuffEmbeddingService, foodstuff_refresh, source_text
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
 from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable

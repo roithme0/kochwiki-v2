@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 from app.recipes.models.version_state import SEARCHABLE_RECIPE_STATES, RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.embedding import RecipeEmbedding
-from app.infrastructure.embeddings.embedding_refresh import RefreshCoordinator
-from app.infrastructure.embeddings.embedding_service import EmbeddingService
+from app.infrastructure.embeddings.refresh import RefreshCoordinator
+from app.infrastructure.embeddings.service import EmbeddingService
 
 
 recipe_refresh = RefreshCoordinator[UUID]("recipe_embedding_refresh", "Recipe")

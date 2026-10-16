@@ -4,8 +4,8 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.infrastructure.embeddings.embedding_refresh import RefreshCoordinator
-from app.infrastructure.embeddings.embedding_service import EmbeddingService
+from app.infrastructure.embeddings.refresh import RefreshCoordinator
+from app.infrastructure.embeddings.service import EmbeddingService
 
 
 foodstuff_refresh = RefreshCoordinator[int]("foodstuff_embedding_refresh", "Foodstuff")

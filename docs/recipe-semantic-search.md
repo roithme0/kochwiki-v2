@@ -38,7 +38,7 @@ relationship loading and full recipe serialization.
 
 `RecipeEmbeddingService` supplies recipe-specific source text, eligibility,
 embedding construction and historical cleanup. The shared typed
-`embedding_service.EmbeddingService` owns freshness checks, generation outside
+`service.EmbeddingService` owns freshness checks, generation outside
 database transactions, locked revalidation, persistence, error handling and
 sweep counting. `FoodstuffEmbeddingService` uses the same algorithm with its
 own source and storage rules.

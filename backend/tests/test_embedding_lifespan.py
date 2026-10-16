@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
-from app.infrastructure.mcp.server import MCPServices
-from app.infrastructure.embeddings import embedding_refresh
+from app.infrastructure.mcp.services import MCPServices
+from app.infrastructure.embeddings import refresh
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.embeddings import foodstuff_refresh, mark_foodstuff_refresh
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
@@ -26,7 +26,7 @@ class Provider:
 
 
 def test_failed_worker_start_unsubscribes_and_can_be_stopped(monkeypatch: pytest.MonkeyPatch) -> None:
-    worker = embedding_refresh.EmbeddingRefreshWorker[int](lambda record_id: "skipped", lambda: None,
+    worker = refresh.EmbeddingRefreshWorker[int](lambda record_id: "skipped", lambda: None,
         coordinator=foodstuff_refresh)
     def fail_start(thread: Thread) -> None:
         raise RuntimeError("thread start failed")
@@ -48,7 +48,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
     recipe_bindings: list[RecipeSemanticSearch | None] = []
     threads: list[Thread] = []
     original_start = Thread.start
-    original_nightly = embedding_refresh.next_nightly
+    original_nightly = refresh.next_nightly
     original_bind = MCPServices.bind_foodstuff_search
     original_recipe_bind = MCPServices.bind_recipe_search
     nightly_calls = 0
@@ -77,7 +77,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
 
     if failure == "stop":
         from uuid import UUID
-        from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
+        from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
         original_stop = EmbeddingRefreshWorker.stop
         stopped = 0
         def stop(worker: EmbeddingRefreshWorker[int] | EmbeddingRefreshWorker[UUID]) -> None:
@@ -92,7 +92,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
     monkeypatch.setattr(MCPServices, "bind_foodstuff_search", bind)
     monkeypatch.setattr(MCPServices, "bind_recipe_search", bind_recipe)
     monkeypatch.setattr(Thread, "start", start)
-    monkeypatch.setattr(embedding_refresh, "next_nightly", nightly)
+    monkeypatch.setattr(refresh, "next_nightly", nightly)
     with pytest.raises(RuntimeError, match=f"worker {failure} failed"):
         with TestClient(create_app()):
             pass

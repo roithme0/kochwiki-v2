@@ -47,8 +47,8 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                         assert initialization.instructions == KOCHWIKI_INSTRUCTIONS
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
-                        "hello_world", "search_foodstuffs", "search_recipes", "get_recipe_lineage", "create_foodstuff",
-                        "update_foodstuff",
+                        "hello_world", "search_foodstuffs", "create_foodstuff", "update_foodstuff",
+                        "search_recipes", "get_recipe_lineage",
                         "create_recipe_proposal", "get_recipe_proposal", "save_recipe_proposal",
                     ]
                     result = await client.call_tool("hello_world", {})
