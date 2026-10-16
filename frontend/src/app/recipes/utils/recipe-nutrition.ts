@@ -1,4 +1,8 @@
 import type { FoodstuffOut } from '../../core/api/generated';
+import type {
+  NutritionResult,
+  NutritionSummary,
+} from '../../core/models/nutrition-result';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 export interface DraftIngredientNutrition {
@@ -6,77 +10,60 @@ export interface DraftIngredientNutrition {
   amount: number | null;
 }
 
-export interface RecipeNutrition {
-  kcal: number | null;
-  carbs: number | null;
-  protein: number | null;
-  fat: number | null;
-}
-
 export type DraftNutritionState =
-  | { status: 'empty' | 'invalid' }
-  | { status: 'incomplete'; nutrition: RecipeNutrition }
-  | { status: 'complete'; nutrition: RecipeNutrition };
+  | { status: 'invalid' }
+  | { status: 'ready'; nutrition: NutritionSummary };
 
-type NutritionField = keyof RecipeNutrition;
-
-const NUTRITION_FIELDS: NutritionField[] = [
-  'kcal',
-  'carbs',
-  'protein',
-  'fat',
-];
+type NutritionField = keyof NutritionSummary;
 
 export function calculateDraftNutrition(
   ingredients: DraftIngredientNutrition[],
   servings: number | null,
-  foodstuffs: FoodstuffOut[]
+  foodstuffs: FoodstuffOut[],
 ): DraftNutritionState {
-  const selectedIngredients = ingredients.filter(hasFoodstuffId);
-  if (selectedIngredients.length === 0) return { status: 'empty' };
   if (!isValidServings(servings)) return { status: 'invalid' };
+  const selectedIngredients = ingredients.filter(hasFoodstuffId);
 
-  const totals: RecipeNutrition = { kcal: 0, carbs: 0, protein: 0, fat: 0 };
-
-  for (const ingredient of selectedIngredients) {
-    if (!isValidIngredient(ingredient)) return { status: 'invalid' };
-
-    const foodstuff = foodstuffs.find(
-      ({ id }) => id === ingredient.foodstuffId
-    );
-    if (foodstuff === undefined) return { status: 'invalid' };
-
-    const multiplier =
-      foodstuff.unit === FoodstuffUnit.Gram ||
-      foodstuff.unit === FoodstuffUnit.Milliliter
-        ? ingredient.amount / 100
-        : ingredient.amount;
-
-    for (const field of NUTRITION_FIELDS) {
+  const calculate = (field: NutritionField): NutritionResult => {
+    let total = 0;
+    let known = 0;
+    for (const ingredient of selectedIngredients) {
+      if (!isValidIngredient(ingredient)) continue;
+      const foodstuff = foodstuffs.find(
+        ({ id }) => id === ingredient.foodstuffId,
+      );
+      if (foodstuff === undefined) continue;
       const value = foodstuff[field];
-      totals[field] =
-        totals[field] === null || !isFiniteNutritionValue(value)
-          ? null
-          : totals[field] + value * multiplier;
-    }
-  }
+      if (!isFiniteNutritionValue(value)) continue;
 
-  const nutrition: RecipeNutrition = {
-    kcal: totals.kcal === null ? null : totals.kcal / servings,
-    carbs: totals.carbs === null ? null : totals.carbs / servings,
-    protein: totals.protein === null ? null : totals.protein / servings,
-    fat: totals.fat === null ? null : totals.fat / servings,
+      const multiplier =
+        foodstuff.unit === FoodstuffUnit.Gram ||
+        foodstuff.unit === FoodstuffUnit.Milliliter
+          ? ingredient.amount / 100
+          : ingredient.amount;
+      total += value * multiplier;
+      known += 1;
+    }
+    if (known === 0) return { status: 'unknown', value: null };
+    return {
+      status: known === selectedIngredients.length ? 'exact' : 'minimum',
+      value: total / servings,
+    };
   };
 
-  return nutrition.carbs === null ||
-    nutrition.protein === null ||
-    nutrition.fat === null
-    ? { status: 'incomplete', nutrition }
-    : { status: 'complete', nutrition };
+  return {
+    status: 'ready',
+    nutrition: {
+      kcal: calculate('kcal'),
+      carbs: calculate('carbs'),
+      protein: calculate('protein'),
+      fat: calculate('fat'),
+    },
+  };
 }
 
 function hasFoodstuffId(
-  ingredient: DraftIngredientNutrition
+  ingredient: DraftIngredientNutrition,
 ): ingredient is DraftIngredientNutrition & { foodstuffId: number } {
   return ingredient.foodstuffId !== null;
 }
@@ -91,7 +78,7 @@ function isValidServings(servings: number | null): servings is number {
 }
 
 function isValidIngredient(
-  ingredient: DraftIngredientNutrition
+  ingredient: DraftIngredientNutrition,
 ): ingredient is { foodstuffId: number; amount: number } {
   return (
     ingredient.foodstuffId !== null &&

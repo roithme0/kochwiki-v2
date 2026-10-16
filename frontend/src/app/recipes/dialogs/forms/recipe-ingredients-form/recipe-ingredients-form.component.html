@@ -1,14 +1,16 @@
-<div
-  class="ingredients-mat-step"
-  [formGroup]="ingredientsFormGroup"
-  (focusin)="onNutritionPreviewFocusIn($event)"
-  (focusout)="onNutritionPreviewFocusOut($event)"
->
+<div class="ingredients-mat-step" [formGroup]="ingredientsFormGroup">
   <!-- servings -->
-  <mat-form-field appearance="outline" floatLabel="always" class="short-number-field">
+  <mat-form-field
+    appearance="outline"
+    floatLabel="always"
+    class="short-number-field"
+  >
     <mat-label>Portionen</mat-label>
     <input matInput type="number" formControlName="servings" />
-    @if (ingredientsFormGroup.get('servings')?.hasError('required') && ingredientsFormGroup.get('servings')?.touched) {
+    @if (
+      ingredientsFormGroup.get("servings")?.hasError("required") &&
+      ingredientsFormGroup.get("servings")?.touched
+    ) {
       <mat-error>Bitte die Anzahl der Portionen eingeben.</mat-error>
     }
   </mat-form-field>
@@ -55,35 +57,24 @@
   </div>
 
   <div class="nutrition-section">
-    @if (displayedNutritionState(); as state) {
-      @if (state.status === "complete") {
+    @if (nutritionState(); as state) {
+      @if (state.status === "ready") {
         <div class="nutrition-chart-area">
           <div class="nutrition-preview">
             <app-macro-chart
               class="macro-chart"
-              [nutrition]="state.nutrition | nutritionSummary"
-              (legendUpdated)="legend.set($event)"
+              [nutrition]="state.nutrition"
             />
-            @if (canShowLegend() && legend()['carbs'] && legend()['protein'] && legend()['fat']) {
-              <div id="recipe-draft-macro-legend" class="legend">
-                <app-chart-legend-element [legendElement]="legend()['carbs']" />
-                <app-chart-legend-element [legendElement]="legend()['protein']" />
-                <app-chart-legend-element [legendElement]="legend()['fat']" />
-              </div>
-            }
+            <div id="recipe-draft-macro-legend" class="legend">
+              @for (element of legend(); track element.displayName) {
+                <app-chart-legend-element [legendElement]="element" />
+              }
+            </div>
           </div>
         </div>
-      } @else if (state.status === "incomplete") {
-        <p class="nutrition-message">
-          Nährwertangaben der einzelnen Zutaten unvollständig.
-        </p>
-      } @else if (state.status === "empty") {
-        <p class="nutrition-message">
-          Füge Zutaten hinzu, um Nährwerte zu sehen.
-        </p>
       } @else {
         <p class="nutrition-message">
-          Nährwerte werden angezeigt, sobald Mengen und Portionen gültig sind.
+          Nährwerte werden angezeigt, sobald die Portionen gültig sind.
         </p>
       }
     }

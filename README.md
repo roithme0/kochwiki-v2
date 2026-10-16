@@ -120,7 +120,11 @@ Recipe aggregate nutrient fields use `{ value, status }` results: `exact`,
 Saved recipes and recipe presentations show minimum values with `≥` and unknown
 values with `—`. Incomplete macros use a gray ring without percentages; calories
 have their own completeness status. Ingredient foodstuff fields remain numeric
-or null. The editor's live preview retains its existing calculation for now.
+or null. The editor's live preview uses the same per-nutrient statuses and updates
+immediately. Invalid amounts on selected ingredients count as unknown contributions;
+unselected rows are ignored. With valid portions, an empty selection shows unknown
+nutrition. Invalid portions show a hint instead of per-serving results. Form and
+save validation remain unchanged.
 Standalone nutrition artifacts also retain their numeric/null format in this
 slice: only exact recipe values can populate it; minima remain null there and
 can be explained in text until the artifact contract is extended.
