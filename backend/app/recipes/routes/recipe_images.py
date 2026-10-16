@@ -5,16 +5,16 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.recipe_images import IMAGE_CONTENT_TYPE
+from app.recipes.image_config import IMAGE_CONTENT_TYPE
 from app.db.session import SessionLocal, get_db
-from app.models.recipe_image import RecipeImage
+from app.recipes.models.recipe_image import RecipeImage
 from app.schemas.errors import ErrorResponse
-from app.schemas.recipe_image import (
+from app.recipes.schemas.recipe_image import (
     RecipeImageDownloadOut,
     RecipeImageOut,
     RecipeImageUploadOut,
 )
-from app.services.recipe_image_uploads import (
+from app.recipes.services.recipe_image_uploads import (
     ImagePersistenceFailed,
     ImageUploadNotFound,
     InvalidRecipeImage,

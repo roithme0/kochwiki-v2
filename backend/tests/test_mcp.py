@@ -15,15 +15,15 @@ from app.db.session import SessionLocal
 from app.main import create_app
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.models.foodstuff_embedding import FoodstuffEmbedding
-from app.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.models.foodstuff import Foodstuff
 from app.services import foodstuffs
 from app.services.foodstuff_refresh import foodstuff_refresh
-from app.schemas.recipe import RecipeVersionWrite
+from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.services.foodstuffs import create_foodstuff, foodstuff_summary_out
-from app.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
+from app.recipes.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
 
 
 @pytest.mark.parametrize("mode", ["auto", "legacy"])

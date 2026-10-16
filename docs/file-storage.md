@@ -157,7 +157,7 @@ URLs do not implement recipe ownership or permissions.
 
 ## Internal recipe image uploads
 
-`app.services.recipe_image_uploads.RecipeImageUploads` implements validation and
+`app.recipes.services.recipe_image_uploads.RecipeImageUploads` implements validation and
 persistence behind the upload API. Recipe services attach its persisted image IDs separately. Construct it with
 the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for

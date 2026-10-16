@@ -8,13 +8,13 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.models.recipe import RecipeVersion
-from app.models.recipe_image import RecipeImage
-from app.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.schemas.recipe_proposal import RecipeProposalCreate
-from app.services.recipe_proposal_saves import save_recipe_proposal
-from app.services.recipe_proposals import RecipeProposalStore
-from app.services.recipes import (
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import RecipeProposalCreate
+from app.recipes.services.recipe_proposal_saves import save_recipe_proposal
+from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipes import (
     create_recipe, create_recipe_draft, publish_active_recipe_edit, update_recipe_draft,
 )
 
@@ -47,7 +47,7 @@ def test_new_recipe_without_image(client: TestClient) -> None:
 
 
 def test_dimensions_follow_version_image_and_refresh_after_replacement(images: tuple[UUID, UUID]) -> None:
-    from app.services.recipes import recipe_version_out
+    from app.recipes.services.recipes import recipe_version_out
 
     with SessionLocal.begin() as session:
         active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]))

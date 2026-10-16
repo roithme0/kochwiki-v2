@@ -9,11 +9,11 @@ from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Numer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import RecipeVersionState
+from app.recipes.models.enums import RecipeVersionState
 
 if TYPE_CHECKING:
     from app.models.foodstuff import Foodstuff
-    from app.models.recipe_image import RecipeImage
+    from app.recipes.models.recipe_image import RecipeImage
 
 
 class RecipeLineage(Base):

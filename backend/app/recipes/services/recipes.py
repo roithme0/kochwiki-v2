@@ -5,11 +5,11 @@ from uuid import UUID
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.enums import RecipeVersionState
+from app.recipes.models.enums import RecipeVersionState
 from app.models.foodstuff import Foodstuff
-from app.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
-from app.models.recipe_image import RecipeImage
-from app.schemas.recipe import (
+from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
     RecipeImageDimensionsOut,
@@ -25,9 +25,9 @@ from app.schemas.recipe import (
 )
 from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuffs import foodstuff_summary_out
-from app.services.recipe_embeddings import remove_recipe_embedding
-from app.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
-from app.services.recipe_refresh import mark_recipe_refresh
+from app.recipes.services.recipe_embeddings import remove_recipe_embedding
+from app.recipes.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.recipes.services.recipe_refresh import mark_recipe_refresh
 
 
 def list_recipe_versions(session: Session) -> Sequence[RecipeVersion]:

@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models import Foodstuff, Ingredient, RecipeLineage, Step, User
+from app.db import models as _models
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

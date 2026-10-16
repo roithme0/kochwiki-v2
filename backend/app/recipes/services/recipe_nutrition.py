@@ -5,9 +5,9 @@ from typing import Literal
 
 from app.models.enums import Unit
 from app.models.foodstuff import Foodstuff
-from app.models.recipe import Ingredient
+from app.recipes.models.recipe import Ingredient
 from app.schemas.foodstuff import FoodstuffSummaryOut
-from app.schemas.recipe_proposal import ResolvedProposalFoodstuffFields
+from app.recipes.schemas.recipe_proposal import ResolvedProposalFoodstuffFields
 
 NutritionField = Literal["kcal", "carbs", "protein", "fat"]
 NutritionFoodstuff = Foodstuff | FoodstuffSummaryOut | ResolvedProposalFoodstuffFields

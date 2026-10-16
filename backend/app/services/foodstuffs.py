@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.foodstuff import Foodstuff
-from app.models.recipe import Ingredient
+from app.recipes.models.recipe import Ingredient
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuff_refresh import mark_foodstuff_refresh

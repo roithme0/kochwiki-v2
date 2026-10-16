@@ -9,8 +9,8 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.db.session import SessionLocal
-from app.models.recipe_image import RecipeImage
-from app.schemas.recipe_image import RecipeImageDownloadOut, RecipeImageOut, RecipeImageUploadOut
+from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.schemas.recipe_image import RecipeImageDownloadOut, RecipeImageOut, RecipeImageUploadOut
 from app.services.storage import Storage
 
 

@@ -12,8 +12,8 @@ from PIL.PngImagePlugin import PngImageFile
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.core.recipe_images import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
-from app.models.recipe_image import RecipeImage
+from app.recipes.image_config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
+from app.recipes.models.recipe_image import RecipeImage
 from app.services.storage import (
     PresignedTransfer,
     Storage,

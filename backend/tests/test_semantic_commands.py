@@ -1,17 +1,43 @@
 import json
+import subprocess
+import sys
 from collections.abc import Callable
 
 import pytest
 from app.models.enums import Unit
 
-from app import foodstuff_semantic, recipe_semantic
+from app import foodstuff_semantic
+from app.recipes import semantic as recipe_semantic
 from app.core.embedding import DIMENSIONS
 from app.db.session import SessionLocal
 from app.schemas.foodstuff import FoodstuffCreate
-from app.schemas.recipe import RecipeVersionWrite
+from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import EmbeddingClient
 from app.services.foodstuffs import create_foodstuff
-from app.services.recipes import create_recipe
+from app.recipes.services.recipes import create_recipe
+
+
+@pytest.mark.parametrize("module,description", [
+    ("app.recipes.semantic", "Refresh recipe embeddings or search recipe names"),
+    ("app.foodstuff_semantic", "Refresh foodstuff embeddings or search ingredient aliases"),
+])
+def test_command_starts_with_registered_models_in_a_fresh_process(module: str, description: str) -> None:
+    result = subprocess.run(
+        [sys.executable, "-c", (
+            "import importlib, sys; "
+            "from sqlalchemy.orm import configure_mappers; "
+            "module = importlib.import_module(sys.argv[1]); "
+            "configure_mappers(); "
+            "sys.argv = [sys.argv[1], '--help']; "
+            "module.main()"
+        ), module],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert description in result.stdout
 
 
 class Provider:

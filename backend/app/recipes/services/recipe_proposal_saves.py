@@ -3,13 +3,13 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.recipe import RecipeVersion
-from app.schemas.recipe import IngredientWrite, RecipeVersionOut, RecipeVersionWrite
-from app.schemas.recipe_proposal import ExistingProposalFoodstuff, ProposalRecipe
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.schemas.recipe import IngredientWrite, RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import ExistingProposalFoodstuff, ProposalRecipe
 from app.services.exceptions import NotFoundError
 from app.services.foodstuffs import create_foodstuff
-from app.services.recipe_proposals import RecipeProposalStore
-from app.services.recipes import create_recipe_draft, get_recipe_version_by_id, recipe_version_out
+from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipes import create_recipe_draft, get_recipe_version_by_id, recipe_version_out
 
 
 def save_recipe_proposal(

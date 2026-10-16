@@ -1,7 +1,7 @@
-"""Operational commands: python -m app.recipe_semantic refresh|search."""
+"""Operational commands: python -m app.recipes.semantic refresh|search."""
 from app.semantic_commands import run_command
-from app.services.recipe_embeddings import RecipeEmbeddingService
-from app.services.recipe_search import RecipeSearchCandidate, RecipeSemanticSearch
+from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
+from app.recipes.services.recipe_search import RecipeSearchCandidate, RecipeSemanticSearch
 
 
 def format_candidate(rank: int, candidate: RecipeSearchCandidate) -> str:

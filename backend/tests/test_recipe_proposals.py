@@ -15,17 +15,17 @@ from app.db.session import SessionLocal
 from app.main import create_app
 from app.models.foodstuff import Foodstuff
 from app.models.foodstuff_embedding import FoodstuffEmbedding
-from app.models.recipe import Ingredient, RecipeVersion, Step
-from app.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
+from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.schemas.recipe import RecipeVersionWrite
-from app.schemas.recipe_proposal import RecipeProposalCreate, TemporaryProposalFoodstuff
+from app.recipes.schemas.recipe import RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, TemporaryProposalFoodstuff
 from app.services.exceptions import ConflictError, NotFoundError
 from app.services.foodstuff_refresh import foodstuff_refresh
 from app.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
-from app.services.recipe_proposals import RecipeProposalStore
-from app.services.recipe_refresh import recipe_refresh
-from app.services.recipes import (
+from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipe_refresh import recipe_refresh
+from app.recipes.services.recipes import (
     create_recipe,
     create_recipe_draft,
     delete_recipe_lineage,
@@ -186,7 +186,7 @@ def test_all_source_states_and_later_dependency_changes_and_deletion() -> None:
 def test_creation_failures_leave_no_entry(missing: str, monkeypatch: pytest.MonkeyPatch) -> None:
     _, source, _ = references()
     issued_id = uuid4()
-    monkeypatch.setattr("app.services.recipe_proposals.uuid4", lambda: issued_id)
+    monkeypatch.setattr("app.recipes.services.recipe_proposals.uuid4", lambda: issued_id)
     submitted = payload(source)
     expected: type[Exception] = NotFoundError
     if missing == "source":

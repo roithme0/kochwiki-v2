@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db, get_write_db
 from app.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
-from app.schemas.recipe import (
+from app.recipes.schemas.recipe import (
     IngredientOut,
     RecipePresentationOut,
     RecipePresentationResolve,
@@ -14,7 +14,7 @@ from app.schemas.recipe import (
     RecipeVersionWrite,
     StepOut,
 )
-from app.services import recipes
+from app.recipes.services import recipes
 
 router = APIRouter()
 

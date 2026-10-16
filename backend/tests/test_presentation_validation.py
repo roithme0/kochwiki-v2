@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from app.models.enums import Unit
 from app.schemas.foodstuff import FoodstuffSummaryOut
-from app.schemas.recipe import RecipePresentationOut, RecipePresentationResolve
+from app.recipes.schemas.recipe import RecipePresentationOut, RecipePresentationResolve
 from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 

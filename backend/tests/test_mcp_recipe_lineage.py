@@ -14,10 +14,10 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.main import create_app
-from app.models.recipe import RecipeVersion
+from app.recipes.models.recipe import RecipeVersion
 from app.schemas.foodstuff import FoodstuffCreate
-from app.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
-from app.services import recipes
+from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
+from app.recipes.services import recipes
 from app.services.foodstuffs import create_foodstuff
 
 

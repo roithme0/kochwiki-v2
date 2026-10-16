@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import SessionLocal
-from app.models.recipe_image import RecipeImage
-from app.services.recipe_image_uploads import RecipeImageUploads
+from app.recipes.models.recipe_image import RecipeImage
+from app.recipes.services.recipe_image_uploads import RecipeImageUploads
 from test_recipe_image_uploads import png
 
 

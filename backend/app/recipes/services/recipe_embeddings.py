@@ -3,9 +3,9 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models.enums import SEARCHABLE_RECIPE_STATES, RecipeVersionState
-from app.models.recipe import RecipeVersion
-from app.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.enums import SEARCHABLE_RECIPE_STATES, RecipeVersionState
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.services.embedding_service import EmbeddingService
 
 def remove_recipe_embedding(session: Session, version_id: UUID) -> None:

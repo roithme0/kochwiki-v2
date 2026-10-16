@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.models.enums import Unit
 from app.schemas.common import JsonDecimal, NonnegativeJsonDecimal
 from app.schemas.foodstuff import FoodstuffCreate
-from app.schemas.recipe import (
+from app.recipes.schemas.recipe import (
     RecipePresentationStepOut,
     RecipeVersionFields,
     StepWrite,

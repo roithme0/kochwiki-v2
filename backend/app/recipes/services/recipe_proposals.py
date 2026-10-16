@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.foodstuff import Foodstuff
-from app.models.recipe import RecipeVersion
-from app.schemas.recipe_proposal import (
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.schemas.recipe_proposal import (
     ExistingProposalFoodstuff,
     RecipeProposalCreate,
     RecipeProposalOut,

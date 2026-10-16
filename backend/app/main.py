@@ -12,7 +12,7 @@ from app.schemas.errors import ErrorResponse
 from app.semantic_lifecycle import embedding_refresh_workers, semantic_search_services
 from app.services import greeting
 from app.services.exceptions import DomainError
-from app.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipe_proposals import RecipeProposalStore
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:

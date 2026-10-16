@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from app.schemas.errors import ErrorResponse
 from app.schemas.foodstuff import FoodstuffOut
 from app.schemas.user import UserOut
-from app.schemas.recipe import RecipePresentationOut, RecipeVersionOut
+from app.recipes.schemas.recipe import RecipePresentationOut, RecipeVersionOut
 
 
 def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, object]:

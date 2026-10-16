@@ -10,19 +10,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
-from app.models.enums import RecipeVersionState
-from app.models.recipe import RecipeVersion
-from app.models.recipe_embedding import RecipeEmbedding
+from app.recipes.models.enums import RecipeVersionState
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.schemas.recipe import RecipeVersionWrite
+from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.services.foodstuffs import create_foodstuff, update_foodstuff
-from app.services.recipe_embeddings import RecipeEmbeddingService
+from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
 from app.services.embedding_refresh import EmbeddingRefreshWorker
-from app.services.recipe_refresh import recipe_refresh
-from app.services.recipe_search import RecipeSemanticSearch
-from app.services.recipes import (
+from app.recipes.services.recipe_refresh import recipe_refresh
+from app.recipes.services.recipe_search import RecipeSemanticSearch
+from app.recipes.services.recipes import (
     create_recipe, create_recipe_draft, delete_recipe_lineage, discard_recipe_draft,
     publish_active_recipe_edit, publish_recipe_draft, update_recipe_draft,
 )
@@ -328,7 +328,7 @@ def test_recipe_worker_uuid_queue_nightly_and_shutdown() -> None:
 
 def test_commands_full_recipe_no_scores_and_refresh_failure_exit(capsys: pytest.CaptureFixture[str]) -> None:
     import json
-    from app.recipe_semantic import format_candidate
+    from app.recipes.semantic import format_candidate
     from app.semantic_commands import run_refresh, run_search
     _, version_id = create()
     provider = Provider()

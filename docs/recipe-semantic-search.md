@@ -83,7 +83,7 @@ search while ordinary recipe operations, including historical cleanup, continue.
 
 ## Commands
 
-`app.recipe_semantic` is a thin entry point to the shared `app.semantic_commands`
+`app.recipes.semantic` is a thin entry point to the shared `app.semantic_commands`
 runner. It supplies recipe service factories and JSON formatting; argument
 parsing, embedding-client lifecycle, errors, refresh reporting and exit codes
 are shared with the foodstuff command.
@@ -92,15 +92,15 @@ From `backend`, using the existing environment or `.env` for credentials:
 
 ```powershell
 .venv/Scripts/python.exe -m alembic upgrade head
-.venv/Scripts/python.exe -m app.recipe_semantic refresh
-.venv/Scripts/python.exe -m app.recipe_semantic search "Spaghetti Bolognese" --limit 5
+.venv/Scripts/python.exe -m app.recipes.semantic refresh
+.venv/Scripts/python.exe -m app.recipes.semantic search "Spaghetti Bolognese" --limit 5
 ```
 
 For a local deployment:
 
 ```powershell
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.recipe_semantic refresh
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.recipe_semantic search "Spaghetti Bolognese" --limit 5
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.recipes.semantic refresh
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.recipes.semantic search "Spaghetti Bolognese" --limit 5
 ```
 
 Search defaults to five results, accepts limits 1–20 and prints one full recipe

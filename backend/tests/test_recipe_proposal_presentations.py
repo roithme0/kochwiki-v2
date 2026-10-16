@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 
 from app.db.session import SessionLocal
 from app.models.foodstuff import Foodstuff
-from app.models.recipe import Ingredient, RecipeVersion, Step
+from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.schemas.recipe import RecipeVersionWrite
-from app.schemas.recipe_proposal import (
+from app.recipes.schemas.recipe import RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import (
     RecipeProposalCreate,
     RecipeProposalPresentationOut,
     ResolvedExistingProposalFoodstuff,
@@ -18,9 +18,9 @@ from app.schemas.recipe_proposal import (
 )
 from app.services.exceptions import NotFoundError
 from app.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
-from app.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
-from app.services.recipe_proposals import RecipeProposalStore
-from app.services.recipes import create_recipe, delete_recipe_lineage
+from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
+from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipes import create_recipe, delete_recipe_lineage
 
 
 @pytest.mark.parametrize("unit,amount,expected", [

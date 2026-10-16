@@ -4,7 +4,7 @@ import pytest
 
 from app.db.session import SessionLocal
 from app.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
-from app.services.recipe_refresh import mark_recipe_refresh, recipe_refresh
+from app.recipes.services.recipe_refresh import mark_recipe_refresh, recipe_refresh
 
 
 def test_independent_domains_savepoints_rollback_and_unsubscribe() -> None:

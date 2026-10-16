@@ -4,11 +4,11 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.db.session import SessionLocal
-from app.models.recipe import RecipeVersion
-from app.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
-from app.services.recipe_proposals import RecipeProposalStore
-from app.services.recipes import create_recipe, discard_recipe_draft
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
+from app.recipes.services.recipe_proposals import RecipeProposalStore
+from app.recipes.services.recipes import create_recipe, discard_recipe_draft
 from app.services.foodstuffs import list_foodstuffs
 
 

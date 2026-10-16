@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
-from app.api.routes import auth, foodstuffs, meta, recipe_images, recipe_proposals, recipes, users
+from app.api.routes import auth, foodstuffs, meta, users
+from app.recipes.routes import recipe_images, recipe_proposals, recipes
 
 router = APIRouter()
 router.include_router(auth.router)

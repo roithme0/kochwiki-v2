@@ -11,7 +11,7 @@ from app.services import embedding_refresh
 from app.services.embeddings import EmbeddingClient
 from app.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
 from app.services.foodstuff_search import FoodstuffSemanticSearch
-from app.services.recipe_search import RecipeSemanticSearch
+from app.recipes.services.recipe_search import RecipeSemanticSearch
 
 
 class Provider:

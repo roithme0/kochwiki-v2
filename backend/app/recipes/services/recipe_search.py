@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.models.recipe import Ingredient, RecipeVersion
-from app.models.enums import SEARCHABLE_RECIPE_STATES
-from app.models.recipe_embedding import RecipeEmbedding
-from app.schemas.recipe import RecipeVersionOut
+from app.recipes.models.recipe import Ingredient, RecipeVersion
+from app.recipes.models.enums import SEARCHABLE_RECIPE_STATES
+from app.recipes.models.recipe_embedding import RecipeEmbedding
+from app.recipes.schemas.recipe import RecipeVersionOut
 from app.services.semantic_search import SemanticSearch
-from app.services.recipes import recipe_version_out
+from app.recipes.services.recipes import recipe_version_out
 
 
 @dataclass(frozen=True)

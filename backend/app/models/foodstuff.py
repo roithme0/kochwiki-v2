@@ -10,7 +10,7 @@ from app.db.base import Base
 from app.models.enums import Unit
 
 if TYPE_CHECKING:
-    from app.models.recipe import Ingredient
+    from app.recipes.models.recipe import Ingredient
 
 
 class Foodstuff(Base):

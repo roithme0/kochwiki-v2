@@ -11,14 +11,14 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.main import create_app
-from app.models.enums import RecipeVersionState
-from app.models.recipe import RecipeVersion
+from app.recipes.models.enums import RecipeVersionState
+from app.recipes.models.recipe import RecipeVersion
 from app.schemas.foodstuff import FoodstuffCreate
-from app.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
-from app.services import recipe_proposal_saves
+from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
+from app.recipes.services import recipe_proposal_saves
 from app.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
-from app.services.recipes import create_recipe, discard_recipe_draft
+from app.recipes.services.recipes import create_recipe, discard_recipe_draft
 
 
 def proposal_payload() -> RecipeProposalCreate:

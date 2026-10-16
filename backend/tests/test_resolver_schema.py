@@ -5,7 +5,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.recipe import RecipePresentationOut
+from app.recipes.schemas.recipe import RecipePresentationOut
 
 
 def presentation() -> dict[str, object]:
