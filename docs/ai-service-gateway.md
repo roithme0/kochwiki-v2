@@ -138,13 +138,6 @@ and whether the resolver accepts it. A live 503 or unresolved reverse base
 is an external integration gap, even if controlled tests pass. Productive
 recipe generation and rendering belong to later slices.
 
-For the standard local exposed ports (AI 8004, Kochwiki 8002), the optional
-`python deployment/tests/verify_live_ai_gateway.py` automates those live
-session and reverse resolver checks using the isolated relays. It requires
-the running `ai-service-local-backend-1` container. It acknowledges one
-message in each new session, never invokes a model turn, and leaves those
-process-local sessions to expire normally.
-
 Delivery validation on 2026-09-26 passed the full controlled suite through
 Nginx 1.25.5 and the actual Angular dev-server, including 65-second turns,
 and passed live session creation/history/message acknowledgement through

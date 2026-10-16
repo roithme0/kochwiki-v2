@@ -44,10 +44,17 @@ foodstuff and recipe search tools, explicit foodstuff creation and updates, and
 recipe proposal creation, retrieval and saving. See
 [MCP integration and local verification](docs/mcp.md).
 
-The backend consumes the local `kochwiki-contract` package containing shared
-resolver API models. After installing backend requirements, install
-`backend/contract` into the same environment before running the backend or
-OpenAPI generation. See [contract package development and wheel verification](backend/contract/README.md).
+Backend API models and validation live in `backend/app`; no separate contract
+package installation is required. Domain models, schemas, services, and HTTP
+routes live in `backend/app/recipes`, `backend/app/foodstuffs`, and
+`backend/app/identity`. Identity includes users, OIDC login, and application
+sessions. Search commands stay with their recipe and foodstuff domains;
+shared settings, errors, greeting, and schema helpers live in `backend/app/core`.
+The shared HTTP router, greeting, and metadata routes live in `backend/app/api`.
+Database, storage, and embedding adapters live in `backend/app/infrastructure`. Install `backend/requirements.txt` before
+running the backend or OpenAPI generation. From `frontend`, run
+`npm run check:kochwiki-contract` to verify that the generated OpenAPI document
+and frontend types match the backend schemas.
 
 The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
 
@@ -83,7 +90,7 @@ The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
 tool; MCP results do not automatically appear as artifacts. Domain behavior is
-defined in [the MCP instructions](backend/app/mcp_instructions.py);
+defined in [the MCP instructions](backend/app/infrastructure/mcp/instructions.py);
 [MCP integration](docs/mcp.md#domain-instructions) documents delivery and
 instruction ownership. Artifact delivery depends on the consuming agent.
 Foodstuff artifacts

@@ -1,6 +1,6 @@
 # Foodstuff semantic search
 
-The backend offers alias/name discovery through `app.services.foodstuff_search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
+The backend offers alias/name discovery through `app.foodstuffs.services.search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
 
 ## Configuration and database rollout
 
@@ -14,25 +14,25 @@ Official API reference: [OpenAI vector embeddings](https://developers.openai.com
 
 ## Manual initial population and search
 
-The module commands use the shared `app.semantic_commands` runner for argument
+The module commands use the shared `app.infrastructure.embeddings.commands` runner for argument
 parsing, client lifecycle, errors, refresh reporting and exit codes. Domain entry
 points supply service factories and result formatting; foodstuff search keeps its
 ranked summary/distance output, while recipe search prints full recipe JSON.
 
-Run from `backend` after installing `requirements.txt` and `./contract` into the same Python environment. Set `DATABASE_URL` and `OPENAI_API_KEY` through your existing environment or `.env`. The web server is not required.
+Run from `backend` after installing `requirements.txt` into your Python environment. Set `DATABASE_URL` and `OPENAI_API_KEY` through your existing environment or `.env`. The web server is not required.
 
 ```powershell
 .venv/Scripts/python.exe -m alembic upgrade head
-.venv/Scripts/python.exe -m app.foodstuff_semantic refresh
-.venv/Scripts/python.exe -m app.foodstuff_semantic search Moehre --limit 5
-.venv/Scripts/python.exe -m app.foodstuff_semantic search chickpeas --limit 5
+.venv/Scripts/python.exe -m app.foodstuffs.semantic refresh
+.venv/Scripts/python.exe -m app.foodstuffs.semantic search Moehre --limit 5
+.venv/Scripts/python.exe -m app.foodstuffs.semantic search chickpeas --limit 5
 ```
 
 For a deployed backend container, with the secret configured through `deployment/.env` or process environment:
 
 ```powershell
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuff_semantic refresh
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuff_semantic search chickpeas --limit 5
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuffs.semantic refresh
+docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml exec backend python -m app.foodstuffs.semantic search chickpeas --limit 5
 ```
 
 Search defaults to five results and accepts limits 1?20. Blank queries, invalid limits, missing credentials and query embedding failures exit nonzero; an empty eligible catalogue is a successful empty result. Refresh reports refreshed/skipped/failed counts, exits nonzero when a record failed, and skips already current records. A failed item stays eligible for a later trigger or sweep.
@@ -44,15 +44,15 @@ checks, query embedding and sanitized provider errors. The foodstuff and recipe
 search services retain their domain SQL, filtering before ranking/limiting,
 relationship loading and candidate conversion.
 
-The typed `embedding_service.EmbeddingService` base shares the refresh algorithm
+The typed `service.EmbeddingService` base shares the refresh algorithm
 between foodstuffs and recipes: freshness checks, generation outside database
 transactions, locked revalidation, persistence, error handling and sweep counting.
 The domain implementations supply eligible source text, embedding records and
 IDs to refresh. Recipe-only historical cleanup remains in the recipe service.
 
-`foodstuff_embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `foodstuff_search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `embeddings.EmbeddingClient`; foodstuff text generation and its SQL freshness expression live in `foodstuff_embedding_text`. The shared model setting is `EMBEDDING_MODEL` (formerly `FOODSTUFF_EMBEDDING_MODEL`); update that name if explicitly configured. The application or command owns and closes the client; neither domain service owns its lifecycle.
+`app.foodstuffs.services.embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `app.foodstuffs.services.search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `EmbeddingClient`; foodstuff text generation and its SQL freshness expression live alongside the embedding service in `app.foodstuffs.services.embeddings`. The shared model setting is `EMBEDDING_MODEL` (formerly `FOODSTUFF_EMBEDDING_MODEL`); update that name if explicitly configured. The application or command owns and closes the client; neither domain service owns its lifecycle.
 
-`foodstuff_refresh.foodstuff_refresh` is a typed instance of the shared `embedding_refresh.RefreshCoordinator`, which handles committed transaction triggers and savepoint/rollback behavior. `mark_foodstuff_refresh` is a thin domain wrapper. The backend binds the coordinator to `EmbeddingRefreshWorker`, which schedules and delegates refresh work to the embedding service. Recipe refresh uses a separate UUID coordinator and queue with the same implementation. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
+`app.foodstuffs.services.embeddings.foodstuff_refresh` is a typed instance of the shared `refresh.RefreshCoordinator`, which handles committed transaction triggers and savepoint/rollback behavior. `mark_foodstuff_refresh` lives in the same module as a thin domain wrapper. The backend binds the coordinator to `EmbeddingRefreshWorker`, which schedules and delegates refresh work to the embedding service. Recipe refresh uses a separate UUID coordinator and queue with the same implementation. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
 
 ## Freshness and lifecycle
 

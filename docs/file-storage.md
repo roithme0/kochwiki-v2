@@ -85,7 +85,7 @@ absent disables storage configuration. Both addresses must be HTTP(S) origins
 without paths, queries, fragments or embedded credentials.
 
 `Settings.storage_config` supplies the strictly typed configuration to
-`app.services.storage.Storage`. The adapter uses boto3 with explicit credentials,
+`app.infrastructure.storage.storage.Storage`. The adapter uses boto3 with explicit credentials,
 Signature V4 and path-style addressing. It uses separate internal and public
 clients; presigning performs no network request. Call `close()` after use.
 `presign_upload` and `presign_download` return the URL, method and lifetime
@@ -157,7 +157,7 @@ URLs do not implement recipe ownership or permissions.
 
 ## Internal recipe image uploads
 
-`app.services.recipe_image_uploads.RecipeImageUploads` implements validation and
+`app.recipes.services.image_uploads.RecipeImageUploads` implements validation and
 persistence behind the upload API. Recipe services attach its persisted image IDs separately. Construct it with
 the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
@@ -340,8 +340,8 @@ Run the regression checks without PostgreSQL from the repository root (upload
 tests use isolated in-memory SQLite databases):
 
 ```sh
-PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_storage_adapter.py
-PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests -p test_recipe_image_uploads.py
+PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests/infrastructure/storage -p test_storage_adapter.py
+PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests/recipes -p test_recipe_image_uploads.py
 ```
 
 On Windows, use `backend/.venv/Scripts/python.exe` and set `PYTHONPATH=backend`
@@ -353,10 +353,10 @@ against the running local stack from the repository root:
 
 ```sh
 docker compose -f deployment/docker-compose-local.yml run --rm --no-deps \
-  -v "$PWD/backend/tests:/checks:ro" \
-  -e PYTHONPATH=/app \
+  -v "$PWD/backend/tests:/checks/tests:ro" \
+  -e PYTHONPATH=/app:/checks \
   -e STORAGE_VERIFY_CONNECT_ORIGIN=http://gateway:80 \
-  backend python /checks/verify_storage_adapter.py
+  backend python -m tests.infrastructure.storage.verify_storage_adapter
 ```
 
 The verifier uses the backend's private network for HEAD/DELETE and connects to
@@ -370,8 +370,9 @@ The internal gateway override verifies local routing and signing, not external
 DNS, TLS or an outer reverse proxy.
 
 After rebuilding with the locked Pillow dependency and applying database migrations,
-use the same Compose verifier
-command with `/checks/verify_recipe_image_uploads.py` to check upload completion.
+use the same Compose verifier command, replacing
+`tests.infrastructure.storage.verify_storage_adapter` with
+`tests.recipes.verify_recipe_image_uploads`, to check upload completion.
 It verifies PNG metadata, byte-identical permanent downloads, immediate temporary
 deletion, invalid-image rejection, and permanent-image isolation when the original
 temporary PUT URL is reused. It also checks committed metadata through a separate
@@ -381,7 +382,7 @@ local gateway; the added metadata persistence check requires a migrated database
 Staging and production verification remain pending.
 
 After deploying the current backend, run the same Compose verifier command with
-`/checks/verify_recipe_image_api.py` to exercise the upload and download endpoints through the
+`tests.recipes.verify_recipe_image_api` as the module to exercise the upload and download endpoints through the
 gateway, direct PUT to Garage, committed metadata, identical permanent bytes,
 invalid PNG rejection and immediate temporary cleanup. It also checks no-store
 download instructions, byte-identical signed downloads and denied unsigned access.

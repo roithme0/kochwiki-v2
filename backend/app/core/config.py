@@ -3,8 +3,8 @@ from functools import lru_cache
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.core.embedding import MODEL
-from app.core.storage import StorageConfig
+from app.infrastructure.embeddings.config import MODEL
+from app.infrastructure.storage.config import StorageConfig
 
 
 class Settings(BaseSettings):
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_oidc(self) -> "Settings":
-        from app.core.oidc_urls import validate_oidc_settings
+        from app.identity.config import validate_oidc_settings
 
         validate_oidc_settings(self)
         return self
