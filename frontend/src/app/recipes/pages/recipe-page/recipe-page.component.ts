@@ -90,11 +90,11 @@ export class RecipePageComponent {
     if (this.recipeVersion === undefined || this.recipeVersion.state === 'historical') return;
     this.dialog.open(RecipePatchDialogComponent, {
       data: { recipeVersion: this.recipeVersion },
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      height: 'calc(100dvh - 1rem)',
-      maxHeight: 'calc(100dvh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });
@@ -117,8 +117,8 @@ export class RecipePageComponent {
 
     this.dialog.open(ConfirmationDialogComponent, {
       data,
-      maxWidth: '95vw',
-      maxHeight: '95vh',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
       autoFocus: false,
     });
   }
@@ -135,8 +135,8 @@ export class RecipePageComponent {
     };
     this.dialog.open(ConfirmationDialogComponent, {
       data,
-      maxWidth: '95vw',
-      maxHeight: '95vh',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
       autoFocus: false,
     });
   }
@@ -152,8 +152,8 @@ export class RecipePageComponent {
     };
     this.dialog.open(ConfirmationDialogComponent, {
       data,
-      maxWidth: '95vw',
-      maxHeight: '95vh',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
       autoFocus: false,
     });
   }
