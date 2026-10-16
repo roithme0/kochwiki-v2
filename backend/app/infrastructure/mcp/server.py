@@ -25,7 +25,7 @@ from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProp
 from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
 from app.recipes.services.recipe_proposal_saves import save_recipe_proposal as save_proposal
 from app.recipes.services.recipe_proposals import RecipeProposalStore
-from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
+from app.foodstuffs.services.search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_search import RecipeSemanticSearch
 from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.core.exceptions import DomainError

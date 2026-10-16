@@ -5,7 +5,7 @@ from threading import Event
 from uuid import UUID
 
 import pytest
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

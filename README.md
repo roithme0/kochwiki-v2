@@ -50,7 +50,7 @@ routes live in `backend/app/recipes`, `backend/app/foodstuffs`, and
 `backend/app/identity`. Identity includes users, OIDC login, and application
 sessions. Search commands stay with their recipe and foodstuff domains;
 shared settings, errors, greeting, and schema helpers live in `backend/app/core`.
-The shared HTTP router and metadata routes live in `backend/app/api`.
+The shared HTTP router, greeting, and metadata routes live in `backend/app/api`.
 Database, storage, and embedding adapters live in `backend/app/infrastructure`. Install `backend/requirements.txt` before
 running the backend or OpenAPI generation. From `frontend`, run
 `npm run check:kochwiki-contract` to verify that the generated OpenAPI document

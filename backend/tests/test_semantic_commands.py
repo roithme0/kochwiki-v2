@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 
 import pytest
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 
 from app.foodstuffs import semantic as foodstuff_semantic
 from app.recipes import semantic as recipe_semantic

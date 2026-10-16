@@ -7,7 +7,7 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
 from app.core.exceptions import ConflictError, NotFoundError
-from app.foodstuffs.services.foodstuff_refresh import mark_foodstuff_refresh
+from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
 from app.infrastructure.database.integrity import flush_for_unique_conflict
 
 

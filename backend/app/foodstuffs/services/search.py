@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from sqlalchemy import select
 
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
+from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.infrastructure.embeddings.semantic_search import SemanticSearch
-from app.foodstuffs.services.foodstuff_embedding_text import current_source_text
+from app.foodstuffs.services.embeddings import current_source_text
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 
 

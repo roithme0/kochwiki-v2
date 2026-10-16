@@ -1,6 +1,6 @@
 # Foodstuff semantic search
 
-The backend offers alias/name discovery through `app.foodstuffs.services.foodstuff_search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
+The backend offers alias/name discovery through `app.foodstuffs.services.search.FoodstuffSemanticSearch`, operational commands, and the [MCP `search_foodstuffs` tool](mcp.md#foodstuff-search). No REST endpoint or UI is added. Results are ranked candidates, never an identity decision. Cosine distance is a ranking metric, not a confidence probability; no threshold or keyword fallback is applied. MCP returns foodstuff summaries without distances.
 
 ## Configuration and database rollout
 
@@ -50,9 +50,9 @@ transactions, locked revalidation, persistence, error handling and sweep countin
 The domain implementations supply eligible source text, embedding records and
 IDs to refresh. Recipe-only historical cleanup remains in the recipe service.
 
-`foodstuff_embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `foodstuff_search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `embeddings.EmbeddingClient`; foodstuff text generation and its SQL freshness expression live in `foodstuff_embedding_text`. The shared model setting is `EMBEDDING_MODEL` (formerly `FOODSTUFF_EMBEDDING_MODEL`); update that name if explicitly configured. The application or command owns and closes the client; neither domain service owns its lifecycle.
+`app.foodstuffs.services.embeddings.FoodstuffEmbeddingService` owns foodstuff embedding generation, freshness checks and persistence, including single-record refresh and full sweeps. `app.foodstuffs.services.search.FoodstuffSemanticSearch` embeds a query and retrieves ranked current records. Both use the shared `EmbeddingClient`; foodstuff text generation and its SQL freshness expression live alongside the embedding service in `app.foodstuffs.services.embeddings`. The shared model setting is `EMBEDDING_MODEL` (formerly `FOODSTUFF_EMBEDDING_MODEL`); update that name if explicitly configured. The application or command owns and closes the client; neither domain service owns its lifecycle.
 
-`foodstuff_refresh.foodstuff_refresh` is a typed instance of the shared `embedding_refresh.RefreshCoordinator`, which handles committed transaction triggers and savepoint/rollback behavior. `mark_foodstuff_refresh` is a thin domain wrapper. The backend binds the coordinator to `EmbeddingRefreshWorker`, which schedules and delegates refresh work to the embedding service. Recipe refresh uses a separate UUID coordinator and queue with the same implementation. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
+`app.foodstuffs.services.embeddings.foodstuff_refresh` is a typed instance of the shared `embedding_refresh.RefreshCoordinator`, which handles committed transaction triggers and savepoint/rollback behavior. `mark_foodstuff_refresh` lives in the same module as a thin domain wrapper. The backend binds the coordinator to `EmbeddingRefreshWorker`, which schedules and delegates refresh work to the embedding service. Recipe refresh uses a separate UUID coordinator and queue with the same implementation. The command creates the service appropriate to `refresh` or `search`, without starting a worker.
 
 ## Freshness and lifecycle
 

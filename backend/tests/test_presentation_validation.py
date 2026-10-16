@@ -5,7 +5,7 @@ from copy import deepcopy
 from decimal import Decimal
 from types import SimpleNamespace
 
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.recipes.schemas.recipe import RecipePresentationOut, RecipePresentationResolve
 from pydantic import ValidationError

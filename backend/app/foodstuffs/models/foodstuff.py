@@ -7,7 +7,7 @@ from sqlalchemy import CheckConstraint, Enum, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.base import Base
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 
 if TYPE_CHECKING:
     from app.recipes.models.recipe import Ingredient

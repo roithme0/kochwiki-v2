@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from app.core.schemas.common import NonnegativeJsonDecimal
 
 

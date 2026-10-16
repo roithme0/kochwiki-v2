@@ -7,9 +7,11 @@ from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.mcp.server import MCPServices
 from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
-from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
-from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh as foodstuff_refresh_coordinator
-from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
+from app.foodstuffs.services.embeddings import (
+    FoodstuffEmbeddingService,
+    foodstuff_refresh as foodstuff_refresh_coordinator,
+)
+from app.foodstuffs.services.search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
 from app.recipes.services.recipe_refresh import recipe_refresh as recipe_refresh_coordinator
 from app.recipes.services.recipe_search import RecipeSemanticSearch

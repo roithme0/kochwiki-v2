@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 import httpx2
 import pytest
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy.exc import SQLAlchemyError

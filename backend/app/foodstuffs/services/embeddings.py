@@ -1,10 +1,29 @@
-from sqlalchemy import select
+from sqlalchemy import case, literal, select
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
+from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
+from app.infrastructure.embeddings.embedding_refresh import RefreshCoordinator
 from app.infrastructure.embeddings.embedding_service import EmbeddingService
-from app.foodstuffs.services.foodstuff_embedding_text import source_text
+
+
+foodstuff_refresh = RefreshCoordinator[int]("foodstuff_embedding_refresh", "Foodstuff")
+
+
+def mark_foodstuff_refresh(session: Session, foodstuff_id: int) -> None:
+    foodstuff_refresh.mark(session, foodstuff_id)
+
+
+def source_text(name: str, brand: str | None) -> str:
+    return name + ("\nBrand: " + brand if brand else "")
+
+
+def current_source_text() -> ColumnElement[str]:
+    return Foodstuff.name + case(
+        ((Foodstuff.brand.is_not(None)) & (Foodstuff.brand != ""), literal("\nBrand: ") + Foodstuff.brand),
+        else_=literal(""),
+    )
 
 
 class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):

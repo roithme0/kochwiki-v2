@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut

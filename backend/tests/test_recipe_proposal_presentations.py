@@ -2,7 +2,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from app.foodstuffs.models.enums import Unit
+from app.foodstuffs.models.unit import Unit
 from sqlalchemy import func, select
 
 from app.infrastructure.database.session import SessionLocal
