@@ -15,7 +15,7 @@ from starlette.applications import Starlette
 
 from app.core.config import get_settings
 from app.infrastructure.database.session import SessionLocal
-from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
+from app.infrastructure.mcp.instructions import KOCHWIKI_INSTRUCTIONS
 from app.core import greeting
 from app.foodstuffs.services import foodstuffs
 from app.recipes.services import recipes

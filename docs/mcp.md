@@ -10,7 +10,7 @@ Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
 Kochwiki provides domain guidance as MCP server instructions in connection
 metadata (`instructions` in the initialization response, also available through
 SDK discovery). The authoritative domain policy lives in
-[`backend/app/mcp_instructions.py`](../backend/app/mcp_instructions.py), not in
+[`backend/app/infrastructure/mcp/instructions.py`](../backend/app/infrastructure/mcp/instructions.py), not in
 this document or a separate tool, prompt or resource. An SDK client can read
 `client.instructions` after connecting. The consuming service must include it in the agent's context;
 delivery through MCP alone does not cause a model to follow it.

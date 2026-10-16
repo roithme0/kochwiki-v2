@@ -89,7 +89,7 @@ The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
 tool; MCP results do not automatically appear as artifacts. Domain behavior is
-defined in [the MCP instructions](backend/app/mcp_instructions.py);
+defined in [the MCP instructions](backend/app/infrastructure/mcp/instructions.py);
 [MCP integration](docs/mcp.md#domain-instructions) documents delivery and
 instruction ownership. Artifact delivery depends on the consuming agent.
 Foodstuff artifacts

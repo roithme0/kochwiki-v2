@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
-from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
+from app.infrastructure.mcp.instructions import KOCHWIKI_INSTRUCTIONS
 from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
 from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate

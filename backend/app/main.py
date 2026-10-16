@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from app.core.api.router import router
 from app.identity.core.auth_logging import configure_auth_logging
 from app.core.config import get_settings
-from app.mcp_server import MCPServices, create_mcp_server
+from app.infrastructure.mcp.server import MCPServices, create_mcp_server
 from app.core.schemas.errors import ErrorResponse
 from app.infrastructure.embeddings.lifecycle import embedding_refresh_workers, semantic_search_services
 from app.core import greeting

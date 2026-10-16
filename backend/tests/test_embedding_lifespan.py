@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
-from app.mcp_server import MCPServices
+from app.infrastructure.mcp.server import MCPServices
 from app.infrastructure.embeddings import embedding_refresh
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
