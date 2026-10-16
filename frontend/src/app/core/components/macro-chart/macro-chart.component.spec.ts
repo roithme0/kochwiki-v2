@@ -1,39 +1,36 @@
 import { toNutritionSummary } from '../../models/nutrition-result';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import type { ChartConfiguration, ChartData } from 'chart.js';
+import type { Chart } from 'chart.js';
 import { vi } from 'vitest';
 import { MacroChartComponent } from './macro-chart.component';
-
-vi.mock('chart.js', () => ({
-  Chart: class {
-    static register = vi.fn();
-    readonly data: ChartData<'doughnut'>;
-    readonly update = vi.fn();
-    readonly destroy = vi.fn();
-
-    constructor(_canvas: HTMLCanvasElement, config: ChartConfiguration<'doughnut'>) {
-      this.data = config.data;
-    }
-  },
-  DoughnutController: class {},
-  ArcElement: class {},
-}));
 
 describe('MacroChartComponent', () => {
   let fixture: ComponentFixture<MacroChartComponent>;
 
   beforeEach(async () => {
+    vi.spyOn(MacroChartComponent.prototype, 'ngAfterViewInit').mockImplementation(() => {});
     await TestBed.configureTestingModule({
       imports: [MacroChartComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MacroChartComponent);
+    const chart: Pick<Chart, 'data' | 'update' | 'destroy'> = {
+      data: { datasets: [{ data: [], backgroundColor: [] }] },
+      update: vi.fn(),
+      destroy: vi.fn(),
+    };
+    fixture.componentInstance.chart = chart as Chart;
     fixture.componentRef.setInput('nutrition', toNutritionSummary({
       kcal: 420,
       carbs: 40,
       protein: 20,
       fat: 10,
     }));
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+    vi.restoreAllMocks();
   });
 
   it('centers the kcal overlay across the full chart area', () => {
