@@ -8,7 +8,7 @@ from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.image import RecipeImage
 from app.recipes.services.image_uploads import InvalidRecipeImage, RecipeImageUploads
 from app.infrastructure.storage.storage import Storage
-from verify_storage_adapter import transfer
+from tests.infrastructure.storage.verify_storage_adapter import transfer
 
 
 def main() -> None:

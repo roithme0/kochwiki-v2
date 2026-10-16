@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.image import RecipeImage
 from app.recipes.services.image_uploads import RecipeImageUploads
-from test_recipe_image_uploads import png
+from tests.recipes.test_recipe_image_uploads import png
 
 
 def test_completion_commits_metadata_visible_to_another_session() -> None:

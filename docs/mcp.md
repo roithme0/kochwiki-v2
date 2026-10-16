@@ -223,7 +223,7 @@ From `backend`, start the existing application:
 In another terminal, from `backend`, run the official SDK client probe:
 
 ```powershell
-.venv\Scripts\python.exe tests/verify_mcp.py http://localhost:8080/mcp/
+.venv\Scripts\python.exe tests/infrastructure/mcp/verify_mcp.py http://localhost:8080/mcp/
 ```
 
 The probe connects, checks that server instructions are present, discovers the
@@ -305,7 +305,7 @@ Run the backend regression suite with the existing test PostgreSQL available:
 .venv\Scripts\python.exe -m pytest tests -q
 ```
 
-`tests/test_mcp.py` exercises the SDK client over Streamable HTTP through the
+`tests/infrastructure/mcp/test_mcp.py` exercises the SDK client over Streamable HTTP through the
 ASGI transport, application startup/shutdown across fresh instances, the
 existing greeting/OpenAPI routes, and rejection of an unconfigured Host.
 It verifies instruction delivery through both the default SDK connection mode
@@ -322,13 +322,13 @@ unit changes, recipe version references, identity-only refresh, missing targets,
 conflicts, validation and rollback without refresh on database failure.
 The client probe separately permits verification over a listening TCP server.
 
-`tests/test_mcp_recipe_lineage.py` verifies lineage discovery and annotations,
+`tests/infrastructure/mcp/test_mcp_recipe_lineage.py` verifies lineage discovery and annotations,
 complete recipe serialization across active, draft and historical versions,
 retrieval from each state without embeddings, deterministic ordering, unbounded
 coverage, isolation between lineages, read-only behavior, invalid/deleted/missing
 versions and sanitized database failures through the real SDK transport.
 
-`tests/test_mcp_recipe_proposals.py` covers discovery and annotations, proposal
+`tests/infrastructure/mcp/test_mcp_recipe_proposals.py` covers discovery and annotations, proposal
 creation and refinement, resolved retrieval without database writes, atomic saving,
 repeat saves, deleted drafts, validation and missing dependencies, sanitized
 database failures with rollback/retry, and isolation across application instances.
@@ -337,7 +337,7 @@ It uses the real test database and SDK transport without paid model calls.
 The frontend save button uses `POST /recipe-proposals/{proposal_id}/save`, which
 calls the same save service and uses the same in-memory proposal store as MCP.
 Both paths share atomic ingredient/draft creation and repeated-save behavior.
-`tests/test_recipe_proposal_http.py` verifies the HTTP path; the MCP workflow test
+`tests/recipes/test_recipe_proposal_http.py` verifies the HTTP path; the MCP workflow test
 also verifies that HTTP returns the draft already saved through MCP.
 
 Artifact presentation and metadata are supplied by the consumer frontend through

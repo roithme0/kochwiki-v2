@@ -22,7 +22,7 @@ from app.identity.services.sessions import (
     authenticated_user,
     cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )
-from test_oidc_login import Provider, begin, browser, finish, provider, settings
+from tests.identity.test_oidc_login import Provider, begin, browser, finish, provider, settings
 
 
 def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: Provider) -> None:
