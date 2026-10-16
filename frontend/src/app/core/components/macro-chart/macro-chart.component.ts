@@ -108,7 +108,6 @@ export class MacroChartComponent implements OnDestroy {
       type: 'doughnut',
       options: {
         cutout: '70%',
-        animation: false,
       },
       data: {
         datasets: [
