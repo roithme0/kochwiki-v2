@@ -2,7 +2,12 @@ import { mapConversationArtifact } from '../../recipes/conversation/recipe-conve
 import { conversationProposal } from '../../recipes/conversation/recipe-conversation.fixtures';
 import { NUTRITION_ARTIFACT_CAPABILITY, isNutritionPresentation, nutritionBasisLabel } from './nutrition-artifact';
 
-const values = { kcal: 0, carbs: null, protein: 12, fat: null };
+const values = {
+  kcal: { status: 'minimum', value: 200.9 },
+  carbs: { status: 'exact', value: 12 },
+  protein: { status: 'minimum', value: 0 },
+  fat: { status: 'unknown', value: null },
+};
 
 describe('Nutrition artifact contract', () => {
   it.each(['per-100-g', 'per-100-ml', 'per-piece', 'per-serving', 'whole-recipe'] as const)(
@@ -18,7 +23,23 @@ describe('Nutrition artifact contract', () => {
   );
 
   it('permits completely unknown nutrition', () => {
-    expect(isNutritionPresentation({ basis: 'per-serving', kcal: null, carbs: null, protein: null, fat: null })).toBe(true);
+    const unknown = { status: 'unknown', value: null };
+    expect(isNutritionPresentation({ basis: 'per-serving', kcal: unknown, carbs: unknown,
+      protein: unknown, fat: unknown })).toBe(true);
+  });
+
+  it.each([
+    { status: 'exact', value: null }, { status: 'minimum', value: null },
+    { status: 'unknown', value: 0 }, { status: 'minimum', value: -1 },
+    { status: 'exact', value: -1 }, { status: 'exact', value: Infinity },
+    { status: 'minimum', value: NaN }, { status: 'estimated', value: 1 },
+    { status: 'exact' }, { value: 1 }, { status: 'exact', value: 1, extra: true },
+    12, null,
+  ])('rejects malformed nutrient results: %j', kcal => {
+    const payload = { ...values, basis: 'per-serving', kcal };
+    expect(isNutritionPresentation(payload)).toBe(false);
+    expect(mapConversationArtifact({ ...conversationProposal(), type: 'kochwiki-nutrition',
+      payload: { title: 'Linsen', payload } }).type).toBe('kochwiki-unsupported');
   });
 
   it.each([null, {}, values, { ...values, basis: 'G' },

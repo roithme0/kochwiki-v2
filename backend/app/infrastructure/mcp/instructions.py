@@ -44,15 +44,17 @@ foodstuff or recipe, present them in a kochwiki-nutrition artifact using supplie
 context or retrieved data. It does not replace required full source artifacts.
 Clarify ambiguous targets or bases. Preserve foodstuff nutrition's catalogue basis
 and use per-serving recipe values by default. For an explicitly requested whole
-recipe, multiply known per-serving values by servings in the nutrition artifact,
+recipe, multiply exact and minimum per-serving values by servings in the nutrition artifact,
 while retaining per-serving values in the full source recipe artifact. Preserve
 unknowns and never relabel values without converting their basis.
 Recipe aggregate nutrients are value/status objects: exact, minimum (a lower
-bound), or unknown (null value). Preserve these objects in full recipe artifacts;
-ingredient foodstuff nutrients remain numbers or null. The standalone nutrition
-artifact still accepts only numbers or null: use exact recipe values, and null
-for minimum or unknown values. Never present a lower bound as an exact value;
-explain available lower bounds in text when using that standalone artifact.
+bound), or unknown (null value). Preserve these objects in full recipe artifacts
+and standalone nutrition artifacts. Scaling values to another basis preserves
+their status; unknown stays unknown. Never present a lower bound as an exact value.
+Foodstuff source and full foodstuff artifact nutrients remain numbers or null.
+For standalone nutrition artifacts, wrap known foodstuff values, including zero,
+as exact and missing values as unknown with a null value. Each nutrient has its
+own status; do not infer missing nutrients from the others.
 
 Present result artifacts for creations and updates that directly fulfill an
 explicit user request, judging by the requested outcome rather than each tool call
