@@ -82,7 +82,7 @@ describe('NutritionCardComponent', () => {
     expect(element.querySelectorAll('.value-percentage').length).toBe(3);
     const colors = Array.from(element.querySelectorAll<HTMLElement>('.color-indicator'))
       .map(entry => entry.style.getPropertyValue('--color'));
-    expect(colors).toEqual(['rgb(19,154,155)', 'rgb(155, 255, 117)', 'rgb(255,97,97)']);
+    expect(colors).toEqual(['rgb(105, 153, 174)', 'rgb(139, 166, 96)', 'rgb(201, 92, 82)']);
   });
 
   it('accepts a foodstuff basis without recipe-specific input', () => {

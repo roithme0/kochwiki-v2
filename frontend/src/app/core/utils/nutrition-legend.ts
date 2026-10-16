@@ -2,9 +2,9 @@ import { ChartLegendElement } from '../models/chart-legend-element';
 import { NutritionSummary } from '../models/nutrition-result';
 
 const MACROS = [
-  { key: 'carbs', displayName: 'Kohlenhydrate', color: 'rgb(19,154,155)' },
-  { key: 'protein', displayName: 'Protein', color: 'rgb(155, 255, 117)' },
-  { key: 'fat', displayName: 'Fett', color: 'rgb(255,97,97)' },
+  { key: 'carbs', displayName: 'Kohlenhydrate', color: 'rgb(105, 153, 174)' },
+  { key: 'protein', displayName: 'Protein', color: 'rgb(139, 166, 96)' },
+  { key: 'fat', displayName: 'Fett', color: 'rgb(201, 92, 82)' },
 ] as const;
 
 export function hasMacroDistribution(nutrition: NutritionSummary): boolean {

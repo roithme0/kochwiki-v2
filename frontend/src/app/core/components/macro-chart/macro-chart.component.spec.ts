@@ -91,7 +91,7 @@ describe('MacroChartComponent', () => {
 
     const chart = fixture.componentInstance.chart;
     expect(chart?.data.datasets[0].data).toEqual([1]);
-    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(200,200,200)']);
+    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(157, 145, 129)']);
     const legend = fixture.componentInstance.legend();
     expect(Object.keys(legend)).toEqual(['carbs', 'protein', 'fat']);
     expect(legend['carbs'].value).toEqual({ status: 'exact', value: 12 });
@@ -108,7 +108,7 @@ describe('MacroChartComponent', () => {
     fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));
     fixture.detectChanges();
     expect(chart?.data.datasets[0].data).toEqual([1]);
-    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(200,200,200)']);
+    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(157, 145, 129)']);
     expect(Object.keys(fixture.componentInstance.legend())).toEqual(['carbs', 'protein', 'fat']);
     expect(Object.values(fixture.componentInstance.legend()).every(entry => entry.valuePercentage === null)).toBe(true);
   });

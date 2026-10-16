@@ -21,7 +21,7 @@ import {
 import { ChartLegendElement } from '../../models/chart-legend-element';
 
 const PLACEHOLDER_VALUE: number = 1;
-const PLACEHOLDER_COLOR = 'rgb(200,200,200)';
+const PLACEHOLDER_COLOR = 'rgb(157, 145, 129)';
 
 @Component({
   selector: 'app-macro-chart',
