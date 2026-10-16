@@ -59,12 +59,12 @@ export const routes: Routes = [
     ],
   },
   {
-    path: 'userSelection',
+    path: 'signed-out',
     loadComponent: () =>
-      import('./core/pages/select-user-page/select-user-page.component').then(
-        ({ SelectUserPageComponent }) => SelectUserPageComponent,
+      import('./core/pages/signed-out-page/signed-out-page.component').then(
+        ({ SignedOutPageComponent }) => SignedOutPageComponent,
       ),
-    title: 'Benutzer auswählen',
+    title: 'Abgemeldet',
   },
   { path: '**', redirectTo: '', pathMatch: 'full' },
 ];

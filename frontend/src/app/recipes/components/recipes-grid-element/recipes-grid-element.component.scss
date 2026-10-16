@@ -9,18 +9,20 @@ mat-card-content {
   padding: 1rem 1rem 0 !important;
 }
 
-.macro-chart {
-  height: 100%;
-  min-width: 0;
-  width: 100%;
-}
-
 mat-card-header {
   padding: 0 1rem 1rem !important;
 }
 
 mat-card-subtitle {
   height: 1lh;
+}
+
+mat-card-title {
+  height: auto;
+  max-height: 2lh;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
 }
 
 .version-state-badge {

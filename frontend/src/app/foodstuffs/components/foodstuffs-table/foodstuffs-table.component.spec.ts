@@ -101,6 +101,39 @@ describe('FoodstuffsTableComponent', () => {
         expect(element.querySelectorAll('th')).toHaveLength(4);
     });
 
+    it('adjusts pagination to the available height while keeping the current item in view', async () => {
+        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+        fixture.componentRef.setInput('foodstuffs', Array.from({ length: 30 }, (_, id) => ({ ...foodstuff, id })));
+        fixture.detectChanges();
+        const table = fixture.componentInstance;
+        let height = 246;
+        Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', { get: () => height });
+
+        table.contentChanged();
+        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(5));
+        table.paginator.pageIndex = 2;
+        height = 174;
+        table.contentChanged();
+
+        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(3));
+        expect(table.paginator.pageIndex).toBe(3);
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelectorAll('tbody tr')).toHaveLength(3);
+    });
+
+    it('uses one row rather than overflowing with twelve when space is tight', async () => {
+        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+        fixture.componentRef.setInput('foodstuffs', Array.from({ length: 20 }, (_, id) => ({ ...foodstuff, id })));
+        fixture.detectChanges();
+        const table = fixture.componentInstance;
+        Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', { get: () => 80 });
+
+        table.contentChanged();
+
+        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(1));
+        expect(table.paginator.hasNextPage()).toBe(true);
+    });
+
     it('executes the foodstuff deletion and success side effects through the dialog action', async () => {
         deleteFoodstuff.mockResolvedValue(undefined);
 

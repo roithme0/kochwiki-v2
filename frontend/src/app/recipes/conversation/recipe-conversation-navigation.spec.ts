@@ -1,9 +1,14 @@
+import { BackendMetaService } from '../../core/services/backend-meta.service';
+import { PageHeaderComponent } from '../../core/components/page-header/page-header.component';
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { EMPTY } from 'rxjs';
 import { ActiveUserService } from '../../core/services/active-user.service';
+import { AuthNavigationService } from '../../core/services/auth-navigation.service';
 import { RecipeBackendService } from '../services/recipe-backend.service';
 import { RecipeConversationPageComponent } from '../pages/recipe-conversation-page/recipe-conversation-page.component';
 import { RecipePageComponent } from '../pages/recipe-page/recipe-page.component';
@@ -29,7 +34,10 @@ describe('Version-specific conversation routing', () => {
     }));
     TestBed.configureTestingModule({ providers: [
       provideRouter(routes),
-      { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, username: 'Test' }), restorationState: signal('idle') } },
+      { provide: BackendMetaService, useValue: {} },
+      provideHttpClient(), provideHttpClientTesting(),
+      { provide: AuthNavigationService, useValue: { redirecting: signal(false), signIn: vi.fn() } },
+      { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, display_name: 'Test' }), restorationState: signal('idle'), ensureSession: async () => {} } },
       { provide: SnackBarService, useValue: { open: snackbar } },
       { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, saveRecipeProposal: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
     ] });
@@ -67,7 +75,7 @@ describe('Version-specific conversation routing', () => {
     await page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const router = TestBed.inject(Router);
-    expect(await router.navigateByUrl('/userSelection')).toBe(false);
+    expect(await router.navigateByUrl('/signed-out')).toBe(false);
     expect(router.url).toBe(path);
     expect(harness.routeDebugElement?.componentInstance).toBe(page);
     const nextPath = path.replace(source.recipeVersionId, '00000000-0000-4000-8000-000000000003');
@@ -79,12 +87,42 @@ describe('Version-specific conversation routing', () => {
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(page.original()?.id).toContain('00000000-0000-4000-8000-000000000003');
     expect(page.view().content).toEqual([]);
-    await router.navigateByUrl('/userSelection');
+    await router.navigateByUrl('/signed-out');
     expect(TestBed.inject(PageHeaderService).subheader()).toBe('');
     const reopened = await harness.navigateByUrl(path, RecipeConversationPageComponent);
     expect(reopened).not.toBe(page);
     await vi.waitFor(() => expect(reopened.view().composerDisabled).toBe(false));
     expect(getRecipe).toHaveBeenCalledTimes(3);
+  });
+
+  it('logs out a submitted conversation without a leave prompt and suppresses its old save action', async () => {
+    TestBed.overrideProvider(ActiveUserService, { useFactory: () => new ActiveUserService() });
+    TestBed.overrideProvider(AuthNavigationService, { useFactory: () => new AuthNavigationService() });
+    const auth = TestBed.inject(ActiveUserService);
+    const http = TestBed.inject(HttpTestingController);
+    const check = auth.ensureSession();
+    http.expectOne('/api/auth/me').flush({ id: 1, display_name: 'Test' });
+    await check;
+    const harness = await RouterTestingHarness.create();
+    const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    await page.submit({ text: 'Improve', acknowledge: vi.fn() });
+    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
+    const action = snackbar.mock.calls[0][1];
+    if (!action) throw new Error('Missing saved draft action');
+    const confirm = vi.spyOn(window, 'confirm');
+    const header = TestBed.runInInjectionContext(() => new PageHeaderComponent());
+    const logout = header.logout();
+    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    await logout;
+    expect(TestBed.inject(Router).url).toBe('/signed-out');
+    expect(auth.activeUser()).toBeNull();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(snackbar.mock.results[0].value.dismiss).toHaveBeenCalled();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+    action.run();
+    expect(navigate).not.toHaveBeenCalled();
+    http.verify();
   });
 
   it.each(['active', 'draft', 'historical'] as const)('exposes the appropriate action for %s recipes', async state => {

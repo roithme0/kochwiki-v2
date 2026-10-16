@@ -5,13 +5,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.router import router
+from app.identity.logging import configure_auth_logging
 from app.core.config import get_settings
-from app.mcp_server import MCPServices, create_mcp_server
-from app.schemas.errors import ErrorResponse
-from app.semantic_lifecycle import embedding_refresh_workers, semantic_search_services
-from app.services import greeting
-from app.services.exceptions import DomainError
-from app.services.recipe_proposals import RecipeProposalStore
+from app.infrastructure.mcp.server import create_mcp_server
+from app.infrastructure.mcp.services import MCPServices
+from app.core.schemas.errors import ErrorResponse
+from app.infrastructure.embeddings.lifecycle import embedding_refresh_workers, semantic_search_services
+from app.core.exceptions import DomainError
+from app.recipes.services.proposal_store import RecipeProposalStore
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
@@ -22,11 +23,8 @@ async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
     )
 
 
-async def hello_world() -> dict[str, str]:
-    return greeting.hello_world()
-
-
 def create_app() -> FastAPI:
+    configure_auth_logging()
     settings = get_settings()
     recipe_proposals = RecipeProposalStore()
     mcp_services = MCPServices(recipe_proposals)
@@ -52,7 +50,6 @@ def create_app() -> FastAPI:
     application.add_exception_handler(DomainError, handle_domain_error)
     application.state.recipe_proposals = recipe_proposals
     application.include_router(router)
-    application.get("/")(hello_world)
     application.mount("/mcp", mcp_app)
     return application
 

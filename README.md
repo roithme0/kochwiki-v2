@@ -14,8 +14,8 @@ Kochwiki is a personal, private, mobile-first recipe app. This next iteration bu
 - **Frontend**: Angular, built mobile-first as an installable PWA.
 - **Backend**: A single Python FastAPI service.
 - **Database**: PostgreSQL for recipes, ingredients, nutrition data, and image metadata.
-- **Image storage**: Self-managed SeaweedFS, accessed through its S3-compatible API. Images are stored as objects; PostgreSQL stores metadata and object references.
-- **Image access**: Private buckets with short-lived presigned upload and download URLs issued by the backend.
+- **Image storage**: Self-managed Garage, accessed through its S3-compatible API. Local, staging, and production Compose definitions provide separate instances and private `recipe-images` buckets. Validated image metadata is persisted in PostgreSQL, with an optional image reference per recipe version.
+- **Image access**: The gateway exposes the S3 API at `/storage/`. Upload-start and completion endpoints issue presigned URLs, validate temporary PNG uploads and store accepted bytes under separate permanent keys. A download endpoint issues five-minute image URLs with a non-cacheable API response. The create/edit dialog's Basis section provides image preview, selection, replacement and removal, uploading selected files on Save. Recipe saves support image selection, removal and version inheritance; the detail page displays the viewed version?s image above the ingredients card. Grid cards display the version image in place of the nutrition diagram, at full content width with height determined by its aspect ratio.
 
 ## AI and API Direction
 
@@ -24,6 +24,15 @@ AI suggestions must be explainable and individually reviewable. Accepted changes
 The project may later expose a constrained API for general-purpose agents. This will be treated as a security boundary: capabilities, authentication, authorization, and auditability must be designed before agent write access is introduced.
 
 ## Operational Notes
+
+See [file storage configuration and verification](docs/file-storage.md) for Garage
+credentials, persistence, automatic initialization, and the presigned URL routing
+contract. Recipe versions reference validated images; image editing is available in Basis.
+
+Compose gives the backend a restricted PostgreSQL database owner and installs
+pgvector separately during database initialization. Local and staging will start
+with fresh database storage; see
+[database accounts and initialization](docs/database-permissions.md).
 
 The optional backend foodstuff alias search uses OpenAI embeddings and PostgreSQL pgvector. See [configuration, initial refresh/search commands, lifecycle and verification](docs/foodstuff-semantic-search.md).
 
@@ -35,10 +44,17 @@ foodstuff and recipe search tools, explicit foodstuff creation and updates, and
 recipe proposal creation, retrieval and saving. See
 [MCP integration and local verification](docs/mcp.md).
 
-The backend consumes the local `kochwiki-contract` package containing shared
-resolver API models. After installing backend requirements, install
-`backend/contract` into the same environment before running the backend or
-OpenAPI generation. See [contract package development and wheel verification](backend/contract/README.md).
+Backend API models and validation live in `backend/app`; no separate contract
+package installation is required. Domain models, schemas, services, and HTTP
+routes live in `backend/app/recipes`, `backend/app/foodstuffs`, and
+`backend/app/identity`. Identity includes users, OIDC login, and application
+sessions. Search commands stay with their recipe and foodstuff domains;
+shared settings, errors, greeting, and schema helpers live in `backend/app/core`.
+The shared HTTP router, greeting, and metadata routes live in `backend/app/api`.
+Database, storage, and embedding adapters live in `backend/app/infrastructure`. Install `backend/requirements.txt` before
+running the backend or OpenAPI generation. From `frontend`, run
+`npm run check:kochwiki-contract` to verify that the generated OpenAPI document
+and frontend types match the backend schemas.
 
 The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
 
@@ -46,7 +62,25 @@ Browser API access is same-origin through the gateway or Angular development
 proxy, so the backend has no CORS middleware. Server-to-server requests require
 no browser CORS permissions. MCP validates Host and Origin headers separately.
 
-The initial service layout intentionally stays small: FastAPI, PostgreSQL, and SeaweedFS. A single SeaweedFS node is a single point of failure, so backups for both database and object storage are required from the outset. Replication and additional services will be added only when they address a concrete need.
+FastAPI manages Keycloak login and creates or reuses a local user by validated
+issuer and subject. Each login refreshes the provider-owned email and non-unique
+display name. Email never links accounts; manual user selection, creation and
+local profile editing are removed. Angular resolves the current user through
+`/api/auth/me` on the first guarded navigation, keeping content hidden until the session is verified.
+Absent sessions initiate browser login; successful callbacks redirect home.
+There is no return destination feature. Temporary failures show an error without
+automatic login or retry actions. See [OIDC configuration and verification](docs/authentication-verification.md).
+
+Successful login establishes a PostgreSQL-backed local session with a host-only,
+HttpOnly cookie and 30-day sliding inactivity expiry. `/api/auth/me` returns the
+current user and renews the session; same-origin `POST /api/auth/logout` ends only
+the local session. Logout opens `/signed-out`, with a short hint and explicit sign-in
+button; reloading that page does not automatically start login. The Keycloak
+session remains active. Existing domain APIs, provider revocation checks and AI
+Service authentication remain subsequent slices. Domain requests do not yet renew
+or enforce the session.
+
+The initial service layout intentionally stays small: FastAPI, PostgreSQL, and Garage. The accepted single-node Garage deployment relies on the existing server filesystem backup covering its metadata and object data. Replication and additional backup tooling are outside the current storage slice.
 
 ## AI Workflows
 
@@ -56,7 +90,7 @@ The conversation frontend advertises the shared chat UI JSON capability and a
 KochWiki foodstuff, recipe and dedicated nutrition presentation capabilities alongside the selected recipe context.
 The agent can explicitly present data using the AI Service local presentation
 tool; MCP results do not automatically appear as artifacts. Domain behavior is
-defined in [the MCP instructions](backend/app/mcp_instructions.py);
+defined in [the MCP instructions](backend/app/infrastructure/mcp/instructions.py);
 [MCP integration](docs/mcp.md#domain-instructions) documents delivery and
 instruction ownership. Artifact delivery depends on the consuming agent.
 Foodstuff artifacts
@@ -90,9 +124,9 @@ save service and in-memory mapping; saving atomically creates required temporary
 foodstuffs and a draft, and repeat saves return that version. Recipe payloads
 contain no save identity, roles, or foodstuff IDs.
 
-Conversation requests, including SSE observation, carry the selected user's stable `kochwiki:<user.id>` identity in `X-Application-User`. A selected user is required before session creation; restoration does not start a session. Changing the selected user clears chat and detaches the previous observer. Late responses cannot update the new user's view; selecting another user starts a fresh conversation. Already admitted backend work continues. The locked `0.5.4` package provides the identity-aware chat UI constructor. Release verification uses the published registry package. The documented local-link workflow produced duplicate Angular injection contexts in tests.
+Conversation requests, including SSE observation, carry the authenticated user's stable `kochwiki:<user.id>` identity in `X-Application-User`. An authenticated user is required before session creation; authentication restoration alone does not start a conversation. Logout clears chat and detaches the observer. Late responses cannot update the signed-out view; a later login starts a fresh conversation. Already admitted backend work continues. The locked `0.5.4` package provides the identity-aware chat UI constructor. Release verification uses the published registry package. The documented local-link workflow produced duplicate Angular injection contexts in tests.
 
-Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; the existing user-switch flow discards it without confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving stops observing the event stream without cancelling remote work. New content and status changes scroll the history to the bottom. Context limits surface as initialization errors rather than silently reducing the snapshot.
+Conversations exist only while the page is open. After submitting a message, leaving or replacing the conversation requires confirmation; explicit logout discards it without a separate leave confirmation. Reload/tab-close protection depends on browser support. Returning starts a fresh session. Leaving stops observing the event stream without cancelling remote work. New content and status changes scroll the history to the bottom. Context limits surface as initialization errors rather than silently reducing the snapshot.
 
 Docker and CI use the locked installation; the CI workflow passes its short-lived `GITHUB_TOKEN` to `npm ci` as a BuildKit secret. Contract tests cover the public `/ui` and `/conversation` entry points and controlled request/response flows; these do not establish live-agent or mobile-keyboard readiness.
 

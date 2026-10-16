@@ -1,28 +1,35 @@
 <main>
+  <h1 class="greeting">
+    <app-text-reveal
+      text="Schön,&#10;dass du da bist."
+      [startDelay]="250"
+      [animate]="animateGreeting"
+    />
+  </h1>
   <nav class="navigation">
     <a
-      mat-flat-button
       routerLink="/recipes"
       ariaCurrentWhenActive="page"
       class="navigation-link"
     >
-      <img src="../../assets/recipes.png" alt="Rezepte" class="image" />
+      <img src="assets/images/recipes.png" alt="" class="image" />
+      <span class="navigation-label">Rezepte</span>
     </a>
     <a
-      mat-flat-button
       routerLink="/foodstuffs"
       ariaCurrentWhenActive="page"
       class="navigation-link"
     >
-      <img src="../../assets/foodstuffs.png" alt="Lebensmittel" class="image" />
+      <img src="assets/images/foodstuffs.png" alt="" class="image" />
+      <span class="navigation-label">Zutaten</span>
     </a>
   </nav>
-  <div class="spacer"></div>
   <div class="versions-wrapper">
     <span class="version">Frontend {{ frontendVersion }}</span>
-    @if(backendMetaService.backendVersion()){
-    <span class="version"
-      >Backend {{ backendMetaService.backendVersion() }}</span
-    >}
+    @if (backendMetaService.backendVersion()) {
+      <span class="version"
+        >Backend {{ backendMetaService.backendVersion() }}</span
+      >
+    }
   </div>
 </main>

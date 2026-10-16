@@ -19,6 +19,45 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * RecipeImageDimensionsOut
+ */
+export const zRecipeImageDimensionsOut = z.strictObject({
+    height: z.int().check(z.gt(0)),
+    width: z.int().check(z.gt(0))
+});
+
+/**
+ * RecipeImageDownloadOut
+ */
+export const zRecipeImageDownloadOut = z.strictObject({
+    expiresIn: z.int().check(z.gt(0)),
+    url: z.string()
+});
+
+/**
+ * RecipeImageOut
+ */
+export const zRecipeImageOut = z.strictObject({
+    contentType: z.literal('image/png'),
+    createdAt: z.iso.datetime(),
+    height: z.int(),
+    id: z.uuid(),
+    size: z.int(),
+    width: z.int()
+});
+
+/**
+ * RecipeImageUploadOut
+ */
+export const zRecipeImageUploadOut = z.strictObject({
+    expiresIn: z.int(),
+    headers: z.record(z.string(), z.string()),
+    method: z.literal('PUT'),
+    uploadId: z.uuid(),
+    url: z.string()
+});
+
+/**
  * RecipePresentationIngredientResolve
  */
 export const zRecipePresentationIngredientResolve = z.strictObject({
@@ -84,6 +123,7 @@ export const zStepWrite = z.strictObject({
  * RecipeVersionWrite
  */
 export const zRecipeVersionWrite = z.strictObject({
+    imageId: z.nullish(z.uuid()),
     ingredients: z.optional(z.array(zIngredientWrite)),
     name: z.string().check(z.minLength(1), z.maxLength(200)),
     preptime: z.nullish(z.int().check(z.gte(1), z.lte(999))),
@@ -222,6 +262,8 @@ export const zRecipeVersionOut = z.strictObject({
     carbs: z.nullable(z.number()),
     createdAt: z.iso.datetime(),
     fat: z.nullable(z.number()),
+    imageDimensions: z.nullable(zRecipeImageDimensionsOut),
+    imageId: z.nullable(z.uuid()),
     ingredients: z.array(zIngredientOut),
     kcal: z.nullable(z.number()),
     lastModified: z.iso.datetime(),
@@ -236,25 +278,11 @@ export const zRecipeVersionOut = z.strictObject({
 });
 
 /**
- * UserCreate
- */
-export const zUserCreate = z.object({
-    username: z.string().check(z.minLength(1), z.maxLength(50))
-});
-
-/**
  * UserOut
  */
 export const zUserOut = z.strictObject({
-    id: z.int(),
-    username: z.string()
-});
-
-/**
- * UserUpdate
- */
-export const zUserUpdate = z.object({
-    username: z.nullish(z.string().check(z.minLength(1), z.maxLength(50)))
+    display_name: z.string(),
+    id: z.int()
 });
 
 /**

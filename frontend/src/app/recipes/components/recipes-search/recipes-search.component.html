@@ -1,14 +1,28 @@
 <form class="form">
-  <mat-form-field class="search-field">
+  <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+    <mat-icon matPrefix class="search-icon" fontIcon="search" />
     <input
       #searchValueField
       [value]="recipesGridControlsService.searchBy()"
       (input)="onSeachValueChanged(searchValueField.value)"
       (selectionchange)="onSeachValueChanged(searchValueField.value)"
-      placeholder="Rezeptname suchen ..."
+      placeholder="Rezepte suchen …"
+      aria-label="Rezepte suchen"
       matInput
       [matAutocomplete]="search"
     />
+    @if (recipesGridControlsService.searchBy() != "") {
+      <button
+        mat-icon-button
+        matSuffix
+        class="clear-button"
+        type="button"
+        aria-label="Suche löschen"
+        (click)="recipesGridControlsService.clearSearch()"
+      >
+        <mat-icon fontIcon="clear" />
+      </button>
+    }
     <mat-autocomplete
       #search="matAutocomplete"
       (optionSelected)="onSearchOptionSelected($event)"
@@ -22,15 +36,3 @@
   </mat-form-field>
 </form>
 
-<button mat-mini-fab class="search-button medium-size-button">
-  @if (recipesGridControlsService.searchBy() != "") {
-    <mat-icon
-      aria-hidden="false"
-      aria-label="Löschen"
-      fontIcon="clear"
-      (click)="recipesGridControlsService.clearSearch()"
-    />
-  } @else {
-    <mat-icon aria-hidden="false" aria-label="Suchen" fontIcon="search" />
-  }
-</button>

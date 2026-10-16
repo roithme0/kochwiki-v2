@@ -23,6 +23,7 @@ describe('RecipePatchDialogComponent', () => {
     let navigate: Mock;
     let close: Mock;
     let openSnackBar: Mock;
+    let dialogRef: Pick<MatDialogRef<RecipePatchDialogComponent>, 'close' | 'disableClose'>;
 
     beforeEach(() => {
         submission = { action: 'publish', recipeVersion: recipeVersionWrite };
@@ -33,6 +34,7 @@ describe('RecipePatchDialogComponent', () => {
         navigate = vi.fn().mockName('navigate').mockResolvedValue(true);
         close = vi.fn().mockName('close');
         openSnackBar = vi.fn().mockName('open');
+        dialogRef = { close, disableClose: false };
         component = Object.create(RecipePatchDialogComponent.prototype) as RecipePatchDialogComponent;
         Object.assign(component, {
             data: { recipeVersion: activeRecipeVersion },
@@ -43,10 +45,24 @@ describe('RecipePatchDialogComponent', () => {
                 notifyRecipesChanged,
             } as unknown as RecipeBackendService,
             router: { navigate } as unknown as Router,
-            dialogRef: { close } as unknown as MatDialogRef<RecipePatchDialogComponent>,
+            dialogRef,
             snackBarService: { open: openSnackBar } as unknown as SnackBarService,
             isSubmitting: signal(false),
         });
+    });
+
+    it('prevents dismissal during the recipe write and restores it after rejection', async () => {
+        let reject!: (error: Error) => void;
+        publishActiveRecipeEdit.mockReturnValue(new Promise<never>((_resolve, rejectPromise) => { reject = rejectPromise; }));
+        vi.spyOn(console, 'error').mockReturnValue(undefined);
+        const save = component.onSubmit(submission);
+        expect(component.isSubmitting()).toBe(true);
+        expect(dialogRef.disableClose).toBe(true);
+        reject(new Error('Save failed'));
+        await save;
+        expect(component.isSubmitting()).toBe(false);
+        expect(dialogRef.disableClose).toBe(false);
+        expect(close).not.toHaveBeenCalled();
     });
 
     it('publishes an active edit directly', async () => {
@@ -124,6 +140,7 @@ describe('RecipePatchDialogComponent', () => {
 });
 
 const recipeVersionWrite = {
+    imageId: '00000000-0000-4000-8000-000000000003',
     name: 'Recipe',
     servings: 1,
     preptime: null,
@@ -136,6 +153,7 @@ const draftRecipeVersion: RecipeVersionOut = createRecipeVersion('draft', '00000
 
 function createRecipeVersion(state: RecipeVersionOut['state'], recipeVersionId: string): RecipeVersionOut {
     return {
+        imageId: null, imageDimensions: null,
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId,
         state,

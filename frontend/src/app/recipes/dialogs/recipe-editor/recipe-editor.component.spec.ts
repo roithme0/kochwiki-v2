@@ -2,11 +2,12 @@ import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 
 import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { RecipeImageService } from '../../services/recipe-image.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeEditorComponent } from './recipe-editor.component';
 
@@ -21,8 +22,12 @@ describe('RecipeEditorComponent', () => {
         getActiveRecipeVersion: Mock;
         getRecipeVersion: Mock;
     };
+    let imageService: { upload: Mock; download: Mock };
+    let closing: Subject<void>;
+    const imageId = '00000000-0000-4000-8000-000000000003';
 
     const recipeVersion: RecipeVersionOut = {
+        imageId: null, imageDimensions: null,
         recipeLineageId: '00000000-0000-4000-8000-000000000001',
         recipeVersionId: '00000000-0000-0000-0000-000000000001',
         state: 'active',
@@ -40,6 +45,15 @@ describe('RecipeEditorComponent', () => {
     };
 
     beforeEach(async () => {
+        closing = new Subject<void>();
+        imageService = {
+            upload: vi.fn().mockResolvedValue({ id: imageId }),
+            download: vi.fn().mockResolvedValue({ url: '/storage/saved.png?signature=test', expiresIn: 300 }),
+        };
+        vi.stubGlobal('URL', class extends URL {
+            static override createObjectURL = vi.fn().mockReturnValue('blob:preview');
+            static override revokeObjectURL = vi.fn();
+        });
         foodstuffBackend = {
             getAllFoodstuffs: vi.fn().mockName('getAllFoodstuffs').mockResolvedValue([]),
             foodstuffsChanged$: new Subject<void>(),
@@ -54,13 +68,178 @@ describe('RecipeEditorComponent', () => {
             providers: [
                 { provide: FoodstuffBackendService, useValue: foodstuffBackend },
                 { provide: RecipeBackendService, useValue: recipeBackend },
+                { provide: RecipeImageService, useValue: imageService },
                 { provide: SnackBarService, useValue: { open: vi.fn().mockName('open') } },
                 { provide: MatDialog, useValue: {} },
+                { provide: MatDialogRef, useValue: { beforeClosed: () => closing } },
             ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(RecipeEditorComponent);
         component = fixture.componentInstance;
+    });
+
+    afterEach(() => {
+        fixture.destroy();
+        vi.unstubAllGlobals();
+    });
+
+    function selectFile(file: File | null): void {
+        const input = document.createElement('input');
+        Object.defineProperty(input, 'files', { value: { item: () => file } });
+        component.selectImage(input);
+    }
+
+    it('previews locally without uploading, preserves selection on picker cancel and releases it on dialog cancel', () => {
+        selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
+        expect(component.imagePreview()).toBe('blob:preview');
+        selectFile(null);
+        expect(component.imagePreview()).toBe('blob:preview');
+        expect(imageService.upload).not.toHaveBeenCalled();
+        fixture.destroy();
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+    });
+
+    it('uploads only after form validation and reuses the validated image after a failed recipe save', async () => {
+        const file = new File(['png'], 'recipe.png', { type: 'image/png' });
+        selectFile(file);
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        await component.onSubmit('publish');
+        expect(imageService.upload).not.toHaveBeenCalled();
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('New recipe');
+        await component.onSubmit('publish');
+        expect(imageService.upload).toHaveBeenCalledExactlyOnceWith(file);
+        expect(emitted).toHaveBeenCalledWith(expect.objectContaining({ recipeVersion: expect.objectContaining({ imageId }) }));
+        fixture.componentRef.setInput('submitting', true);
+        await component.onSubmit('publish');
+        expect(emitted).toHaveBeenCalledTimes(1);
+        fixture.componentRef.setInput('submitting', false);
+        await component.onSubmit('draft');
+        expect(imageService.upload).toHaveBeenCalledTimes(1);
+        expect(emitted).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'draft', recipeVersion: expect.objectContaining({ imageId }) }));
+    });
+
+    it('keeps a failed replacement and recipe data for explicit retry without submitting the old image', async () => {
+        component.recipeVersion.set({ ...recipeVersion, imageId: 'previous-image' });
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('Edited name');
+        selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
+        imageService.upload.mockRejectedValueOnce(new Error('Invalid PNG'));
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        await component.onSubmit('publish');
+        expect(emitted).not.toHaveBeenCalled();
+        expect(component.imageError()).toContain('erneut speichern');
+        expect(component.imagePreview()).toBe('blob:preview');
+        expect(component.recipeVersion()?.imageId).toBe('previous-image');
+        expect(component.recipeForm.controls.metaFormGroup.controls.name.value).toBe('Edited name');
+        await component.onSubmit('publish');
+        expect(imageService.upload).toHaveBeenCalledTimes(2);
+        expect(emitted).toHaveBeenCalledWith(expect.objectContaining({ recipeVersion: expect.objectContaining({ imageId }) }));
+    });
+
+    it('prevents duplicate saves and changes while uploading, and does not submit while the dialog closes', async () => {
+        let complete!: (value: { id: string }) => void;
+        imageService.upload.mockReturnValue(new Promise<{ id: string }>(resolve => { complete = resolve; }));
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('Recipe');
+        selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        const save = component.onSubmit('publish');
+        expect(component.busy()).toBe(true);
+        await component.onSubmit('draft');
+        component.removeImage();
+        expect(component.hasImage()).toBe(true);
+        expect(imageService.upload).toHaveBeenCalledTimes(1);
+        closing.next();
+        complete({ id: imageId });
+        await save;
+        expect(emitted).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        new File(['jpeg'], 'recipe.jpg', { type: 'image/jpeg' }),
+        new File([], 'empty.png', { type: 'image/png' }),
+        new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.png', { type: 'image/png' }),
+    ])('blocks saving an invalid selection until it is discarded: $name', async file => {
+        const navigate = vi.spyOn(component, 'goToSection').mockImplementation(() => {});
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('Recipe');
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        selectFile(new File(['png'], 'valid.png', { type: 'image/png' }));
+        selectFile(file);
+        expect(component.imageError()).toContain('höchstens 10 MiB');
+        expect(component.imagePreview()).toBe('blob:preview');
+        expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+        await component.onSubmit('publish');
+        expect(navigate).toHaveBeenCalledWith('basics');
+        expect(imageService.upload).not.toHaveBeenCalled();
+        expect(emitted).not.toHaveBeenCalled();
+        component.discardInvalidSelection();
+        await component.onSubmit('publish');
+        expect(imageService.upload).toHaveBeenCalledTimes(1);
+    });
+
+    it('submits explicit removal and shows the placeholder without changing the saved source', async () => {
+        component.recipeVersion.set({ ...recipeVersion, imageId });
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('Recipe');
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
+        component.removeImage();
+        expect(component.hasImage()).toBe(false);
+        expect(component.imagePreview()).toBeNull();
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+        await component.onSubmit('publish');
+        expect(emitted).toHaveBeenCalledWith(expect.objectContaining({ recipeVersion: expect.objectContaining({ imageId: null }) }));
+        expect(component.recipeVersion()?.imageId).toBe(imageId);
+        expect(imageService.upload).not.toHaveBeenCalled();
+    });
+
+    it('loads the saved preview and offers an explicit fresh URL retry after a delivery error', async () => {
+        recipeBackend.getActiveRecipeVersion.mockResolvedValue({ ...recipeVersion, imageId });
+        fixture.componentRef.setInput('recipeLineageId', recipeVersion.recipeLineageId);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(imageService.download).toHaveBeenCalledWith(imageId);
+        const image = fixture.nativeElement.querySelector('.image-preview img') as HTMLImageElement;
+        expect(image.getAttribute('src')).toContain('/storage/saved.png');
+        image.dispatchEvent(new Event('error'));
+        fixture.detectChanges();
+        expect(image.getAttribute('src')).toBe('assets/images/recipe-image-placeholder.png');
+        expect(imageService.download).toHaveBeenCalledTimes(1);
+        const retry = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+            .find(button => button.textContent?.includes('Bild erneut laden'))!;
+        retry.click();
+        await fixture.whenStable();
+        expect(imageService.download).toHaveBeenCalledTimes(2);
+        expect(component.imageAccessFailed()).toBe(false);
+    });
+
+    it('does not let a late saved-image request overwrite a selected replacement or removal', async () => {
+        let finish!: (value: { url: string; expiresIn: number }) => void;
+        imageService.download.mockReturnValue(new Promise<{ url: string; expiresIn: number }>(resolve => { finish = resolve; }));
+        component.recipeVersion.set({ ...recipeVersion, imageId });
+        const load = component.loadImagePreview();
+        selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
+        finish({ url: '/storage/old.png', expiresIn: 300 });
+        await load;
+        expect(component.imagePreview()).toBe('blob:preview');
+        component.removeImage();
+        expect(component.imagePreview()).toBeNull();
+    });
+
+    it('preserves an existing image reference when preview access fails', async () => {
+        component.recipeVersion.set({ ...recipeVersion, imageId });
+        component.recipeForm.controls.metaFormGroup.controls.name.setValue('Recipe');
+        imageService.download.mockRejectedValue(new Error('Unavailable'));
+        await component.loadImagePreview();
+        expect(component.imageAccessFailed()).toBe(true);
+        const emitted = vi.fn();
+        component.submitted.subscribe(emitted);
+        await component.onSubmit('draft');
+        expect(emitted).toHaveBeenCalledWith(expect.objectContaining({ recipeVersion: expect.objectContaining({ imageId }) }));
     });
 
     it('becomes ready only after recipe and foodstuff data load', async () => {
@@ -218,6 +397,25 @@ describe('RecipeEditorComponent', () => {
             },
         });
     });
+
+    it.each([null, '00000000-0000-4000-8000-000000000003'])(
+        'preserves the loaded image reference %s when publishing or saving a draft', (imageId) => {
+            component.recipeVersion.set({ ...recipeVersion, imageId });
+            component.recipeForm.controls.metaFormGroup.controls.name.setValue('Edited');
+            const emitted = vi.fn();
+            component.submitted.subscribe(emitted);
+
+            component.onSubmit('publish');
+            component.onSubmit('draft');
+
+            expect(emitted).toHaveBeenNthCalledWith(1, expect.objectContaining({
+                action: 'publish', recipeVersion: expect.objectContaining({ imageId }),
+            }));
+            expect(emitted).toHaveBeenNthCalledWith(2, expect.objectContaining({
+                action: 'draft', recipeVersion: expect.objectContaining({ imageId }),
+            }));
+        }
+    );
 
     it('does not submit an invalid step description', () => {
         component.recipeForm.controls.metaFormGroup.controls.name.setValue('Linsensuppe');

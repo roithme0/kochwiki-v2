@@ -1,3 +1,4 @@
+import { provideRouter, Router } from '@angular/router';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -9,21 +10,23 @@ import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
 import type { UserOut } from '../../api/generated';
 
-const USER: UserOut = { id: 7, username: 'Roi' };
+const USER: UserOut = { id: 7, display_name: 'Roi' };
 
 describe('PageHeaderComponent', () => {
     let fixture: ComponentFixture<PageHeaderComponent>;
-    let activeUserService: Pick<ActiveUserService, 'activeUser' | 'switchUser'>;
+    let activeUserService: Pick<ActiveUserService, 'activeUser' | 'logout' | 'logoutPending'>;
 
     beforeEach(async () => {
         activeUserService = {
             activeUser: signal<UserOut | null>(USER),
-            switchUser: vi.fn().mockName('switchUser'),
+            logout: vi.fn(async () => true),
+            logoutPending: signal(false),
         };
 
         await TestBed.configureTestingModule({
             imports: [PageHeaderComponent, NoopAnimationsModule],
             providers: [
+                provideRouter([]),
                 {
                     provide: ActiveUserService,
                     useValue: activeUserService,
@@ -43,11 +46,12 @@ describe('PageHeaderComponent', () => {
             ],
         }).compileComponents();
 
+        vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
         fixture = TestBed.createComponent(PageHeaderComponent);
         fixture.detectChanges();
     });
 
-    it('offers the active user and switching action from an accessible options menu', async () => {
+    it('offers the active user and logout action from an accessible options menu', async () => {
         const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Benutzeroptionen öffnen"]');
         expect(trigger).not.toBeNull();
         expect(fixture.nativeElement.querySelector('[fontIcon="logout"]')).toBeNull();
@@ -58,27 +62,30 @@ describe('PageHeaderComponent', () => {
 
         const items = await menu.getItems();
         expect(items.length).toBe(2);
-        expect(await items[1].getText()).toContain('Benutzer wechseln');
-        expect(await items[1].getText()).toContain('switch_account');
+        expect(await items[1].getText()).toContain('Abmelden');
+        expect(await items[1].getText()).toContain('logout');
         expect(document.body.textContent).toContain('Roi');
 
         await items[1].click();
-        expect(activeUserService.switchUser).toHaveBeenCalledTimes(1);
+        expect(activeUserService.logout).toHaveBeenCalledTimes(1);
+        await vi.waitFor(() => expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/signed-out']));
     });
 
-    it('toggles the theme through the menu and updates the icon and next action', async () => {
+    it('stays on the current page when logout is not confirmed', async () => {
+        vi.mocked(activeUserService.logout).mockResolvedValue(false);
+        await fixture.componentInstance.logout();
+        expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the light theme action visible and disabled', async () => {
         const menu = await TestbedHarnessEnvironment.loader(fixture).getHarness(MatMenuHarness);
-        const initiallyDark = fixture.componentInstance.themeService.isDark();
         await menu.open();
         const [toggle] = await menu.getItems();
-        expect(await toggle.getText()).toContain(initiallyDark ? 'Helles Design' : 'Dunkles Design');
-        expect(await toggle.getText()).toContain(initiallyDark ? 'light_mode' : 'dark_mode');
+        expect(await toggle.getText()).toContain('Helles Design');
+        expect(await toggle.getText()).toContain('light_mode');
+        expect(await toggle.isDisabled()).toBe(true);
         await toggle.click();
-        expect(await menu.isOpen()).toBe(false);
-        expect(document.documentElement.getAttribute('data-theme')).toBe(initiallyDark ? 'light' : 'dark');
-        await menu.open();
-        const [nextToggle] = await menu.getItems();
-        expect(await nextToggle.getText()).toContain(initiallyDark ? 'Dunkles Design' : 'Helles Design');
-        expect(await nextToggle.getText()).toContain(initiallyDark ? 'dark_mode' : 'light_mode');
+        expect(await menu.isOpen()).toBe(true);
+        expect(activeUserService.logout).not.toHaveBeenCalled();
     });
 });

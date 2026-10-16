@@ -23,6 +23,7 @@ export class RecipeCreateDialogComponent {
   async onSubmit(submission: RecipeEditorSubmission): Promise<void> {
     if (this.isSubmitting()) return;
     this.isSubmitting.set(true);
+    this.dialogRef.disableClose = true;
     let createdRecipeLineageId: string;
     try {
       createdRecipeLineageId = (await this.recipeBackendService.createRecipe(submission.recipeVersion)).recipeLineageId;
@@ -32,6 +33,7 @@ export class RecipeCreateDialogComponent {
         ? 'Erstellen konnte nicht bestätigt werden. Möglicherweise wurde das Rezept bereits erstellt. Bitte vor erneutem Speichern die Rezeptliste prüfen.'
         : 'Rezept konnte nicht erstellt werden');
       this.isSubmitting.set(false);
+      this.dialogRef.disableClose = false;
       return;
     }
 

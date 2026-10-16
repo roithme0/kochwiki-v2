@@ -1,20 +1,57 @@
 name: kochwiki-v2-local
 
 services:
+  file-storage:
+    image: dxflrs/garage:v2.4.1
+    restart: unless-stopped
+    command: ["/garage", "server", "--single-node"]
+    environment:
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in deployment/.env}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:?Set GARAGE_RPC_SECRET in deployment/.env}
+      RUST_LOG: info,garage_api_common::generic_server=off
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-data:/var/lib/garage/data
+      - garage-meta:/var/lib/garage/meta
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  file-storage-init:
+    image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+    restart: "no"
+    network_mode: service:file-storage
+    command: ["python", "/config/init_storage.py"]
+    environment:
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:?Set GARAGE_ADMIN_TOKEN in deployment/.env}
+      GARAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in deployment/.env}
+      GARAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in deployment/.env}
+    volumes:
+      - ./garage/init_storage.py:/config/init_storage.py:ro
+      - ./garage/buckets.json:/config/buckets.json:ro
+    depends_on:
+      file-storage:
+        condition: service_healthy
+
   db:
     image: pgvector/pgvector:0.8.2-pg16
     restart: unless-stopped
     environment:
-      POSTGRES_DB: kochwiki
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${APP_DB_NAME:-kochwiki}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deployment/.env}
+      APP_DB_USER: ${APP_DB_USER:-kochwiki}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in deployment/.env}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d kochwiki"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$APP_DB_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 10
     volumes:
       - postgresql-data:/var/lib/postgresql/data
+      - ./postgres/init-kochwiki.sh:/docker-entrypoint-initdb.d/10-kochwiki.sh:ro
 
   backend:
     build:
@@ -23,8 +60,19 @@ services:
       db:
         condition: service_healthy
     environment:
+      STORAGE_ENDPOINT_URL: http://file-storage:3900
+      STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:-http://localhost:${GATEWAY_PORT:-8000}}
+      STORAGE_REGION: garage
+      STORAGE_BUCKET_RECIPE_IMAGES: recipe-images
+      STORAGE_ACCESS_KEY_ID: ${GARAGE_ACCESS_KEY_ID:?Set GARAGE_ACCESS_KEY_ID in deployment/.env}
+      STORAGE_SECRET_ACCESS_KEY: ${GARAGE_SECRET_ACCESS_KEY:?Set GARAGE_SECRET_ACCESS_KEY in deployment/.env}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      DATABASE_URL: postgresql+psycopg://user:password@db:5432/kochwiki
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-kochwiki}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
+      OIDC_CALLBACK_URL: ${OIDC_CALLBACK_URL:-}
+      OIDC_BACKCHANNEL_URL: ${OIDC_BACKCHANNEL_URL:-}
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER:-kochwiki}:${APP_DB_PASSWORD:?Set APP_DB_PASSWORD in deployment/.env}@db:5432/${APP_DB_NAME:-kochwiki}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*,host.docker.internal}
 
   frontend:
@@ -49,11 +97,17 @@ services:
       - ./gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
       - ./gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+      file-storage-init:
+        condition: service_completed_successfully
 
 volumes:
   postgresql-data:
+  garage-data:
+  garage-meta:
 
 secrets:
   npm_token:

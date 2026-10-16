@@ -2,6 +2,8 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RecipeBackendService } from '../../../recipes/services/recipe-backend.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
@@ -10,14 +12,14 @@ import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffsTableComponent } from '../../components/foodstuffs-table/foodstuffs-table.component';
-import { FoodstuffsTableCreateFoodstuffComponent } from '../../components/foodstuffs-table-create-foodstuff/foodstuffs-table-create-foodstuff.component';
+import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { LoadState } from '../../../core/utils/load-state';
 
 @Component({
   selector: 'app-foodstuffs-page',
   imports: [
     FoodstuffsTableComponent,
-    FoodstuffsTableCreateFoodstuffComponent,
+    MatButtonModule,
     MatProgressSpinnerModule,
     MatIconModule,
     FoodstuffsSearchComponent
@@ -32,6 +34,7 @@ export class FoodstuffsPageComponent {
   private readonly recipeBackendService = inject(RecipeBackendService);
   private readonly snackBarService = inject(SnackBarService);
   readonly pageHeaderService = inject(PageHeaderService);
+  readonly dialog = inject(MatDialog);
 
   readonly foodstuffsState = signal<LoadState<FoodstuffOut[]>>({
     status: 'loading',
@@ -48,6 +51,17 @@ export class FoodstuffsPageComponent {
     this.pageHeaderService.updateHeader(true, 'Lebensmittel', '', true);
     this.keepFoodstuffsUpToDate();
     void this.fetchFoodstuffs();
+  }
+
+  openCreateFoodstuffDialog(): void {
+    this.dialog.open(FoodstuffCreateDialogComponent, {
+      minWidth: 'calc(100vw - 1rem)',
+      maxWidth: 'calc(100vw - 1rem)',
+      maxHeight: 'calc(100vh - 1rem)',
+      position: { top: '0.5rem', left: '0.5rem' },
+      autoFocus: false,
+      disableClose: true,
+    });
   }
 
   private keepFoodstuffsUpToDate(): void {

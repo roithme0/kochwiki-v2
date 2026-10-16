@@ -7,9 +7,9 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatMenuModule } from '@angular/material/menu';
 import { environment } from '../../../../environments/environment';
 import { ActiveUserService } from '../../services/active-user.service';
+import { AuthNavigationService } from '../../services/auth-navigation.service';
 import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
-import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-page-header',
@@ -25,10 +25,14 @@ import { ThemeService } from '../../services/theme.service';
   styleUrl: './page-header.component.scss',
 })
 export class PageHeaderComponent {
+  private readonly authNavigation = inject(AuthNavigationService);
   readonly pageHeaderService = inject(PageHeaderService);
   readonly activeUserService = inject(ActiveUserService);
   readonly backendMetaService = inject(BackendMetaService);
-  readonly themeService = inject(ThemeService);
 
   readonly environmentName: string = environment.name;
+
+  logout(): Promise<void> {
+    return this.authNavigation.logout();
+  }
 }

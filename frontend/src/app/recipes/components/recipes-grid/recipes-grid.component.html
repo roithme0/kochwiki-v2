@@ -3,7 +3,10 @@
 <div class="grid" [style.--columns]="displayedColumns()">
   @for(recipeVersion of displayedRecipeVersions(); track recipeVersion.recipeVersionId){
   <a
+    #recipeLink
     class="recipe-link"
+    [attr.data-recipe-version-id]="recipeVersion.recipeVersionId"
+    [style.grid-row-end]="'span ' + (cardRowSpans()[recipeVersion.recipeVersionId] ?? 1)"
     [routerLink]="recipeVersionLink(recipeVersion)"
   >
     <app-recipes-grid-element [recipeVersion]="recipeVersion" />

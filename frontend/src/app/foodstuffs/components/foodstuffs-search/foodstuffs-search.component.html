@@ -1,14 +1,28 @@
 <form class="form">
-  <mat-form-field class="search-field">
+  <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+    <mat-icon matPrefix class="search-icon" fontIcon="search" />
     <input
       #searchValueField
       [value]="foodstuffTableControlsService.searchBy()"
       (input)="onSeachValueChanged(searchValueField.value)"
       (selectionchange)="onSeachValueChanged(searchValueField.value)"
-      placeholder="Name oder Ersteller*in suchen ..."
+      placeholder="Name oder Marke suchen …"
+      aria-label="Name oder Marke suchen"
       matInput
       [matAutocomplete]="search"
     />
+    @if (foodstuffTableControlsService.searchBy() != '') {
+      <button
+        mat-icon-button
+        matSuffix
+        class="clear-button"
+        type="button"
+        aria-label="Suche löschen"
+        (click)="foodstuffTableControlsService.clearSearch()"
+      >
+        <mat-icon fontIcon="clear" />
+      </button>
+    }
     <mat-autocomplete #search="matAutocomplete">
       @if(filteredNames().size > 0){
       <mat-optgroup label="Namen">
@@ -26,16 +40,3 @@
     </mat-autocomplete>
   </mat-form-field>
 </form>
-
-<button mat-mini-fab class="search-button medium-size-button">
-  @if(foodstuffTableControlsService.searchBy() != ''){
-  <mat-icon
-    aria-hidden="false"
-    aria-label="Löschen"
-    fontIcon="close"
-    (click)="foodstuffTableControlsService.clearSearch()"
-  />
-  } @else {
-  <mat-icon aria-hidden="false" aria-label="Suchen" fontIcon="search" />
-  }
-</button>

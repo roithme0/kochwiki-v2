@@ -103,7 +103,7 @@ html {
 body {
   height: 100%;
   margin: 0; /* auto added by material ui */
-  font-family: Roboto, "Helvetica Neue", sans-serif; /* auto added by material ui */
+  font-family: tokens.$primary-font-family;
 }
 
 app-root {

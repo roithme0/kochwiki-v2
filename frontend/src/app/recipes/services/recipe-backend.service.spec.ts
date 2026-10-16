@@ -9,6 +9,8 @@ import { RecipeBackendService } from './recipe-backend.service';
 const lineageId = '00000000-0000-4000-8000-000000000001';
 const versionId = '00000000-0000-4000-8000-000000000002';
 const recipe: RecipeVersionOut = {
+  imageId: '00000000-0000-4000-8000-000000000003',
+  imageDimensions: { width: 1254, height: 818 },
   recipeLineageId: lineageId, recipeVersionId: versionId, state: 'active',
   createdAt: '2026-09-30T10:00:00Z', lastModified: '2026-09-30T10:00:00Z',
   name: 'Oats', servings: 2, preptime: null,
@@ -46,8 +48,12 @@ const operations: {
     run: (service) => service.publishRecipeDraft(lineageId, versionId) },
 ];
 const { name: _name, ...missingName } = recipe;
+const { imageId: _imageId, ...missingImageId } = recipe;
 const malformedResponses = [
   { reason: 'missing field', body: missingName },
+  { reason: 'missing image reference', body: missingImageId },
+  { reason: 'invalid image dimensions', body: { ...recipe, imageDimensions: { width: 0, height: 818 } } },
+  { reason: 'invalid image UUID', body: { ...recipe, imageId: 'image' } },
   { reason: 'null name', body: { ...recipe, name: null } },
   { reason: 'invalid UUID', body: { ...recipe, recipeVersionId: 'version' } },
   { reason: 'invalid state', body: { ...recipe, state: 'unknown' } },

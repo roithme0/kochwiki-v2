@@ -488,6 +488,128 @@
         "title": "IngredientWrite",
         "type": "object"
       },
+      "RecipeImageDimensionsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height"
+        ],
+        "title": "RecipeImageDimensionsOut",
+        "type": "object"
+      },
+      "RecipeImageDownloadOut": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresIn": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expiresin",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiresIn"
+        ],
+        "title": "RecipeImageDownloadOut",
+        "type": "object"
+      },
+      "RecipeImageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "contentType": {
+            "const": "image/png",
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "contentType",
+          "size",
+          "width",
+          "height",
+          "createdAt"
+        ],
+        "title": "RecipeImageOut",
+        "type": "object"
+      },
+      "RecipeImageUploadOut": {
+        "additionalProperties": false,
+        "properties": {
+          "expiresIn": {
+            "title": "Expiresin",
+            "type": "integer"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "method": {
+            "const": "PUT",
+            "title": "Method",
+            "type": "string"
+          },
+          "uploadId": {
+            "format": "uuid",
+            "title": "Uploadid",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadId",
+          "url",
+          "method",
+          "headers",
+          "expiresIn"
+        ],
+        "title": "RecipeImageUploadOut",
+        "type": "object"
+      },
       "RecipePresentationIngredientOut": {
         "additionalProperties": false,
         "properties": {
@@ -759,6 +881,28 @@
             ],
             "title": "Fat"
           },
+          "imageDimensions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeImageDimensionsOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/IngredientOut"
@@ -836,6 +980,8 @@
         "required": [
           "recipeLineageId",
           "recipeVersionId",
+          "imageId",
+          "imageDimensions",
           "state",
           "createdAt",
           "lastModified",
@@ -864,6 +1010,19 @@
       "RecipeVersionWrite": {
         "additionalProperties": false,
         "properties": {
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Omit to keep or inherit the source image; null removes it; an ID selects a validated image.",
+            "title": "Imageid"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/IngredientWrite"
@@ -973,57 +1132,23 @@
         "title": "Unit",
         "type": "string"
       },
-      "UserCreate": {
-        "properties": {
-          "username": {
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Username",
-            "type": "string"
-          }
-        },
-        "required": [
-          "username"
-        ],
-        "title": "UserCreate",
-        "type": "object"
-      },
       "UserOut": {
         "additionalProperties": false,
         "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
-          },
-          "username": {
-            "title": "Username",
-            "type": "string"
           }
         },
         "required": [
           "id",
-          "username"
+          "display_name"
         ],
         "title": "UserOut",
-        "type": "object"
-      },
-      "UserUpdate": {
-        "properties": {
-          "username": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Username"
-          }
-        },
-        "title": "UserUpdate",
         "type": "object"
       },
       "ValidationError": {
@@ -1066,6 +1191,13 @@
         "title": "ValidationError",
         "type": "object"
       }
+    },
+    "securitySchemes": {
+      "APIKeyCookie": {
+        "in": "cookie",
+        "name": "kochwiki_session",
+        "type": "apiKey"
+      }
     }
   },
   "info": {
@@ -1094,6 +1226,66 @@
           }
         },
         "summary": "Hello World"
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "description": "Missing or untrusted Origin"
+          },
+          "503": {
+            "description": "Login not configured"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "authentication"
+        ]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "current_user_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Invalid or expired session"
+          },
+          "503": {
+            "description": "Login not configured"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Current User",
+        "tags": [
+          "authentication"
+        ]
       }
     },
     "/foodstuffs": {
@@ -1368,6 +1560,164 @@
           }
         },
         "summary": "Get Version"
+      }
+    },
+    "/recipe-image-uploads": {
+      "post": {
+        "operationId": "begin_upload_recipe_image_uploads_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeImageUploadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Begin Upload"
+      }
+    },
+    "/recipe-image-uploads/{upload_id}/complete": {
+      "post": {
+        "operationId": "complete_upload_recipe_image_uploads__upload_id__complete_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeImageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Complete Upload"
+      }
+    },
+    "/recipe-images/{image_id}/download": {
+      "get": {
+        "operationId": "download_image_recipe_images__image_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeImageDownloadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Download Image"
       }
     },
     "/recipe-presentations/resolve": {
@@ -2124,52 +2474,6 @@
           }
         },
         "summary": "Get Users"
-      },
-      "post": {
-        "operationId": "post_user_users_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Post User"
       }
     },
     "/users/{user_id}": {
@@ -2259,73 +2563,6 @@
           }
         },
         "summary": "Get User"
-      },
-      "patch": {
-        "operationId": "patch_user_users__user_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "user_id",
-            "required": true,
-            "schema": {
-              "title": "User Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Patch User"
       }
     }
   }

@@ -210,6 +210,92 @@ export type IngredientWrite = {
 };
 
 /**
+ * RecipeImageDimensionsOut
+ */
+export type RecipeImageDimensionsOut = {
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * RecipeImageDownloadOut
+ */
+export type RecipeImageDownloadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * RecipeImageOut
+ */
+export type RecipeImageOut = {
+    /**
+     * Contenttype
+     */
+    contentType: 'image/png';
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * RecipeImageUploadOut
+ */
+export type RecipeImageUploadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Headers
+     */
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Method
+     */
+    method: 'PUT';
+    /**
+     * Uploadid
+     */
+    uploadId: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * RecipePresentationIngredientOut
  */
 export type RecipePresentationIngredientOut = {
@@ -346,6 +432,11 @@ export type RecipeVersionOut = {
      * Fat
      */
     fat: number | null;
+    imageDimensions: RecipeImageDimensionsOut | null;
+    /**
+     * Imageid
+     */
+    imageId: string | null;
     /**
      * Ingredients
      */
@@ -398,6 +489,12 @@ export type RecipeVersionState = 'active' | 'draft' | 'historical';
  * RecipeVersionWrite
  */
 export type RecipeVersionWrite = {
+    /**
+     * Imageid
+     *
+     * Omit to keep or inherit the source image; null removes it; an ID selects a validated image.
+     */
+    imageId?: string | null;
     /**
      * Ingredients
      */
@@ -462,37 +559,17 @@ export type StepWrite = {
 export type Unit = 'G' | 'ML' | 'PIECE';
 
 /**
- * UserCreate
- */
-export type UserCreate = {
-    /**
-     * Username
-     */
-    username: string;
-};
-
-/**
  * UserOut
  */
 export type UserOut = {
     /**
+     * Display Name
+     */
+    display_name: string;
+    /**
      * Id
      */
     id: number;
-    /**
-     * Username
-     */
-    username: string;
-};
-
-/**
- * UserUpdate
- */
-export type UserUpdate = {
-    /**
-     * Username
-     */
-    username?: string | null;
 };
 
 /**
@@ -542,6 +619,64 @@ export type HelloWorldGetResponses = {
 };
 
 export type HelloWorldGetResponse = HelloWorldGetResponses[keyof HelloWorldGetResponses];
+
+export type LogoutAuthLogoutPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
+};
+
+export type LogoutAuthLogoutPostErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: unknown;
+    /**
+     * Missing or untrusted Origin
+     */
+    403: unknown;
+    /**
+     * Login not configured
+     */
+    503: unknown;
+};
+
+export type LogoutAuthLogoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type LogoutAuthLogoutPostResponse = LogoutAuthLogoutPostResponses[keyof LogoutAuthLogoutPostResponses];
+
+export type CurrentUserAuthMeGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/me';
+};
+
+export type CurrentUserAuthMeGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: unknown;
+    /**
+     * Login not configured
+     */
+    503: unknown;
+};
+
+export type CurrentUserAuthMeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: UserOut;
+};
+
+export type CurrentUserAuthMeGetResponse = CurrentUserAuthMeGetResponses[keyof CurrentUserAuthMeGetResponses];
 
 export type GetFoodstuffsFoodstuffsGetData = {
     body?: never;
@@ -733,6 +868,111 @@ export type GetVersionMetaVersionGetResponses = {
 };
 
 export type GetVersionMetaVersionGetResponse = GetVersionMetaVersionGetResponses[keyof GetVersionMetaVersionGetResponses];
+
+export type BeginUploadRecipeImageUploadsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/recipe-image-uploads';
+};
+
+export type BeginUploadRecipeImageUploadsPostErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type BeginUploadRecipeImageUploadsPostError = BeginUploadRecipeImageUploadsPostErrors[keyof BeginUploadRecipeImageUploadsPostErrors];
+
+export type BeginUploadRecipeImageUploadsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageUploadOut;
+};
+
+export type BeginUploadRecipeImageUploadsPostResponse = BeginUploadRecipeImageUploadsPostResponses[keyof BeginUploadRecipeImageUploadsPostResponses];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostData = {
+    body?: never;
+    path: {
+        /**
+         * Upload Id
+         */
+        upload_id: string;
+    };
+    query?: never;
+    url: '/recipe-image-uploads/{upload_id}/complete';
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostError = CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors];
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageOut;
+};
+
+export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponse = CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetData = {
+    body?: never;
+    path: {
+        /**
+         * Image Id
+         */
+        image_id: string;
+    };
+    query?: never;
+    url: '/recipe-images/{image_id}/download';
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetError = DownloadImageRecipeImagesImageIdDownloadGetErrors[keyof DownloadImageRecipeImagesImageIdDownloadGetErrors];
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: RecipeImageDownloadOut;
+};
+
+export type DownloadImageRecipeImagesImageIdDownloadGetResponse = DownloadImageRecipeImagesImageIdDownloadGetResponses[keyof DownloadImageRecipeImagesImageIdDownloadGetResponses];
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
     body: RecipePresentationResolve;
@@ -1220,35 +1460,6 @@ export type GetUsersUsersGetResponses = {
 
 export type GetUsersUsersGetResponse = GetUsersUsersGetResponses[keyof GetUsersUsersGetResponses];
 
-export type PostUserUsersPostData = {
-    body: UserCreate;
-    path?: never;
-    query?: never;
-    url: '/users';
-};
-
-export type PostUserUsersPostErrors = {
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type PostUserUsersPostError = PostUserUsersPostErrors[keyof PostUserUsersPostErrors];
-
-export type PostUserUsersPostResponses = {
-    /**
-     * Successful Response
-     */
-    201: UserOut;
-};
-
-export type PostUserUsersPostResponse = PostUserUsersPostResponses[keyof PostUserUsersPostResponses];
-
 export type DeleteUserUsersUserIdDeleteData = {
     body?: never;
     path: {
@@ -1316,41 +1527,3 @@ export type GetUserUsersUserIdGetResponses = {
 };
 
 export type GetUserUsersUserIdGetResponse = GetUserUsersUserIdGetResponses[keyof GetUserUsersUserIdGetResponses];
-
-export type PatchUserUsersUserIdPatchData = {
-    body: UserUpdate;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: number;
-    };
-    query?: never;
-    url: '/users/{user_id}';
-};
-
-export type PatchUserUsersUserIdPatchErrors = {
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Conflict
-     */
-    409: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type PatchUserUsersUserIdPatchError = PatchUserUsersUserIdPatchErrors[keyof PatchUserUsersUserIdPatchErrors];
-
-export type PatchUserUsersUserIdPatchResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserOut;
-};
-
-export type PatchUserUsersUserIdPatchResponse = PatchUserUsersUserIdPatchResponses[keyof PatchUserUsersUserIdPatchResponses];

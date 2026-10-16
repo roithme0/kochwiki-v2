@@ -9,6 +9,56 @@ import { RecipesGridElementComponent } from '../recipes-grid-element/recipes-gri
 import { RecipesGridComponent } from './recipes-grid.component';
 
 describe('RecipesGridComponent', () => {
+  it('reflows varying card heights without changing link order and releases its observer', async () => {
+    let resizeCallback: ResizeObserverCallback | undefined;
+    const disconnect = vi.fn();
+    const observer: ResizeObserver = { observe: vi.fn(), unobserve: vi.fn(), disconnect };
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+        return observer;
+      }
+    });
+    try {
+      TestBed.configureTestingModule({
+        imports: [RecipesGridComponent, RouterTestingModule],
+        providers: [{ provide: ElementWidthService, useValue: { observe: () => signal(360) } }],
+      }).overrideComponent(RecipesGridComponent, {
+        remove: { imports: [RecipesGridElementComponent] },
+        add: { imports: [RecipeGridElementStubComponent] },
+      });
+      const fixture = TestBed.createComponent(RecipesGridComponent);
+      fixture.componentRef.setInput('recipeVersions', [
+        recipeVersion('short', '2026-09-10T11:00:00Z', 'active'),
+        recipeVersion('long', '2026-09-10T10:00:00Z', 'draft'),
+      ]);
+      fixture.detectChanges();
+      const element: HTMLElement = fixture.nativeElement;
+      const links = Array.from(element.querySelectorAll<HTMLAnchorElement>('a.recipe-link'));
+      links.forEach((link) => link.style.marginBottom = '8px');
+      const entries = (heights: number[]): ResizeObserverEntry[] => links.map((target, index) => ({
+        target,
+        borderBoxSize: [{ inlineSize: 160, blockSize: heights[index] }],
+        contentBoxSize: [],
+        devicePixelContentBoxSize: [],
+        contentRect: new DOMRect(),
+      }));
+
+      resizeCallback?.(entries([100, 120]), observer);
+      fixture.detectChanges();
+      expect(links.map((link) => link.style.gridRowEnd)).toEqual(['span 108', 'span 128']);
+      resizeCallback?.(entries([140, 160]), observer);
+      fixture.detectChanges();
+      expect(links.map((link) => link.style.gridRowEnd)).toEqual(['span 148', 'span 168']);
+      expect(links.map((link) => link.dataset['recipeVersionId'])).toEqual(['short', 'long']);
+      disconnect.mockClear();
+      fixture.destroy();
+      expect(disconnect).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('updates recipe columns from its own element width at the existing breakpoints', () => {
     const width = signal(480);
     const observe = vi.fn().mockReturnValue(width);
@@ -104,6 +154,7 @@ class RecipeGridElementStubComponent {
 
 function recipeVersion(recipeVersionId: string, lastModified: string, state: RecipeVersionOut['state']): RecipeVersionOut {
   return {
+    imageId: null, imageDimensions: null,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId,
     state,
