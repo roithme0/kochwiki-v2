@@ -9,6 +9,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, literal, select, text, update
 
 from app.identity.routes import auth
+from app.identity.config import (
+    SESSION_COOKIE, SESSION_LIFETIME, SESSION_COOKIE_PATH, SESSION_LIFETIME_SECONDS,
+)
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.application_session import ApplicationSession
@@ -16,7 +19,7 @@ from app.identity.models.user import User
 from app.identity.schemas.user import UserOut
 from app.identity.services import sessions as session_services
 from app.identity.services.sessions import (
-    SESSION_COOKIE, SESSION_LIFETIME, SESSION_PATH, SESSION_SECONDS, authenticated_user,
+    authenticated_user,
     cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )
 from test_oidc_login import Provider, begin, browser, finish, provider, settings
@@ -30,7 +33,7 @@ def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: 
     assert secret and len(secret) == 43 and secret not in response.text
     cookie = next(value for value in response.headers.get_list("set-cookie") if value.startswith(SESSION_COOKIE + "="))
     assert "HttpOnly" in cookie and "SameSite=lax" in cookie and "Domain=" not in cookie
-    assert f"Path={SESSION_PATH}" in cookie and f"Max-Age={SESSION_SECONDS}" in cookie and "expires=" in cookie.lower()
+    assert f"Path={SESSION_COOKIE_PATH}" in cookie and f"Max-Age={SESSION_LIFETIME_SECONDS}" in cookie and "expires=" in cookie.lower()
     assert "Secure" not in cookie
     with SessionLocal() as session:
         stored = session.scalars(select(ApplicationSession)).one()
@@ -157,7 +160,7 @@ def test_cleanup_rechecks_expiry_after_concurrent_session_change(
 @pytest.mark.parametrize("secret", [None, "unknown", "x" * 43])
 def test_invalid_session_cleared(browser: TestClient, secret: str | None) -> None:
     if secret is not None:
-        browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_PATH)
+        browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_COOKIE_PATH)
     response = browser.get("/api/auth/me")
     assert response.status_code == 401 and response.headers["cache-control"] == "no-store"
     assert "Max-Age=0" in response.headers["set-cookie"] and SESSION_COOKIE not in browser.cookies
@@ -172,7 +175,7 @@ def test_expired_cannot_be_revived(browser: TestClient, provider: Provider, days
         session.execute(update(ApplicationSession).values(last_activity_at=old_activity))
     assert browser.get("/api/auth/me").status_code == 401
     assert secret is not None
-    browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_PATH)
+    browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_COOKIE_PATH)
     assert browser.post("/api/auth/logout", headers={"Origin": "http://localhost:8000"}).status_code == 401
     with SessionLocal() as session:
         assert session.scalars(select(ApplicationSession)).one().last_activity_at == old_activity
@@ -203,7 +206,7 @@ def test_logout_invalidates_only_local_session_and_rejects_reuse(browser: TestCl
         assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 0
         assert session.scalar(select(func.count()).select_from(User)) == 1
     assert secret is not None
-    browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_PATH)
+    browser.cookies.set(SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_COOKIE_PATH)
     assert browser.get("/api/auth/me").status_code == 401
     assert browser.post("/api/auth/logout", headers={"Origin": "http://localhost:8000"}).status_code == 401
 
@@ -222,7 +225,7 @@ def test_login_rotates_only_after_successful_validation(browser: TestClient, pro
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 1
     assert original is not None
-    browser.cookies.set(SESSION_COOKIE, original, domain="localhost.local", path=SESSION_PATH)
+    browser.cookies.set(SESSION_COOKIE, original, domain="localhost.local", path=SESSION_COOKIE_PATH)
     assert browser.get("/api/auth/me").status_code == 401
 
 
@@ -271,5 +274,5 @@ def test_stored_hash_is_not_a_session_credential(browser: TestClient, provider: 
     assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         hashed = session.scalars(select(ApplicationSession)).one().secret_hash
-    browser.cookies.set(SESSION_COOKIE, hashed, domain="localhost.local", path=SESSION_PATH)
+    browser.cookies.set(SESSION_COOKIE, hashed, domain="localhost.local", path=SESSION_COOKIE_PATH)
     assert browser.get("/api/auth/me").status_code == 401

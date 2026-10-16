@@ -1,8 +1,19 @@
+from datetime import timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 if TYPE_CHECKING:
     from app.core.config import Settings
+
+
+LOGIN_COOKIE = "kochwiki_login"
+LOGIN_COOKIE_PATH = "/api/auth"
+LOGIN_TRANSACTION_LIFETIME_SECONDS = 600
+
+SESSION_COOKIE = "kochwiki_session"
+SESSION_COOKIE_PATH = "/api"
+SESSION_LIFETIME_SECONDS = 30 * 24 * 60 * 60
+SESSION_LIFETIME = timedelta(seconds=SESSION_LIFETIME_SECONDS)
 
 
 def validate_oidc_settings(settings: "Settings") -> None:

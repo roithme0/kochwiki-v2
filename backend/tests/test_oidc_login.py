@@ -19,11 +19,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.identity.routes import auth
-from app.identity.core.auth_logging import AuthQueryFilter
+from app.identity.config import LOGIN_COOKIE, LOGIN_COOKIE_PATH
+from app.identity.logging import AuthQueryFilter
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.models.user import User
+from app.identity.schemas.oidc import Identity
 from app.identity.services import oidc
 from app.identity.services.users import map_identity
 
@@ -116,7 +118,7 @@ def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> 
     assert query["scope"] == ["openid"]
     assert query["redirect_uri"] == [CALLBACK]
     assert query["code_challenge_method"] == ["S256"]
-    binding = browser.cookies.get(auth.COOKIE)
+    binding = browser.cookies.get(LOGIN_COOKIE)
     assert binding and provider.nonce not in binding
     with SessionLocal() as session:
         transaction = session.scalar(select(LoginTransaction))
@@ -131,10 +133,10 @@ def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> 
     assert query["code_challenge"] == [challenge]
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["referrer-policy"] == "no-referrer"
-    assert auth.COOKIE not in browser.cookies
+    assert LOGIN_COOKIE not in browser.cookies
     for private_value in (SECRET, "provider-user", "cook@example.invalid", "must-stay-server-side", "must-also-stay-server-side"):
         assert private_value not in response.text
-    browser.cookies.set(auth.COOKIE, binding, domain="localhost.local", path=auth.COOKIE_PATH)
+    browser.cookies.set(LOGIN_COOKIE, binding, domain="localhost.local", path=LOGIN_COOKIE_PATH)
     assert finish(browser, query) == 400
 
 
@@ -190,7 +192,7 @@ def test_email_claim_is_required(browser: TestClient, provider: Provider, proble
 
 
 def test_concurrent_first_login_and_issuer_separation() -> None:
-    identity = oidc.Identity(iss=ISSUER, sub="same-subject", email="cook@example.invalid",
+    identity = Identity(iss=ISSUER, sub="same-subject", email="cook@example.invalid",
                              email_verified=False, displayName="Shared Name", nonce="test")
 
     barrier = Barrier(4)
@@ -211,7 +213,7 @@ def test_concurrent_first_login_and_issuer_separation() -> None:
 
 
 def test_user_creation_and_profile_edit_are_not_exposed(client: TestClient) -> None:
-    identity = oidc.Identity(iss=ISSUER, sub="provider-user", email="cook@example.invalid",
+    identity = Identity(iss=ISSUER, sub="provider-user", email="cook@example.invalid",
                              email_verified=False, displayName="Shared Name", nonce="test")
     with SessionLocal.begin() as session:
         user_id = map_identity(session, identity).id
@@ -258,7 +260,7 @@ def test_invalid_transaction_no_provider_call(browser: TestClient, provider: Pro
         browser.cookies.clear()
     elif problem == "wrong-cookie":
         browser.cookies.clear()
-        browser.cookies.set(auth.COOKIE, "another-browser", path=auth.COOKIE_PATH)
+        browser.cookies.set(LOGIN_COOKIE, "another-browser", path=LOGIN_COOKIE_PATH)
     elif problem == "wrong-state":
         parameters[0] = ("state", "unrelated-state")
     elif problem == "expired":
@@ -300,7 +302,7 @@ def test_discovery_mismatch_and_outage(browser: TestClient, provider: Provider) 
 
 def test_atomic_consumption_and_restart(browser: TestClient, provider: Provider, settings: Settings) -> None:
     query = begin(browser, provider)
-    binding = browser.cookies.get(auth.COOKIE)
+    binding = browser.cookies.get(LOGIN_COOKIE)
     assert binding is not None
 
     def consume() -> bool:

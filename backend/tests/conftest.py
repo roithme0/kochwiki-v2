@@ -20,7 +20,7 @@ os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 from app.infrastructure.database.session import SessionLocal, engine
 from app.main import create_app
 from app.identity.schemas.user import UserOut
-from app.identity.services.oidc import Identity
+from app.identity.schemas.oidc import Identity
 from app.identity.services.users import map_identity
 
 

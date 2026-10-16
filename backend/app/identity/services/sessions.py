@@ -1,18 +1,14 @@
 import hashlib
 import re
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
+from app.identity.config import SESSION_LIFETIME
 from app.identity.models.application_session import ApplicationSession
 from app.identity.models.user import User
-
-SESSION_COOKIE = "kochwiki_session"
-SESSION_PATH = "/api"
-SESSION_SECONDS = 30 * 24 * 60 * 60
-SESSION_LIFETIME = timedelta(seconds=SESSION_SECONDS)
 
 
 def cleanup_expired_sessions(session: Session) -> None:

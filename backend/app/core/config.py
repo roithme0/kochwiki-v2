@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_oidc(self) -> "Settings":
-        from app.identity.core.oidc_urls import validate_oidc_settings
+        from app.identity.config import validate_oidc_settings
 
         validate_oidc_settings(self)
         return self

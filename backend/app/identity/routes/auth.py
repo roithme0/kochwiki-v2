@@ -7,18 +7,22 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.security import APIKeyCookie
 
 from app.core.config import get_settings
+from app.identity.config import (
+    LOGIN_COOKIE,
+    LOGIN_COOKIE_PATH,
+    LOGIN_TRANSACTION_LIFETIME_SECONDS,
+    SESSION_COOKIE,
+    SESSION_COOKIE_PATH,
+    SESSION_LIFETIME_SECONDS,
+)
 from app.infrastructure.database.session import SessionLocal
 from app.identity.schemas.user import UserOut
 from app.identity.services.oidc import (
     LoginRejected,
     OIDCLogin,
     ProviderUnavailable,
-    TRANSACTION_SECONDS,
 )
 from app.identity.services.sessions import (
-    SESSION_COOKIE,
-    SESSION_PATH,
-    SESSION_SECONDS,
     authenticated_user,
     cleanup_expired_sessions,
     establish_session,
@@ -27,8 +31,6 @@ from app.identity.services.sessions import (
 from app.identity.services.users import map_identity
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-COOKIE = "kochwiki_login"
-COOKIE_PATH = "/api/auth"
 session_cookie = APIKeyCookie(name=SESSION_COOKIE, auto_error=False)
 HEADERS = {
     "Cache-Control": "no-store",
@@ -68,10 +70,10 @@ def login() -> Response:
         )
     response = RedirectResponse(start.url, status_code=302, headers=HEADERS)
     response.set_cookie(
-        COOKIE,
+        LOGIN_COOKIE,
         start.browser_binding,
-        max_age=TRANSACTION_SECONDS,
-        path=COOKIE_PATH,
+        max_age=LOGIN_TRANSACTION_LIFETIME_SECONDS,
+        path=LOGIN_COOKIE_PATH,
         secure=service.secure_cookie,
         httponly=True,
         samesite="lax",
@@ -92,7 +94,7 @@ def callback(request: Request) -> Response:
             for key in ("state", "code", "error", "iss")
         ):
             raise LoginRejected()
-        state, binding = parameters.get("state"), request.cookies.get(COOKIE)
+        state, binding = parameters.get("state"), request.cookies.get(LOGIN_COOKIE)
         if not state or not binding or len(state) > 128 or len(binding) > 128:
             raise LoginRejected()
         transaction = service.consume(state, binding)
@@ -124,8 +126,8 @@ def callback(request: Request) -> Response:
             "The identity provider is unavailable. Start a new login later.", 503
         )
     response.delete_cookie(
-        COOKIE,
-        path=COOKIE_PATH,
+        LOGIN_COOKIE,
+        path=LOGIN_COOKIE_PATH,
         secure=service.secure_cookie,
         httponly=True,
         samesite="lax",
@@ -139,9 +141,9 @@ def set_session_cookie(
     response.set_cookie(
         SESSION_COOKIE,
         secret,
-        max_age=SESSION_SECONDS,
+        max_age=SESSION_LIFETIME_SECONDS,
         expires=expires.astimezone(timezone.utc),
-        path=SESSION_PATH,
+        path=SESSION_COOKIE_PATH,
         secure=secure,
         httponly=True,
         samesite="lax",
@@ -153,7 +155,7 @@ def unauthenticated(secure: bool) -> JSONResponse:
         {"detail": "Authentication required."}, status_code=401, headers=HEADERS
     )
     response.delete_cookie(
-        SESSION_COOKIE, path=SESSION_PATH, secure=secure, httponly=True, samesite="lax"
+        SESSION_COOKIE, path=SESSION_COOKIE_PATH, secure=secure, httponly=True, samesite="lax"
     )
     return response
 
@@ -241,7 +243,7 @@ def logout(
     response = Response(status_code=204, headers=HEADERS)
     response.delete_cookie(
         SESSION_COOKIE,
-        path=SESSION_PATH,
+        path=SESSION_COOKIE_PATH,
         secure=service.secure_cookie,
         httponly=True,
         samesite="lax",

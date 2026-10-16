@@ -2,22 +2,20 @@ import base64
 import hashlib
 import json
 import secrets
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import jwt
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import ValidationError
 from sqlalchemy import delete
 
 from app.core.config import Settings
-from app.identity.core.profile import normalize_display_name
+from app.identity.config import LOGIN_TRANSACTION_LIFETIME_SECONDS
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
-
-TRANSACTION_SECONDS = 600
+from app.identity.schemas.oidc import Discovery, Identity, LoginStart, TokenResponse
 
 
 class LoginRejected(Exception):
@@ -26,39 +24,6 @@ class LoginRejected(Exception):
 
 class ProviderUnavailable(Exception):
     pass
-
-
-class Discovery(BaseModel):
-    issuer: str
-    authorization_endpoint: str
-    token_endpoint: str
-    jwks_uri: str
-
-
-class TokenResponse(BaseModel):
-    id_token: str
-
-
-class Identity(BaseModel):
-    model_config = ConfigDict(strict=True)
-
-    iss: str
-    sub: str = Field(min_length=1)
-    email: str = Field(min_length=1)
-    email_verified: bool
-    display_name: str = Field(alias="displayName", min_length=1, max_length=50)
-    nonce: str
-
-    @field_validator("display_name", mode="before")
-    @classmethod
-    def validate_display_name(cls, value: object) -> object:
-        return normalize_display_name(value)
-
-
-@dataclass(frozen=True)
-class LoginStart:
-    url: str
-    browser_binding: str
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -151,7 +116,7 @@ class OIDCLogin:
                     browser_hash=digest(binding),
                     nonce=nonce,
                     verifier=verifier,
-                    expires_at=now + timedelta(seconds=TRANSACTION_SECONDS),
+                    expires_at=now + timedelta(seconds=LOGIN_TRANSACTION_LIFETIME_SECONDS),
                 )
             )
         challenge = (
