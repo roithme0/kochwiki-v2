@@ -2,7 +2,7 @@ import json
 from collections.abc import Callable
 
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 
 from app import foodstuff_semantic, recipe_semantic
 from app.core.embedding import DIMENSIONS

@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError

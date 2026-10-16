@@ -3,8 +3,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
-from kochwiki_contract import Unit
-
+from app.models.enums import Unit
 from app.models.foodstuff import Foodstuff
 from app.models.recipe import Ingredient
 from app.schemas.foodstuff import FoodstuffSummaryOut

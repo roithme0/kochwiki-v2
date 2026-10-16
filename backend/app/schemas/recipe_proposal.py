@@ -2,13 +2,17 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from kochwiki_contract import Unit
-from kochwiki_contract.common import JsonDecimal, NonnegativeJsonDecimal
-from kochwiki_contract.recipe import RecipePresentationStepOut, StepWrite, _validate_unique_indexes
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models.enums import Unit
+from app.schemas.common import JsonDecimal, NonnegativeJsonDecimal
 from app.schemas.foodstuff import FoodstuffCreate
-from app.schemas.recipe import RecipeVersionFields
+from app.schemas.recipe import (
+    RecipePresentationStepOut,
+    RecipeVersionFields,
+    StepWrite,
+    _validate_unique_indexes,
+)
 
 
 class ExistingProposalFoodstuff(BaseModel):

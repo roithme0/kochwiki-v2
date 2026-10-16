@@ -2,8 +2,31 @@ from decimal import Decimal
 from typing import Self
 from uuid import UUID
 
-from kochwiki_contract import FoodstuffSummaryOut, Unit
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.models.enums import Unit
+from app.schemas.common import NonnegativeJsonDecimal
+
+
+class FoodstuffSummaryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="forbid", strict=True)
+
+    id: int = Field(gt=0)
+    name: str
+    brand: str | None
+    unit: Unit = Field(strict=False)
+    unitVerbose: str
+    kcal: NonnegativeJsonDecimal | None
+    carbs: NonnegativeJsonDecimal | None
+    protein: NonnegativeJsonDecimal | None
+    fat: NonnegativeJsonDecimal | None
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def validate_unit_string(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError("unit must be a string")
+        return value
 
 
 class FoodstuffFields(BaseModel):

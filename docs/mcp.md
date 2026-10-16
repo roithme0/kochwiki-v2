@@ -213,8 +213,8 @@ the hostname used in `KOCHWIKI_MCP_URL` along with the existing allowed hosts.
 
 ## Try it
 
-Install the backend requirements and local contract package as described in the
-repository README. From `backend`, start the existing application:
+Install the backend requirements as described in the repository README.
+From `backend`, start the existing application:
 
 ```powershell
 .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8080

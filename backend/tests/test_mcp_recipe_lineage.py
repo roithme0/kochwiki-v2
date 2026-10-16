@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 
 import httpx2
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy import func, select

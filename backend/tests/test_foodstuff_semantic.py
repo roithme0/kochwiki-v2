@@ -4,7 +4,7 @@ from decimal import Decimal
 from threading import Event
 
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session

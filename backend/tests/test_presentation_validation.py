@@ -1,14 +1,13 @@
-import importlib.util
 import json
 import sys
 import unittest
 from copy import deepcopy
 from decimal import Decimal
-from pathlib import Path
 from types import SimpleNamespace
 
-import kochwiki_contract
-from kochwiki_contract import FoodstuffSummaryOut, RecipePresentationOut, RecipePresentationResolve, Unit
+from app.models.enums import Unit
+from app.schemas.foodstuff import FoodstuffSummaryOut
+from app.schemas.recipe import RecipePresentationOut, RecipePresentationResolve
 from pydantic import ValidationError
 from pydantic_core import PydanticSerializationError
 
@@ -42,7 +41,7 @@ def request() -> dict[str, object]:
     }
 
 
-class ContractTests(unittest.TestCase):
+class PresentationValidationTests(unittest.TestCase):
     def test_response_invariants_in_python_and_json(self) -> None:
         cases: list[tuple[tuple[str | int, ...], tuple[object, ...]]] = [
             (("servings",), (0, -1)),
@@ -129,14 +128,6 @@ class ContractTests(unittest.TestCase):
         for dump in (parsed.model_dump_json, lambda: parsed.model_dump(mode="json")):
             with self.assertRaises(PydanticSerializationError):
                 dump()
-
-    @unittest.skipUnless(sys.flags.isolated, "Run the wheel isolation check with python -I")
-    def test_package_is_independent_and_typed(self) -> None:
-        for module in ("app", "fastapi", "sqlalchemy"):
-            with self.subTest(module=module):
-                self.assertIsNone(importlib.util.find_spec(module))
-        assert kochwiki_contract.__file__ is not None
-        self.assertTrue(Path(kochwiki_contract.__file__).with_name("py.typed").is_file())
 
     def test_response_round_trip(self) -> None:
         body = presentation()

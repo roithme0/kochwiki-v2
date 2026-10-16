@@ -4,7 +4,7 @@ from threading import Barrier
 from uuid import UUID, uuid4
 
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session

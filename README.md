@@ -44,10 +44,11 @@ foodstuff and recipe search tools, explicit foodstuff creation and updates, and
 recipe proposal creation, retrieval and saving. See
 [MCP integration and local verification](docs/mcp.md).
 
-The backend consumes the local `kochwiki-contract` package containing shared
-resolver API models. After installing backend requirements, install
-`backend/contract` into the same environment before running the backend or
-OpenAPI generation. See [contract package development and wheel verification](backend/contract/README.md).
+Backend API models and validation live in `backend/app`; no separate contract
+package installation is required. Install `backend/requirements.txt` before
+running the backend or OpenAPI generation. From `frontend`, run
+`npm run check:kochwiki-contract` to verify that the generated OpenAPI document
+and frontend types match the backend schemas.
 
 The optional AI Service connection uses restricted same-origin session routes through the gateway and Angular development proxy. See [AI Service gateway configuration and verification](docs/ai-service-gateway.md) for deployment/developer addresses, long-turn timeouts, and reverse resolver connectivity.
 

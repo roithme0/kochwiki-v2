@@ -19,7 +19,7 @@ parsing, client lifecycle, errors, refresh reporting and exit codes. Domain entr
 points supply service factories and result formatting; foodstuff search keeps its
 ranked summary/distance output, while recipe search prints full recipe JSON.
 
-Run from `backend` after installing `requirements.txt` and `./contract` into the same Python environment. Set `DATABASE_URL` and `OPENAI_API_KEY` through your existing environment or `.env`. The web server is not required.
+Run from `backend` after installing `requirements.txt` into your Python environment. Set `DATABASE_URL` and `OPENAI_API_KEY` through your existing environment or `.env`. The web server is not required.
 
 ```powershell
 .venv/Scripts/python.exe -m alembic upgrade head

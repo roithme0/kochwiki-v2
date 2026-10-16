@@ -5,7 +5,7 @@ from threading import Event
 from uuid import UUID
 
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

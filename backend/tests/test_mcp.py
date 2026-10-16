@@ -4,7 +4,7 @@ from typing import Literal
 
 import httpx2
 import pytest
-from kochwiki_contract import Unit
+from app.models.enums import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
