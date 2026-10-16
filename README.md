@@ -49,7 +49,8 @@ package installation is required. Domain models, schemas, services, and HTTP
 routes live in `backend/app/recipes`, `backend/app/foodstuffs`, and
 `backend/app/identity`. Identity includes users, OIDC login, and application
 sessions. Search commands stay with their recipe and foodstuff domains;
-database, storage, and embedding infrastructure remain shared. Install `backend/requirements.txt` before
+shared settings, errors, greeting, and schema helpers live in `backend/app/core`.
+Database, storage, and embedding adapters live in `backend/app/infrastructure`. Install `backend/requirements.txt` before
 running the backend or OpenAPI generation. From `frontend`, run
 `npm run check:kochwiki-contract` to verify that the generated OpenAPI document
 and frontend types match the backend schemas.

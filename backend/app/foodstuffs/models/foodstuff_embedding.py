@@ -1,8 +1,8 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base
-from app.models.embedding import EmbeddingMixin
+from app.infrastructure.database.base import Base
+from app.infrastructure.embeddings.models import EmbeddingMixin
 
 
 class FoodstuffEmbedding(EmbeddingMixin, Base):

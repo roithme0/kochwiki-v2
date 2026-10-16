@@ -8,7 +8,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.db.session import engine
+from app.infrastructure.database.session import engine
 
 OLD_USER_TABLE = """
 CREATE TEMP TABLE custom_user (

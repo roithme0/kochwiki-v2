@@ -14,7 +14,7 @@ Official API reference: [OpenAI vector embeddings](https://developers.openai.com
 
 ## Manual initial population and search
 
-The module commands use the shared `app.semantic_commands` runner for argument
+The module commands use the shared `app.infrastructure.embeddings.commands` runner for argument
 parsing, client lifecycle, errors, refresh reporting and exit codes. Domain entry
 points supply service factories and result formatting; foodstuff search keeps its
 ranked summary/distance output, while recipe search prints full recipe JSON.

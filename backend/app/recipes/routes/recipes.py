@@ -4,8 +4,8 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db, get_write_db
-from app.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
+from app.infrastructure.database.session import get_db, get_write_db
+from app.core.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
 from app.recipes.schemas.recipe import (
     IngredientOut,
     RecipePresentationOut,

@@ -85,7 +85,7 @@ absent disables storage configuration. Both addresses must be HTTP(S) origins
 without paths, queries, fragments or embedded credentials.
 
 `Settings.storage_config` supplies the strictly typed configuration to
-`app.services.storage.Storage`. The adapter uses boto3 with explicit credentials,
+`app.infrastructure.storage.storage.Storage`. The adapter uses boto3 with explicit credentials,
 Signature V4 and path-style addressing. It uses separate internal and public
 clients; presigning performs no network request. Call `close()` after use.
 `presign_upload` and `presign_download` return the URL, method and lifetime

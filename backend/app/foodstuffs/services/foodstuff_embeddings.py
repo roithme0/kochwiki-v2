@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
-from app.services.embedding_service import EmbeddingService
+from app.infrastructure.embeddings.embedding_service import EmbeddingService
 from app.foodstuffs.services.foodstuff_embedding_text import source_text
 
 

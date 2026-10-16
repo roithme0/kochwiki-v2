@@ -8,7 +8,7 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 
-from app.core.storage import StorageConfig
+from app.infrastructure.storage.config import StorageConfig
 
 if TYPE_CHECKING:
     from mypy_boto3_s3 import S3Client

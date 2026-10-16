@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.services.embedding_refresh import RefreshCoordinator
+from app.infrastructure.embeddings.embedding_refresh import RefreshCoordinator
 
 foodstuff_refresh = RefreshCoordinator[int]("foodstuff_embedding_refresh", "Foodstuff")
 

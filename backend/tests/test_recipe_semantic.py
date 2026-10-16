@@ -9,17 +9,17 @@ from app.foodstuffs.models.enums import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.enums import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
-from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
+from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
+from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
 from app.recipes.services.recipe_embeddings import RecipeEmbeddingService
-from app.services.embedding_refresh import EmbeddingRefreshWorker
+from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
 from app.recipes.services.recipe_refresh import recipe_refresh
 from app.recipes.services.recipe_search import RecipeSemanticSearch
 from app.recipes.services.recipes import (
@@ -291,7 +291,7 @@ def test_lifespan_refresh_failure_does_not_fail_write(monkeypatch: pytest.Monkey
         return outcome
     monkeypatch.setattr(refresh, "refresh_one", refresh_one)
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: embeddings)
-    monkeypatch.setattr("app.semantic_lifecycle.RecipeEmbeddingService", lambda sessions, client: refresh)
+    monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.RecipeEmbeddingService", lambda sessions, client: refresh)
     with TestClient(create_app()) as client:
         assert client.post("/recipes", json={"name": "Bad", "servings": 2}).status_code == 201
         assert attempted.wait(2)
@@ -329,7 +329,7 @@ def test_recipe_worker_uuid_queue_nightly_and_shutdown() -> None:
 def test_commands_full_recipe_no_scores_and_refresh_failure_exit(capsys: pytest.CaptureFixture[str]) -> None:
     import json
     from app.recipes.semantic import format_candidate
-    from app.semantic_commands import run_refresh, run_search
+    from app.infrastructure.embeddings.commands import run_refresh, run_search
     _, version_id = create()
     provider = Provider()
     embeddings = EmbeddingClient(provider)

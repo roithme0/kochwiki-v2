@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.security import APIKeyCookie
 
 from app.core.config import get_settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.identity.schemas.user import UserOut
 from app.identity.services.oidc import (
     LoginRejected,

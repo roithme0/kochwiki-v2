@@ -6,10 +6,10 @@ from typing import Protocol, TypeVar
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.session import SessionLocal
-from app.services.embedding_refresh import RefreshReport
-from app.services.embeddings import EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
-from app.services.semantic_search import SemanticSearch
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.embeddings.embedding_refresh import RefreshReport
+from app.infrastructure.embeddings.embeddings import EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
+from app.infrastructure.embeddings.semantic_search import SemanticSearch
 
 Candidate = TypeVar("Candidate")
 

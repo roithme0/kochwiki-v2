@@ -3,8 +3,8 @@ from functools import lru_cache
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.core.embedding import MODEL
-from app.core.storage import StorageConfig
+from app.infrastructure.embeddings.config import MODEL
+from app.infrastructure.storage.config import StorageConfig
 
 
 class Settings(BaseSettings):

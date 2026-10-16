@@ -3,7 +3,7 @@
 Kochwiki hosts the official Python MCP SDK `2.2.0` inside its FastAPI backend.
 `hello_world` takes no arguments, returning
 `{"message": "Hello World"}` as structured content. It and the existing HTTP
-`GET /` endpoint call `app/services/greeting.py` directly.
+`GET /` endpoint call `app/core/greeting.py` directly.
 
 ## Domain instructions
 

@@ -1,5 +1,5 @@
 """Operational commands: python -m app.foodstuffs.semantic refresh|search."""
-from app.semantic_commands import run_command
+from app.infrastructure.embeddings.commands import run_command
 from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
 from app.foodstuffs.services.foodstuff_search import FoodstuffSearchCandidate, FoodstuffSemanticSearch
 

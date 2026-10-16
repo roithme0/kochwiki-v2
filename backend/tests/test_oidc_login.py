@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from app.identity.routes import auth
 from app.identity.core.auth_logging import AuthQueryFilter
 from app.core.config import Settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.models.user import User
 from app.identity.services import oidc

@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.recipes.models.recipe import RecipeVersion
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate

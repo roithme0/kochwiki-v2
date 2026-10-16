@@ -6,9 +6,9 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.orm import Session
 
-from app.models.embedding import EmbeddingMixin
-from app.services.embedding_refresh import RefreshId, RefreshReport
-from app.services.embeddings import EmbeddingClient
+from app.infrastructure.embeddings.models import EmbeddingMixin
+from app.infrastructure.embeddings.embedding_refresh import RefreshId, RefreshReport
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 
 EmbeddingRecord = TypeVar("EmbeddingRecord", bound=EmbeddingMixin)
 logger = logging.getLogger(__name__)

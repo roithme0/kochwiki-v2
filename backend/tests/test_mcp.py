@@ -11,7 +11,7 @@ from mcp.types import TextContent
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
 from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
@@ -21,7 +21,7 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.services import foodstuffs
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient
+from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff, foodstuff_summary_out
 from app.recipes.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
 

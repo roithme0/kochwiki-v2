@@ -10,7 +10,7 @@ from sqlalchemy import delete, func, literal, select, text, update
 
 from app.identity.routes import auth
 from app.core.config import Settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.identity.models.application_session import ApplicationSession
 from app.identity.models.user import User
 from app.identity.schemas.user import UserOut

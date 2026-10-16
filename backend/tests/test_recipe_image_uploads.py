@@ -19,7 +19,7 @@ from app.recipes.services.recipe_image_uploads import (
     InvalidRecipeImage,
     RecipeImageUploads,
 )
-from app.services.storage import PresignedTransfer, StorageObjectTooLarge, StorageUnavailable
+from app.infrastructure.storage.storage import PresignedTransfer, StorageObjectTooLarge, StorageUnavailable
 
 
 def png(width: int = 2, height: int = 3) -> bytes:

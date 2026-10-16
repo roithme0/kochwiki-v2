@@ -3,10 +3,10 @@ from contextlib import ExitStack, contextmanager
 from uuid import UUID
 
 from app.core.config import Settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.mcp_server import MCPServices
-from app.services.embedding_refresh import EmbeddingRefreshWorker
-from app.services.embeddings import EmbeddingClient
+from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh as foodstuff_refresh_coordinator
 from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch

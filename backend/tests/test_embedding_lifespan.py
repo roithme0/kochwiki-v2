@@ -4,11 +4,11 @@ from threading import Thread
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.mcp_server import MCPServices
-from app.services import embedding_refresh
-from app.services.embeddings import EmbeddingClient
+from app.infrastructure.embeddings import embedding_refresh
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
 from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_search import RecipeSemanticSearch
@@ -77,7 +77,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
 
     if failure == "stop":
         from uuid import UUID
-        from app.services.embedding_refresh import EmbeddingRefreshWorker
+        from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker
         original_stop = EmbeddingRefreshWorker.stop
         stopped = 0
         def stop(worker: EmbeddingRefreshWorker[int] | EmbeddingRefreshWorker[UUID]) -> None:

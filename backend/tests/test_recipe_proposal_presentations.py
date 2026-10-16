@@ -5,7 +5,7 @@ import pytest
 from app.foodstuffs.models.enums import Unit
 from sqlalchemy import func, select
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
@@ -16,7 +16,7 @@ from app.recipes.schemas.recipe_proposal import (
     ResolvedExistingProposalFoodstuff,
     ResolvedTemporaryProposalFoodstuff,
 )
-from app.services.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 from app.recipes.services.recipe_proposal_presentations import resolve_recipe_proposal_presentation
 from app.recipes.services.recipe_proposals import RecipeProposalStore

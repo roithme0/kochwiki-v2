@@ -1,6 +1,6 @@
 from sqlalchemy import text
 
-from app.db.session import engine
+from app.infrastructure.database.session import engine
 
 
 def test_backend_uses_restricted_database_owner_with_pgvector() -> None:

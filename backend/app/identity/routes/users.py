@@ -3,8 +3,8 @@ from collections.abc import Sequence
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db, get_write_db
-from app.schemas.errors import NOT_FOUND_RESPONSE
+from app.infrastructure.database.session import get_db, get_write_db
+from app.core.schemas.errors import NOT_FOUND_RESPONSE
 from app.identity.schemas.user import UserOut
 from app.identity.services import users
 

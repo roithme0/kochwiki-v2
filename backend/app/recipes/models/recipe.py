@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Numeric, String, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.infrastructure.database.base import Base
 from app.recipes.models.enums import RecipeVersionState
 
 if TYPE_CHECKING:

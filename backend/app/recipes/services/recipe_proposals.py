@@ -14,7 +14,7 @@ from app.recipes.schemas.recipe_proposal import (
     RecipeProposalCreate,
     RecipeProposalOut,
 )
-from app.services.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 
 
 class RecipeProposalStore:

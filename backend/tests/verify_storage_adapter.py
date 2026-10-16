@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from app.core.config import Settings
-from app.services.storage import PresignedTransfer, Storage
+from app.infrastructure.storage.storage import PresignedTransfer, Storage
 
 
 def transfer(request: PresignedTransfer, body: bytes | None = None) -> tuple[int, bytes]:

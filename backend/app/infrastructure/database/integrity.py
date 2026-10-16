@@ -2,7 +2,7 @@ from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.services.exceptions import ConflictError
+from app.core.exceptions import ConflictError
 
 
 def is_unique_constraint(error: IntegrityError, constraint_name: str) -> bool:

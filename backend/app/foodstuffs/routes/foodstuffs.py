@@ -3,8 +3,8 @@ from collections.abc import Sequence
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db, get_write_db
-from app.schemas.errors import CONFLICT_RESPONSE, NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
+from app.infrastructure.database.session import get_db, get_write_db
+from app.core.schemas.errors import CONFLICT_RESPONSE, NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffUpdate
 from app.foodstuffs.services import foodstuffs
 

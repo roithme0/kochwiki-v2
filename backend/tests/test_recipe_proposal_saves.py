@@ -9,14 +9,14 @@ from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.enums import RecipeVersionState
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut
-from app.services.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 from app.recipes.services.recipe_proposal_saves import save_recipe_proposal

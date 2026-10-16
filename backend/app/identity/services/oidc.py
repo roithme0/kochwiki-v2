@@ -14,7 +14,7 @@ from sqlalchemy import delete
 
 from app.core.config import Settings
 from app.identity.core.profile import normalize_display_name
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 
 TRANSACTION_SECONDS = 600

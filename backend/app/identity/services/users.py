@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.identity.models.user import User
-from app.services.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError
 from app.identity.services.oidc import Identity
 
 

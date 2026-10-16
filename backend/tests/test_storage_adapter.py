@@ -9,8 +9,8 @@ from botocore.response import StreamingBody
 from pydantic import SecretStr, ValidationError
 
 from app.core.config import Settings
-from app.core.storage import StorageConfig
-from app.services.storage import Storage, StorageObjectTooLarge, StorageUnavailable
+from app.infrastructure.storage.config import StorageConfig
+from app.infrastructure.storage.storage import Storage, StorageObjectTooLarge, StorageUnavailable
 
 
 def configuration() -> StorageConfig:

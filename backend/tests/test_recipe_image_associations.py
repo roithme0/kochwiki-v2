@@ -7,7 +7,7 @@ from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.recipe_image import RecipeImage
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite

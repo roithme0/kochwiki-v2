@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
@@ -20,7 +20,7 @@ from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, TemporaryProposalFoodstuff
-from app.services.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 from app.recipes.services.recipe_proposals import RecipeProposalStore

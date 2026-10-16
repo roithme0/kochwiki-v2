@@ -4,7 +4,7 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.orm import Session
 
-from app.services.embeddings import EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
+from app.infrastructure.embeddings.embeddings import EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
 
 Candidate = TypeVar("Candidate")
 

@@ -5,7 +5,7 @@ from typing import Protocol
 from openai import OpenAI
 
 from app.core.config import Settings
-from app.core.embedding import DIMENSIONS, MODEL
+from app.infrastructure.embeddings.config import DIMENSIONS, MODEL
 
 logger = logging.getLogger(__name__)
 

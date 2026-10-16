@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.recipes.image_config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
 from app.recipes.models.recipe_image import RecipeImage
-from app.services.storage import (
+from app.infrastructure.storage.storage import (
     PresignedTransfer,
     Storage,
     StorageObjectTooLarge,

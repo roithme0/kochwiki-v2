@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session, selectinload
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
-from app.services.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.foodstuff_refresh import mark_foodstuff_refresh
-from app.services.integrity import flush_for_unique_conflict
+from app.infrastructure.database.integrity import flush_for_unique_conflict
 
 
 def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:

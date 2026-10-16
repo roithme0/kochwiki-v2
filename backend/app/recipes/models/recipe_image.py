@@ -5,7 +5,7 @@ from sqlalchemy import CheckConstraint, DateTime, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.recipes.image_config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
-from app.db.base import Base
+from app.infrastructure.database.base import Base
 
 
 class RecipeImage(Base):

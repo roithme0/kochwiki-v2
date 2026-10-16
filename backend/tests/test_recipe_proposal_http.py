@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.recipe_proposal import RecipeProposalCreate, RecipeProposalOut

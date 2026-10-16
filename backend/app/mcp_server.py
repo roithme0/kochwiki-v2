@@ -14,9 +14,9 @@ from sqlalchemy.orm import Session
 from starlette.applications import Starlette
 
 from app.core.config import get_settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.mcp_instructions import KOCHWIKI_INSTRUCTIONS
-from app.services import greeting
+from app.core import greeting
 from app.foodstuffs.services import foodstuffs
 from app.recipes.services import recipes
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
@@ -27,8 +27,8 @@ from app.recipes.services.recipe_proposal_saves import save_recipe_proposal as s
 from app.recipes.services.recipe_proposals import RecipeProposalStore
 from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
 from app.recipes.services.recipe_search import RecipeSemanticSearch
-from app.services.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
-from app.services.exceptions import DomainError
+from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
+from app.core.exceptions import DomainError
 
 logger = logging.getLogger(__name__)
 

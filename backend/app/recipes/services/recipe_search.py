@@ -7,7 +7,7 @@ from app.recipes.models.recipe import Ingredient, RecipeVersion
 from app.recipes.models.enums import SEARCHABLE_RECIPE_STATES
 from app.recipes.models.recipe_embedding import RecipeEmbedding
 from app.recipes.schemas.recipe import RecipeVersionOut
-from app.services.semantic_search import SemanticSearch
+from app.infrastructure.embeddings.semantic_search import SemanticSearch
 from app.recipes.services.recipes import recipe_version_out
 
 

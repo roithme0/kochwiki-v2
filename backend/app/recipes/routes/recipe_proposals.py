@@ -3,8 +3,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 
-from app.db.session import SessionLocal
-from app.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES
+from app.infrastructure.database.session import SessionLocal
+from app.core.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES
 from app.recipes.schemas.recipe import RecipeVersionOut
 from app.recipes.services.recipe_proposal_saves import save_recipe_proposal
 from app.recipes.services.recipe_proposals import RecipeProposalStore

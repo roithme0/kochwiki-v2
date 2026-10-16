@@ -8,11 +8,11 @@ from app.foodstuffs.models.enums import Unit
 
 from app.foodstuffs import semantic as foodstuff_semantic
 from app.recipes import semantic as recipe_semantic
-from app.core.embedding import DIMENSIONS
-from app.db.session import SessionLocal
+from app.infrastructure.embeddings.config import DIMENSIONS
+from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.services.embeddings import EmbeddingClient
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff
 from app.recipes.services.recipes import create_recipe
 

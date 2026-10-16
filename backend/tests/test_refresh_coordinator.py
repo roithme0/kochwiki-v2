@@ -2,7 +2,7 @@ from uuid import UUID
 
 import pytest
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh, mark_foodstuff_refresh
 from app.recipes.services.recipe_refresh import mark_recipe_refresh, recipe_refresh
 

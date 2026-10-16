@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import CheckConstraint, Enum, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base
+from app.infrastructure.database.base import Base
 from app.foodstuffs.models.enums import Unit
 
 if TYPE_CHECKING:

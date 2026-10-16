@@ -14,7 +14,7 @@ from app.recipes.schemas.recipe_proposal import (
     ResolvedExistingProposalFoodstuff,
     ResolvedTemporaryProposalFoodstuff,
 )
-from app.services.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 from app.recipes.services.recipe_nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
 from app.recipes.services.recipe_proposals import RecipeProposalStore

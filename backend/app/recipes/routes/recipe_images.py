@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.recipes.image_config import IMAGE_CONTENT_TYPE
-from app.db.session import SessionLocal, get_db
+from app.infrastructure.database.session import SessionLocal, get_db
 from app.recipes.models.recipe_image import RecipeImage
-from app.schemas.errors import ErrorResponse
+from app.core.schemas.errors import ErrorResponse
 from app.recipes.schemas.recipe_image import (
     RecipeImageDownloadOut,
     RecipeImageOut,
@@ -20,7 +20,7 @@ from app.recipes.services.recipe_image_uploads import (
     InvalidRecipeImage,
     RecipeImageUploads,
 )
-from app.services.storage import Storage, StorageUnavailable
+from app.infrastructure.storage.storage import Storage, StorageUnavailable
 
 router = APIRouter()
 

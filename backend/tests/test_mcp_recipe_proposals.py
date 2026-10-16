@@ -9,7 +9,7 @@ from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.recipes.models.enums import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion

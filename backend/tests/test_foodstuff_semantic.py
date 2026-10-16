@@ -10,14 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.db.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.foodstuff_embedding import FoodstuffEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.services.embedding_refresh import EmbeddingRefreshWorker, next_nightly
+from app.infrastructure.embeddings.embedding_refresh import EmbeddingRefreshWorker, next_nightly
 from app.foodstuffs.services.foodstuff_refresh import foodstuff_refresh
 from app.foodstuffs.services.foodstuff_search import FoodstuffSemanticSearch
-from app.services.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable
+from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable
 from app.foodstuffs.services.foodstuff_embedding_text import source_text
 from app.foodstuffs.services.foodstuff_embeddings import FoodstuffEmbeddingService
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
@@ -339,7 +339,7 @@ def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(monkeypatc
         return outcome
     monkeypatch.setattr(search, "refresh_one", refresh)
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: search.embeddings)
-    monkeypatch.setattr("app.semantic_lifecycle.FoodstuffEmbeddingService", lambda sessions, embeddings: search)
+    monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.FoodstuffEmbeddingService", lambda sessions, embeddings: search)
     with TestClient(create_app()) as client:
         response = client.post("/foodstuffs", json={"name": "bad", "unit": "G"})
         assert response.status_code == 201

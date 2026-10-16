@@ -68,7 +68,7 @@ startup population or durable queue. Deploy a single backend process/worker.
 Sweeps remove leftover historical embeddings and refresh only missing or stale
 active/draft embeddings. Initial population is manual.
 
-`app/semantic_lifecycle.py` separates search-service/client setup from refresh-worker
+`app/infrastructure/embeddings/lifecycle.py` separates search-service/client setup from refresh-worker
 setup into two context managers. The application lifespan nests search services,
 refresh workers and the MCP session manager; shutdown reverses that order.
 Each context registers cleanup as resources are acquired. Partial worker
@@ -83,7 +83,7 @@ search while ordinary recipe operations, including historical cleanup, continue.
 
 ## Commands
 
-`app.recipes.semantic` is a thin entry point to the shared `app.semantic_commands`
+`app.recipes.semantic` is a thin entry point to the shared `app.infrastructure.embeddings.commands`
 runner. It supplies recipe service factories and JSON formatting; argument
 parsing, embedding-client lifecycle, errors, refresh reporting and exit codes
 are shared with the foodstuff command.
