@@ -10,7 +10,6 @@ from app.core.config import get_settings
 from app.infrastructure.mcp.server import MCPServices, create_mcp_server
 from app.core.schemas.errors import ErrorResponse
 from app.infrastructure.embeddings.lifecycle import embedding_refresh_workers, semantic_search_services
-from app.core import greeting
 from app.core.exceptions import DomainError
 from app.recipes.services.recipe_proposals import RecipeProposalStore
 
@@ -21,10 +20,6 @@ async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
         status_code=error.status_code,
         content=body.model_dump(mode="json"),
     )
-
-
-async def hello_world() -> dict[str, str]:
-    return greeting.hello_world()
 
 
 def create_app() -> FastAPI:
@@ -54,7 +49,6 @@ def create_app() -> FastAPI:
     application.add_exception_handler(DomainError, handle_domain_error)
     application.state.recipe_proposals = recipe_proposals
     application.include_router(router)
-    application.get("/")(hello_world)
     application.mount("/mcp", mcp_app)
     return application
 
