@@ -11,6 +11,7 @@ import { SnackBarService } from '../../../core/services/snack-bar.service';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
+import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 import { FoodstuffsTableComponent } from '../../components/foodstuffs-table/foodstuffs-table.component';
 import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { LoadState } from '../../../core/utils/load-state';
@@ -35,6 +36,7 @@ export class FoodstuffsPageComponent {
   private readonly snackBarService = inject(SnackBarService);
   readonly pageHeaderService = inject(PageHeaderService);
   readonly dialog = inject(MatDialog);
+  readonly foodstuffTableControlsService = inject(FoodstuffTableControlService);
 
   readonly foodstuffsState = signal<LoadState<FoodstuffOut[]>>({
     status: 'loading',
