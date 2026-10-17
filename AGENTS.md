@@ -24,6 +24,13 @@ Plans and specification files are gitignored. Treat the current code and tracked
 - Treat backend API as an internal contract for this repo's frontend by default: ship backend/frontend contract changes together, and do not preserve legacy compatibility unless explicitly required for a feature or an external consumer.
 - Write tests where they provide meaningful regression protection: critical user flows, branching logic, stateful behavior, contract boundaries, and bug-prone edge cases. Avoid low-signal tests that only restate implementation details. Do not remove existing tests unless they are redundant, obsolete, flaky, or block legitimate refactoring, and explain the reason when removing them.
 
+## Frontend Formatting
+
+- Run `npm run format:changed` from `frontend` after editing frontend files and before completing coding work. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
+- The Codex Stop hook runs the same formatter automatically. Review formatting changes before reporting completion; rerun relevant validation if formatting changed files after validation.
+- Formatting covers whole staged, unstaged, and untracked frontend files, without updating the Git index. Check the existing worktree before editing; avoid formatting a file containing unrelated user changes without coordinating ownership.
+- Generated contracts, generated version output, lockfiles, dependencies, and build output are excluded. Do not hand-format generated output or claim successful formatting when the command failed.
+
 ## Communication Preferences
 
 - Keep responses concise.

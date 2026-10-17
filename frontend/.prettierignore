@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out-tsc/
+coverage/
+.angular/
+src/app/core/api/generated/
+src/version.ts
+package-lock.json

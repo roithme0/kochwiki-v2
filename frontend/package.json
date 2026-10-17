@@ -10,7 +10,8 @@
     "check:kochwiki-contract": "node scripts/kochwiki-contract.mjs --check",
     "watch": "ng build --watch --configuration development",
     "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
-    "test": "ng test"
+    "test": "ng test",
+    "format:changed": "node scripts/format-changed.mts"
   },
   "private": true,
   "dependencies": {
@@ -39,6 +40,7 @@
     "@hey-api/openapi-ts": "0.99.0",
     "@types/node": "24.10.1",
     "jsdom": "^30.0.1",
+    "prettier": "3.9.10",
     "typescript": "6.0.2",
     "vitest": "^4.1.11"
   }

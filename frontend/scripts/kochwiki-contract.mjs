@@ -16,8 +16,13 @@ if (process.argv.length > 3 || (process.argv[2] && !check)) {
   throw new Error('Usage: node scripts/kochwiki-contract.mjs [--check]');
 }
 
-const venvPython = join(backend, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-const python = process.env.PYTHON ?? (existsSync(venvPython) ? venvPython : 'python');
+const venvPython = join(
+  backend,
+  '.venv',
+  process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+);
+const python =
+  process.env.PYTHON ?? (existsSync(venvPython) ? venvPython : 'python');
 const temporary = await mkdtemp(join(tmpdir(), 'kochwiki-contract-'));
 
 try {
@@ -43,7 +48,10 @@ try {
           object: (ctx) => {
             // Hey API 0.99.0's default Zod resolver ignores additionalProperties: false.
             if (ctx.schema.additionalProperties?.type === 'never') {
-              return ctx.$(ctx.symbols.z).attr('strictObject').call(ctx.nodes.shape(ctx));
+              return ctx
+                .$(ctx.symbols.z)
+                .attr('strictObject')
+                .call(ctx.nodes.shape(ctx));
             }
           },
         },
@@ -52,19 +60,27 @@ try {
   });
 
   for (const name of files) {
-    const generated = await readFile(name === 'openapi.json' ? input : join(output, name));
+    const generated = await readFile(
+      name === 'openapi.json' ? input : join(output, name),
+    );
     const destination = join(contract, name);
     if (check) {
       const committed = await readFile(destination).catch(() => null);
       if (!committed?.equals(generated)) {
-        throw new Error(`${destination} is stale. Run npm run generate:kochwiki-contract.`);
+        throw new Error(
+          `${destination} is stale. Run npm run generate:kochwiki-contract.`,
+        );
       }
     } else {
       await mkdir(contract, { recursive: true });
       await writeFile(destination, generated);
     }
   }
-  process.stdout.write(check ? 'Kochwiki contract is current.\n' : 'Kochwiki contract generated.\n');
+  process.stdout.write(
+    check
+      ? 'Kochwiki contract is current.\n'
+      : 'Kochwiki contract generated.\n',
+  );
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }
