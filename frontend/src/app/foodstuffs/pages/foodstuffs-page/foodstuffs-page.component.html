@@ -1,13 +1,13 @@
 <main>
   <!-- loading -->
-  @if (foodstuffsState().status === 'loading') {
+  @if (catalogue.state().status === 'loading') {
   <div class="spinner-wrapper">
     <mat-spinner diameter="25" />
   </div>
   }
 
   <!-- error -->
-  @else if (foodstuffsState().status === 'error') {
+  @else if (catalogue.state().status === 'error') {
   <div class="error-wrapper">
     <div class="error">
       <mat-icon aria-hidden="false" aria-label="Fehler" fontIcon="error" />
@@ -20,11 +20,14 @@
   @else {
   <app-foodstuffs-table
     class="foodstuffs-table"
-    [foodstuffs]="foodstuffsState().data"
+    [foodstuffs]="catalogue.state().data"
   />
   <div class="bottom-elements-placeholder"></div>
   <div class="bottom-elements">
-    <app-foodstuffs-search [foodstuffs]="foodstuffsState().data" />
+    <app-foodstuffs-search
+      [searchValue]="foodstuffTableControlsService.searchBy()"
+      (searchValueChange)="foodstuffTableControlsService.searchBy = $event"
+    />
     <button mat-mini-fab (click)="openCreateFoodstuffDialog()" class="create-foodstuff-button">
       <mat-icon aria-hidden="false" aria-label="Lebensmittel hinzufügen" fontIcon="add" />
     </button>

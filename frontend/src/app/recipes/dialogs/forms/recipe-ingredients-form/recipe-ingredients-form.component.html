@@ -19,7 +19,11 @@
   <div class="ingredients-wrapper" formArrayName="ingredients">
     @for (ingredient of ingredients.controls; track ingredient) {
       <div class="ingredient-wrapper" formGroupName="{{ $index }}">
-        <app-ingredient-field [foodstuffs]="foodstuffs()" [index]="$index" />
+        <app-ingredient-field
+          [foodstuff]="foodstuffFor(ingredient.controls.foodstuffId.value)"
+          [amountControl]="ingredient.controls.amount"
+          [index]="$index"
+        />
         <button
           mat-icon-button
           type="button"
@@ -39,20 +43,11 @@
       matButton="tonal"
       type="button"
       color="accent"
-      (click)="addIngredient()"
+      (click)="openFoodstuffSelectionDialog()"
       class="add-ingredient-button"
     >
       <mat-icon aria-hidden="true" fontIcon="add" />
       Zutat hinzufügen
-    </button>
-    <button
-      mat-button
-      type="button"
-      color="accent"
-      (click)="openCreateFoodstuffDialog()"
-      class="create-foodstuff-button"
-    >
-      Lebensmittel erstellen
     </button>
   </div>
 

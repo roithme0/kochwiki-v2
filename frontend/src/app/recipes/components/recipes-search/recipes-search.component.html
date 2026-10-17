@@ -3,36 +3,24 @@
     <mat-icon matPrefix class="search-icon" fontIcon="search" />
     <input
       #searchValueField
-      [value]="recipesGridControlsService.searchBy()"
-      (input)="onSeachValueChanged(searchValueField.value)"
-      (selectionchange)="onSeachValueChanged(searchValueField.value)"
+      [value]="searchValue()"
+      (input)="searchValueChange.emit(searchValueField.value)"
       placeholder="Rezepte suchen …"
       aria-label="Rezepte suchen"
       matInput
-      [matAutocomplete]="search"
+      autocomplete="off"
     />
-    @if (recipesGridControlsService.searchBy() != "") {
+    @if (searchValue() != "") {
       <button
         mat-icon-button
         matSuffix
         class="clear-button"
         type="button"
-        aria-label="Suche löschen"
-        (click)="recipesGridControlsService.clearSearch()"
+        aria-label="Suche zurücksetzen"
+        (click)="searchValueChange.emit('')"
       >
         <mat-icon fontIcon="clear" />
       </button>
     }
-    <mat-autocomplete
-      #search="matAutocomplete"
-      (optionSelected)="onSearchOptionSelected($event)"
-    >
-      @if (filteredNamesMap().size > 0) {
-        @for (name of filteredNamesMap(); track name[0]) {
-          <mat-option [value]="name[0]">{{ name[1] }}</mat-option>
-        }
-      }
-    </mat-autocomplete>
   </mat-form-field>
 </form>
-

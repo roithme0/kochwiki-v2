@@ -1,42 +1,30 @@
 <form class="form">
-  <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+  <mat-form-field
+    class="search-field"
+    appearance="outline"
+    subscriptSizing="dynamic"
+  >
     <mat-icon matPrefix class="search-icon" fontIcon="search" />
     <input
       #searchValueField
-      [value]="foodstuffTableControlsService.searchBy()"
-      (input)="onSeachValueChanged(searchValueField.value)"
-      (selectionchange)="onSeachValueChanged(searchValueField.value)"
+      [value]="searchValue()"
+      (input)="searchValueChange.emit(searchValueField.value)"
       placeholder="Name oder Marke suchen …"
       aria-label="Name oder Marke suchen"
       matInput
-      [matAutocomplete]="search"
+      autocomplete="off"
     />
-    @if (foodstuffTableControlsService.searchBy() != '') {
+    @if (searchValue() != "") {
       <button
         mat-icon-button
         matSuffix
         class="clear-button"
         type="button"
-        aria-label="Suche löschen"
-        (click)="foodstuffTableControlsService.clearSearch()"
+        aria-label="Suche zurücksetzen"
+        (click)="searchValueChange.emit('')"
       >
         <mat-icon fontIcon="clear" />
       </button>
     }
-    <mat-autocomplete #search="matAutocomplete">
-      @if(filteredNames().size > 0){
-      <mat-optgroup label="Namen">
-        @for (name of filteredNames(); track name) {
-        <mat-option [value]="name">{{ name }}</mat-option>
-        }
-      </mat-optgroup>
-      } @if(filteredBrands().size > 0){
-      <mat-optgroup label="Marken">
-        @for (brand of filteredBrands(); track brand) {
-        <mat-option [value]="brand">{{ brand }}</mat-option>
-        }
-      </mat-optgroup>
-      }
-    </mat-autocomplete>
   </mat-form-field>
 </form>

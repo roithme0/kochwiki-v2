@@ -7,22 +7,30 @@
 
 .ingredient-fields {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
-.foodstuff-field {
+.foodstuff-label {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+
+.foodstuff-image {
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.foodstuff-brand {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
 }
 
 .amount-field {
   flex: 0 0 6rem;
-}
-
-.ingredient-errors {
-  color: var(--mat-form-field-error-text-color);
-  font-size: 0.75rem;
-  line-height: 1rem;
 }
 
 /* remove arrows from input number field */

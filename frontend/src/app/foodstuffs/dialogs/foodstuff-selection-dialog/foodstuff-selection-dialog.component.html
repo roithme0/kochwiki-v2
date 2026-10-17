@@ -1,0 +1,117 @@
+<app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
+
+<mat-dialog-content
+  [class.no-results]="
+    catalogue.state().status !== 'success' || displayedFoodstuffs().length === 0
+  "
+>
+  @if (catalogue.state().status === "loading") {
+    <mat-spinner diameter="25" aria-label="Lebensmittel werden geladen" />
+  } @else if (catalogue.state().status === "error") {
+    <div class="empty-state" role="alert">
+      <p>Lebensmittel konnten nicht geladen werden.</p>
+      <button mat-button type="button" (click)="catalogue.refresh()">
+        Erneut laden
+      </button>
+    </div>
+  } @else {
+    <mat-action-list aria-label="Lebensmittel">
+      @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
+        <button
+          mat-list-item
+          type="button"
+          class="foodstuff"
+          [disabled]="existingFoodstuffIds.has(foodstuff.id)"
+          [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
+          (click)="toggleFoodstuff(foodstuff.id)"
+        >
+          <img
+            matListItemAvatar
+            src="assets/images/question-mark.png"
+            alt=""
+            width="40"
+            height="40"
+          />
+          <span matListItemTitle class="foodstuff-name">{{
+            foodstuff.name
+          }}</span>
+          @if (foodstuff.brand) {
+            <span matListItemLine class="foodstuff-description">{{
+              foodstuff.brand
+            }}</span>
+          }
+          @if (existingFoodstuffIds.has(foodstuff.id)) {
+            <span matListItemMeta class="selection-status"
+              >Bereits hinzugefügt</span
+            >
+          } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
+            <span matListItemMeta class="selection-status selected-status">
+              <mat-icon aria-hidden="true">check_circle</mat-icon>
+              <span>Im Korb</span>
+            </span>
+          }
+        </button>
+      }
+    </mat-action-list>
+    @if (displayedFoodstuffs().length === 0) {
+      <div class="empty-state">
+        <p class="empty-message">Keine Lebensmittel gefunden.</p>
+        <button mat-button type="button" (click)="searchValue.set('')">
+          Suche zurücksetzen
+        </button>
+      </div>
+    }
+  }
+</mat-dialog-content>
+
+<div class="search-footer">
+  <div class="basket-summary">
+    <div class="basket-content">
+      <p class="selection-count" role="status">
+        Im Korb · {{ selectedFoodstuffIds().size }}
+      </p>
+      @if (selectedFoodstuffs().length > 0) {
+        <ul class="basket-preview" aria-label="Lebensmittel im Korb">
+          @for (foodstuff of selectedFoodstuffs(); track foodstuff.id) {
+            <li>
+              <img
+                src="assets/images/question-mark.png"
+                [alt]="
+                  foodstuff.name +
+                  (foodstuff.brand ? ' · ' + foodstuff.brand : '')
+                "
+                width="40"
+                height="40"
+              />
+            </li>
+          }
+        </ul>
+      }
+    </div>
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="selectedFoodstuffIds().size === 0"
+      (click)="confirmSelection()"
+    >
+      Übernehmen
+    </button>
+  </div>
+  <div class="search-actions">
+    <app-foodstuffs-search
+      [searchValue]="searchValue()"
+      (searchValueChange)="searchValue.set($event)"
+    />
+    <button
+      mat-flat-button
+      type="button"
+      class="create-foodstuff-button"
+      [disabled]="catalogue.state().status === 'loading'"
+      aria-label="Lebensmittel erstellen"
+      title="Lebensmittel erstellen"
+      (click)="openCreateFoodstuffDialog()"
+    >
+      <mat-icon aria-hidden="true">add</mat-icon>
+    </button>
+  </div>
+</div>

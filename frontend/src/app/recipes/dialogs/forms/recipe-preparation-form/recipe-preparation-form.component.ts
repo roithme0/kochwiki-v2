@@ -58,7 +58,6 @@ export class RecipePreparationFormComponent {
         .sort((a, b) => a.index - b.index)
         .forEach((step) => this.addStep(step));
     }
-    if (this.steps.length === 0) this.addStep();
   }
 
   get steps(): FormArray {

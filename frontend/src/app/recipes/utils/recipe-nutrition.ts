@@ -1,4 +1,4 @@
-import type { FoodstuffOut } from '../../core/api/generated';
+import type { FoodstuffSummaryOut } from '../../core/api/generated';
 import type {
   NutritionResult,
   NutritionSummary,
@@ -19,7 +19,7 @@ type NutritionField = keyof NutritionSummary;
 export function calculateDraftNutrition(
   ingredients: DraftIngredientNutrition[],
   servings: number | null,
-  foodstuffs: FoodstuffOut[],
+  foodstuffs: FoodstuffSummaryOut[],
 ): DraftNutritionState {
   if (!isValidServings(servings)) return { status: 'invalid' };
   const selectedIngredients = ingredients.filter(hasFoodstuffId);

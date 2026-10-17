@@ -1,6 +1,19 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
 
-import { Component, DestroyRef, ElementRef, QueryList, Renderer2, ViewChild, ViewChildren, computed, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  QueryList,
+  Renderer2,
+  ViewChild,
+  ViewChildren,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs';
 import {
@@ -18,13 +31,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import type { FoodstuffOut } from '../../../core/api/generated';
-import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import type { RecipeVersionWrite } from '../../../core/api/generated';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { SectionNavComponent, SectionNavItem } from '../../../core/components/section-nav/section-nav.component';
+import {
+  SectionNavComponent,
+  SectionNavItem,
+} from '../../../core/components/section-nav/section-nav.component';
 import { RecipeIngredientsFormComponent } from '../forms/recipe-ingredients-form/recipe-ingredients-form.component';
 import { RecipeMetaFormComponent } from '../forms/recipe-meta-form/recipe-meta-form.component';
 import { RecipePreparationFormComponent } from '../forms/recipe-preparation-form/recipe-preparation-form.component';
@@ -32,11 +46,7 @@ import { RecipePreparationFormComponent } from '../forms/recipe-preparation-form
 type RecipeEditorState =
   | { status: 'loading' }
   | { status: 'ready' }
-  | { status: 'error'; source: 'foodstuffs' | 'recipeVersion' };
-
-type LoadResult<T> =
-  | { status: 'success'; value: T }
-  | { status: 'error' };
+  | { status: 'error'; source: 'recipeVersion' };
 
 interface RecipeFormControls {
   metaFormGroup: FormGroup<{
@@ -82,25 +92,29 @@ export interface RecipeEditorSubmission {
     SectionNavComponent,
     RecipeIngredientsFormComponent,
     RecipeMetaFormComponent,
-    RecipePreparationFormComponent
-],
+    RecipePreparationFormComponent,
+  ],
   templateUrl: './recipe-editor.component.html',
   styleUrl: './recipe-editor.component.scss',
 })
 export class RecipeEditorComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
-  private readonly foodstuffBackendService = inject(FoodstuffBackendService);
   private readonly recipeBackendService = inject(RecipeBackendService);
   private readonly recipeImageService = inject(RecipeImageService);
   private readonly snackBarService = inject(SnackBarService);
   private readonly renderer = inject(Renderer2);
-  private readonly dialogRef = inject<MatDialogRef<unknown>>(MatDialogRef, { optional: true });
-  
+  private readonly dialogRef = inject<MatDialogRef<unknown>>(MatDialogRef, {
+    optional: true,
+  });
+
   private closing = false;
 
-  @ViewChild('sectionNav', { read: ElementRef }) private sectionNav?: ElementRef<HTMLElement>;
-  @ViewChildren('editorSection') private editorSections!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('sectionNav', { read: ElementRef })
+  private sectionNav?: ElementRef<HTMLElement>;
+  @ViewChildren('editorSection') private editorSections!: QueryList<
+    ElementRef<HTMLElement>
+  >;
   private scrollContainer?: HTMLElement;
   private removeScrollListener?: () => void;
   private removeTouchMoveListener?: () => void;
@@ -113,7 +127,6 @@ export class RecipeEditorComponent {
   readonly submitting = input(false);
   readonly submitted = output<RecipeEditorSubmission>();
   readonly state = signal<RecipeEditorState>({ status: 'loading' });
-  readonly foodstuffs = signal<FoodstuffOut[]>([]);
   readonly recipeVersion = signal<RecipeVersionOut | null>(null);
 
   readonly uploadingImage = signal(false);
@@ -123,12 +136,16 @@ export class RecipeEditorComponent {
   readonly invalidImageSelection = signal(false);
   readonly imageAccessFailed = signal(false);
   readonly loadingImage = signal(false);
-  private readonly selectedImageId = signal<string | null | undefined>(undefined);
-  readonly hasImage = computed(() => this.selectedFile() !== null || this.currentImageId() !== null);
+  private readonly selectedImageId = signal<string | null | undefined>(
+    undefined,
+  );
+  readonly hasImage = computed(
+    () => this.selectedFile() !== null || this.currentImageId() !== null,
+  );
   private readonly selectedFile = signal<File | null>(null);
   private localPreviewUrl: string | null = null;
   private previewRequest = 0;
-  
+
   readonly sectionNavItems: readonly SectionNavItem[] = [
     { id: 'basics', label: 'Basis' },
     { id: 'ingredients', label: 'Zutaten' },
@@ -151,9 +168,12 @@ export class RecipeEditorComponent {
   });
 
   constructor() {
-    this.dialogRef?.beforeClosed().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.closing = true;
-    });
+    this.dialogRef
+      ?.beforeClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.closing = true;
+      });
     this.destroyRef.onDestroy(() => {
       this.previewRequest++;
       this.releaseLocalPreview();
@@ -162,9 +182,6 @@ export class RecipeEditorComponent {
 
   ngOnInit(): void {
     void this.loadInitialData();
-    this.foodstuffBackendService.foodstuffsChanged$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.refreshFoodstuffs());
   }
 
   ngAfterViewInit(): void {
@@ -174,7 +191,9 @@ export class RecipeEditorComponent {
   }
 
   goToSection(section: string): void {
-    const target = this.editorSections.find((item) => item.nativeElement.id === section)?.nativeElement;
+    const target = this.editorSections.find(
+      (item) => item.nativeElement.id === section,
+    )?.nativeElement;
     if (target) this.scrollToEditorTarget(target, section);
   }
 
@@ -183,8 +202,12 @@ export class RecipeEditorComponent {
     const container = this.scrollContainer;
     if (!nav || !container) return;
 
-    const top = container.scrollTop + target.getBoundingClientRect().top
-      - container.getBoundingClientRect().top - nav.offsetHeight - 8;
+    const top =
+      container.scrollTop +
+      target.getBoundingClientRect().top -
+      container.getBoundingClientRect().top -
+      nav.offsetHeight -
+      8;
     this.pendingNavigation = section;
     this.activeSection.set(section);
     container.scrollTo({ top, behavior: 'smooth' });
@@ -193,23 +216,32 @@ export class RecipeEditorComponent {
 
   private connectSectionTracking(): void {
     if (this.editorSections.length === 0 || !this.sectionNav) return;
-    const container = this.sectionNav.nativeElement.closest('mat-dialog-content');
+    const container =
+      this.sectionNav.nativeElement.closest('mat-dialog-content');
     if (!(container instanceof HTMLElement)) return;
 
     this.removeScrollListener?.();
     this.removeTouchMoveListener?.();
     this.scrollContainer = container;
-    this.removeTouchMoveListener = this.renderer.listen(container, 'touchmove', () => {
-      this.pendingNavigation = null;
-      clearTimeout(this.navigationSettledTimer);
-    });
-    this.removeScrollListener = this.renderer.listen(container, 'scroll', () => {
-      if (this.pendingNavigation !== null) {
-        this.scheduleNavigationSettled();
-      } else {
-        this.updateActiveSection();
-      }
-    });
+    this.removeTouchMoveListener = this.renderer.listen(
+      container,
+      'touchmove',
+      () => {
+        this.pendingNavigation = null;
+        clearTimeout(this.navigationSettledTimer);
+      },
+    );
+    this.removeScrollListener = this.renderer.listen(
+      container,
+      'scroll',
+      () => {
+        if (this.pendingNavigation !== null) {
+          this.scheduleNavigationSettled();
+        } else {
+          this.updateActiveSection();
+        }
+      },
+    );
     this.destroyRef.onDestroy(() => {
       this.removeScrollListener?.();
       this.removeTouchMoveListener?.();
@@ -231,10 +263,17 @@ export class RecipeEditorComponent {
     if (!nav || !container) return;
 
     const baseThreshold = nav.getBoundingClientRect().bottom + 8;
-    const visibleHeight = Math.max(0, container.getBoundingClientRect().bottom - baseThreshold);
-    const remainingScroll = Math.max(0, container.scrollHeight - container.clientHeight - container.scrollTop);
+    const visibleHeight = Math.max(
+      0,
+      container.getBoundingClientRect().bottom - baseThreshold,
+    );
+    const remainingScroll = Math.max(
+      0,
+      container.scrollHeight - container.clientHeight - container.scrollTop,
+    );
     const bottomAdjustment = Math.max(0, visibleHeight - remainingScroll - 8);
-    const threshold = baseThreshold + bottomAdjustment * Math.min(1, container.scrollTop / 80);
+    const threshold =
+      baseThreshold + bottomAdjustment * Math.min(1, container.scrollTop / 80);
     let visible = 'basics';
     for (const item of this.editorSections) {
       const section = item.nativeElement;
@@ -253,16 +292,26 @@ export class RecipeEditorComponent {
     }
     if (this.recipeForm.invalid) {
       this.recipeForm.markAllAsTouched();
-      const firstInvalidSection = this.sectionNavItems.find((item, index) => [
-        this.recipeForm.controls.metaFormGroup,
-        this.recipeForm.controls.ingredientsFormGroup,
-        this.recipeForm.controls.preparationFormGroup,
-      ][index].invalid);
+      const firstInvalidSection = this.sectionNavItems.find(
+        (item, index) =>
+          [
+            this.recipeForm.controls.metaFormGroup,
+            this.recipeForm.controls.ingredientsFormGroup,
+            this.recipeForm.controls.preparationFormGroup,
+          ][index].invalid,
+      );
       if (firstInvalidSection) {
-        const section = this.editorSections?.find((item) => item.nativeElement.id === firstInvalidSection.id)?.nativeElement;
+        const section = this.editorSections?.find(
+          (item) => item.nativeElement.id === firstInvalidSection.id,
+        )?.nativeElement;
         if (section) {
-          const invalidField = section.querySelector<HTMLElement>('input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid');
-          this.scrollToEditorTarget(invalidField?.closest<HTMLElement>('mat-form-field') ?? section, firstInvalidSection.id);
+          const invalidField = section.querySelector<HTMLElement>(
+            'input.ng-invalid, textarea.ng-invalid, mat-select.ng-invalid',
+          );
+          this.scrollToEditorTarget(
+            invalidField?.closest<HTMLElement>('mat-form-field') ?? section,
+            firstInvalidSection.id,
+          );
         }
       }
       return;
@@ -277,11 +326,9 @@ export class RecipeEditorComponent {
         (ingredient) =>
           ingredient.index === null ||
           ingredient.amount === null ||
-          ingredient.foodstuffId === null
+          ingredient.foodstuffId === null,
       ) ||
-      preparationFormGroup.steps.some(
-        (step) => step.description === null
-      )
+      preparationFormGroup.steps.some((step) => step.description === null)
     ) {
       return;
     }
@@ -297,7 +344,9 @@ export class RecipeEditorComponent {
         this.selectedFile.set(null);
       } catch {
         if (!this.destroyRef.destroyed) {
-          this.imageError.set('Bild konnte nicht hochgeladen oder validiert werden. Bitte erneut speichern oder ein anderes PNG auswählen.');
+          this.imageError.set(
+            'Bild konnte nicht hochgeladen oder validiert werden. Bitte erneut speichern oder ein anderes PNG auswählen.',
+          );
         }
         return;
       } finally {
@@ -309,7 +358,10 @@ export class RecipeEditorComponent {
     this.submitted.emit({
       action,
       recipeVersion: {
-        ...(this.recipeVersion() === null && this.selectedImageId() === undefined ? {} : { imageId }),
+        ...(this.recipeVersion() === null &&
+        this.selectedImageId() === undefined
+          ? {}
+          : { imageId }),
         name: metaFormGroup.name,
         servings: ingredientsFormGroup.servings,
         ingredients: ingredientsFormGroup.ingredients.map((ingredient) => ({
@@ -330,8 +382,12 @@ export class RecipeEditorComponent {
     const file = input.files?.item(0);
     input.value = '';
     if (!file || this.busy()) return;
-    if (file.size === 0 || file.size > 10 * 1024 * 1024 ||
-      (file.type !== 'image/png' && !(file.type === '' && file.name.toLowerCase().endsWith('.png')))) {
+    if (
+      file.size === 0 ||
+      file.size > 10 * 1024 * 1024 ||
+      (file.type !== 'image/png' &&
+        !(file.type === '' && file.name.toLowerCase().endsWith('.png')))
+    ) {
       this.imageError.set('Bitte ein PNG mit höchstens 10 MiB auswählen.');
       this.invalidImageSelection.set(true);
       return;
@@ -369,7 +425,9 @@ export class RecipeEditorComponent {
   imageLoadFailed(): void {
     this.imagePreview.set(null);
     if (this.localPreviewUrl !== null) {
-      this.imageError.set('Bildvorschau nicht verfügbar. Beim Speichern wird das PNG geprüft.');
+      this.imageError.set(
+        'Bildvorschau nicht verfügbar. Beim Speichern wird das PNG geprüft.',
+      );
     } else {
       this.imageAccessFailed.set(true);
     }
@@ -391,109 +449,55 @@ export class RecipeEditorComponent {
         this.imageAccessFailed.set(true);
       }
     } finally {
-      if (!this.destroyRef.destroyed && request === this.previewRequest) this.loadingImage.set(false);
+      if (!this.destroyRef.destroyed && request === this.previewRequest)
+        this.loadingImage.set(false);
     }
   }
 
   private currentImageId(): string | null {
     const selected = this.selectedImageId();
-    return selected === undefined ? this.recipeVersion()?.imageId ?? null : selected;
+    return selected === undefined
+      ? (this.recipeVersion()?.imageId ?? null)
+      : selected;
   }
 
   private releaseLocalPreview(): void {
-    if (this.localPreviewUrl !== null) URL.revokeObjectURL(this.localPreviewUrl);
+    if (this.localPreviewUrl !== null)
+      URL.revokeObjectURL(this.localPreviewUrl);
     this.localPreviewUrl = null;
   }
 
   errorMessage(): string {
-    const state = this.state();
-    return state.status === 'error' && state.source === 'recipeVersion'
-      ? 'Rezept konnte nicht geladen werden.'
-      : 'Zutaten konnten nicht geladen werden.';
+    return 'Rezept konnte nicht geladen werden.';
   }
 
   private async loadInitialData(): Promise<void> {
-    this.state.set({ status: 'loading' });
     const recipeLineageId = this.recipeLineageId();
-
     if (recipeLineageId === null) {
-      this.applyInitialResults(await this.loadFoodstuffs());
+      this.state.set({ status: 'ready' });
       return;
     }
 
-    const [foodstuffResult, recipeVersionResult] = await Promise.all([
-      this.loadFoodstuffs(),
-      this.loadRecipeVersion(recipeLineageId, this.recipeVersionId()),
-    ]);
-    this.applyInitialResults(foodstuffResult, recipeVersionResult);
-  }
-
-  private async loadFoodstuffs(): Promise<LoadResult<FoodstuffOut[]>> {
     try {
-      return {
-        status: 'success',
-        value: this.sortFoodstuffs(
-          await this.foodstuffBackendService.getAllFoodstuffs()
-        ),
-      };
+      const recipeVersionId = this.recipeVersionId();
+      const recipeVersion =
+        recipeVersionId === null
+          ? await this.recipeBackendService.getActiveRecipeVersion(
+              recipeLineageId,
+            )
+          : await this.recipeBackendService.getRecipeVersion(
+              recipeLineageId,
+              recipeVersionId,
+            );
+      if (this.destroyRef.destroyed) return;
+      this.recipeVersion.set(recipeVersion);
+      void this.loadImagePreview();
+      this.state.set({ status: 'ready' });
     } catch (error: unknown) {
-      console.error('failed to fetch foodstuffs: ', error);
-      return { status: 'error' };
-    }
-  }
-
-  private async loadRecipeVersion(recipeLineageId: string, recipeVersionId: string | null): Promise<LoadResult<RecipeVersionOut>> {
-    try {
-      return {
-        status: 'success',
-        value: recipeVersionId === null
-          ? await this.recipeBackendService.getActiveRecipeVersion(recipeLineageId)
-          : await this.recipeBackendService.getRecipeVersion(recipeLineageId, recipeVersionId),
-      };
-    } catch (error: unknown) {
+      if (this.destroyRef.destroyed) return;
       console.error('failed to fetch recipe version: ', error);
-      return { status: 'error' };
-    }
-  }
-
-  private applyInitialResults(
-    foodstuffResult: LoadResult<FoodstuffOut[]>,
-    recipeVersionResult?: LoadResult<RecipeVersionOut>
-  ): void {
-    if (foodstuffResult.status === 'error') {
-      this.state.set({ status: 'error', source: 'foodstuffs' });
-      this.snackBarService.open('Zutaten konnten nicht geladen werden');
-      return;
-    }
-
-    if (recipeVersionResult?.status === 'error') {
       this.state.set({ status: 'error', source: 'recipeVersion' });
       this.snackBarService.open('Rezept konnte nicht geladen werden');
-      return;
     }
-
-    this.foodstuffs.set(foodstuffResult.value);
-    if (recipeVersionResult?.status === 'success') this.recipeVersion.set(recipeVersionResult.value);
-    void this.loadImagePreview();
-    this.state.set({ status: 'ready' });
-  }
-
-  private async refreshFoodstuffs(): Promise<void> {
-    try {
-      this.foodstuffs.set(
-        this.sortFoodstuffs(
-          await this.foodstuffBackendService.getAllFoodstuffs()
-        )
-      );
-    } catch (error: unknown) {
-      console.error('failed to refresh foodstuffs: ', error);
-      this.snackBarService.open('Zutaten konnten nicht aktualisiert werden');
-    }
-  }
-
-  private sortFoodstuffs(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
-    return [...foodstuffs].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-    );
   }
 }
