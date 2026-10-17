@@ -1,5 +1,9 @@
 <div class="preparation-mat-step" [formGroup]="preparationFormGroup">
-  <mat-form-field appearance="outline" floatLabel="always" class="short-number-field">
+  <mat-form-field
+    appearance="outline"
+    floatLabel="always"
+    class="short-number-field"
+  >
     <mat-label>Zubereitungszeit</mat-label>
     <input matInput type="number" formControlName="preptime" />
     <span matTextSuffix>min</span>
@@ -13,13 +17,20 @@
     (cdkDropListDropped)="dropStep($event)"
   >
     @for (step of steps.controls; track step) {
-      <div class="step-wrapper" formGroupName="{{ $index }}" cdkDrag [cdkDragData]="step">
+      <div
+        class="step-wrapper"
+        formGroupName="{{ $index }}"
+        cdkDrag
+        [cdkDragData]="step"
+      >
         <button
           mat-icon-button
           type="button"
           class="drag-handle"
           cdkDragHandle
-          [attr.aria-label]="'Schritt ' + ($index + 1) + ' ziehen, um ihn zu verschieben'"
+          [attr.aria-label]="
+            'Schritt ' + ($index + 1) + ' ziehen, um ihn zu verschieben'
+          "
         >
           <mat-icon aria-hidden="true" fontIcon="drag_indicator" />
         </button>
@@ -37,7 +48,10 @@
               #autosize="cdkTextareaAutosize"
             >
             </textarea>
-            @if (step.get('description')?.hasError('required') && step.get('description')?.touched) {
+            @if (
+              step.get('description')?.hasError('required') &&
+              step.get('description')?.touched
+            ) {
               <mat-error>Bitte den Schritt beschreiben.</mat-error>
             }
           </mat-form-field>

@@ -11,7 +11,8 @@ from app.recipes.schemas.recipe import RecipePresentationOut
 def presentation() -> dict[str, object]:
     return {
         "servings": 2, "preptime": None,
-        "kcal": 12.5, "carbs": None, "protein": 0, "fat": None,
+        "kcal": {"status": "exact", "value": 12.5}, "carbs": {"status": "unknown", "value": None},
+        "protein": {"status": "exact", "value": 0}, "fat": {"status": "unknown", "value": None},
         "ingredients": [{
             "index": 1, "amount": 12.5,
             "foodstuff": {

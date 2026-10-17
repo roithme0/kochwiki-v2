@@ -47,6 +47,32 @@ def create_recipe(client: TestClient, name: str, foodstuff_id: object | None = N
     return response.json()
 
 
+def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(client: TestClient) -> None:
+    known = create_foodstuff(client, protein=0, fat=None)
+    partial = create_foodstuff(client, name="Partial", kcal=None, protein=None, fat=None)
+    ingredients = [
+        {"index": 1, "amount": 100, "foodstuffId": known["id"]},
+        {"index": 2, "amount": 100, "foodstuffId": partial["id"]},
+    ]
+    response = client.post("/recipes", json=recipe_version_payload("Minimums", ingredients=ingredients))
+    assert response.status_code == 201
+    saved = response.json()
+    expected = {
+        "kcal": {"status": "minimum", "value": 185},
+        "carbs": {"status": "exact", "value": 60},
+        "protein": {"status": "minimum", "value": 0},
+        "fat": {"status": "unknown", "value": None},
+    }
+    resolved = client.post("/recipe-presentations/resolve", json={
+        "servings": 2, "preptime": 10, "ingredients": ingredients, "steps": [],
+    })
+    assert resolved.status_code == 200
+    retrieved = client.get(f"/recipes/{saved['recipeLineageId']}")
+    assert retrieved.status_code == 200
+    for body in (saved, retrieved.json(), resolved.json()):
+        assert {field: body[field] for field in expected} == expected
+
+
 def recipe_presentation_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "servings": 2,
@@ -82,10 +108,10 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert set(presentation) == {
         "servings", "preptime", "kcal", "carbs", "protein", "fat", "ingredients", "steps"
     }
-    assert presentation["kcal"] == 170.5
-    assert presentation["carbs"] == 16
-    assert presentation["protein"] == 9.25
-    assert presentation["fat"] == 6.75
+    assert presentation["kcal"] == {"status": "exact", "value": 170.5}
+    assert presentation["carbs"] == {"status": "exact", "value": 16}
+    assert presentation["protein"] == {"status": "exact", "value": 9.25}
+    assert presentation["fat"] == {"status": "exact", "value": 6.75}
     assert [ingredient["index"] for ingredient in presentation["ingredients"]] == [1, 2]
     assert [step["index"] for step in presentation["steps"]] == [1, 2]
     assert set(presentation["ingredients"][0]) == {"index", "amount", "foodstuff"}
@@ -112,7 +138,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
         ),
     )
     assert updated.status_code == 200
-    assert updated.json()["kcal"] == 100
+    assert updated.json()["kcal"] == {"status": "exact", "value": 100}
 
 
 def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(client: TestClient) -> None:
@@ -126,10 +152,10 @@ def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(cli
     )
 
     assert response.status_code == 200
-    assert response.json()["kcal"] is None
-    assert response.json()["carbs"] == 30
-    assert response.json()["protein"] == 6.5
-    assert response.json()["fat"] == 3.5
+    assert response.json()["kcal"] == {"status": "unknown", "value": None}
+    assert response.json()["carbs"] == {"status": "exact", "value": 30}
+    assert response.json()["protein"] == {"status": "exact", "value": 6.5}
+    assert response.json()["fat"] == {"status": "exact", "value": 3.5}
 
 
 def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestClient) -> None:
@@ -145,10 +171,10 @@ def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestCli
     assert response.status_code == 200
     body = response.json()
     RecipePresentationOut.model_validate(body)
-    assert body["kcal"] == 99980001
-    assert body["carbs"] == 0
-    assert body["protein"] is None
-    assert body["fat"] == 0
+    assert body["kcal"] == {"status": "exact", "value": 99980001}
+    assert body["carbs"] == {"status": "exact", "value": 0}
+    assert body["protein"] == {"status": "unknown", "value": None}
+    assert body["fat"] == {"status": "exact", "value": 0}
     assert body["preptime"] is None
 
 
@@ -253,8 +279,8 @@ def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: Te
     assert recipe_version["state"] == "active"
     assert UUID(recipe_version["recipeLineageId"]).version == 4
     assert UUID(recipe_version["recipeVersionId"]).version == 4
-    assert recipe_version["kcal"] == 185
-    assert recipe_version["carbs"] == 30
+    assert recipe_version["kcal"] == {"status": "exact", "value": 185}
+    assert recipe_version["carbs"] == {"status": "exact", "value": 30}
     assert set(recipe_version) >= {"recipeLineageId", "recipeVersionId", "state", "createdAt", "lastModified"}
     assert recipe_version["ingredients"][0]["recipeVersionId"] == recipe_version["recipeVersionId"]
     assert client.get(f"/foodstuffs/{oats['id']}").json()["recipeVersionIds"] == [recipe_version["recipeVersionId"]]
@@ -505,11 +531,11 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     assert paths["/recipe-presentations/resolve"]["post"]["responses"]["200"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/RecipePresentationOut"
     }
-    for schema_name in ("FoodstuffOut", "RecipeVersionOut", "RecipePresentationOut"):
-        assert schemas[schema_name]["properties"]["kcal"]["anyOf"] == [
-            ({"type": "number"} if schema_name == "RecipeVersionOut" else {"type": "number", "minimum": 0}),
-            {"type": "null"},
-        ]
+    assert schemas["FoodstuffOut"]["properties"]["kcal"]["anyOf"] == [
+        {"type": "number", "minimum": 0}, {"type": "null"},
+    ]
+    for schema_name in ("RecipeVersionOut", "RecipePresentationOut"):
+        assert schemas[schema_name]["properties"]["kcal"]["discriminator"]["propertyName"] == "status"
     assert schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"] == "number"
     for name in (
         "RecipePresentationOut", "RecipePresentationIngredientOut",
@@ -533,7 +559,7 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     assert set(presentation["ingredients"][0]) == set(schemas["RecipePresentationIngredientOut"]["properties"])
     assert set(presentation["ingredients"][0]["foodstuff"]) == set(schemas["FoodstuffSummaryOut"]["properties"])
     assert set(presentation["steps"][0]) == set(schemas["RecipePresentationStepOut"]["properties"])
-    assert isinstance(presentation["kcal"], (int, float))
+    assert isinstance(presentation["kcal"]["value"], (int, float))
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
 
 
@@ -640,10 +666,10 @@ def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
 
     assert response.status_code == 201
     recipe_version = response.json()
-    assert recipe_version["kcal"] == 170.5
-    assert recipe_version["carbs"] == 16
-    assert recipe_version["protein"] == 9.25
-    assert recipe_version["fat"] == 6.75
+    assert recipe_version["kcal"] == {"status": "exact", "value": 170.5}
+    assert recipe_version["carbs"] == {"status": "exact", "value": 16}
+    assert recipe_version["protein"] == {"status": "exact", "value": 9.25}
+    assert recipe_version["fat"] == {"status": "exact", "value": 6.75}
     assert [ingredient["foodstuff"]["name"] for ingredient in recipe_version["ingredients"]] == ["Oats", "Egg"]
     assert [step["description"] for step in recipe_version["steps"]] == ["Cook", "Serve"]
     assert set(recipe_version["ingredients"][0]) == {"id", "index", "amount", "foodstuff", "recipeVersionId"}
@@ -655,13 +681,13 @@ def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
 def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
     recipe_version = create_recipe(client, "Unknown calories", foodstuff["id"])
-    assert recipe_version["kcal"] is None
-    assert recipe_version["carbs"] == 30
+    assert recipe_version["kcal"] == {"status": "unknown", "value": None}
+    assert recipe_version["carbs"] == {"status": "exact", "value": 30}
 
     updated_foodstuff = client.patch(f"/foodstuffs/{foodstuff['id']}", json={"kcal": 400, "brand": ""})
     assert updated_foodstuff.status_code == 200
     assert updated_foodstuff.json()["brand"] is None
-    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()["kcal"] == 200
+    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()["kcal"] == {"status": "exact", "value": 200}
 
 
 def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestClient) -> None:

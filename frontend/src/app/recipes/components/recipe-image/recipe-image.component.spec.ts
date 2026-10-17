@@ -5,11 +5,14 @@ import { RecipeImageComponent } from './recipe-image.component';
 
 describe('RecipeImageComponent', () => {
   let fixture: ComponentFixture<RecipeImageComponent>;
-  const download = vi.fn<(imageId: string) => Promise<RecipeImageDownloadOut>>();
+  const download =
+    vi.fn<(imageId: string) => Promise<RecipeImageDownloadOut>>();
   const placeholder = 'assets/images/recipe-image-placeholder.png';
 
   const renderedSource = (): string | null =>
-    (fixture.nativeElement as HTMLElement).querySelector('img')!.getAttribute('src');
+    (fixture.nativeElement as HTMLElement)
+      .querySelector('img')!
+      .getAttribute('src');
 
   beforeEach(() => {
     download.mockReset();
@@ -48,52 +51,79 @@ describe('RecipeImageComponent', () => {
     }
   });
 
-  it.each(['access', 'bytes'])('falls back after %s failure and obtains fresh access on explicit retry', async failure => {
-    if (failure === 'access') download.mockRejectedValueOnce(new Error('unavailable'));
-    else download.mockResolvedValueOnce({ url: '/storage/expired', expiresIn: 300 });
-    download.mockResolvedValueOnce({ url: '/storage/fresh', expiresIn: 300 });
-    fixture.componentRef.setInput('imageId', 'image-a');
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    if (failure === 'bytes') {
-      (fixture.nativeElement as HTMLElement).querySelector('img')!.dispatchEvent(new Event('error'));
+  it.each(['access', 'bytes'])(
+    'falls back after %s failure and obtains fresh access on explicit retry',
+    async (failure) => {
+      if (failure === 'access')
+        download.mockRejectedValueOnce(new Error('unavailable'));
+      else
+        download.mockResolvedValueOnce({
+          url: '/storage/expired',
+          expiresIn: 300,
+        });
+      download.mockResolvedValueOnce({ url: '/storage/fresh', expiresIn: 300 });
+      fixture.componentRef.setInput('imageId', 'image-a');
       fixture.detectChanges();
-    }
-    expect((fixture.nativeElement as HTMLElement).querySelector('img')).toBeNull();
-    expect(download).toHaveBeenCalledTimes(1);
-    expect((fixture.nativeElement as HTMLElement).querySelector('[role="status"]')!.textContent)
-      .toContain('konnte nicht geladen werden');
-    (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(download).toHaveBeenCalledTimes(2);
-    expect(renderedSource()).toBe('/storage/fresh');
-    expect(fixture.componentInstance.failed()).toBe(false);
-  });
+      await fixture.whenStable();
+      fixture.detectChanges();
+      if (failure === 'bytes') {
+        (fixture.nativeElement as HTMLElement)
+          .querySelector('img')!
+          .dispatchEvent(new Event('error'));
+        fixture.detectChanges();
+      }
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('img'),
+      ).toBeNull();
+      expect(download).toHaveBeenCalledTimes(1);
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')!
+          .textContent,
+      ).toContain('konnte nicht geladen werden');
+      (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(download).toHaveBeenCalledTimes(2);
+      expect(renderedSource()).toBe('/storage/fresh');
+      expect(fixture.componentInstance.failed()).toBe(false);
+    },
+  );
 
-  it.each([null, 'image-b'])('ignores a stale result after changing the image to %s', async nextId => {
-    let resolveFirst!: (value: RecipeImageDownloadOut) => void;
-    download.mockReturnValueOnce(new Promise(resolve => { resolveFirst = resolve; }));
-    download.mockResolvedValueOnce({ url: '/storage/b', expiresIn: 300 });
-    fixture.componentRef.setInput('imageId', 'image-a');
-    fixture.detectChanges();
-    fixture.componentRef.setInput('imageId', nextId);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    resolveFirst({ url: '/storage/a', expiresIn: 300 });
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(renderedSource()).toBe(nextId === null ? placeholder : '/storage/b');
-    expect(fixture.componentInstance.loading()).toBe(nextId !== null);
-  });
+  it.each([null, 'image-b'])(
+    'ignores a stale result after changing the image to %s',
+    async (nextId) => {
+      let resolveFirst!: (value: RecipeImageDownloadOut) => void;
+      download.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        }),
+      );
+      download.mockResolvedValueOnce({ url: '/storage/b', expiresIn: 300 });
+      fixture.componentRef.setInput('imageId', 'image-a');
+      fixture.detectChanges();
+      fixture.componentRef.setInput('imageId', nextId);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      resolveFirst({ url: '/storage/a', expiresIn: 300 });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(renderedSource()).toBe(
+        nextId === null ? placeholder : '/storage/b',
+      );
+      expect(fixture.componentInstance.loading()).toBe(nextId !== null);
+    },
+  );
 
   it('ignores a response after the view is destroyed', async () => {
     let resolveDownload!: (value: RecipeImageDownloadOut) => void;
-    download.mockReturnValueOnce(new Promise(resolve => { resolveDownload = resolve; }));
+    download.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDownload = resolve;
+      }),
+    );
     fixture.componentRef.setInput('imageId', 'image-a');
     fixture.detectChanges();
     fixture.destroy();
@@ -104,11 +134,17 @@ describe('RecipeImageComponent', () => {
 
   it('keeps the Material spinner visible until the image bytes load', async () => {
     let resolveDownload!: (value: RecipeImageDownloadOut) => void;
-    download.mockReturnValueOnce(new Promise(resolve => { resolveDownload = resolve; }));
+    download.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveDownload = resolve;
+      }),
+    );
     fixture.componentRef.setInput('imageId', 'image-a');
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.image-area .image-status mat-spinner')).not.toBeNull();
+    expect(
+      element.querySelector('.image-area .image-status mat-spinner'),
+    ).not.toBeNull();
     expect(element.querySelector('img')).toBeNull();
     resolveDownload({ url: '/storage/a', expiresIn: 300 });
     await fixture.whenStable();
@@ -142,8 +178,12 @@ describe('RecipeImageComponent', () => {
     expect(renderedSource()).toBe('/storage/fresh');
   });
 
-  it.each([{ width: 1254, height: 818 }, { width: 600, height: 1200 }])(
-    'reserves the same aspect ratio during access, byte loading, failure and retry: %o', async dimensions => {
+  it.each([
+    { width: 1254, height: 818 },
+    { width: 600, height: 1200 },
+  ])(
+    'reserves the same aspect ratio during access, byte loading, failure and retry: %o',
+    async (dimensions) => {
       download.mockResolvedValue({ url: '/storage/a', expiresIn: 300 });
       fixture.componentRef.setInput('naturalHeight', true);
       fixture.componentRef.setInput('imageDimensions', dimensions);
@@ -172,14 +212,17 @@ describe('RecipeImageComponent', () => {
       fixture.detectChanges();
       expect(area.style.aspectRatio).toBe(ratio);
       expect(element.querySelector('mat-spinner')).toBeNull();
-    });
+    },
+  );
 
   it('reserves the placeholder aspect ratio before its bytes load', () => {
     fixture.componentRef.setInput('naturalHeight', true);
     fixture.componentRef.setInput('imageId', null);
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector<HTMLElement>('.image-area')!.style.aspectRatio).toBe('1254 / 747');
+    expect(
+      element.querySelector<HTMLElement>('.image-area')!.style.aspectRatio,
+    ).toBe('1254 / 747');
     expect(element.querySelector('img')!.getAttribute('width')).toBe('1254');
     expect(element.querySelector('img')!.getAttribute('height')).toBe('747');
   });

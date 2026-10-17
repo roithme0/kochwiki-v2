@@ -2,7 +2,10 @@
   <mat-form-field appearance="outline" floatLabel="always">
     <mat-label>Name</mat-label>
     <input matInput formControlName="name" />
-    @if (metaFormGroup.get('name')?.hasError('required') && metaFormGroup.get('name')?.touched) {
+    @if (
+      metaFormGroup.get('name')?.hasError('required') &&
+      metaFormGroup.get('name')?.touched
+    ) {
       <mat-error>Bitte einen Namen eingeben.</mat-error>
     }
   </mat-form-field>

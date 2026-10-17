@@ -35,7 +35,8 @@ export const routes: Routes = [
         path: ':lineageId/versions/:recipeVersionId/improve',
         loadComponent: () =>
           import('./recipes/pages/recipe-conversation-page/recipe-conversation-page.component').then(
-            ({ RecipeConversationPageComponent }) => RecipeConversationPageComponent,
+            ({ RecipeConversationPageComponent }) =>
+              RecipeConversationPageComponent,
           ),
         title: 'Rezept verbessern',
         canDeactivate: [recipeConversationLeaveGuard],

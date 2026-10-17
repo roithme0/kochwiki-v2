@@ -1,9 +1,9 @@
 <!-- not using mat-dialog-title as it caused style issues with its ::before -->
 <h2 class="title">{{ title() }}</h2>
-@if(showCloseButon() == true){
-<mat-dialog-actions>
-  <button mat-icon-button mat-dialog-close color="warn">
-    <mat-icon aria-hidden="false" aria-label="Schließen" fontIcon="close" />
-  </button>
-</mat-dialog-actions>
+@if (showCloseButon() === true) {
+  <mat-dialog-actions>
+    <button mat-icon-button mat-dialog-close color="warn">
+      <mat-icon aria-hidden="false" aria-label="Schließen" fontIcon="close" />
+    </button>
+  </mat-dialog-actions>
 }

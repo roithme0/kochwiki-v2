@@ -6,20 +6,18 @@
 
   <mat-card-content>
     <div class="grid">
-      @for(ingredient of ingredientsSorted(); track ingredient.index){
-      <app-macro-chart
-        class="macro-chart"
-        [nutrition]="ingredient.foodstuff"
-        [showKcal]="false"
-      />
-      <span>{{ ingredient.foodstuff.name }}</span>
-      <span class="amount"
-        >{{ ingredient.amount }} {{ ingredient.foodstuff.unitVerbose }}</span
-      >
-
-      }
-      @empty {
-      <span class="no-ingredients">Keine Zutaten vorhanden</span>
+      @for (ingredient of ingredientsSorted(); track ingredient.index) {
+        <app-macro-chart
+          class="macro-chart"
+          [nutrition]="ingredient.foodstuff | nutritionSummary"
+          [showKcal]="false"
+        />
+        <span>{{ ingredient.foodstuff.name }}</span>
+        <span class="amount"
+          >{{ ingredient.amount }} {{ ingredient.foodstuff.unitVerbose }}</span
+        >
+      } @empty {
+        <span class="no-ingredients">Keine Zutaten vorhanden</span>
       }
     </div>
   </mat-card-content>

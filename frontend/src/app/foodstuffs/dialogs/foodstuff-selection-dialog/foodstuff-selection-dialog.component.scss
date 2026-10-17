@@ -1,0 +1,179 @@
+@use '../../../../styles/page-background';
+@use '../../../../styles/search-bar';
+@use '@angular/material' as mat;
+
+:host {
+  @include page-background.illustrated();
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0.75rem 1rem;
+}
+
+app-dialog-header,
+.search-footer {
+  flex-shrink: 0;
+}
+
+mat-dialog-content {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  padding: 0.75rem 0 !important;
+}
+
+mat-action-list {
+  padding: 0;
+}
+
+mat-dialog-content.no-results {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.foodstuff {
+  @include mat.list-overrides(
+    (
+      list-item-disabled-label-text-opacity: 1,
+      list-item-disabled-label-text-color: var(--mat-sys-on-surface),
+      list-item-disabled-state-layer-opacity: 0,
+    )
+  );
+  height: auto;
+  min-height: 64px;
+  padding: 0;
+}
+
+.foodstuff img[matListItemAvatar] {
+  background: transparent;
+  border-radius: 0;
+  object-fit: contain;
+}
+
+.foodstuff-name,
+.foodstuff-description {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.foodstuff-description,
+.empty-message {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.search-footer {
+  padding-top: 0.5rem;
+}
+
+.foodstuff .selection-status[matListItemMeta] {
+  color: #c5e1a5;
+  align-self: center;
+  max-width: 6rem;
+  margin: 0 0.5rem;
+  white-space: normal;
+  text-align: end;
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.foodstuff .selected-status[matListItemMeta] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.basket-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid
+    color-mix(in srgb, var(--mat-app-text-color) 35%, transparent);
+  border-radius: 1rem;
+  background: color-mix(
+    in srgb,
+    var(--mat-app-background-color) 90%,
+    transparent
+  );
+}
+
+.basket-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.basket-summary > button {
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 0.75rem,
+      filled-container-height: 3rem,
+    )
+  );
+  flex-shrink: 0;
+}
+
+.basket-preview {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.basket-preview li {
+  flex: 0 0 40px;
+}
+
+.basket-preview img {
+  display: block;
+  object-fit: contain;
+}
+
+.selection-count {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.search-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+app-foodstuffs-search {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.create-foodstuff-button {
+  @include search-bar.add-button();
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 0.75rem,
+      filled-container-height: 3.5rem,
+    )
+  );
+  min-width: 0;
+  padding: 0;
+}
+
+.create-foodstuff-button > mat-icon {
+  margin: 0;
+}

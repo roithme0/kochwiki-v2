@@ -1,32 +1,39 @@
 <main>
   @if (recipeVersionsState().status === 'loading') {
-  <div class="spinner-wrapper">
-    <mat-spinner diameter="25" />
-  </div>
+    <div class="spinner-wrapper">
+      <mat-spinner diameter="25" />
+    </div>
   } @else if (recipeVersionsState().status === 'error') {
-  <p>Ein Fehler ist aufgetreten</p>
+    <p>Ein Fehler ist aufgetreten</p>
   } @else {
-  <div class="grid-wrapper">
-    <app-recipes-grid
-      class="recipes-grid"
-      [recipeVersions]="recipeVersionsState().data"
-    />
-    <div
-      class="fade-effect-wrapper"
-      [ngClass]="showSearch() ? 'show' : 'hide'"
-    ></div>
-  </div>
+    <div class="grid-wrapper">
+      <app-recipes-grid
+        class="recipes-grid"
+        [recipeVersions]="recipeVersionsState().data"
+      />
+      <div
+        class="fade-effect-wrapper"
+        [ngClass]="showSearch() ? 'show' : 'hide'"
+      ></div>
+    </div>
 
-  <div class="bottom-elements">
-    <app-recipes-search [recipeVersions]="recipeVersionsState().data" />
+    <div class="bottom-elements">
+      <app-recipes-search
+        [searchValue]="recipesGridControlsService.searchBy()"
+        (searchValueChange)="recipesGridControlsService.searchBy = $event"
+      />
 
-    <button
-      mat-mini-fab
-      (click)="openCreateRecipeDialog()"
-      class="create-recipe-button"
-    >
-      <mat-icon aria-hidden="false" aria-label="Rezept hinzufügen" fontIcon="add" />
-    </button>
-  </div>
+      <button
+        mat-mini-fab
+        (click)="openCreateRecipeDialog()"
+        class="create-recipe-button"
+      >
+        <mat-icon
+          aria-hidden="false"
+          aria-label="Rezept hinzufügen"
+          fontIcon="add"
+        />
+      </button>
+    </div>
   }
 </main>

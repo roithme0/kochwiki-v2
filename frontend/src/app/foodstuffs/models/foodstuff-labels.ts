@@ -17,7 +17,9 @@ const unitLabels = {
   PIECE: 'Stück',
 } satisfies Record<Unit, string>;
 
-export const foodstuffUnitChoices = Object.entries(unitLabels).map(([value, label]) => ({ value, label }));
+export const foodstuffUnitChoices = Object.entries(unitLabels).map(
+  ([value, label]) => ({ value, label }),
+);
 
 export function foodstuffUnitLabel(unit: Unit): string {
   return unitLabels[unit];

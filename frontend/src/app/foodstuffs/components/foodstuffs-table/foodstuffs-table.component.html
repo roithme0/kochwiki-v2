@@ -1,106 +1,105 @@
 <div #tableWrapper id="tableWrapper" class="table-wrapper">
-  @if(tableDataSource.data.length > 0){
-  <table
-    mat-table
-    matSort
-    [dataSource]="tableDataSource"
-    (contentChanged)="contentChanged()"
-  >
-    @for (field of displayedFields(); track field) {
-
-    <!-- chart -->
-    @if(field === 'chart'){
-    <ng-container [matColumnDef]="field">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let foodstuff">
-        <app-macro-chart
-          class="macro-chart"
-          [nutrition]="foodstuff"
-          [showKcal]="false"
-        />
-      </td> </ng-container
-    >}
-
-    <!-- edit -->
-    @else if(field === 'edit'){
-    <ng-container [matColumnDef]="field">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let foodstuff">
-        <button
-          mat-icon-button
-          class="button"
-          (click)="openEditFoodstuffDialog(foodstuff)"
-        >
-          <mat-icon
-            aria-hidden="false"
-            aria-label="Bearbeiten"
-            fontIcon="edit"
-          />
-        </button>
-      </td>
-    </ng-container>
-    }
-
-    <!-- delete -->
-    @else if(field === 'delete'){
-    <ng-container [matColumnDef]="field">
-      <th mat-header-cell *matHeaderCellDef></th>
-      <td mat-cell *matCellDef="let foodstuff">
-        <!-- ony deletable if not used in any recipe -->
-        @if(foodstuff.recipeVersionIds.length == 0){
-        <button
-          mat-icon-button
-          color="warn"
-          class="button"
-          (click)="openDeleteFoodstuffDialog(foodstuff)"
-        >
-          <mat-icon
-            aria-hidden="false"
-            aria-label="Löschen"
-            fontIcon="delete"
-          />
-        </button>
+  @if (tableDataSource.data.length > 0) {
+    <table
+      mat-table
+      matSort
+      [dataSource]="tableDataSource"
+      (contentChanged)="contentChanged()"
+    >
+      @for (field of displayedFields(); track field) {
+        <!-- chart -->
+        @if (field === 'chart') {
+          <ng-container [matColumnDef]="field">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let foodstuff">
+              <app-macro-chart
+                class="macro-chart"
+                [nutrition]="foodstuff | nutritionSummary"
+                [showKcal]="false"
+              />
+            </td>
+          </ng-container>
         }
-      </td>
-    </ng-container>
-    }
 
-    <!-- foodstuff properties -->
-    @else{
-    <ng-container [matColumnDef]="field">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>
-        {{ fieldLabels[field] }}
-      </th>
-      <td mat-cell *matCellDef="let foodstuff">
-        @if (field === 'unit') {
-          {{ unitLabel(foodstuff.unit) }}
-        } @else {
-          {{ foodstuff[field] }}
+        <!-- edit -->
+        @else if (field === 'edit') {
+          <ng-container [matColumnDef]="field">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let foodstuff">
+              <button
+                mat-icon-button
+                class="button"
+                (click)="openEditFoodstuffDialog(foodstuff)"
+              >
+                <mat-icon
+                  aria-hidden="false"
+                  aria-label="Bearbeiten"
+                  fontIcon="edit"
+                />
+              </button>
+            </td>
+          </ng-container>
         }
-      </td>
-    </ng-container>
-    }}
 
-    <tr
-      mat-header-row
-      *matHeaderRowDef="displayedFields(); sticky: true"
-    ></tr>
-    <tr
-      mat-row
-      *matRowDef="let row; columns: displayedFields()"
-    ></tr>
-  </table>
-  <div class="spacer"></div>
-  <mat-paginator [hidePageSize]="true" [showFirstLastButtons]="false" />
+        <!-- delete -->
+        @else if (field === 'delete') {
+          <ng-container [matColumnDef]="field">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let foodstuff">
+              <!-- ony deletable if not used in any recipe -->
+              @if (foodstuff.recipeVersionIds.length === 0) {
+                <button
+                  mat-icon-button
+                  color="warn"
+                  class="button"
+                  (click)="openDeleteFoodstuffDialog(foodstuff)"
+                >
+                  <mat-icon
+                    aria-hidden="false"
+                    aria-label="Löschen"
+                    fontIcon="delete"
+                  />
+                </button>
+              }
+            </td>
+          </ng-container>
+        }
+
+        <!-- foodstuff properties -->
+        @else {
+          <ng-container [matColumnDef]="field">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>
+              {{ fieldLabels[field] }}
+            </th>
+            <td mat-cell *matCellDef="let foodstuff">
+              @if (field === 'unit') {
+                {{ unitLabel(foodstuff.unit) }}
+              } @else {
+                {{ foodstuff[field] }}
+              }
+            </td>
+          </ng-container>
+        }
+      }
+
+      <tr
+        mat-header-row
+        *matHeaderRowDef="displayedFields(); sticky: true"
+      ></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedFields()"></tr>
+    </table>
+    <div class="spacer"></div>
+    <mat-paginator [hidePageSize]="true" [showFirstLastButtons]="false" />
   } @else {
-  <div class="no-foodstuffs-placeholder">
-    @if(foodstuffTableControlService.searchBy().length > 0){
-    <p>Keine passenden Lebensmittel gefunden.</p>
-    <button mat-button (click)="foodstuffTableControlService.clearSearch()">
-      Suche zurücksetzen</button
-    >}@else {
-    <p>Keine Lebensmittel vorhanden.</p>
-    }
-  </div>
+    <div class="no-foodstuffs-placeholder">
+      @if (foodstuffTableControlService.searchBy().length > 0) {
+        <p>Keine passenden Lebensmittel gefunden.</p>
+        <button mat-button (click)="foodstuffTableControlService.clearSearch()">
+          Suche zurücksetzen
+        </button>
+      } @else {
+        <p>Keine Lebensmittel vorhanden.</p>
+      }
+    </div>
   }
 </div>

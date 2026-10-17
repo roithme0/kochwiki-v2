@@ -1,6 +1,8 @@
+import type { NutritionResult } from './nutrition-result';
+
 export interface ChartLegendElement {
   displayName: string;
   color: string;
-  valueAbsolute: number | null | undefined;
+  value: NutritionResult;
   valuePercentage: number | null;
 }

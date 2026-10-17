@@ -21,6 +21,18 @@ p {
   margin: 0;
 }
 
+.display-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.legend-content > mat-card,
+.value-absolute {
+  flex-shrink: 0;
+}
+
 .value-percentage,
 .value-absolute {
   white-space: nowrap;

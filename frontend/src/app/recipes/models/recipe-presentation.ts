@@ -1,7 +1,10 @@
+import type { NutritionResult } from '../../core/models/nutrition-result';
 import type { FoodstuffSummaryOut } from '../../core/api/generated';
 
-export type RecipePresentationFoodstuff = Pick<FoodstuffSummaryOut,
-  'name' | 'unitVerbose' | 'kcal' | 'carbs' | 'protein' | 'fat'>;
+export type RecipePresentationFoodstuff = Pick<
+  FoodstuffSummaryOut,
+  'name' | 'unitVerbose' | 'kcal' | 'carbs' | 'protein' | 'fat'
+>;
 
 export interface RecipePresentationIngredient {
   readonly index: number;
@@ -17,10 +20,10 @@ export interface RecipePresentationStep {
 export interface RecipePresentation {
   readonly servings: number;
   readonly preptime: number | null;
-  readonly kcal: number | null;
-  readonly carbs: number | null;
-  readonly protein: number | null;
-  readonly fat: number | null;
+  readonly kcal: NutritionResult;
+  readonly carbs: NutritionResult;
+  readonly protein: NutritionResult;
+  readonly fat: NutritionResult;
   readonly ingredients: readonly RecipePresentationIngredient[];
   readonly steps: readonly RecipePresentationStep[];
 }

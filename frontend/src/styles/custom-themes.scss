@@ -1,5 +1,5 @@
-@use "@angular/material" as mat;
-@use "./style-tokens" as tokens;
+@use '@angular/material' as mat;
+@use './style-tokens' as tokens;
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -32,19 +32,27 @@ html {
 
   @include mat.all-component-themes($dark-theme);
   --mat-app-text-color: #efe7db;
-  @include mat.toolbar-overrides((
-    container-text-color: tokens.$high-emphasis-font-color,
-  ));
-  @include mat.table-overrides((
-    header-headline-color: tokens.$high-emphasis-font-color,
-    row-item-label-text-color: tokens.$high-emphasis-font-color,
-  ));
-  @include mat.paginator-overrides((
-    container-text-color: tokens.$high-emphasis-font-color,
-  ));
-  @include mat.card-overrides((
-    elevated-container-color: #3b3028,
-    filled-container-color: #3b3028,
-    outlined-container-color: #3b3028,
-  ));
+  @include mat.toolbar-overrides(
+    (
+      container-text-color: tokens.$high-emphasis-font-color,
+    )
+  );
+  @include mat.table-overrides(
+    (
+      header-headline-color: tokens.$high-emphasis-font-color,
+      row-item-label-text-color: tokens.$high-emphasis-font-color,
+    )
+  );
+  @include mat.paginator-overrides(
+    (
+      container-text-color: tokens.$high-emphasis-font-color,
+    )
+  );
+  @include mat.card-overrides(
+    (
+      elevated-container-color: #3b3028,
+      filled-container-color: #3b3028,
+      outlined-container-color: #3b3028,
+    )
+  );
 }

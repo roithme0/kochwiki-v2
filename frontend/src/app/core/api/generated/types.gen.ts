@@ -15,6 +15,20 @@ export type ErrorResponse = {
 };
 
 /**
+ * ExactNutrition
+ */
+export type ExactNutrition = {
+    /**
+     * Status
+     */
+    status: 'exact';
+    /**
+     * Value
+     */
+    value: number;
+};
+
+/**
  * FoodstuffCreate
  */
 export type FoodstuffCreate = {
@@ -210,6 +224,20 @@ export type IngredientWrite = {
 };
 
 /**
+ * MinimumNutrition
+ */
+export type MinimumNutrition = {
+    /**
+     * Status
+     */
+    status: 'minimum';
+    /**
+     * Value
+     */
+    value: number;
+};
+
+/**
  * RecipeImageDimensionsOut
  */
 export type RecipeImageDimensionsOut = {
@@ -335,11 +363,23 @@ export type RecipePresentationOut = {
     /**
      * Carbs
      */
-    carbs: number | null;
+    carbs: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Fat
      */
-    fat: number | null;
+    fat: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Ingredients
      */
@@ -347,7 +387,13 @@ export type RecipePresentationOut = {
     /**
      * Kcal
      */
-    kcal: number | null;
+    kcal: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Preptime
      */
@@ -355,7 +401,13 @@ export type RecipePresentationOut = {
     /**
      * Protein
      */
-    protein: number | null;
+    protein: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Servings
      */
@@ -423,7 +475,13 @@ export type RecipeVersionOut = {
     /**
      * Carbs
      */
-    carbs: number | null;
+    carbs: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Createdat
      */
@@ -431,7 +489,13 @@ export type RecipeVersionOut = {
     /**
      * Fat
      */
-    fat: number | null;
+    fat: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     imageDimensions: RecipeImageDimensionsOut | null;
     /**
      * Imageid
@@ -444,7 +508,13 @@ export type RecipeVersionOut = {
     /**
      * Kcal
      */
-    kcal: number | null;
+    kcal: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Lastmodified
      */
@@ -460,7 +530,13 @@ export type RecipeVersionOut = {
     /**
      * Protein
      */
-    protein: number | null;
+    protein: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
     /**
      * Recipelineageid
      */
@@ -557,6 +633,20 @@ export type StepWrite = {
  * Unit
  */
 export type Unit = 'G' | 'ML' | 'PIECE';
+
+/**
+ * UnknownNutrition
+ */
+export type UnknownNutrition = {
+    /**
+     * Status
+     */
+    status: 'unknown';
+    /**
+     * Value
+     */
+    value: null;
+};
 
 /**
  * UserOut

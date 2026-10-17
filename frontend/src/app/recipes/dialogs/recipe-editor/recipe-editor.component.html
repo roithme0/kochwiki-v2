@@ -1,14 +1,14 @@
 @switch (state().status) {
-  @case ("loading") {
+  @case ('loading') {
     <mat-spinner diameter="25" />
   }
-  @case ("error") {
+  @case ('error') {
     <div class="error">
       <mat-icon aria-label="Fehler" fontIcon="error" />
       <p>{{ errorMessage() }}</p>
     </div>
   }
-  @case ("ready") {
+  @case ('ready') {
     <form [formGroup]="recipeForm" class="form">
       <app-section-nav
         #sectionNav
@@ -19,27 +19,59 @@
         (selected)="goToSection($event)"
       />
       <div class="form-sections" [attr.inert]="busy() ? '' : null">
-        <section #editorSection id="basics" class="form-section" aria-labelledby="basics-heading">
+        <section
+          #editorSection
+          id="basics"
+          class="form-section"
+          aria-labelledby="basics-heading"
+        >
           <mat-card>
             <mat-card-header>
-              <mat-card-title><h2 id="basics-heading">Basis</h2></mat-card-title>
+              <mat-card-title
+                ><h2 id="basics-heading">Basis</h2></mat-card-title
+              >
             </mat-card-header>
             <mat-card-content>
-              <app-recipe-meta-form [recipeVersion]="recipeVersion() ?? undefined" />
+              <app-recipe-meta-form
+                [recipeVersion]="recipeVersion() ?? undefined"
+              />
               <div class="image-preview" [attr.aria-busy]="loadingImage()">
                 <img
-                  [src]="imagePreview() ?? 'assets/images/recipe-image-placeholder.png'"
-                  [alt]="imagePreview() ? 'Rezeptbild' : 'Kein Rezeptbild vorhanden'"
+                  [src]="
+                    imagePreview() ??
+                    'assets/images/recipe-image-placeholder.png'
+                  "
+                  [alt]="
+                    imagePreview() ? 'Rezeptbild' : 'Kein Rezeptbild vorhanden'
+                  "
                   (error)="imageLoadFailed()"
                 />
-                <input #imageInput hidden type="file" accept="image/png,.png" (change)="selectImage(imageInput)" />
+                <input
+                  #imageInput
+                  hidden
+                  type="file"
+                  accept="image/png,.png"
+                  (change)="selectImage(imageInput)"
+                />
                 <div class="image-actions">
                   @if (hasImage()) {
-                    <button mat-mini-fab type="button" aria-label="Rezeptbild entfernen" [disabled]="busy()" (click)="removeImage()">
+                    <button
+                      mat-mini-fab
+                      type="button"
+                      aria-label="Rezeptbild entfernen"
+                      [disabled]="busy()"
+                      (click)="removeImage()"
+                    >
                       <mat-icon aria-hidden="true">delete</mat-icon>
                     </button>
                   }
-                  <button mat-mini-fab type="button" aria-label="Rezeptbild auswählen oder ersetzen" [disabled]="busy()" (click)="imageInput.click()">
+                  <button
+                    mat-mini-fab
+                    type="button"
+                    aria-label="Rezeptbild auswählen oder ersetzen"
+                    [disabled]="busy()"
+                    (click)="imageInput.click()"
+                  >
                     <mat-icon aria-hidden="true">edit</mat-icon>
                   </button>
                 </div>
@@ -49,43 +81,73 @@
               }
               @if (imageAccessFailed()) {
                 <p role="status">Rezeptbild konnte nicht geladen werden.</p>
-                <button mat-button type="button" [disabled]="busy()" (click)="loadImagePreview()">Bild erneut laden</button>
+                <button
+                  mat-button
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="loadImagePreview()"
+                >
+                  Bild erneut laden
+                </button>
               }
               @if (imageError()) {
                 <p role="alert">{{ imageError() }}</p>
               }
               @if (invalidImageSelection()) {
-                <button mat-button type="button" (click)="discardInvalidSelection()">Ungültige Auswahl verwerfen</button>
+                <button
+                  mat-button
+                  type="button"
+                  (click)="discardInvalidSelection()"
+                >
+                  Ungültige Auswahl verwerfen
+                </button>
               }
             </mat-card-content>
           </mat-card>
         </section>
-        <section #editorSection id="ingredients" class="form-section" aria-labelledby="ingredients-heading">
+        <section
+          #editorSection
+          id="ingredients"
+          class="form-section"
+          aria-labelledby="ingredients-heading"
+        >
           <mat-card>
             <mat-card-header>
-              <mat-card-title><h2 id="ingredients-heading">Zutaten</h2></mat-card-title>
+              <mat-card-title
+                ><h2 id="ingredients-heading">Zutaten</h2></mat-card-title
+              >
             </mat-card-header>
             <mat-card-content>
               <app-recipe-ingredients-form
-                [foodstuffs]="foodstuffs()"
                 [recipeVersion]="recipeVersion() ?? undefined"
               />
             </mat-card-content>
           </mat-card>
         </section>
-        <section #editorSection id="preparation" class="form-section" aria-labelledby="preparation-heading">
+        <section
+          #editorSection
+          id="preparation"
+          class="form-section"
+          aria-labelledby="preparation-heading"
+        >
           <mat-card>
             <mat-card-header>
-              <mat-card-title><h2 id="preparation-heading">Zubereitung</h2></mat-card-title>
+              <mat-card-title
+                ><h2 id="preparation-heading">Zubereitung</h2></mat-card-title
+              >
             </mat-card-header>
             <mat-card-content>
-              <app-recipe-preparation-form [recipeVersion]="recipeVersion() ?? undefined" />
+              <app-recipe-preparation-form
+                [recipeVersion]="recipeVersion() ?? undefined"
+              />
             </mat-card-content>
           </mat-card>
         </section>
       </div>
       @if (uploadingImage()) {
-        <p class="upload-status" role="status">Bild wird hochgeladen und geprüft …</p>
+        <p class="upload-status" role="status">
+          Bild wird hochgeladen und geprüft …
+        </p>
       }
       <div class="button-wrapper">
         <button
@@ -96,9 +158,9 @@
           (click)="onSubmit('publish')"
         >
           <mat-icon aria-hidden="true" fontIcon="save" />
-          {{ mode() === "draft" ? "Entwurf speichern" : "Speichern" }}
+          {{ mode() === 'draft' ? 'Entwurf speichern' : 'Speichern' }}
         </button>
-        @if (mode() === "active") {
+        @if (mode() === 'active') {
           <button
             mat-button
             type="button"

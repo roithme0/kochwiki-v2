@@ -8,9 +8,15 @@ if (existsSync(envPath)) process.loadEnvFile(envPath);
 const origin = process.env.AI_GATEWAY_URL || '';
 if (origin) {
   const parsed = new URL(origin);
-  if (!/^https?:\/\/([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?|\[[a-fA-F0-9:]+\])(:[0-9]{1,5})?$/.test(origin)
-      || !['http:', 'https:'].includes(parsed.protocol)) {
-    throw new Error('AI_GATEWAY_URL must be an http(s) origin without credentials, path, query, or fragment');
+  if (
+    !/^https?:\/\/([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?|\[[a-fA-F0-9:]+\])(:[0-9]{1,5})?$/.test(
+      origin,
+    ) ||
+    !['http:', 'https:'].includes(parsed.protocol)
+  ) {
+    throw new Error(
+      'AI_GATEWAY_URL must be an http(s) origin without credentials, path, query, or fragment',
+    );
   }
 }
 
@@ -44,7 +50,12 @@ const unsupported = {
 };
 
 module.exports = {
-  '/api/**': { target: 'http://localhost:8002', secure: false, changeOrigin: true },
-  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:messages|turns(?:/[A-Za-z0-9_-]+/events)?))?)?(?:\\?.*)?$': ai,
+  '/api/**': {
+    target: 'http://localhost:8002',
+    secure: false,
+    changeOrigin: true,
+  },
+  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:messages|turns(?:/[A-Za-z0-9_-]+/events)?))?)?(?:\\?.*)?$':
+    ai,
   '^/ai(?:/|\\?|$)': unsupported,
 };

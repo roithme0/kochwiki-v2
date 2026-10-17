@@ -43,6 +43,9 @@ jobs:
       - name: Check generated Kochwiki contract
         run: npm run check:kochwiki-contract
 
+      - name: Lint frontend
+        run: npm run lint
+
   build-and-publish:
     needs: [check-kochwiki-contract]
     runs-on: ubuntu-latest

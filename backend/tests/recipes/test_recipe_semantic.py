@@ -168,7 +168,7 @@ def test_search_filters_before_limit_and_returns_complete_current_recipe() -> No
     assert len(results) == 1 and results[0].recipe.recipeVersionId == draft
     recipe = results[0].recipe
     assert recipe.state == RecipeVersionState.DRAFT
-    assert recipe.kcal == Decimal(20)
+    assert recipe.kcal.value == Decimal(20)
     assert recipe.ingredients[0].foodstuff.kcal == Decimal(40)
     assert recipe.steps[0].description == "Cook"
     assert [item.recipe.recipeVersionId for item in search.search("Noodles", 20)] == [draft, ids[3]]

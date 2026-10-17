@@ -1,4 +1,4 @@
-@use "../../../../styles/mat-card-styles.scss" as *;
+@use '../../../../styles/mat-card-styles.scss' as *;
 
 :host {
   display: flex;
@@ -31,7 +31,7 @@ mat-spinner {
 }
 
 .button-wrapper {
-  padding: 24px;
+  padding: 0 24px 24px;
   display: flex;
   gap: 0.5rem;
 }

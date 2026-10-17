@@ -23,8 +23,11 @@ export class RecipeImageComponent {
   readonly naturalHeight = input(false);
   readonly imageDimensions = input<RecipeImageDimensionsOut | null>(null);
   readonly placeholderDimensions = { width: 1254, height: 747 };
-  readonly dimensions = computed(() => this.imageId() === null
-    ? this.placeholderDimensions : this.imageDimensions());
+  readonly dimensions = computed(() =>
+    this.imageId() === null
+      ? this.placeholderDimensions
+      : this.imageDimensions(),
+  );
   readonly aspectRatio = computed(() => {
     const dimensions = this.dimensions();
     return dimensions ? `${dimensions.width} / ${dimensions.height}` : '1';

@@ -24,7 +24,7 @@ export class PageHeaderService {
   private _showBack: WritableSignal<boolean> = signal(DEFAULT_SHOW_BACK);
 
   showUserOptions = computed(
-    () => this.activeUserService.activeUser() !== null
+    () => this.activeUserService.activeUser() !== null,
   );
 
   set headline(headline: string) {
@@ -60,7 +60,7 @@ export class PageHeaderService {
     headline: string,
     back: string,
     showBack: boolean = DEFAULT_SHOW_BACK,
-    subheader: string = ''
+    subheader: string = '',
   ): void {
     this._showHome.set(showHome);
     this.headline = headline;

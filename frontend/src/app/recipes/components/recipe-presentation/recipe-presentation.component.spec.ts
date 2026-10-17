@@ -18,10 +18,10 @@ describe('RecipePresentationComponent', () => {
     const recipe: RecipePresentation = {
       servings: 2,
       preptime: 25,
-      kcal: 450,
-      carbs: 50,
-      protein: 20,
-      fat: 12,
+      kcal: { status: 'exact' as const, value: 450 },
+      carbs: { status: 'exact' as const, value: 50 },
+      protein: { status: 'exact' as const, value: 20 },
+      fat: { status: 'exact' as const, value: 12 },
       ingredients: [
         {
           index: 1,
@@ -42,20 +42,25 @@ describe('RecipePresentationComponent', () => {
     fixture.detectChanges();
 
     const ingredients = fixture.debugElement.query(
-      By.directive(IngredientsGridComponent)
+      By.directive(IngredientsGridComponent),
     ).componentInstance as IngredientsGridComponent;
-    const steps = fixture.debugElement.query(
-      By.directive(StepsGridComponent)
-    ).componentInstance as StepsGridComponent;
+    const steps = fixture.debugElement.query(By.directive(StepsGridComponent))
+      .componentInstance as StepsGridComponent;
     const nutrition = fixture.debugElement.query(
-      By.directive(NutritionCardComponent)
+      By.directive(NutritionCardComponent),
     ).componentInstance as NutritionCardComponent;
 
     expect(ingredients.recipe()).toBe(recipe);
     expect(steps.recipe()).toBe(recipe);
     expect(nutrition.nutrition()).toBe(recipe);
-    expect(fixture.nativeElement.textContent).toContain('Tomaten');
-    expect(fixture.nativeElement.textContent).toContain('Tomaten schneiden.');
-    expect(fixture.nativeElement.textContent).toContain('25 min');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Tomaten',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Tomaten schneiden.',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '25 min',
+    );
   });
 });

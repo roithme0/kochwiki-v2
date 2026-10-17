@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
@@ -13,6 +14,7 @@ import { RecipeCreateDialogComponent } from '../../dialogs/recipe-create-dialog/
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipesGridComponent } from '../../components/recipes-grid/recipes-grid.component';
 import { RecipesSearchComponent } from '../../components/recipes-search/recipes-search.component';
+import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 
 @Component({
   selector: 'app-recipes-page',
@@ -27,13 +29,14 @@ import { RecipesSearchComponent } from '../../components/recipes-search/recipes-
   templateUrl: './recipes-page.component.html',
   styleUrl: './recipes-page.component.scss',
 })
-export class RecipesPageComponent {
+export class RecipesPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private isDestroyed = false;
   private readonly recipeBackendService = inject(RecipeBackendService);
   private readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
   readonly pageHeaderService = inject(PageHeaderService);
+  readonly recipesGridControlsService = inject(RecipesGridControlsService);
 
   readonly showSearch = signal(false);
   readonly recipeVersionsState = signal<LoadState<RecipeVersionOut[]>>({
@@ -57,20 +60,24 @@ export class RecipesPageComponent {
 
   openCreateRecipeDialog(): void {
     this.dialog.open(RecipeCreateDialogComponent, {
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      height: 'calc(100dvh - 1rem)',
-      maxHeight: 'calc(100dvh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });
   }
 
   private async fetchRecipeVersions(): Promise<void> {
-    this.recipeVersionsState.update(({ data }) => ({ status: 'loading', data }));
+    this.recipeVersionsState.update(({ data }) => ({
+      status: 'loading',
+      data,
+    }));
     try {
-      const recipeVersions = await this.recipeBackendService.getAllRecipeVersions();
+      const recipeVersions =
+        await this.recipeBackendService.getAllRecipeVersions();
       if (this.isDestroyed) return;
       this.recipeVersionsState.set({
         status: 'success',
@@ -80,7 +87,10 @@ export class RecipesPageComponent {
       if (this.isDestroyed) return;
       console.error('failed to fetch recipe versions: ', error);
       this.snackBarService.open('Rezepte konnten nicht geladen werden');
-      this.recipeVersionsState.update(({ data }) => ({ status: 'error', data }));
+      this.recipeVersionsState.update(({ data }) => ({
+        status: 'error',
+        data,
+      }));
     }
   }
 }

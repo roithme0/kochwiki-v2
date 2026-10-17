@@ -1,3 +1,5 @@
+import type { AfterViewInit } from '@angular/core';
+import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import {
   Component,
   DestroyRef,
@@ -16,7 +18,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { foodstuffFieldLabels, foodstuffUnitLabel } from '../../models/foodstuff-labels';
+import {
+  foodstuffFieldLabels,
+  foodstuffUnitLabel,
+} from '../../models/foodstuff-labels';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
@@ -33,6 +38,7 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
 @Component({
   selector: 'app-foodstuffs-table',
   imports: [
+    NutritionSummaryPipe,
     MatTableModule,
     MatSortModule,
     MatButtonModule,
@@ -43,17 +49,21 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
   templateUrl: './foodstuffs-table.component.html',
   styleUrl: './foodstuffs-table.component.scss',
 })
-export class FoodstuffsTableComponent implements OnDestroy {
+export class FoodstuffsTableComponent implements OnDestroy, AfterViewInit {
   private readonly elementWidthService = inject(ElementWidthService);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly displayedFieldsService = inject(FoodstuffTableDisplayedFieldsService);
+  private readonly displayedFieldsService = inject(
+    FoodstuffTableDisplayedFieldsService,
+  );
 
   private readonly width = this.elementWidthService.observe(
     this.elementRef.nativeElement,
     this.destroyRef,
   );
-  readonly displayedFields = this.displayedFieldsService.getDisplayedFields(this.width);
+  readonly displayedFields = this.displayedFieldsService.getDisplayedFields(
+    this.width,
+  );
   readonly foodstuffBackendService = inject(FoodstuffBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
@@ -70,7 +80,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
   @ViewChild(MatPaginator) readonly paginator!: MatPaginator;
 
   tableWrapperResizeObserver = new ResizeObserver(() =>
-    this.updateTablePageSize()
+    this.updateTablePageSize(),
   );
 
   displayedFoodstuffs = computed((): FoodstuffOut[] => {
@@ -80,7 +90,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     return displayedFoodstuffs;
   });
   tableDataSource = new MatTableDataSource<FoodstuffOut>(
-    this.displayedFoodstuffs()
+    this.displayedFoodstuffs(),
   );
 
   constructor() {
@@ -106,10 +116,10 @@ export class FoodstuffsTableComponent implements OnDestroy {
   openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
     this.dialog.open(FoodstuffPatchDialogComponent, {
       data: { id: foodstuff.id },
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      maxHeight: 'calc(100vh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });
@@ -125,8 +135,8 @@ export class FoodstuffsTableComponent implements OnDestroy {
 
     this.dialog.open(ConfirmationDialogComponent, {
       data,
-      maxWidth: '95vw',
-      maxHeight: '95vh',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
       autoFocus: false,
     });
   }
@@ -143,14 +153,16 @@ export class FoodstuffsTableComponent implements OnDestroy {
     }
   }
 
-  private searchFoodstuffsByNameOrBrand(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
+  private searchFoodstuffsByNameOrBrand(
+    foodstuffs: FoodstuffOut[],
+  ): FoodstuffOut[] {
     const searchBy: string = this.foodstuffTableControlService.searchBy();
     return searchBy === ''
       ? foodstuffs
       : foodstuffs.filter(
           (foodstuff) =>
             foodstuff.name.toLowerCase().includes(searchBy.toLowerCase()) ||
-            foodstuff.brand?.toLowerCase().includes(searchBy.toLowerCase())
+            foodstuff.brand?.toLowerCase().includes(searchBy.toLowerCase()),
         );
   }
 

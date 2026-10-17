@@ -1,3 +1,4 @@
+import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import { Component, computed, input } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
@@ -9,10 +10,7 @@ import {
 
 @Component({
   selector: 'app-ingredients-grid',
-  imports: [
-    MatCardModule,
-    MacroChartComponent
-],
+  imports: [NutritionSummaryPipe, MatCardModule, MacroChartComponent],
   templateUrl: './ingredients-grid.component.html',
   styleUrl: './ingredients-grid.component.scss',
 })
@@ -22,7 +20,7 @@ export class IngredientsGridComponent {
   readonly ingredientsSorted = computed((): RecipePresentationIngredient[] =>
     [...this.recipe().ingredients].sort(
       (a: RecipePresentationIngredient, b: RecipePresentationIngredient) =>
-        a.index - b.index
-    )
+        a.index - b.index,
+    ),
   );
 }

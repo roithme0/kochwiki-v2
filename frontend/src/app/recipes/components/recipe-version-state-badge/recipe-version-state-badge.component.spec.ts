@@ -23,17 +23,23 @@ describe('RecipeVersionStateBadgeComponent', () => {
     fixture.componentRef.setInput('state', 'draft');
     fixture.detectChanges();
 
-    const styles = getComputedStyle(fixture.nativeElement);
+    const styles = getComputedStyle(fixture.nativeElement as HTMLElement);
     expect(styles.display).toBe('inline-flex');
     expect(styles.borderRadius).toBe('0.5rem');
     expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  function expectBadge(state: RecipeVersionState, expectedText: string, expectedHidden: boolean): void {
+  function expectBadge(
+    state: RecipeVersionState,
+    expectedText: string,
+    expectedHidden: boolean,
+  ): void {
     fixture.componentRef.setInput('state', state);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent.trim()).toBe(expectedText);
-    expect(fixture.nativeElement.hidden).toBe(expectedHidden);
+    expect((fixture.nativeElement as HTMLElement).textContent.trim()).toBe(
+      expectedText,
+    );
+    expect((fixture.nativeElement as HTMLElement).hidden).toBe(expectedHidden);
   }
 });
