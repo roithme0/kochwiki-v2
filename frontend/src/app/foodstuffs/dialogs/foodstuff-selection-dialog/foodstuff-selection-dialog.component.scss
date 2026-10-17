@@ -99,6 +99,42 @@ mat-dialog-content.no-results {
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--mat-app-text-color) 35%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--mat-app-background-color) 90%, transparent);
+}
+
+.basket-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.basket-summary > button {
+  @include mat.button-overrides((
+    filled-container-shape: 0.75rem,
+    filled-container-height: 3rem,
+  ));
+  flex-shrink: 0;
+}
+
+.basket-preview {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.basket-preview li {
+  flex: 0 0 40px;
+}
+
+.basket-preview img {
+  display: block;
+  object-fit: contain;
 }
 
 .selection-count {

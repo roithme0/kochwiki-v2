@@ -59,6 +59,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     const element: HTMLElement = fixture.nativeElement;
     const confirm = element.querySelector<HTMLButtonElement>('.basket-summary button');
     expect(confirm?.disabled).toBe(true);
+    expect(element.querySelector('.basket-preview')).toBeNull();
     fixture.componentInstance.confirmSelection();
     expect(close).not.toHaveBeenCalled();
     fixture.componentInstance.toggleFoodstuff(2);
@@ -66,6 +67,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.componentInstance.searchValue.set('missing');
     fixture.detectChanges();
     expect(confirm?.disabled).toBe(false);
+    expect(Array.from(element.querySelectorAll<HTMLImageElement>('.basket-preview img'))
+      .map((image) => image.alt)).toEqual(['Olivenöl', 'Pasta · Barilla']);
+    expect(element.querySelector('.basket-preview button, .basket-preview a, .basket-preview [tabindex]')).toBeNull();
     confirm?.click();
     expect(close).toHaveBeenCalledWith([2, 1]);
   });
@@ -104,8 +108,10 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     expect(buttons()[0].getAttribute('aria-pressed')).toBe('false');
     expect(element.querySelector('.selection-count')?.textContent).toContain('1');
+    expect(element.querySelector<HTMLImageElement>('.basket-preview img')?.alt).toBe('Pasta · Andere Marke');
     buttons()[2].click();
     fixture.detectChanges();
     expect(element.querySelector('.selection-count')?.textContent).toContain('0');
+    expect(element.querySelector('.basket-preview')).toBeNull();
   });
 });

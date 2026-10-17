@@ -51,9 +51,22 @@
 
 <div class="search-footer">
   <div class="basket-summary">
-    <p class="selection-count" role="status">
-      Im Korb · {{ selectedFoodstuffIds().size }}
-    </p>
+    <div class="basket-content">
+      <p class="selection-count" role="status">
+        Im Korb · {{ selectedFoodstuffIds().size }}
+      </p>
+      @if (selectedFoodstuffs().length > 0) {
+        <ul class="basket-preview" aria-label="Lebensmittel im Korb">
+          @for (foodstuff of selectedFoodstuffs(); track foodstuff.id) {
+            <li>
+              <img src="assets/images/question-mark.png"
+                [alt]="foodstuff.name + (foodstuff.brand ? ' · ' + foodstuff.brand : '')"
+                width="40" height="40" />
+            </li>
+          }
+        </ul>
+      }
+    </div>
     <button
       mat-flat-button
       type="button"

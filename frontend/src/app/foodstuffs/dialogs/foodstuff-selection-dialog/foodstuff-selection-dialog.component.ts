@@ -1,5 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,22 +18,42 @@ export interface FoodstuffSelectionDialogData {
 
 @Component({
   selector: 'app-foodstuff-selection-dialog',
-  imports: [DialogHeaderComponent, FoodstuffsSearchComponent, MatDialogModule, MatListModule, MatButtonModule, MatIconModule],
+  imports: [
+    DialogHeaderComponent,
+    FoodstuffsSearchComponent,
+    MatDialogModule,
+    MatListModule,
+    MatButtonModule,
+    MatIconModule,
+  ],
   templateUrl: './foodstuff-selection-dialog.component.html',
   styleUrl: './foodstuff-selection-dialog.component.scss',
 })
 export class FoodstuffSelectionDialogComponent {
   readonly data = inject<FoodstuffSelectionDialogData>(MAT_DIALOG_DATA);
-  private readonly dialogRef = inject<MatDialogRef<FoodstuffSelectionDialogComponent, number[]>>(MatDialogRef);
+  private readonly dialogRef =
+    inject<MatDialogRef<FoodstuffSelectionDialogComponent, number[]>>(
+      MatDialogRef,
+    );
 
   readonly searchValue = signal('');
   readonly existingFoodstuffIds = new Set(this.data.existingFoodstuffIds);
   readonly selectedFoodstuffIds = signal<ReadonlySet<number>>(new Set());
+  readonly selectedFoodstuffs = computed((): FoodstuffOut[] =>
+    [...this.selectedFoodstuffIds()]
+      .map((id) =>
+        this.data.foodstuffs.find((foodstuff) => foodstuff.id === id),
+      )
+      .filter(
+        (foodstuff): foodstuff is FoodstuffOut => foodstuff !== undefined,
+      ),
+  );
   readonly displayedFoodstuffs = computed((): FoodstuffOut[] => {
     const query = this.searchValue().toLowerCase();
-    return this.data.foodstuffs.filter((foodstuff) =>
-      foodstuff.name.toLowerCase().includes(query) ||
-      (foodstuff.brand?.toLowerCase().includes(query) ?? false)
+    return this.data.foodstuffs.filter(
+      (foodstuff) =>
+        foodstuff.name.toLowerCase().includes(query) ||
+        (foodstuff.brand?.toLowerCase().includes(query) ?? false),
     );
   });
 
