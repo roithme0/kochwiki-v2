@@ -2,7 +2,7 @@
 
 ## Status
 
-The selected tools are ESLint, Prettier, and the existing Angular tooling instead of Vite+. Changed-file formatting is implemented and verified in the live client; the user also ran the one-time full frontend formatting pass. Type-aware linting and template accessibility checks, Codex integration, and failing CI lint checks are authorized and implemented. The separately authorized existing lint cleanup is complete, with zero errors and warnings and no rule suppressions or configuration exceptions. Full frontend test automation is now implemented in the same Stop validation sequence; the changed hook definition needs renewed review and trust in the client. Backend test automation remains a subsequent step.
+The selected tools are ESLint, Prettier, and the existing Angular tooling instead of Vite+. Changed-file formatting is implemented and verified in the live client; the user also ran the one-time full frontend formatting pass. Type-aware linting and template accessibility checks, Codex integration, and failing CI lint checks are authorized and implemented. The separately authorized existing lint cleanup is complete, with zero errors and warnings and no rule suppressions or configuration exceptions. Full frontend test automation is implemented and verified in the live client, including actionable failure feedback from a temporary failing assertion that was subsequently restored. Backend test automation remains a subsequent step. Additional quality checks below are recommendations for discussion, not implemented or approved additions to hook or CI enforcement.
 
 ## Goal
 
@@ -64,6 +64,36 @@ Do not introduce affected-test selection or latency-driven suite reductions. Mis
 
 ## Integration Impact
 
+### Additional Quality Checks
+
+Extend the existing validation orchestrator rather than introducing independent Stop hooks for every check. Keep explicit ordering, shared content fingerprints, diagnostics, timeouts, and bounded continuations. New checks should contribute to the successful-validation result only when they actually pass. Define relevant inputs conservatively, including configuration and shared tooling; cache invalidation must cover every input on which a check depends.
+
+The suggested order of adoption is:
+
+1. Frontend production compilation and explicit tooling type checking.
+2. Automated generated-contract verification for contract-related changes.
+3. Backend linting, type checking, and the full pytest suite.
+4. Browser integration tests for a small set of critical user journeys.
+
+| Check | Purpose and proposed scope | Current position |
+| --- | --- | --- |
+| Production build | Run the Angular production build for frontend changes to detect compilation, template, bundling, asset, and configured size-budget problems. | Proposed completion gate; complements unit tests and lint. |
+| Explicit type checking | Check scripts and tests that production compilation does not cover. The existing `node node_modules/typescript/bin/tsc -p tsconfig.eslint.json --noEmit` command is a candidate; verify its coverage before adopting it as a gate. | Manually verified; proposed automated completion gate. |
+| Generated-contract verification | Run `npm run check:kochwiki-contract` when backend API schemas, generation inputs/scripts, or generated frontend types change. Detect stale generated output without hand-editing it. | Command and CI check exist; hook integration is proposed. |
+| Backend validation | Add Python linting and type checking plus the full backend pytest suite for backend changes. Cross-boundary changes require both frontend and backend validation. | Full-suite policy agreed; automation and Python tool selection remain open. |
+| Browser integration tests | Exercise critical journeys such as authentication, navigation, and recipe editing in a real browser, covering behavior beyond unit-test boundaries. | Proposed after stable tests, fixtures, and service setup exist. |
+| Secret scanning | Scan changed content for accidentally introduced credentials and private keys before completion; avoid exposing matched secret values in agent diagnostics. | Supplementary candidate; tool and exception policy undecided. |
+| Diff hygiene | Detect conflict markers, whitespace errors, and accidental large files. `git diff --check` can cover part of this; staged and untracked changes need explicit coverage. | Cheap supplementary candidate; keep generated/binary exceptions deliberate. |
+| Security analysis | Use selected static security rules to identify patterns such as injection and unsafe API use. Semgrep is one candidate. | Later candidate; evaluate noise, supported languages, and local execution before enforcement. |
+
+Detecting newly skipped tests, lint suppressions, or other changes that weaken validation could prompt an explicit review. Such changes can be legitimate, so pattern matches should be advisory rather than unconditional failures. An independent agent review can likewise help with complex changes, but provides judgment rather than deterministic proof and should remain separate from mandatory mechanical checks.
+
+Network-dependent dependency vulnerability audits are better considered separately from reproducible local completion checks: results can change without code changes and would need an explicit freshness and availability policy. No additional security service or external upload is selected by this concept.
+
+These proposals draw on established automated checks rather than an assumed universal agent-hook standard. See [agent development guidance on type checking](https://www.anthropic.com/engineering/claude-code-best-practices), [existing secret and conflict-marker checks](https://github.com/pre-commit/pre-commit-hooks), and [Semgrep static security analysis](https://semgrep.dev/products/community-edition/). These references inform check selection; Git commit hooks remain outside this workflow.
+
+### Ownership
+
 Local automation owns source formatting and agent feedback. CI runs only the agreed read-only validation; formatting is excluded. Coding-agent instructions should name the working directory, non-interactive validation commands, relevant focused checks, and commands that modify files. Automatic fixes and read-only checks should have distinct entry points.
 
 Backend tests and the OpenAPI contract check remain part of repository validation even though ESLint and Prettier do not replace them. The frontend tooling discussion does not select new Python tools.
@@ -72,10 +102,9 @@ Backend tests and the OpenAPI contract check remain part of repository validatio
 
 - ESLint: which explicit typing rules should supplement the existing strict compiler settings?
 - Tests: which shared files and tooling changes should trigger both full suites?
-- Codex: combined formatting/lint hook definitions are trusted and unchanged-turn skipping plus changed-file lint failure feedback are verified in the live client; the test-enabled definition needs renewed client review and trust.
+- Additional checks: confirm which proposed gates to implement, their trigger inputs, and the required environments and timeouts; select Python lint/type tools separately.
 - Formatting: how should automation handle files that already contain unrelated user edits?
 - CI: test enforcement in CI remains undecided; CI linting is a required failing gate.
-- Cleanup: review existing findings in a separate change, including any justified test-specific policies rather than blanket suppressions.
 
 ## Risks
 
