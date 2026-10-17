@@ -1,13 +1,25 @@
 {
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:/Code/kochwiki-v2/.codex/validate-frontend.ps1 -Mode start",
+            "timeout": 30,
+            "statusMessage": "Recording frontend content before this turn"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:/Code/kochwiki-v2/.codex/format-changed.ps1",
-            "timeout": 120,
-            "statusMessage": "Formatting changed frontend files with Prettier"
+            "command": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:/Code/kochwiki-v2/.codex/validate-frontend.ps1 -Mode stop",
+            "timeout": 180,
+            "statusMessage": "Formatting changed frontend files and checking frontend lint"
           }
         ]
       }

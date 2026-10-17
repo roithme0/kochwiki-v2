@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft under discussion. The agreed direction is to use ESLint, Prettier, and the existing Angular tooling instead of adopting Vite+. The user authorized implementing changed-file formatting first. ESLint, test automation, and CI changes remain subsequent steps.
+The selected tools are ESLint, Prettier, and the existing Angular tooling instead of Vite+. Changed-file formatting is implemented and verified in the live client; the user also ran the one-time full frontend formatting pass. Type-aware linting and template accessibility checks, Codex integration, and failing CI lint checks are authorized and implemented. Existing lint remediation is explicitly deferred to a separate change. Test automation remains a subsequent step.
 
 ## Goal
 
@@ -10,7 +10,7 @@ Make formatting, linting, and tests a reliable part of Codex coding work through
 
 ## Current Setup
 
-The frontend uses Angular 22, npm with a lockfile, Angular CLI application and development-server builders, and Vitest through Angular's unit-test builder. TypeScript strict mode and Angular strict template checking are enabled. The frontend has no lint or formatting scripts in its package manifest. A dedicated script checks generated backend/frontend contract drift, and CI runs that check before building images. Python backend tests remain a separate pytest workflow.
+The frontend uses Angular 22, npm with a lockfile, Angular CLI application and development-server builders, and Vitest through Angular's unit-test builder. TypeScript strict mode and Angular strict template checking are enabled. The frontend now has changed-file formatting and full-frontend lint commands. A dedicated script checks generated backend/frontend contract drift; CI runs that check and frontend lint before building images. Python backend tests remain a separate pytest workflow.
 
 ## Proposed Direction
 
@@ -20,7 +20,7 @@ Define the Codex lifecycle integration first, then decide ESLint, Prettier, and 
 
 ### Codex Lifecycle
 
-The agreed behavior is automatic local formatting of files changed by Codex, lint checks before Codex completes coding work, and test execution before completion. Repository instructions reinforce tool use and require Codex to address findings in its changes and accurately report validation results. CI does not run formatting. CI lint findings fail the pipeline; fixes occur outside the pipeline and CI must not rewrite source files. The exact treatment of lint warning severity remains to be configured.
+The agreed behavior is automatic local formatting of files changed by Codex, lint checks before Codex completes coding work, and test execution before completion. Repository instructions reinforce tool use and require Codex to address findings in its changes and accurately report validation results. CI does not run formatting. CI lint errors and warnings fail the pipeline; fixes occur outside the pipeline and CI must not rewrite source files.
 
 The proposed mechanism is a repository-local Codex Stop hook backed by a shared validation command. Format eligible changed files first, then run linting and the selected non-watch test suites against that resulting state. A Stop hook fires at a turn boundary, not at a semantic task-complete event, so it must skip discussion-only turns and avoid rerunning checks when relevant inputs have not changed. Record successful validation against current input contents; later edits invalidate that result. Do not infer success merely because a test command appeared in a transcript.
 
@@ -34,19 +34,25 @@ Verification on 2026-10-17 found the installed VS Code extension `openai.chatgpt
 
 Prettier `3.9.10` is pinned in the frontend manifest and lockfile. `npm run format:changed` formats whole changed frontend files: staged and unstaged differences against HEAD, plus untracked files not ignored by Git. It does not update the Git index. Unchanged files, generated API contracts, generated `src/version.ts`, lockfiles, dependencies, and build output are excluded. Unsupported file types and symlinks are skipped. Angular HTML uses the Angular parser; single quotes follow the existing TypeScript convention, with other layout options using Prettier defaults and supported EditorConfig settings.
 
-The Stop hook invokes the same formatter through a PowerShell wrapper. If formatting changes files, it requests one continuation to review the diff. A subsequent stop can format further edits but does not request another continuation. Formatting failures request one corrective continuation, then surface an incomplete-formatting diagnostic if they persist. The changed hook definition requires review and trust in Codex before it runs. The new hook has been exercised locally; live-client execution remains to be confirmed after trust.
+The Stop hook invokes the same formatter through a PowerShell wrapper. If formatting changes files, it requests one continuation to review the diff. A subsequent stop can format further edits but does not request another continuation. Formatting failures request one corrective continuation, then surface an incomplete-formatting diagnostic if they persist. The original formatting hook was verified in the live client. The combined formatting/lint hook described below requires fresh review and trust of its changed definitions.
 
-This first implementation uses Git's changed-file set, not per-agent edit attribution. It also includes files already modified by the user. Whole-file formatting can therefore touch pre-existing edits in the same file; repository instructions require checking and coordinating ownership. No CI formatting, linting, or automated test gate is introduced in this step.
+Formatting uses Git's changed-file set, not per-agent edit attribution. It also includes files already modified by the user. Whole-file formatting can therefore touch pre-existing edits in the same file; repository instructions require checking and coordinating ownership. Formatting remains excluded from CI.
 
 Local validation passed four formatter regression tests and a strict TypeScript check. Tests cover staged/unstaged/untracked selection, unchanged-file and index preservation, ignore boundaries, Angular control flow, repeat-run stability, and parse failures without partial formatting writes. The configured PowerShell command was exercised with hook input. The full Angular suite ran with 596 tests passing and two failures in untouched recipe-editor tests: both expected one initial preparation row and received zero. Those application/test failures remain outside this formatting change.
 
 ### ESLint
 
-The initial recommendation is a flat configuration using the Angular CLI-compatible angular-eslint release line. Cover application and test TypeScript plus external and inline Angular templates. Start from maintained recommended configurations rather than enabling every available rule. Exclude generated contract output and build artifacts from handwritten-code policies; retain the existing generation drift check.
+The implemented flat configuration pins angular-eslint 22.6.0, ESLint 10.13.0, TypeScript ESLint 8.71.2, and supporting packages in the lockfile. Maintained recommended configurations cover application and test TypeScript, external and inline Angular templates, and handwritten JavaScript scripts. Generated contract output, version output, dependencies, and build artifacts are excluded; the generation drift check is retained.
 
-Decide explicitly whether to enable type-aware TypeScript linting initially. It can detect issues beyond compiler checks, including unhandled promises, but adds setup and runtime cost and may reveal existing violations. Additional rules should protect meaningful behavior or agreed repository conventions. Accessibility template checks are recommended for discussion.
+The user selected both type-aware recommended TypeScript rules and recommended template accessibility checks immediately. A dedicated lint TypeScript configuration covers source, tests, and scripts without changing their build configurations. Both errors and warnings fail `npm run lint` and the equivalent Angular CLI lint target. `lint:fix` is an explicit local command; automated hooks and CI do not apply lint fixes.
 
 Prettier should own layout. Avoid lint rules that duplicate or conflict with its formatting. Existing typing requirements should inform the lint policy, while exceptions for test code require an explicit rationale.
+
+The combined Codex integration captures a content fingerprint on `UserPromptSubmit`, then formats and lints on `Stop` when frontend inputs changed. Successful lint results are reused only for identical content. Session state and full diagnostics live in the ignored Angular cache. Failures request one continuation, then report incomplete validation if persistent. Discussion turns without frontend edits skip lint even with existing uncommitted files. The shared formatter remains usable directly.
+
+The initial scan found 235 errors and 12 warnings across 50 files: 216 findings in tests and 31 in application code/templates. There were no parser/configuration failures. The user requested a separate cleanup; no existing source or tests are changed and no rules are weakened to pass the gate. CI therefore fails until the debt is addressed. See [frontend linting](../frontend-linting.md) for the category breakdown, commands, and operational behavior.
+
+Tooling verification passes 12 formatter/validator regression tests and strict TypeScript checking. The newly added configuration and validator code lint cleanly. ESLint CLI and Angular CLI agree on existing-debt counts. Local checks exercise the exact PowerShell hook commands for unchanged-turn skipping, failure feedback, and bounded continuation; live-client trust remains necessary.
 
 ### Tests
 
@@ -62,15 +68,12 @@ Backend tests and the OpenAPI contract check remain part of repository validatio
 
 ## Open Questions
 
-- ESLint: adopt recommended rules first, or include type-aware checks immediately?
-- ESLint: include recommended template accessibility rules initially?
 - ESLint: which explicit typing rules should supplement the existing strict compiler settings?
-- Prettier: file scope, formatting options, and treatment of existing formatting differences?
 - Tests: which shared files and tooling changes should trigger both full suites?
-- Codex: verify the real formatting hook after reviewing and trusting its changed definition; refine blocked-handoff behavior as lint and test gates are added.
+- Codex: review and trust the combined formatting/lint hook definitions and verify live-client behavior; test-suite automation remains future work.
 - Formatting: how should automation handle files that already contain unrelated user edits?
 - CI: test enforcement in CI remains undecided; CI linting is a required failing gate.
-- Rollout: how much existing lint remediation is acceptable in the first tooling change?
+- Cleanup: review existing findings in a separate change, including any justified test-specific policies rather than blanket suppressions.
 
 ## Risks
 
