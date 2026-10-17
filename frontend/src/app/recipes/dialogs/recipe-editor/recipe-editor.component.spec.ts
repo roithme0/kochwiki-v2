@@ -414,7 +414,7 @@ describe('RecipeEditorComponent', () => {
     ).toBe(true);
   });
 
-  it('starts create mode with no ingredients and one removable preparation row', async () => {
+  it('starts create mode empty and can add, validate, remove and save preparation steps', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -423,33 +423,94 @@ describe('RecipeEditorComponent', () => {
       component.recipeForm.controls.ingredientsFormGroup.controls.ingredients;
     const steps =
       component.recipeForm.controls.preparationFormGroup.controls.steps;
-    expect(ingredients.length).toBe(0);
-    expect(steps.length).toBe(1);
-
-    component.recipeForm.controls.preparationFormGroup.controls.steps.removeAt(
-      0,
-    );
+    const preparation = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector<HTMLElement>('app-recipe-preparation-form')!;
     expect(ingredients.length).toBe(0);
     expect(steps.length).toBe(0);
-  });
+    expect(preparation.querySelector('.step-wrapper')).toBeNull();
 
-  it('starts an empty edited recipe with no ingredients and one preparation row', async () => {
-    fixture.componentRef.setInput(
-      'recipeLineageId',
-      recipeVersion.recipeLineageId,
+    const emitted = vi.fn();
+    component.submitted.subscribe(emitted);
+    component.recipeForm.controls.metaFormGroup.controls.name.setValue(
+      'New recipe',
     );
+    preparation.querySelector<HTMLButtonElement>('.add-button')!.click();
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    expect(steps.length).toBe(1);
+    expect(preparation.querySelectorAll('.step-wrapper')).toHaveLength(1);
+    expect(steps.at(0).controls.description.hasError('required')).toBe(true);
 
-    expect(
-      component.recipeForm.controls.ingredientsFormGroup.controls.ingredients
-        .length,
-    ).toBe(0);
-    expect(
-      component.recipeForm.controls.preparationFormGroup.controls.steps.length,
-    ).toBe(1);
+    await component.onSubmit('publish');
+    expect(emitted).not.toHaveBeenCalled();
+
+    preparation.querySelector<HTMLButtonElement>('.remove-button')!.click();
+    fixture.detectChanges();
+    expect(ingredients.length).toBe(0);
+    expect(steps.length).toBe(0);
+    expect(preparation.querySelector('.step-wrapper')).toBeNull();
+
+    await component.onSubmit('publish');
+    expect(emitted).toHaveBeenCalledExactlyOnceWith({
+      action: 'publish',
+      recipeVersion: {
+        name: 'New recipe',
+        servings: 2,
+        preptime: null,
+        ingredients: [],
+        steps: [],
+      },
+    });
   });
+
+  it.each(['active', 'draft'] as const)(
+    'loads and saves an empty %s recipe without inserting preparation rows',
+    async (mode) => {
+      recipeBackend.getRecipeVersion.mockResolvedValue({
+        ...recipeVersion,
+        state: mode,
+      });
+      fixture.componentRef.setInput('mode', mode);
+      fixture.componentRef.setInput(
+        'recipeLineageId',
+        recipeVersion.recipeLineageId,
+      );
+      fixture.componentRef.setInput(
+        'recipeVersionId',
+        recipeVersion.recipeVersionId,
+      );
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(
+        component.recipeForm.controls.ingredientsFormGroup.controls.ingredients
+          .length,
+      ).toBe(0);
+      expect(
+        component.recipeForm.controls.preparationFormGroup.controls.steps
+          .length,
+      ).toBe(0);
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('.step-wrapper'),
+      ).toBeNull();
+
+      const emitted = vi.fn();
+      component.submitted.subscribe(emitted);
+      await component.onSubmit('publish');
+      expect(emitted).toHaveBeenCalledExactlyOnceWith({
+        action: 'publish',
+        recipeVersion: {
+          imageId: null,
+          name: recipeVersion.name,
+          servings: recipeVersion.servings,
+          preptime: recipeVersion.preptime,
+          ingredients: [],
+          steps: [],
+        },
+      });
+    },
+  );
 
   it.each(['active', 'draft'] as const)(
     'preserves existing ingredients and amounts in %s mode with fixed foodstuffs',
