@@ -9,6 +9,10 @@ Upload-start/completion endpoints and a typed frontend service expose the upload
 flow. Recipe versions can reference validated images, and a download endpoint issues
 short-lived access URLs. Basis image editing, detail-page display and grid image display are available.
 
+Foodstuff upload-start, completion, and download endpoints use the shared image
+transfer implementation and their own bucket. Foodstuff record associations and
+frontend image editing/display remain pending.
+
 ## Configuration and startup
 
 Set these values in each deployment's ignored `deployment/.env`, with distinct
@@ -167,13 +171,16 @@ Both fail verification. Prefix insertion is a routing step, not a new signature.
 User-level authorization remains outside this slice. Private buckets and signed
 URLs do not implement recipe ownership or permissions.
 
-## Internal recipe image uploads
+## Shared image transfers
 
-`app.recipes.services.image_uploads.RecipeImageUploads` implements validation and
-persistence behind the upload API. Recipe services attach its persisted image IDs separately. Construct it with
-the storage adapter and a SQLAlchemy session factory, normally `SessionLocal`.
+`app.images.transfers.ImageTransfers` implements validation, persistence, and
+download access behind domain-specific HTTP routes. Recipe services attach its
+persisted image IDs separately; foodstuff associations remain pending. Construct
+it with the domain's storage adapter, a SQLAlchemy session factory (normally
+`SessionLocal`), and an explicit backend-selected `ImageKind`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
-`recipe-image-uploads/<uuid>`. The caller transfers bytes, waits for upload success,
+`recipe-image-uploads/<uuid>` or `foodstuff-image-uploads/<uuid>` in the selected
+domain bucket. The caller transfers bytes, waits for upload success,
 then explicitly calls `complete(upload.id)`; no Garage event is required.
 
 Completion reads at most 10 MiB plus one overflow-detection byte and validates
@@ -183,6 +190,7 @@ rejected even with a single frame. Filename and declared MIME type are not trust
 No resizing, re-encoding or metadata stripping is performed.
 
 Accepted bytes are written unchanged to `recipe-images/<new-image-uuid>.png`
+or `foodstuff-images/<new-image-uuid>.png` in that same domain bucket,
 with `image/png` content type. The returned immutable result contains image UUID,
 object key, size, dimensions, SHA-256, content type and UTC creation time. The
 shared `image_asset` table persists these fields, with unique object keys per image
@@ -193,7 +201,7 @@ the bytes being promoted. The service never issues PUT URLs for permanent keys.
 
 After successful promotion or invalid-image rejection, completion attempts to
 delete the temporary object. `cleanup_pending` on the result or
-`InvalidRecipeImage` reports a failed deletion without hiding the validation
+`InvalidImage` reports a failed deletion without hiding the validation
 outcome. Missing uploads raise `ImageUploadNotFound`. Storage read/write failures
 raise sanitized `StorageUnavailable` and preserve the temporary upload for retry.
 A failed permanent write may have an ambiguous outcome and leave an orphan.
@@ -228,6 +236,14 @@ Completion returns the committed image `id`, `contentType`, `size`, `width`,
 cleanup status are not exposed. Temporary deletion failures do not invalidate
 the accepted permanent image or its metadata.
 
+Foodstuff routes expose the same flow and response fields through
+`POST /api/foodstuff-image-uploads` and
+`POST /api/foodstuff-image-uploads/{uploadId}/complete`. They select the foodstuff
+bucket and persist kind `foodstuff`; recipe completion persists kind `recipe`.
+Completing an upload through the other domain returns 404 for the absent upload
+in that domain, without consuming the original. Generated frontend contracts
+include these routes; a foodstuff frontend upload service and editor are pending.
+
 Missing temporary objects return 404, rejected images return 400 with a validation
 message, and storage/persistence failures return 503 with a sanitized message.
 Malformed upload UUIDs use FastAPI's standard 422 validation response. An unset
@@ -249,6 +265,11 @@ signs a GET URL without reading or inspecting the object. Missing metadata retur
 404; missing storage configuration or signing failures return a sanitized 503.
 Malformed UUIDs return 422. A missing object behind existing metadata is detected
 when the browser requests the signed URL, not when the URL is issued.
+
+`GET /api/foodstuff-images/{imageId}/download` has the same response and cache
+behavior. Each domain rejects image IDs of the other kind with 404 before signing.
+The persisted key and backend-selected kind determine access; clients cannot
+select arbitrary buckets or object keys.
 
 Successful instruction responses and explicit 404/503 errors use
 `Cache-Control: no-store`. This prevents storage of the URL response by compliant
@@ -326,8 +347,8 @@ while foodstuff-kind records exist.
 The storage adapter requires an explicit backend-selected bucket:
 `Storage(config, bucket=config.bucket_recipe_images)`. It no longer selects the
 recipe bucket implicitly. `app.images.storage.image_bucket(config, kind)` maps
-each image kind to its configured bucket. Recipe API dependencies use this mapping;
-foodstuff upload/association APIs remain pending. The shared metadata migration is verified against
+each image kind to its configured bucket. Both domains' image API dependencies use
+this mapping; foodstuff associations remain pending. The shared metadata migration is verified against
 dedicated test PostgreSQL; it has not been applied to the running application
 database as part of this slice.
 
@@ -339,6 +360,15 @@ restart, and container recreation. All three deployment definitions validated,
 and the backend suite passed (357 tests, 209 subtests). The running application
 stack and its secrets were not changed; application, staging, and production
 rollout of the second bucket remain pending.
+
+The shared transfer extraction and foodstuff image endpoints were verified on
+2026-10-17 with the complete backend suite (386 tests, 218 subtests), including
+PNG validation and persistence/cleanup failures for both kinds. Controlled
+route-to-adapter tests verify configured bucket selection, wrong-domain upload
+completion without consuming the source, and cross-kind download rejection.
+Existing OpenAPI routes and schemas are unchanged; the generated frontend
+contract check, lint, tooling tests, and Angular suite passed. These checks do not
+establish live Garage/gateway operation of the new foodstuff endpoints.
 
 ## Deferred storage cleanup
 
@@ -382,7 +412,7 @@ tests use isolated in-memory SQLite databases):
 
 ```sh
 PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests/infrastructure/storage -p test_storage_adapter.py
-PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests/recipes -p test_recipe_image_uploads.py
+PYTHONPATH=backend backend/.venv/bin/python -m unittest discover -s backend/tests/images -p test_image_transfers.py
 ```
 
 On Windows, use `backend/.venv/Scripts/python.exe` and set `PYTHONPATH=backend`

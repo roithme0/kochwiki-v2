@@ -8,15 +8,15 @@ from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageAsset, ImageKind
-from app.recipes.services.image_uploads import RecipeImageUploads
-from tests.recipes.test_recipe_image_uploads import png
+from app.images.transfers import ImageTransfers
+from tests.images.test_image_transfers import png
 
 
 def test_completion_commits_metadata_visible_to_another_session() -> None:
     storage = Mock()
     data = png()
     storage.read.return_value = data
-    result = RecipeImageUploads(storage, SessionLocal).complete(uuid4())
+    result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(uuid4())
     with SessionLocal() as session:
         saved = session.get(ImageAsset, result.id)
         assert saved is not None

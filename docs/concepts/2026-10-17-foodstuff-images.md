@@ -14,7 +14,11 @@ Recipe images use private Garage storage through the same-origin `/storage/` gat
 
 The recipe editor previews selections locally and uploads only on Save after form validation. Successful uploads are reused after a failed recipe save. Replacement and removal change the pending reference; cancellation preserves saved data. Closing during upload prevents a subsequent recipe write, while closing during the recipe write is disabled. Saved-image failures offer explicit fresh-URL retry. Scheduled cleanup remains deferred.
 
-Several pieces are recipe-specific: `RecipeImage`, `RecipeImageUploads`, image routes and frontend service, the bucket setting, and the display component. The storage adapter selects `bucket_recipe_images` directly. Reusing this implementation requires an explicit boundary rather than merely adding an image field to foodstuffs.
+Shared image metadata and limits now live in `app.images`, and the storage adapter
+requires explicit bucket selection. Both buckets are configured and provisioned
+through the existing initializer. The third slice shares validation and transfers
+behind domain-specific image routes. Frontend image editing and display remain
+recipe-specific; foodstuff associations and UI are still pending.
 
 Foodstuffs are mutable catalogue records without version history. Recipe ingredients reference those records and responses embed current foodstuff summaries. Create and edit dialogs share `FoodstuffFormComponent`. The foodstuff catalogue uses a responsive table whose first column is a nutrition chart; there is no dedicated foodstuff detail page. `FoodstuffPresentationComponent` serves nutrition-only AI artifacts.
 
@@ -111,6 +115,46 @@ Acceptance criteria: repeated initialization preserves objects and keys in both 
 Validation passed using isolated Garage/gateway fixtures with synthetic credentials: both buckets accept the shared key, preserve distinct bytes under identical object keys, reject unsigned access, and retain objects through repeated initialization, restart, and container recreation. Existing signature rejection, separate-key isolation, and log/port checks also passed. All three Compose definitions validated. The complete backend suite passed against dedicated test PostgreSQL (357 tests, 209 subtests). No frontend sources or API schemas changed.
 
 The running application stack, its ignored secrets, and staging/production services were not modified. Preparing their definitions and verifying isolated fixtures does not establish rollout to those environments. Existing enabled backend configurations must add `STORAGE_BUCKET_FOODSTUFF_IMAGES` with the backend update. The isolated verifier stops its containers and retains its test volumes, following the existing fixture lifecycle.
+
+### Third Slice: Shared Transfers and Foodstuff Image Endpoints
+
+Authorized, implemented, and reviewed on 2026-10-17. Domain-specific HTTP routes
+share PNG validation, upload completion, metadata persistence, download access,
+and storage dependency construction in `app.images`. Recipe routes, response
+shapes, existing object-key prefixes, transaction handling, and immediate cleanup
+behavior are preserved.
+
+Add foodstuff upload-start, completion, and download endpoints matching the recipe
+flow. Backend-selected image kind determines the bucket, temporary/permanent key
+prefixes, and persisted metadata kind. Download rejects images of the other kind;
+completion through the other domain must not consume the original upload.
+Callers cannot select arbitrary kinds, buckets, or object keys. Generate frontend
+contracts with the backend changes; foodstuff associations and UI remain later
+slices. Completed foodstuff images remain unattached under the accepted deferred
+cleanup boundary.
+
+Acceptance covers existing recipe regressions, foodstuff validation and committed
+metadata, bucket routing and cross-domain rejection, storage/database failures,
+and generated contracts. Review the extraction for preserved transaction and
+failure behavior. No application deployment or database migration is included.
+
+Validation: the complete backend suite passed against dedicated test PostgreSQL
+(386 tests, 218 subtests). Existing upload and API tests moved to `tests/images`
+and now exercise both kinds, retaining validation and ambiguous-commit/cleanup
+regressions. Route-to-adapter tests use real S3 signing with stubbed internal S3
+operations and distinct configured bucket names. They verify wrong-domain
+completion leaves the source upload usable, permanent bytes and metadata reach
+the source domain, consumed uploads return 404, and cross-kind downloads are
+rejected. All existing OpenAPI routes and schemas compare unchanged; exactly
+three foodstuff image routes and their response schemas were added.
+
+Generated frontend contracts are current, including a passing exact contract
+check. Frontend formatting checked no handwritten files; lint, all 13 tooling
+tests, and all 599 Angular tests passed. The backend emitted existing Alembic
+configuration deprecation warnings; Angular emitted jsdom canvas notices.
+No new live Garage/API gateway verification or application deployment was
+performed in this slice. Foodstuff images can be uploaded and downloaded but
+remain unattached until the association slice; orphan cleanup remains deferred.
 
 ## Remaining Technical Choices
 

@@ -18,6 +18,37 @@ export const zExactNutrition = z.strictObject({
 });
 
 /**
+ * FoodstuffImageDownloadOut
+ */
+export const zFoodstuffImageDownloadOut = z.strictObject({
+    expiresIn: z.int().check(z.gt(0)),
+    url: z.string()
+});
+
+/**
+ * FoodstuffImageOut
+ */
+export const zFoodstuffImageOut = z.strictObject({
+    contentType: z.literal('image/png'),
+    createdAt: z.iso.datetime(),
+    height: z.int(),
+    id: z.uuid(),
+    size: z.int(),
+    width: z.int()
+});
+
+/**
+ * FoodstuffImageUploadOut
+ */
+export const zFoodstuffImageUploadOut = z.strictObject({
+    expiresIn: z.int(),
+    headers: z.record(z.string(), z.string()),
+    method: z.literal('PUT'),
+    uploadId: z.uuid(),
+    url: z.string()
+});
+
+/**
  * IngredientWrite
  */
 export const zIngredientWrite = z.strictObject({

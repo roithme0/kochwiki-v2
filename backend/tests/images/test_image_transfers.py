@@ -11,13 +11,13 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.images.config import MAX_IMAGE_BYTES
-from app.images.models import ImageAsset
+from app.images.models import ImageAsset, ImageKind
 
-from app.recipes.services.image_uploads import (
+from app.images.transfers import (
     ImageUploadNotFound,
     ImagePersistenceFailed,
-    InvalidRecipeImage,
-    RecipeImageUploads,
+    InvalidImage,
+    ImageTransfers,
 )
 from app.infrastructure.storage.storage import PresignedTransfer, StorageObjectTooLarge, StorageUnavailable
 
@@ -34,21 +34,23 @@ def chunk(kind: bytes, data: bytes) -> bytes:
     return len(data).to_bytes(4, "big") + payload + crc32(payload).to_bytes(4, "big")
 
 
-class RecipeImageUploadTests(unittest.TestCase):
+class RecipeImageTransferTests(unittest.TestCase):
+    kind: ImageKind = ImageKind.RECIPE
+
     def setUp(self) -> None:
         self.storage = Mock()
         self.engine = create_engine("sqlite://")
         ImageAsset.__table__.create(self.engine)
         self.addCleanup(self.engine.dispose)
         self.sessions = sessionmaker(self.engine)
-        self.service = RecipeImageUploads(self.storage, self.sessions)
+        self.service = ImageTransfers(self.storage, self.sessions, kind=self.kind)
         self.upload_id = uuid4()
-        self.temporary_key = f"recipe-image-uploads/{self.upload_id}"
+        self.temporary_key = f"{self.kind.value}-image-uploads/{self.upload_id}"
 
     def test_begin_only_signs_a_temporary_key(self) -> None:
         self.storage.presign_upload.return_value = PresignedTransfer("secret-url", "PUT", 300)
         upload = self.service.begin()
-        self.storage.presign_upload.assert_called_once_with(f"recipe-image-uploads/{upload.id}")
+        self.storage.presign_upload.assert_called_once_with(f"{self.kind.value}-image-uploads/{upload.id}")
         self.assertNotIn("secret-url", repr(upload))
         self.storage.write.assert_not_called()
 
@@ -58,12 +60,13 @@ class RecipeImageUploadTests(unittest.TestCase):
         result = self.service.complete(self.upload_id)
         self.assertEqual((result.width, result.height, result.size), (2, 3, len(data)))
         self.assertEqual(result.sha256, sha256(data).hexdigest())
-        self.assertEqual(result.object_key, f"recipe-images/{result.id}.png")
+        self.assertEqual(result.object_key, f"{self.kind.value}-images/{result.id}.png")
         self.assertFalse(result.cleanup_pending)
         with self.sessions() as session:
             saved = session.get(ImageAsset, result.id)
             self.assertIsNotNone(saved)
             assert saved is not None
+            self.assertEqual(saved.kind, self.kind)
             self.assertEqual(
                 (saved.object_key, saved.size, saved.width, saved.height, saved.sha256, saved.content_type),
                 (result.object_key, result.size, result.width, result.height, result.sha256, result.content_type),
@@ -91,7 +94,7 @@ class RecipeImageUploadTests(unittest.TestCase):
             with self.subTest(size=len(data)):
                 self.storage.reset_mock()
                 self.storage.read.return_value = data
-                with self.assertRaises(InvalidRecipeImage) as failure:
+                with self.assertRaises(InvalidImage) as failure:
                     self.service.complete(self.upload_id)
                 self.assertFalse(failure.exception.cleanup_pending)
                 self.storage.write.assert_not_called()
@@ -109,7 +112,7 @@ class RecipeImageUploadTests(unittest.TestCase):
         self.assertEqual(self.service.complete(self.upload_id).size, MAX_IMAGE_BYTES)
         self.storage.reset_mock()
         self.storage.read.return_value += b"x"
-        with self.assertRaisesRegex(InvalidRecipeImage, "10 MiB"):
+        with self.assertRaisesRegex(InvalidImage, "10 MiB"):
             self.service.complete(self.upload_id)
         self.storage.write.assert_not_called()
         self.storage.delete.assert_called_once_with(self.temporary_key)
@@ -120,14 +123,14 @@ class RecipeImageUploadTests(unittest.TestCase):
         length = int.from_bytes(data[idat:idat + 4], "big")
         broken = data[:idat] + chunk(b"IDAT", b"\x00" * length) + data[idat + length + 12:]
         self.storage.read.return_value = broken
-        with self.assertRaises(InvalidRecipeImage):
+        with self.assertRaises(InvalidImage):
             self.service.complete(self.upload_id)
         self.storage.write.assert_not_called()
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
     def test_size_rejection_cleans_without_writing(self) -> None:
         self.storage.read.side_effect = StorageObjectTooLarge()
-        with self.assertRaisesRegex(InvalidRecipeImage, "10 MiB"):
+        with self.assertRaisesRegex(InvalidImage, "10 MiB"):
             self.service.complete(self.upload_id)
         self.storage.delete.assert_called_once_with(self.temporary_key)
         self.storage.write.assert_not_called()
@@ -153,7 +156,7 @@ class RecipeImageUploadTests(unittest.TestCase):
         self.storage.read.return_value = png()
         self.assertTrue(self.service.complete(self.upload_id).cleanup_pending)
         self.storage.read.return_value = b"invalid"
-        with self.assertRaises(InvalidRecipeImage) as failure:
+        with self.assertRaises(InvalidImage) as failure:
             self.service.complete(self.upload_id)
         self.assertTrue(failure.exception.cleanup_pending)
 
@@ -227,6 +230,10 @@ class RecipeImageUploadTests(unittest.TestCase):
         with self.sessions() as session:
             self.assertIsNotNone(session.get(ImageAsset, result.id))
         self.storage.delete.assert_called_once_with(self.temporary_key)
+
+
+class FoodstuffImageTransferTests(RecipeImageTransferTests):
+    kind = ImageKind.FOODSTUFF
 
 
 if __name__ == "__main__":

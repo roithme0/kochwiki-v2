@@ -5,8 +5,8 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
-from app.images.models import ImageAsset
-from app.recipes.services.image_uploads import InvalidRecipeImage, RecipeImageUploads
+from app.images.models import ImageAsset, ImageKind
+from app.images.transfers import InvalidImage, ImageTransfers
 from app.infrastructure.storage.storage import Storage
 from tests.infrastructure.storage.verify_storage_adapter import transfer
 
@@ -16,7 +16,7 @@ def main() -> None:
     if config is None:
         raise RuntimeError("Configure STORAGE_* settings before verification")
     storage = Storage(config, bucket=config.bucket_recipe_images)
-    uploads = RecipeImageUploads(storage, SessionLocal)
+    uploads = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE)
     keys: list[str] = []
     image_ids: list[UUID] = []
     png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")
@@ -42,7 +42,7 @@ def main() -> None:
         assert status == 200, f"Upload replay failed: {status}"
         try:
             uploads.complete(upload.id)
-        except InvalidRecipeImage as error:
+        except InvalidImage as error:
             assert not error.cleanup_pending
         else:
             raise AssertionError("Invalid replacement was accepted")
