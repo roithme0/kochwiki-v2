@@ -7,11 +7,7 @@ import { MacroChartComponent } from '../macro-chart/macro-chart.component';
 
 @Component({
   selector: 'app-nutrition-card',
-  imports: [
-    MatCardModule,
-    ChartLegendElementComponent,
-    MacroChartComponent,
-  ],
+  imports: [MatCardModule, ChartLegendElementComponent, MacroChartComponent],
   templateUrl: './nutrition-card.component.html',
   styleUrl: './nutrition-card.component.scss',
 })
@@ -21,5 +17,7 @@ export class NutritionCardComponent {
   readonly showHeader = input(true);
   readonly showLegend = input(true);
 
-  readonly nutrientLegend = computed(() => Object.values(buildNutritionLegend(this.nutrition())));
+  readonly nutrientLegend = computed(() =>
+    Object.values(buildNutritionLegend(this.nutrition())),
+  );
 }

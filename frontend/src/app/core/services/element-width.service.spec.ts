@@ -28,13 +28,18 @@ describe('ElementWidthService', () => {
 
     resize(width: number): void {
       if (!this.target) throw new Error('No observed element');
-      this.callback([{
-        target: this.target,
-        contentRect: new DOMRectReadOnly(0, 0, width, 100),
-        contentBoxSize: [],
-        borderBoxSize: [],
-        devicePixelContentBoxSize: [],
-      }], this);
+      this.callback(
+        [
+          {
+            target: this.target,
+            contentRect: new DOMRectReadOnly(0, 0, width, 100),
+            contentBoxSize: [],
+            borderBoxSize: [],
+            devicePixelContentBoxSize: [],
+          },
+        ],
+        this,
+      );
     }
   }
 
@@ -86,7 +91,10 @@ describe('ElementWidthService', () => {
         return () => {};
       },
     };
-    TestBed.inject(ElementWidthService).observe(document.createElement('div'), destroyRef);
+    TestBed.inject(ElementWidthService).observe(
+      document.createElement('div'),
+      destroyRef,
+    );
     destroy();
     TestBed.tick();
     expect(observers).toHaveLength(0);

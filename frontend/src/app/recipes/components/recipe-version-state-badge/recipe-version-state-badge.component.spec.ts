@@ -29,7 +29,11 @@ describe('RecipeVersionStateBadgeComponent', () => {
     expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  function expectBadge(state: RecipeVersionState, expectedText: string, expectedHidden: boolean): void {
+  function expectBadge(
+    state: RecipeVersionState,
+    expectedText: string,
+    expectedHidden: boolean,
+  ): void {
     fixture.componentRef.setInput('state', state);
     fixture.detectChanges();
 

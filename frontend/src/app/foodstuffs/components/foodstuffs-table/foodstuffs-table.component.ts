@@ -17,7 +17,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { foodstuffFieldLabels, foodstuffUnitLabel } from '../../models/foodstuff-labels';
+import {
+  foodstuffFieldLabels,
+  foodstuffUnitLabel,
+} from '../../models/foodstuff-labels';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
@@ -49,13 +52,17 @@ export class FoodstuffsTableComponent implements OnDestroy {
   private readonly elementWidthService = inject(ElementWidthService);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly displayedFieldsService = inject(FoodstuffTableDisplayedFieldsService);
+  private readonly displayedFieldsService = inject(
+    FoodstuffTableDisplayedFieldsService,
+  );
 
   private readonly width = this.elementWidthService.observe(
     this.elementRef.nativeElement,
     this.destroyRef,
   );
-  readonly displayedFields = this.displayedFieldsService.getDisplayedFields(this.width);
+  readonly displayedFields = this.displayedFieldsService.getDisplayedFields(
+    this.width,
+  );
   readonly foodstuffBackendService = inject(FoodstuffBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
@@ -72,7 +79,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
   @ViewChild(MatPaginator) readonly paginator!: MatPaginator;
 
   tableWrapperResizeObserver = new ResizeObserver(() =>
-    this.updateTablePageSize()
+    this.updateTablePageSize(),
   );
 
   displayedFoodstuffs = computed((): FoodstuffOut[] => {
@@ -82,7 +89,7 @@ export class FoodstuffsTableComponent implements OnDestroy {
     return displayedFoodstuffs;
   });
   tableDataSource = new MatTableDataSource<FoodstuffOut>(
-    this.displayedFoodstuffs()
+    this.displayedFoodstuffs(),
   );
 
   constructor() {
@@ -145,14 +152,16 @@ export class FoodstuffsTableComponent implements OnDestroy {
     }
   }
 
-  private searchFoodstuffsByNameOrBrand(foodstuffs: FoodstuffOut[]): FoodstuffOut[] {
+  private searchFoodstuffsByNameOrBrand(
+    foodstuffs: FoodstuffOut[],
+  ): FoodstuffOut[] {
     const searchBy: string = this.foodstuffTableControlService.searchBy();
     return searchBy === ''
       ? foodstuffs
       : foodstuffs.filter(
           (foodstuff) =>
             foodstuff.name.toLowerCase().includes(searchBy.toLowerCase()) ||
-            foodstuff.brand?.toLowerCase().includes(searchBy.toLowerCase())
+            foodstuff.brand?.toLowerCase().includes(searchBy.toLowerCase()),
         );
   }
 

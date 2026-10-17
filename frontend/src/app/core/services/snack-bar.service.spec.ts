@@ -11,7 +11,9 @@ describe('Snackbar feedback', () => {
     vi.useFakeTimers();
     open.mockReset().mockReturnValue({ dismiss, onAction: () => action });
     dismiss.mockReset();
-    TestBed.configureTestingModule({ providers: [{ provide: MatSnackBar, useValue: { open } }] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: MatSnackBar, useValue: { open } }],
+    });
   });
   afterEach(() => vi.useRealTimers());
   it('preserves text-only timing and offers a longer optional action', () => {

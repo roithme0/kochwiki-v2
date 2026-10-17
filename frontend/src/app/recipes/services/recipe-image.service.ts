@@ -1,7 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { RecipeImageDownloadOut, RecipeImageOut } from '../../core/api/generated';
+import type {
+  RecipeImageDownloadOut,
+  RecipeImageOut,
+} from '../../core/api/generated';
 import {
   zRecipeImageOut,
   zRecipeImageDownloadOut,

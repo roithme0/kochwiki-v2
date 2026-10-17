@@ -17,13 +17,13 @@
     </mat-card-title>
 
     <!-- preptime -->
-    @if(recipeVersion().preptime != null){
-    <mat-card-subtitle>{{ recipeVersion().preptime }} min</mat-card-subtitle>
+    @if (recipeVersion().preptime != null) {
+      <mat-card-subtitle>{{ recipeVersion().preptime }} min</mat-card-subtitle>
     }
 
     <!-- no preptime -->
     @else {
-    <mat-card-subtitle style="visibility: hidden">? min</mat-card-subtitle>
+      <mat-card-subtitle style="visibility: hidden">? min</mat-card-subtitle>
     }
   </mat-card-header>
 </mat-card>

@@ -33,7 +33,7 @@ export class MacroChartComponent implements OnDestroy {
   showKcal = input<boolean>(true);
 
   private readonly locale = inject(LOCALE_ID);
-  
+
   readonly displayedKcal = computed(
     () =>
       `${formatNutritionResult(this.nutrition().kcal, 0, this.locale)} kcal`,
@@ -48,9 +48,8 @@ export class MacroChartComponent implements OnDestroy {
     () => !hasMacroDistribution(this.nutrition()),
   );
 
-  legend = computed(
-    (): Record<string, ChartLegendElement> =>
-      buildNutritionLegend(this.nutrition()),
+  legend = computed((): Record<string, ChartLegendElement> =>
+    buildNutritionLegend(this.nutrition()),
   );
 
   constructor() {

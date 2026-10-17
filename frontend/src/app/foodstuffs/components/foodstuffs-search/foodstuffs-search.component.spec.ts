@@ -5,8 +5,14 @@ import { FoodstuffsSearchComponent } from './foodstuffs-search.component';
 @Component({
   imports: [FoodstuffsSearchComponent],
   template: `
-    <app-foodstuffs-search [searchValue]="query()" (searchValueChange)="query.set($event)" />
-    <app-foodstuffs-search [searchValue]="otherQuery()" (searchValueChange)="otherQuery.set($event)" />
+    <app-foodstuffs-search
+      [searchValue]="query()"
+      (searchValueChange)="query.set($event)"
+    />
+    <app-foodstuffs-search
+      [searchValue]="otherQuery()"
+      (searchValueChange)="otherQuery.set($event)"
+    />
   `,
 })
 class SearchHostComponent {
@@ -31,7 +37,9 @@ describe('FoodstuffsSearchComponent', () => {
     expect(fixture.componentInstance.query()).toBe('PA');
     expect(inputs[1].value).toBe('Reis');
 
-    const clear = element.querySelector<HTMLButtonElement>('button[aria-label="Suche zurücksetzen"]');
+    const clear = element.querySelector<HTMLButtonElement>(
+      'button[aria-label="Suche zurücksetzen"]',
+    );
     expect(clear).not.toBeNull();
     clear?.click();
     fixture.detectChanges();
@@ -45,5 +53,4 @@ describe('FoodstuffsSearchComponent', () => {
     await fixture.whenStable();
     expect(input.value).toBe('externally supplied');
   });
-
 });

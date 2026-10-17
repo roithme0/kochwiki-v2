@@ -13,7 +13,7 @@ export class ChartLegendElementComponent {
   legendElement = input.required<ChartLegendElement>();
 
   private readonly locale = inject(LOCALE_ID);
-  
+
   readonly displayedValue = computed((): string => {
     const value = this.legendElement().value;
     const formatted = formatNutritionResult(value, 1, this.locale);

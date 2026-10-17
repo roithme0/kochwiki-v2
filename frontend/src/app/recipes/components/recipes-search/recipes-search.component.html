@@ -1,5 +1,9 @@
 <form class="form">
-  <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+  <mat-form-field
+    class="search-field"
+    appearance="outline"
+    subscriptSizing="dynamic"
+  >
     <mat-icon matPrefix class="search-icon" fontIcon="search" />
     <input
       #searchValueField
@@ -10,7 +14,7 @@
       matInput
       autocomplete="off"
     />
-    @if (searchValue() != "") {
+    @if (searchValue() != '') {
       <button
         mat-icon-button
         matSuffix

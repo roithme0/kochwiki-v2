@@ -1,5 +1,11 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
-import { Component, DestroyRef, inject, signal, WritableSignal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
@@ -28,8 +34,8 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
     MatIconModule,
     MatButtonModule,
     MatProgressSpinner,
-    RecipeVersionStateBadgeComponent
-],
+    RecipeVersionStateBadgeComponent,
+  ],
   templateUrl: './recipe-page.component.html',
   styleUrl: './recipe-page.component.scss',
 })
@@ -48,7 +54,8 @@ export class RecipePageComponent {
   recipeVersionIsLoading: WritableSignal<boolean> = signal(true);
 
   constructor() {
-    this.recipeLineageId = this.route.snapshot.paramMap.get('lineageId') ?? undefined;
+    this.recipeLineageId =
+      this.route.snapshot.paramMap.get('lineageId') ?? undefined;
     this.recipeVersionId = this.route.snapshot.paramMap.get('recipeVersionId');
 
     this.keepRecipeVersionUpToDate(this.recipeLineageId);
@@ -73,9 +80,15 @@ export class RecipePageComponent {
 
     this.recipeVersionIsLoading.set(true);
     try {
-      this.recipeVersion = this.recipeVersionId === null
-        ? await this.recipeBackendService.getActiveRecipeVersion(recipeLineageId)
-        : await this.recipeBackendService.getRecipeVersion(recipeLineageId, this.recipeVersionId);
+      this.recipeVersion =
+        this.recipeVersionId === null
+          ? await this.recipeBackendService.getActiveRecipeVersion(
+              recipeLineageId,
+            )
+          : await this.recipeBackendService.getRecipeVersion(
+              recipeLineageId,
+              this.recipeVersionId,
+            );
       this.pageHeaderService.headline = this.recipeVersion.name;
     } catch (error: unknown) {
       console.error('failed to fetch recipe version: ', error);
@@ -87,7 +100,11 @@ export class RecipePageComponent {
   }
 
   openPatchRecipeDialog(): void {
-    if (this.recipeVersion === undefined || this.recipeVersion.state === 'historical') return;
+    if (
+      this.recipeVersion === undefined ||
+      this.recipeVersion.state === 'historical'
+    )
+      return;
     this.dialog.open(RecipePatchDialogComponent, {
       data: { recipeVersion: this.recipeVersion },
       width: '100vw',
@@ -109,7 +126,8 @@ export class RecipePageComponent {
 
     const data: ConfirmationDialogData = {
       title: 'Gesamte Rezeptlinie löschen?',
-      description: 'Das aktive Rezept, alle Entwürfe und der Versionsverlauf werden gelöscht.',
+      description:
+        'Das aktive Rezept, alle Entwürfe und der Versionsverlauf werden gelöscht.',
       confirmLabel: 'Ja',
       cancelLabel: 'Nein',
       action: () => this.deleteRecipeLineage(recipeLineageId),
@@ -128,7 +146,8 @@ export class RecipePageComponent {
     if (recipeVersion === undefined || recipeVersion.state !== 'draft') return;
     const data: ConfirmationDialogData = {
       title: 'Entwurf als aktive Version übernehmen?',
-      description: 'Die aktuelle aktive Version wird in den Verlauf verschoben. Andere Entwürfe bleiben erhalten.',
+      description:
+        'Die aktuelle aktive Version wird in den Verlauf verschoben. Andere Entwürfe bleiben erhalten.',
       confirmLabel: 'Übernehmen',
       cancelLabel: 'Abbrechen',
       action: () => this.publishRecipeDraft(recipeVersion),
@@ -170,20 +189,30 @@ export class RecipePageComponent {
     try {
       await this.router.navigate(['recipes']);
     } catch (error: unknown) {
-      console.error('failed to navigate after deleting recipe lineage: ', error);
+      console.error(
+        'failed to navigate after deleting recipe lineage: ',
+        error,
+      );
     }
     this.recipeBackendService.notifyRecipesChanged();
     this.snackBarService.open('Rezeptlinie gelöscht');
   }
 
-  private async publishRecipeDraft(recipeVersion: RecipeVersionOut): Promise<void> {
+  private async publishRecipeDraft(
+    recipeVersion: RecipeVersionOut,
+  ): Promise<void> {
     try {
-      await this.recipeBackendService.publishRecipeDraft(recipeVersion.recipeLineageId, recipeVersion.recipeVersionId);
+      await this.recipeBackendService.publishRecipeDraft(
+        recipeVersion.recipeLineageId,
+        recipeVersion.recipeVersionId,
+      );
     } catch (error: unknown) {
       console.error('failed to publish draft: ', error);
-      this.snackBarService.open(isUnconfirmedRecipeWrite(error)
-        ? 'Übernehmen konnte nicht bestätigt werden. Möglicherweise ist der Entwurf bereits die aktive Version. Bitte das Rezept neu laden.'
-        : 'Entwurf konnte nicht übernommen werden');
+      this.snackBarService.open(
+        isUnconfirmedRecipeWrite(error)
+          ? 'Übernehmen konnte nicht bestätigt werden. Möglicherweise ist der Entwurf bereits die aktive Version. Bitte das Rezept neu laden.'
+          : 'Entwurf konnte nicht übernommen werden',
+      );
       throw error;
     }
 
@@ -196,9 +225,14 @@ export class RecipePageComponent {
     this.snackBarService.open('Entwurf als aktive Version übernommen');
   }
 
-  private async discardRecipeDraft(recipeVersion: RecipeVersionOut): Promise<void> {
+  private async discardRecipeDraft(
+    recipeVersion: RecipeVersionOut,
+  ): Promise<void> {
     try {
-      await this.recipeBackendService.discardRecipeDraft(recipeVersion.recipeLineageId, recipeVersion.recipeVersionId);
+      await this.recipeBackendService.discardRecipeDraft(
+        recipeVersion.recipeLineageId,
+        recipeVersion.recipeVersionId,
+      );
     } catch (error: unknown) {
       console.error('failed to discard draft: ', error);
       this.snackBarService.open('Entwurf konnte nicht verworfen werden');

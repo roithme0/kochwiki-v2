@@ -5,9 +5,9 @@
     catalogue.state().status !== 'success' || displayedFoodstuffs().length === 0
   "
 >
-  @if (catalogue.state().status === "loading") {
+  @if (catalogue.state().status === 'loading') {
     <mat-spinner diameter="25" aria-label="Lebensmittel werden geladen" />
-  } @else if (catalogue.state().status === "error") {
+  } @else if (catalogue.state().status === 'error') {
     <div class="empty-state" role="alert">
       <p>Lebensmittel konnten nicht geladen werden.</p>
       <button mat-button type="button" (click)="catalogue.refresh()">

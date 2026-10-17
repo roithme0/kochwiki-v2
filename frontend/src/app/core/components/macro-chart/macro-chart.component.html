@@ -1,7 +1,12 @@
 <canvas #canvas class="canvas"></canvas>
 @if (showKcal()) {
   <div class="kcal-wrapper">
-    <p class="kcal" [attr.aria-label]="nutrition().kcal.status === 'unknown' ? 'Kalorienangabe fehlt' : null">
+    <p
+      class="kcal"
+      [attr.aria-label]="
+        nutrition().kcal.status === 'unknown' ? 'Kalorienangabe fehlt' : null
+      "
+    >
       {{ displayedKcal() }}
     </p>
   </div>

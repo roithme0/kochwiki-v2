@@ -7,7 +7,11 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
 
 @Component({
   selector: 'app-recipes-grid-element',
-  imports: [MatCardModule, RecipeImageComponent, RecipeVersionStateBadgeComponent],
+  imports: [
+    MatCardModule,
+    RecipeImageComponent,
+    RecipeVersionStateBadgeComponent,
+  ],
   templateUrl: './recipes-grid-element.component.html',
   styleUrl: './recipes-grid-element.component.scss',
 })

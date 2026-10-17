@@ -70,9 +70,13 @@ export class RecipesPageComponent {
   }
 
   private async fetchRecipeVersions(): Promise<void> {
-    this.recipeVersionsState.update(({ data }) => ({ status: 'loading', data }));
+    this.recipeVersionsState.update(({ data }) => ({
+      status: 'loading',
+      data,
+    }));
     try {
-      const recipeVersions = await this.recipeBackendService.getAllRecipeVersions();
+      const recipeVersions =
+        await this.recipeBackendService.getAllRecipeVersions();
       if (this.isDestroyed) return;
       this.recipeVersionsState.set({
         status: 'success',
@@ -82,7 +86,10 @@ export class RecipesPageComponent {
       if (this.isDestroyed) return;
       console.error('failed to fetch recipe versions: ', error);
       this.snackBarService.open('Rezepte konnten nicht geladen werden');
-      this.recipeVersionsState.update(({ data }) => ({ status: 'error', data }));
+      this.recipeVersionsState.update(({ data }) => ({
+        status: 'error',
+        data,
+      }));
     }
   }
 }

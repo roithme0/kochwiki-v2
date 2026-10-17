@@ -1,12 +1,21 @@
 import { Component, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffFormComponent } from '../../components/foodstuff-form/foodstuff-form.component';
-import type { FoodstuffOut, FoodstuffUpdate } from '../../../core/api/generated';
+import type {
+  FoodstuffOut,
+  FoodstuffUpdate,
+} from '../../../core/api/generated';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 
-interface FoodstuffPatchDialogData { id: number; }
+interface FoodstuffPatchDialogData {
+  id: number;
+}
 
 @Component({
   selector: 'app-foodstuff-patch-dialog',
@@ -15,7 +24,9 @@ interface FoodstuffPatchDialogData { id: number; }
   styleUrl: './foodstuff-patch-dialog.component.scss',
 })
 export class FoodstuffPatchDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<FoodstuffPatchDialogComponent>);
+  private readonly dialogRef = inject(
+    MatDialogRef<FoodstuffPatchDialogComponent>,
+  );
   private readonly foodstuffBackendService = inject(FoodstuffBackendService);
   private readonly snackBarService = inject(SnackBarService);
   private readonly data = inject<FoodstuffPatchDialogData>(MAT_DIALOG_DATA);
@@ -41,7 +52,7 @@ export class FoodstuffPatchDialogComponent {
   private async fetchFoodstuff(): Promise<void> {
     try {
       this.foodstuff.set(
-        await this.foodstuffBackendService.getFoodstuffById(this.data.id)
+        await this.foodstuffBackendService.getFoodstuffById(this.data.id),
       );
     } catch (error: unknown) {
       console.error('failed to fetch foodstuff: ', error);

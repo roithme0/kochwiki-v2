@@ -42,13 +42,12 @@ describe('RecipePresentationComponent', () => {
     fixture.detectChanges();
 
     const ingredients = fixture.debugElement.query(
-      By.directive(IngredientsGridComponent)
+      By.directive(IngredientsGridComponent),
     ).componentInstance as IngredientsGridComponent;
-    const steps = fixture.debugElement.query(
-      By.directive(StepsGridComponent)
-    ).componentInstance as StepsGridComponent;
+    const steps = fixture.debugElement.query(By.directive(StepsGridComponent))
+      .componentInstance as StepsGridComponent;
     const nutrition = fixture.debugElement.query(
-      By.directive(NutritionCardComponent)
+      By.directive(NutritionCardComponent),
     ).componentInstance as NutritionCardComponent;
 
     expect(ingredients.recipe()).toBe(recipe);

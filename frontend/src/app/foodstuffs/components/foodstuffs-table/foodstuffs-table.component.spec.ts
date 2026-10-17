@@ -1,4 +1,4 @@
-import type { Mock } from "vitest";
+import type { Mock } from 'vitest';
 import { ElementRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -13,156 +13,191 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 
 describe('FoodstuffsTableComponent', () => {
-    const foodstuff: FoodstuffOut = {
-        id: 42,
-        name: 'Tomate',
-        brand: null,
-        unit: FoodstuffUnit.Gram,
-        unitVerbose: 'Gramm',
-        kcal: 18,
-        carbs: 3,
-        protein: 1,
-        fat: 0,
-        recipeVersionIds: [],
+  const foodstuff: FoodstuffOut = {
+    id: 42,
+    name: 'Tomate',
+    brand: null,
+    unit: FoodstuffUnit.Gram,
+    unitVerbose: 'Gramm',
+    kcal: 18,
+    carbs: 3,
+    protein: 1,
+    fat: 0,
+    recipeVersionIds: [],
+  };
+
+  let component: FoodstuffsTableComponent;
+  let openDialog: Mock;
+  let deleteFoodstuff: Mock;
+  let notifyFoodstuffsChanged: Mock;
+  let openSnackBar: Mock;
+
+  beforeEach(() => {
+    openDialog = vi.fn().mockName('open');
+    deleteFoodstuff = vi.fn().mockName('deleteFoodstuff');
+    notifyFoodstuffsChanged = vi.fn().mockName('notifyFoodstuffsChanged');
+    openSnackBar = vi.fn().mockName('open');
+
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: ElementRef,
+          useValue: new ElementRef(document.createElement('div')),
+        },
+        {
+          provide: ElementWidthService,
+          useValue: { observe: () => signal(360) },
+        },
+        {
+          provide: FoodstuffTableDisplayedFieldsService,
+          useValue: { getDisplayedFields: () => signal(['unit']) },
+        },
+        {
+          provide: FoodstuffTableControlService,
+          useValue: { searchBy: signal('') },
+        },
+        { provide: MatDialog, useValue: { open: openDialog } },
+        {
+          provide: FoodstuffBackendService,
+          useValue: { deleteFoodstuff, notifyFoodstuffsChanged },
+        },
+        { provide: SnackBarService, useValue: { open: openSnackBar } },
+      ],
+    });
+    component = TestBed.runInInjectionContext(
+      () => new FoodstuffsTableComponent(),
+    );
+  });
+
+  it('disconnects the resize observer when destroyed', () => {
+    const resizeObserver = {
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn().mockName('ResizeObserver.disconnect'),
     };
+    component.tableWrapperResizeObserver = resizeObserver;
 
-    let component: FoodstuffsTableComponent;
-    let openDialog: Mock;
-    let deleteFoodstuff: Mock;
-    let notifyFoodstuffsChanged: Mock;
-    let openSnackBar: Mock;
+    component.ngOnDestroy();
 
-    beforeEach(() => {
-        openDialog = vi.fn().mockName('open');
-        deleteFoodstuff = vi.fn().mockName('deleteFoodstuff');
-        notifyFoodstuffsChanged = vi.fn().mockName('notifyFoodstuffsChanged');
-        openSnackBar = vi.fn().mockName('open');
+    expect(resizeObserver.disconnect).toHaveBeenCalledTimes(1);
 
-        TestBed.configureTestingModule({
-            providers: [
-                { provide: ElementRef, useValue: new ElementRef(document.createElement('div')) },
-                { provide: ElementWidthService, useValue: { observe: () => signal(360) } },
-                { provide: FoodstuffTableDisplayedFieldsService, useValue: { getDisplayedFields: () => signal(['unit']) } },
-                { provide: FoodstuffTableControlService, useValue: { searchBy: signal('') } },
-                { provide: MatDialog, useValue: { open: openDialog } },
-                {
-                    provide: FoodstuffBackendService,
-                    useValue: { deleteFoodstuff, notifyFoodstuffsChanged },
-                },
-                { provide: SnackBarService, useValue: { open: openSnackBar } },
-            ],
-        });
-        component = TestBed.runInInjectionContext(() => new FoodstuffsTableComponent());
+    expect(resizeObserver.disconnect).toHaveBeenCalledWith();
+  });
+
+  it('renders frontend labels instead of the backend unit display text', () => {
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput('foodstuffs', [
+      { ...foodstuff, unitVerbose: 'Backend label' },
+    ]);
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
+    expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
+    expect(element.textContent).not.toContain('Backend label');
+  });
+
+  it('updates rendered columns using the table host width', () => {
+    const width = signal(480);
+    const observe = vi
+      .spyOn(TestBed.inject(ElementWidthService), 'observe')
+      .mockReturnValue(width);
+    vi.spyOn(
+      TestBed.inject(FoodstuffTableDisplayedFieldsService),
+      'getDisplayedFields',
+    ).mockImplementation((observedWidth) =>
+      new FoodstuffTableDisplayedFieldsService().getDisplayedFields(
+        observedWidth,
+      ),
+    );
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput('foodstuffs', [foodstuff]);
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+
+    expect(observe.mock.calls[0][0]).toBe(element);
+    expect(element.querySelectorAll('th')).toHaveLength(4);
+    width.set(1201);
+    fixture.detectChanges();
+    expect(element.querySelectorAll('th')).toHaveLength(10);
+    width.set(480);
+    fixture.detectChanges();
+    expect(element.querySelectorAll('th')).toHaveLength(4);
+  });
+
+  it('adjusts pagination to the available height while keeping the current item in view', async () => {
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput(
+      'foodstuffs',
+      Array.from({ length: 30 }, (_, id) => ({ ...foodstuff, id })),
+    );
+    fixture.detectChanges();
+    const table = fixture.componentInstance;
+    let height = 246;
+    Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', {
+      get: () => height,
     });
 
-    it('disconnects the resize observer when destroyed', () => {
-        const resizeObserver = {
-            observe: vi.fn(),
-            unobserve: vi.fn(),
-            disconnect: vi.fn().mockName("ResizeObserver.disconnect")
-        };
-        component.tableWrapperResizeObserver = resizeObserver;
+    table.contentChanged();
+    await vi.waitFor(() => expect(table.paginator.pageSize).toBe(5));
+    table.paginator.pageIndex = 2;
+    height = 174;
+    table.contentChanged();
 
-        component.ngOnDestroy();
+    await vi.waitFor(() => expect(table.paginator.pageSize).toBe(3));
+    expect(table.paginator.pageIndex).toBe(3);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr')).toHaveLength(3);
+  });
 
-        expect(resizeObserver.disconnect).toHaveBeenCalledTimes(1);
-
-        expect(resizeObserver.disconnect).toHaveBeenCalledWith();
+  it('uses one row rather than overflowing with twelve when space is tight', async () => {
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput(
+      'foodstuffs',
+      Array.from({ length: 20 }, (_, id) => ({ ...foodstuff, id })),
+    );
+    fixture.detectChanges();
+    const table = fixture.componentInstance;
+    Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', {
+      get: () => 80,
     });
 
-    it('renders frontend labels instead of the backend unit display text', () => {
-        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
-        fixture.componentRef.setInput('foodstuffs', [{ ...foodstuff, unitVerbose: 'Backend label' }]);
-        fixture.detectChanges();
-        const element: HTMLElement = fixture.nativeElement;
-        expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
-        expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
-        expect(element.textContent).not.toContain('Backend label');
-    });
+    table.contentChanged();
 
-    it('updates rendered columns using the table host width', () => {
-        const width = signal(480);
-        const observe = vi.spyOn(TestBed.inject(ElementWidthService), 'observe').mockReturnValue(width);
-        vi.spyOn(TestBed.inject(FoodstuffTableDisplayedFieldsService), 'getDisplayedFields')
-            .mockImplementation((observedWidth) =>
-                new FoodstuffTableDisplayedFieldsService().getDisplayedFields(observedWidth));
-        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
-        fixture.componentRef.setInput('foodstuffs', [foodstuff]);
-        fixture.detectChanges();
-        const element: HTMLElement = fixture.nativeElement;
+    await vi.waitFor(() => expect(table.paginator.pageSize).toBe(1));
+    expect(table.paginator.hasNextPage()).toBe(true);
+  });
 
-        expect(observe.mock.calls[0][0]).toBe(element);
-        expect(element.querySelectorAll('th')).toHaveLength(4);
-        width.set(1201);
-        fixture.detectChanges();
-        expect(element.querySelectorAll('th')).toHaveLength(10);
-        width.set(480);
-        fixture.detectChanges();
-        expect(element.querySelectorAll('th')).toHaveLength(4);
-    });
+  it('executes the foodstuff deletion and success side effects through the dialog action', async () => {
+    deleteFoodstuff.mockResolvedValue(undefined);
 
-    it('adjusts pagination to the available height while keeping the current item in view', async () => {
-        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
-        fixture.componentRef.setInput('foodstuffs', Array.from({ length: 30 }, (_, id) => ({ ...foodstuff, id })));
-        fixture.detectChanges();
-        const table = fixture.componentInstance;
-        let height = 246;
-        Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', { get: () => height });
+    const action: () => Promise<void> = openConfirmationAction();
+    await action();
 
-        table.contentChanged();
-        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(5));
-        table.paginator.pageIndex = 2;
-        height = 174;
-        table.contentChanged();
+    expect(deleteFoodstuff).toHaveBeenCalledWith(foodstuff.id);
+    expect(notifyFoodstuffsChanged).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledWith('Zutat gelöscht');
+  });
 
-        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(3));
-        expect(table.paginator.pageIndex).toBe(3);
-        fixture.detectChanges();
-        expect(fixture.nativeElement.querySelectorAll('tbody tr')).toHaveLength(3);
-    });
+  it('shows the existing error snackbar and rejects so the dialog remains open', async () => {
+    const error = new Error('failed');
+    deleteFoodstuff.mockRejectedValue(error);
+    vi.spyOn(console, 'error').mockReturnValue(undefined);
 
-    it('uses one row rather than overflowing with twelve when space is tight', async () => {
-        const fixture = TestBed.createComponent(FoodstuffsTableComponent);
-        fixture.componentRef.setInput('foodstuffs', Array.from({ length: 20 }, (_, id) => ({ ...foodstuff, id })));
-        fixture.detectChanges();
-        const table = fixture.componentInstance;
-        Object.defineProperty(table.tableWrapper.nativeElement, 'offsetHeight', { get: () => 80 });
+    const action: () => Promise<void> = openConfirmationAction();
 
-        table.contentChanged();
+    await expect(action()).rejects.toEqual(error);
 
-        await vi.waitFor(() => expect(table.paginator.pageSize).toBe(1));
-        expect(table.paginator.hasNextPage()).toBe(true);
-    });
+    expect(notifyFoodstuffsChanged).not.toHaveBeenCalled();
+    expect(openSnackBar).toHaveBeenCalledWith(
+      'Zutat konnte nicht gelöscht werden',
+    );
+  });
 
-    it('executes the foodstuff deletion and success side effects through the dialog action', async () => {
-        deleteFoodstuff.mockResolvedValue(undefined);
-
-        const action: () => Promise<void> = openConfirmationAction();
-        await action();
-
-        expect(deleteFoodstuff).toHaveBeenCalledWith(foodstuff.id);
-        expect(notifyFoodstuffsChanged).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledWith('Zutat gelöscht');
-    });
-
-    it('shows the existing error snackbar and rejects so the dialog remains open', async () => {
-        const error = new Error('failed');
-        deleteFoodstuff.mockRejectedValue(error);
-        vi.spyOn(console, 'error').mockReturnValue(undefined);
-
-        const action: () => Promise<void> = openConfirmationAction();
-
-        await expect(action()).rejects.toEqual(error);
-
-        expect(notifyFoodstuffsChanged).not.toHaveBeenCalled();
-        expect(openSnackBar).toHaveBeenCalledWith('Zutat konnte nicht gelöscht werden');
-    });
-
-    function openConfirmationAction(): () => Promise<void> {
-        component.openDeleteFoodstuffDialog(foodstuff);
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
-        return config.data.action;
-    }
+  function openConfirmationAction(): () => Promise<void> {
+    component.openDeleteFoodstuffDialog(foodstuff);
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
+    return config.data.action;
+  }
 });

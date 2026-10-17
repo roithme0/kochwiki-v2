@@ -11,11 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 
 @Component({
   selector: 'app-recipe-meta-form',
-  imports: [
-    ReactiveFormsModule,
-    MatInputModule,
-    MatFormFieldModule
-],
+  imports: [ReactiveFormsModule, MatInputModule, MatFormFieldModule],
   templateUrl: './recipe-meta-form.component.html',
   styleUrl: './recipe-meta-form.component.scss',
 })

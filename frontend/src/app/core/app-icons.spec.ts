@@ -1,5 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { Component, provideAppInitializer } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,13 +31,21 @@ describe('App icon registration', () => {
     for (const name of ['home', 'hide_image'] as const) {
       const request = http.expectOne(`assets/icons/${name}.svg`);
       expect(request.request.method).toBe('GET');
-      request.flush(`<svg xmlns="http://www.w3.org/2000/svg" data-icon="${name}"><path /></svg>`);
+      request.flush(
+        `<svg xmlns="http://www.w3.org/2000/svg" data-icon="${name}"><path /></svg>`,
+      );
     }
     await fixture.whenStable();
 
     const host: HTMLElement = fixture.nativeElement;
-    expect(host.querySelector('mat-icon[svgIcon="home"] svg[data-icon="home"]')).not.toBeNull();
-    expect(host.querySelector('mat-icon[svgIcon="hide_image"] svg[data-icon="hide_image"]')).not.toBeNull();
+    expect(
+      host.querySelector('mat-icon[svgIcon="home"] svg[data-icon="home"]'),
+    ).not.toBeNull();
+    expect(
+      host.querySelector(
+        'mat-icon[svgIcon="hide_image"] svg[data-icon="hide_image"]',
+      ),
+    ).not.toBeNull();
     http.verify();
   });
 });

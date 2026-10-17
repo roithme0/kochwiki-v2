@@ -1,12 +1,6 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FoodstuffCreateDialogComponent } from '../foodstuff-create-dialog/foodstuff-create-dialog.component';
-import {
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -59,15 +53,15 @@ export class FoodstuffSelectionDialogComponent {
 
   readonly searchValue = signal('');
   readonly existingFoodstuffIds = new Set(this.data.existingFoodstuffIds);
-  private readonly pendingFoodstuffs = signal<ReadonlyMap<number, FoodstuffOut>>(
-    new Map(),
-  );
+  private readonly pendingFoodstuffs = signal<
+    ReadonlyMap<number, FoodstuffOut>
+  >(new Map());
   readonly selectedFoodstuffIds = computed(
     () => new Set(this.pendingFoodstuffs().keys()),
   );
-  readonly selectedFoodstuffs = computed(
-    () => [...this.pendingFoodstuffs().values()],
-  );
+  readonly selectedFoodstuffs = computed(() => [
+    ...this.pendingFoodstuffs().values(),
+  ]);
   readonly displayedFoodstuffs = computed((): FoodstuffOut[] => {
     const query = this.searchValue().toLowerCase();
     return this.foodstuffs().filter(

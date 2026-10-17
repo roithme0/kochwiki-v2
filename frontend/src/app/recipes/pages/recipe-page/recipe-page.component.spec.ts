@@ -1,7 +1,10 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
-import type { Mock } from "vitest";
+import type { Mock } from 'vitest';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { ApiContractError } from '../../../core/api/api-contract-error';
 import { backendUrl } from '../../../core/constants/api';
 import { MatDialog } from '@angular/material/dialog';
@@ -20,248 +23,363 @@ import { RecipeImageComponent } from '../../components/recipe-image/recipe-image
 import { RecipeImageService } from '../../services/recipe-image.service';
 
 describe('RecipePageComponent', () => {
-    let component: RecipePageComponent;
-    let openDialog: Mock;
-    let deleteRecipeLineage: Mock;
-    let publishRecipeDraft: Mock;
-    let discardRecipeDraft: Mock;
-    let notifyRecipesChanged: Mock;
-    let navigate: Mock;
-    let openSnackBar: Mock;
+  let component: RecipePageComponent;
+  let openDialog: Mock;
+  let deleteRecipeLineage: Mock;
+  let publishRecipeDraft: Mock;
+  let discardRecipeDraft: Mock;
+  let notifyRecipesChanged: Mock;
+  let navigate: Mock;
+  let openSnackBar: Mock;
 
-    beforeEach(() => {
-        openDialog = vi.fn().mockName('open');
-    deleteRecipeLineage = vi.fn().mockName('deleteRecipeLineage').mockResolvedValue(undefined);
-        publishRecipeDraft = vi.fn().mockName('publishRecipeDraft').mockResolvedValue({});
-    discardRecipeDraft = vi.fn().mockName('discardRecipeDraft').mockResolvedValue(undefined);
-        notifyRecipesChanged = vi.fn().mockName('notifyRecipesChanged');
-        navigate = vi.fn().mockName('navigate').mockResolvedValue(true);
-        openSnackBar = vi.fn().mockName('open');
+  beforeEach(() => {
+    openDialog = vi.fn().mockName('open');
+    deleteRecipeLineage = vi
+      .fn()
+      .mockName('deleteRecipeLineage')
+      .mockResolvedValue(undefined);
+    publishRecipeDraft = vi
+      .fn()
+      .mockName('publishRecipeDraft')
+      .mockResolvedValue({});
+    discardRecipeDraft = vi
+      .fn()
+      .mockName('discardRecipeDraft')
+      .mockResolvedValue(undefined);
+    notifyRecipesChanged = vi.fn().mockName('notifyRecipesChanged');
+    navigate = vi.fn().mockName('navigate').mockResolvedValue(true);
+    openSnackBar = vi.fn().mockName('open');
 
-        component = Object.create(RecipePageComponent.prototype) as RecipePageComponent;
-        Object.assign(component, {
-            recipeLineageId: '00000000-0000-4000-8000-000000000007',
-            recipeVersion: draftRecipeVersion,
-            dialog: { open: openDialog } as unknown as MatDialog,
-            recipeBackendService: {
-                deleteRecipeLineage,
-                publishRecipeDraft,
-                discardRecipeDraft,
-                notifyRecipesChanged,
-            } as unknown as RecipeBackendService,
-            router: { navigate } as unknown as Router,
-            snackBarService: { open: openSnackBar } as unknown as SnackBarService,
-        });
+    component = Object.create(
+      RecipePageComponent.prototype,
+    ) as RecipePageComponent;
+    Object.assign(component, {
+      recipeLineageId: '00000000-0000-4000-8000-000000000007',
+      recipeVersion: draftRecipeVersion,
+      dialog: { open: openDialog } as unknown as MatDialog,
+      recipeBackendService: {
+        deleteRecipeLineage,
+        publishRecipeDraft,
+        discardRecipeDraft,
+        notifyRecipesChanged,
+      } as unknown as RecipeBackendService,
+      router: { navigate } as unknown as Router,
+      snackBarService: { open: openSnackBar } as unknown as SnackBarService,
     });
+  });
 
-    it('navigates and notifies after the recipe deletion succeeds', async () => {
-        component.openDeleteRecipeDialog();
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
+  it('navigates and notifies after the recipe deletion succeeds', async () => {
+    component.openDeleteRecipeDialog();
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
 
-        await config.data.action();
+    await config.data.action();
 
-        expect(deleteRecipeLineage).toHaveBeenCalledWith(draftRecipeVersion.recipeLineageId);
-        expect(navigate).toHaveBeenCalledWith(['recipes']);
-        expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledWith('Rezeptlinie gelöscht');
-    });
+    expect(deleteRecipeLineage).toHaveBeenCalledWith(
+      draftRecipeVersion.recipeLineageId,
+    );
+    expect(navigate).toHaveBeenCalledWith(['recipes']);
+    expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledWith('Rezeptlinie gelöscht');
+  });
 
-    it('shows the existing error snackbar and rejects without navigating after deletion fails', async () => {
-        const error = new Error('failed');
-        deleteRecipeLineage.mockRejectedValue(error);
-        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
-        component.openDeleteRecipeDialog();
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
+  it('shows the existing error snackbar and rejects without navigating after deletion fails', async () => {
+    const error = new Error('failed');
+    deleteRecipeLineage.mockRejectedValue(error);
+    const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+    component.openDeleteRecipeDialog();
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
 
-        await expect(config.data.action()).rejects.toEqual(error);
+    await expect(config.data.action()).rejects.toEqual(error);
 
-        expect(navigate).not.toHaveBeenCalled();
-        expect(notifyRecipesChanged).not.toHaveBeenCalled();
-        expect(logError).toHaveBeenCalledWith('failed to delete recipe lineage: ', error);
-        expect(openSnackBar).toHaveBeenCalledWith('Rezept konnte nicht gelöscht werden');
-    });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(notifyRecipesChanged).not.toHaveBeenCalled();
+    expect(logError).toHaveBeenCalledWith(
+      'failed to delete recipe lineage: ',
+      error,
+    );
+    expect(openSnackBar).toHaveBeenCalledWith(
+      'Rezept konnte nicht gelöscht werden',
+    );
+  });
 
-    it('keeps deletion successful when navigation fails after the delete', async () => {
-        const error = new Error('navigation failed');
-        navigate.mockRejectedValue(error);
-        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
-        component.openDeleteRecipeDialog();
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
+  it('keeps deletion successful when navigation fails after the delete', async () => {
+    const error = new Error('navigation failed');
+    navigate.mockRejectedValue(error);
+    const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+    component.openDeleteRecipeDialog();
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
 
-        await expect(config.data.action()).resolves.not.toThrow();
+    await expect(config.data.action()).resolves.not.toThrow();
 
-        expect(deleteRecipeLineage).toHaveBeenCalledWith(draftRecipeVersion.recipeLineageId);
-        expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledWith('Rezeptlinie gelöscht');
-        expect(logError).toHaveBeenCalledWith('failed to navigate after deleting recipe lineage: ', error);
-    });
+    expect(deleteRecipeLineage).toHaveBeenCalledWith(
+      draftRecipeVersion.recipeLineageId,
+    );
+    expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledWith('Rezeptlinie gelöscht');
+    expect(logError).toHaveBeenCalledWith(
+      'failed to navigate after deleting recipe lineage: ',
+      error,
+    );
+  });
 
-    it('keeps draft publication successful when navigation fails after publication', async () => {
-        const error = new Error('navigation failed');
-        navigate.mockRejectedValue(error);
-        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
-        component.openPublishDraftDialog();
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
+  it('keeps draft publication successful when navigation fails after publication', async () => {
+    const error = new Error('navigation failed');
+    navigate.mockRejectedValue(error);
+    const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+    component.openPublishDraftDialog();
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
 
-        await expect(config.data.action()).resolves.not.toThrow();
+    await expect(config.data.action()).resolves.not.toThrow();
 
-        expect(publishRecipeDraft).toHaveBeenCalledWith(draftRecipeVersion.recipeLineageId, draftRecipeVersion.recipeVersionId);
-        expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledWith('Entwurf als aktive Version übernommen');
-        expect(logError).toHaveBeenCalledWith('failed to navigate after publishing draft: ', error);
-    });
+    expect(publishRecipeDraft).toHaveBeenCalledWith(
+      draftRecipeVersion.recipeLineageId,
+      draftRecipeVersion.recipeVersionId,
+    );
+    expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledWith(
+      'Entwurf als aktive Version übernommen',
+    );
+    expect(logError).toHaveBeenCalledWith(
+      'failed to navigate after publishing draft: ',
+      error,
+    );
+  });
 
-    it.each([new ApiContractError('POST /publish', new Error('invalid response')),
-        new HttpErrorResponse({ status: 0 }), new HttpErrorResponse({ status: 503 }),
-        new HttpErrorResponse({ status: 409 })])('withholds publication success after %s', async error => {
-        publishRecipeDraft.mockRejectedValue(error);
-        vi.spyOn(console, 'error').mockReturnValue(undefined);
-        component.openPublishDraftDialog();
-        const config = openDialog.mock.lastCall![1] as { data: ConfirmationDialogData };
-        await expect(config.data.action()).rejects.toBe(error);
-        expect(publishRecipeDraft).toHaveBeenCalledTimes(1);
-        expect(navigate).not.toHaveBeenCalled();
-        expect(notifyRecipesChanged).not.toHaveBeenCalled();
-        expect(component.recipeVersion).toBe(draftRecipeVersion);
-        expect(openSnackBar).toHaveBeenCalledTimes(1);
-        if (error instanceof HttpErrorResponse && error.status === 409) {
-            expect(openSnackBar).toHaveBeenCalledWith('Entwurf konnte nicht übernommen werden');
-        } else expect(openSnackBar.mock.lastCall![0]).toContain('Möglicherweise ist der Entwurf bereits die aktive Version');
-    });
+  it.each([
+    new ApiContractError('POST /publish', new Error('invalid response')),
+    new HttpErrorResponse({ status: 0 }),
+    new HttpErrorResponse({ status: 503 }),
+    new HttpErrorResponse({ status: 409 }),
+  ])('withholds publication success after %s', async (error) => {
+    publishRecipeDraft.mockRejectedValue(error);
+    vi.spyOn(console, 'error').mockReturnValue(undefined);
+    component.openPublishDraftDialog();
+    const config = openDialog.mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
+    await expect(config.data.action()).rejects.toBe(error);
+    expect(publishRecipeDraft).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(notifyRecipesChanged).not.toHaveBeenCalled();
+    expect(component.recipeVersion).toBe(draftRecipeVersion);
+    expect(openSnackBar).toHaveBeenCalledTimes(1);
+    if (error instanceof HttpErrorResponse && error.status === 409) {
+      expect(openSnackBar).toHaveBeenCalledWith(
+        'Entwurf konnte nicht übernommen werden',
+      );
+    } else
+      expect(openSnackBar.mock.lastCall![0]).toContain(
+        'Möglicherweise ist der Entwurf bereits die aktive Version',
+      );
+  });
 
-    it('keeps draft discard successful when navigation fails after deletion', async () => {
-        const error = new Error('navigation failed');
-        navigate.mockRejectedValue(error);
-        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
-        component.openDiscardDraftDialog();
-        const config = vi.mocked(openDialog).mock.lastCall![1] as {
-            data: ConfirmationDialogData;
-        };
+  it('keeps draft discard successful when navigation fails after deletion', async () => {
+    const error = new Error('navigation failed');
+    navigate.mockRejectedValue(error);
+    const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+    component.openDiscardDraftDialog();
+    const config = vi.mocked(openDialog).mock.lastCall![1] as {
+      data: ConfirmationDialogData;
+    };
 
-        await expect(config.data.action()).resolves.not.toThrow();
+    await expect(config.data.action()).resolves.not.toThrow();
 
-        expect(discardRecipeDraft).toHaveBeenCalledWith(draftRecipeVersion.recipeLineageId, draftRecipeVersion.recipeVersionId);
-        expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledTimes(1);
-        expect(openSnackBar).toHaveBeenCalledWith('Entwurf verworfen');
-        expect(logError).toHaveBeenCalledWith('failed to navigate after discarding draft: ', error);
-    });
+    expect(discardRecipeDraft).toHaveBeenCalledWith(
+      draftRecipeVersion.recipeLineageId,
+      draftRecipeVersion.recipeVersionId,
+    );
+    expect(notifyRecipesChanged).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledTimes(1);
+    expect(openSnackBar).toHaveBeenCalledWith('Entwurf verworfen');
+    expect(logError).toHaveBeenCalledWith(
+      'failed to navigate after discarding draft: ',
+      error,
+    );
+  });
 });
 
 const draftRecipeVersion: RecipeVersionOut = {
-    imageId: null, imageDimensions: null,
-    recipeLineageId: '00000000-0000-4000-8000-000000000007',
-    recipeVersionId: '00000000-0000-0000-0000-000000000007',
-    state: 'draft',
-    createdAt: '2026-09-10T10:00:00Z',
-    lastModified: '2026-09-10T10:00:00Z',
-    name: 'Draft',
-    servings: 1,
-    preptime: null,
-    kcal: { status: 'unknown' as const, value: null },
-    carbs: { status: 'unknown' as const, value: null },
-    protein: { status: 'unknown' as const, value: null },
-    fat: { status: 'unknown' as const, value: null },
-    ingredients: [],
-    steps: [],
+  imageId: null,
+  imageDimensions: null,
+  recipeLineageId: '00000000-0000-4000-8000-000000000007',
+  recipeVersionId: '00000000-0000-0000-0000-000000000007',
+  state: 'draft',
+  createdAt: '2026-09-10T10:00:00Z',
+  lastModified: '2026-09-10T10:00:00Z',
+  name: 'Draft',
+  servings: 1,
+  preptime: null,
+  kcal: { status: 'unknown' as const, value: null },
+  carbs: { status: 'unknown' as const, value: null },
+  protein: { status: 'unknown' as const, value: null },
+  fat: { status: 'unknown' as const, value: null },
+  ingredients: [],
+  steps: [],
 };
 
 describe('RecipePageComponent presentation integration', () => {
-    it.each([false, true])('handles a malformed response through the existing error state (specific version: %s)', async (specificVersion) => {
-        const snackBarOpen = vi.fn();
-        const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
-        const pageHeader = { updateHeader: vi.fn(), headline: '' };
-        const versionId = '00000000-0000-4000-8000-000000000008';
-        TestBed.configureTestingModule({
-            imports: [RecipePageComponent],
-            providers: [
-                provideHttpClient(), provideHttpClientTesting(),
-                { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({
-                    lineageId: draftRecipeVersion.recipeLineageId,
-                    ...(specificVersion ? { recipeVersionId: versionId } : {}),
-                }) } } },
-                { provide: PageHeaderService, useValue: pageHeader },
-                { provide: SnackBarService, useValue: { open: snackBarOpen } },
-                { provide: MatDialog, useValue: { open: vi.fn() } },
-                { provide: Router, useValue: { navigate: vi.fn() } },
-            ],
+  it.each([false, true])(
+    'handles a malformed response through the existing error state (specific version: %s)',
+    async (specificVersion) => {
+      const snackBarOpen = vi.fn();
+      const logError = vi.spyOn(console, 'error').mockReturnValue(undefined);
+      const pageHeader = { updateHeader: vi.fn(), headline: '' };
+      const versionId = '00000000-0000-4000-8000-000000000008';
+      TestBed.configureTestingModule({
+        imports: [RecipePageComponent],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: {
+                paramMap: convertToParamMap({
+                  lineageId: draftRecipeVersion.recipeLineageId,
+                  ...(specificVersion ? { recipeVersionId: versionId } : {}),
+                }),
+              },
+            },
+          },
+          { provide: PageHeaderService, useValue: pageHeader },
+          { provide: SnackBarService, useValue: { open: snackBarOpen } },
+          { provide: MatDialog, useValue: { open: vi.fn() } },
+          { provide: Router, useValue: { navigate: vi.fn() } },
+        ],
+      });
+      const fixture = TestBed.createComponent(RecipePageComponent);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      const path =
+        `/recipes/${draftRecipeVersion.recipeLineageId}` +
+        (specificVersion ? `/versions/${versionId}` : '');
+      http
+        .expectOne(backendUrl + path)
+        .flush({
+          ...draftRecipeVersion,
+          recipeVersionId: versionId,
+          unexpected: true,
         });
-        const fixture = TestBed.createComponent(RecipePageComponent);
-        fixture.detectChanges();
-        const http = TestBed.inject(HttpTestingController);
-        const path = `/recipes/${draftRecipeVersion.recipeLineageId}` + (specificVersion ? `/versions/${versionId}` : '');
-        http.expectOne(backendUrl + path).flush({ ...draftRecipeVersion, recipeVersionId: versionId, unexpected: true });
-        await fixture.whenStable();
-        fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
 
-        expect(fixture.componentInstance.recipeVersion).toBeUndefined();
-        expect(fixture.componentInstance.recipeVersionIsLoading()).toBe(false);
-        expect(fixture.debugElement.query(By.directive(RecipePresentationComponent))).toBeNull();
-        expect(fixture.nativeElement.querySelector('.recipe-not-found-placeholder')).not.toBeNull();
-        expect(pageHeader.headline).toBe('Fehler');
-        expect(snackBarOpen).toHaveBeenCalledWith('Rezept konnte nicht geladen werden');
-        expect(logError).toHaveBeenCalledWith('failed to fetch recipe version: ', expect.any(ApiContractError));
-        http.verify();
-    });
+      expect(fixture.componentInstance.recipeVersion).toBeUndefined();
+      expect(fixture.componentInstance.recipeVersionIsLoading()).toBe(false);
+      expect(
+        fixture.debugElement.query(By.directive(RecipePresentationComponent)),
+      ).toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('.recipe-not-found-placeholder'),
+      ).not.toBeNull();
+      expect(pageHeader.headline).toBe('Fehler');
+      expect(snackBarOpen).toHaveBeenCalledWith(
+        'Rezept konnte nicht geladen werden',
+      );
+      expect(logError).toHaveBeenCalledWith(
+        'failed to fetch recipe version: ',
+        expect.any(ApiContractError),
+      );
+      http.verify();
+    },
+  );
 
-    it.each(['active', 'draft', 'historical'] as const)('displays the %s version image above the shared presentation', async state => {
-        const recipe = { ...draftRecipeVersion, state, imageId: `${state}-image` };
-        const pageHeader = {
-            updateHeader: vi.fn().mockName('updateHeader'),
-            set headline(_value: string) { },
-        };
-        TestBed.configureTestingModule({
-            imports: [RecipePageComponent],
-            providers: [
-                { provide: RecipeImageService, useValue: { download: vi.fn().mockResolvedValue({ url: '/storage/image', expiresIn: 300 }) } },
-                {
-                    provide: ActivatedRoute,
-                    useValue: {
-                        snapshot: {
-                            paramMap: convertToParamMap({
-                                lineageId: draftRecipeVersion.recipeLineageId,
-                                ...(state === 'active' ? {} : { recipeVersionId: recipe.recipeVersionId }),
-                            }),
-                        },
-                    },
-                },
-                {
-                    provide: RecipeBackendService,
-                    useValue: {
-                        recipesChanged$: EMPTY,
-                        getActiveRecipeVersion: vi.fn().mockName('getActiveRecipeVersion').mockResolvedValue(recipe),
-                        getRecipeVersion: vi.fn().mockName('getRecipeVersion').mockResolvedValue(recipe),
-                    },
-                },
-                { provide: PageHeaderService, useValue: pageHeader },
-                { provide: SnackBarService, useValue: { open: vi.fn().mockName('open') } },
-                { provide: MatDialog, useValue: { open: vi.fn().mockName('open') } },
-                { provide: Router, useValue: { navigate: vi.fn().mockName('navigate') } },
-            ],
-        });
-        const fixture = TestBed.createComponent(RecipePageComponent);
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
+  it.each(['active', 'draft', 'historical'] as const)(
+    'displays the %s version image above the shared presentation',
+    async (state) => {
+      const recipe = {
+        ...draftRecipeVersion,
+        state,
+        imageId: `${state}-image`,
+      };
+      const pageHeader = {
+        updateHeader: vi.fn().mockName('updateHeader'),
+        set headline(_value: string) {},
+      };
+      TestBed.configureTestingModule({
+        imports: [RecipePageComponent],
+        providers: [
+          {
+            provide: RecipeImageService,
+            useValue: {
+              download: vi
+                .fn()
+                .mockResolvedValue({ url: '/storage/image', expiresIn: 300 }),
+            },
+          },
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: {
+                paramMap: convertToParamMap({
+                  lineageId: draftRecipeVersion.recipeLineageId,
+                  ...(state === 'active'
+                    ? {}
+                    : { recipeVersionId: recipe.recipeVersionId }),
+                }),
+              },
+            },
+          },
+          {
+            provide: RecipeBackendService,
+            useValue: {
+              recipesChanged$: EMPTY,
+              getActiveRecipeVersion: vi
+                .fn()
+                .mockName('getActiveRecipeVersion')
+                .mockResolvedValue(recipe),
+              getRecipeVersion: vi
+                .fn()
+                .mockName('getRecipeVersion')
+                .mockResolvedValue(recipe),
+            },
+          },
+          { provide: PageHeaderService, useValue: pageHeader },
+          {
+            provide: SnackBarService,
+            useValue: { open: vi.fn().mockName('open') },
+          },
+          { provide: MatDialog, useValue: { open: vi.fn().mockName('open') } },
+          {
+            provide: Router,
+            useValue: { navigate: vi.fn().mockName('navigate') },
+          },
+        ],
+      });
+      const fixture = TestBed.createComponent(RecipePageComponent);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
 
-        const presentation = fixture.debugElement.query(By.directive(RecipePresentationComponent)).componentInstance as RecipePresentationComponent;
+      const presentation = fixture.debugElement.query(
+        By.directive(RecipePresentationComponent),
+      ).componentInstance as RecipePresentationComponent;
 
-        expect(presentation.recipe()).toBe(recipe);
-        const image = fixture.debugElement.query(By.directive(RecipeImageComponent));
-        expect((image.componentInstance as RecipeImageComponent).imageId()).toBe(recipe.imageId);
-        expect((fixture.nativeElement as HTMLElement).querySelector('app-recipe-image')!.nextElementSibling?.tagName)
-            .toBe('APP-RECIPE-PRESENTATION');
-        expect(fixture.nativeElement.querySelector('app-recipe-version-state-badge')).not.toBeNull();
-        expect(fixture.nativeElement.querySelector('.spacer')).not.toBeNull();
-    });
+      expect(presentation.recipe()).toBe(recipe);
+      const image = fixture.debugElement.query(
+        By.directive(RecipeImageComponent),
+      );
+      expect((image.componentInstance as RecipeImageComponent).imageId()).toBe(
+        recipe.imageId,
+      );
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'app-recipe-image',
+        )!.nextElementSibling?.tagName,
+      ).toBe('APP-RECIPE-PRESENTATION');
+      expect(
+        fixture.nativeElement.querySelector('app-recipe-version-state-badge'),
+      ).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('.spacer')).not.toBeNull();
+    },
+  );
 });

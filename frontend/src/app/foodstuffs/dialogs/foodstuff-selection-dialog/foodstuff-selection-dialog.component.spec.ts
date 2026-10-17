@@ -3,14 +3,40 @@ import { Subject } from 'rxjs';
 import { FoodstuffCreateDialogComponent } from '../foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
 
 const foodstuffs: FoodstuffOut[] = [
-  { id: 1, name: 'Pasta', brand: 'Barilla', unit: 'G', unitVerbose: 'Gramm', kcal: null, carbs: null, protein: null, fat: null, recipeVersionIds: [] },
-  { id: 2, name: 'Olivenöl', brand: null, unit: 'ML', unitVerbose: 'Milliliter', kcal: null, carbs: null, protein: null, fat: null, recipeVersionIds: [] },
+  {
+    id: 1,
+    name: 'Pasta',
+    brand: 'Barilla',
+    unit: 'G',
+    unitVerbose: 'Gramm',
+    kcal: null,
+    carbs: null,
+    protein: null,
+    fat: null,
+    recipeVersionIds: [],
+  },
+  {
+    id: 2,
+    name: 'Olivenöl',
+    brand: null,
+    unit: 'ML',
+    unitVerbose: 'Milliliter',
+    kcal: null,
+    carbs: null,
+    protein: null,
+    fat: null,
+    recipeVersionIds: [],
+  },
 ];
 
 describe('FoodstuffSelectionDialogComponent', () => {
@@ -24,35 +50,64 @@ describe('FoodstuffSelectionDialogComponent', () => {
     foodstuffsChanged = new Subject<void>();
     getAllFoodstuffs.mockReset().mockResolvedValue([...foodstuffs].reverse());
     creationResult = new Subject<FoodstuffOut | undefined>();
-    open.mockReset().mockReturnValue({ afterClosed: () => creationResult.asObservable() });
-    TestBed.configureTestingModule({ providers: [{ provide: MatDialogRef, useValue: { close } }, { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs, foodstuffsChanged$: foodstuffsChanged } }] });
+    open
+      .mockReset()
+      .mockReturnValue({ afterClosed: () => creationResult.asObservable() });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MatDialogRef, useValue: { close } },
+        {
+          provide: FoodstuffBackendService,
+          useValue: { getAllFoodstuffs, foodstuffsChanged$: foodstuffsChanged },
+        },
+      ],
+    });
     TestBed.overrideComponent(FoodstuffSelectionDialogComponent, {
       add: { providers: [{ provide: MatDialog, useValue: { open } }] },
     });
   });
   it('shows loading and retries a failed catalogue request without showing a false empty result', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     let rejectLoad!: (error: Error) => void;
-    getAllFoodstuffs.mockReturnValueOnce(new Promise<FoodstuffOut[]>((_resolve, reject) => { rejectLoad = reject; }));
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    getAllFoodstuffs.mockReturnValueOnce(
+      new Promise<FoodstuffOut[]>((_resolve, reject) => {
+        rejectLoad = reject;
+      }),
+    );
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
-      const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+      const fixture = TestBed.createComponent(
+        FoodstuffSelectionDialogComponent,
+      );
       fixture.detectChanges();
       const element: HTMLElement = fixture.nativeElement;
       expect(element.querySelector('mat-spinner')).not.toBeNull();
       expect(element.textContent).not.toContain('Keine Lebensmittel gefunden.');
-      expect(element.querySelector<HTMLButtonElement>('.create-foodstuff-button')?.disabled).toBe(true);
+      expect(
+        element.querySelector<HTMLButtonElement>('.create-foodstuff-button')
+          ?.disabled,
+      ).toBe(true);
       rejectLoad(new Error('unavailable'));
       await fixture.whenStable();
       fixture.detectChanges();
-      expect(element.querySelector('[role="alert"]')?.textContent).toContain('Lebensmittel konnten nicht geladen werden.');
-      element.querySelector<HTMLButtonElement>('[role="alert"] button')?.click();
+      expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+        'Lebensmittel konnten nicht geladen werden.',
+      );
+      element
+        .querySelector<HTMLButtonElement>('[role="alert"] button')
+        ?.click();
       await fixture.whenStable();
       fixture.detectChanges();
       expect(getAllFoodstuffs).toHaveBeenCalledTimes(2);
-      expect(fixture.componentInstance.catalogue.state().status).toBe('success');
+      expect(fixture.componentInstance.catalogue.state().status).toBe(
+        'success',
+      );
       expect(element.querySelectorAll('button[mat-list-item]')).toHaveLength(2);
     } finally {
       error.mockRestore();
@@ -61,10 +116,16 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('ignores a catalogue response after the picker has been destroyed', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     let resolveLoad!: (records: FoodstuffOut[]) => void;
-    getAllFoodstuffs.mockReturnValueOnce(new Promise<FoodstuffOut[]>((resolve) => { resolveLoad = resolve; }));
+    getAllFoodstuffs.mockReturnValueOnce(
+      new Promise<FoodstuffOut[]>((resolve) => {
+        resolveLoad = resolve;
+      }),
+    );
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     const pending = fixture.componentInstance.catalogue.refresh();
     fixture.destroy();
@@ -75,7 +136,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('refreshes on catalogue changes while preserving search and pending records, then unsubscribes on close', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
@@ -92,7 +155,10 @@ describe('FoodstuffSelectionDialogComponent', () => {
     expect(component.foodstuffs()).toEqual([updated]);
     expect(component.searchValue()).toBe('pasta');
     expect(component.displayedFoodstuffs()).toEqual([updated]);
-    expect(component.selectedFoodstuffs()).toEqual([foodstuffs[1], foodstuffs[0]]);
+    expect(component.selectedFoodstuffs()).toEqual([
+      foodstuffs[1],
+      foodstuffs[0],
+    ]);
     component.confirmSelection();
     expect(close).toHaveBeenCalledWith([foodstuffs[1], foodstuffs[0]]);
     fixture.destroy();
@@ -102,7 +168,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('keeps a newly created basket record when a delayed refresh omits it, without duplicating catalogue entries', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
@@ -111,7 +179,11 @@ describe('FoodstuffSelectionDialogComponent', () => {
     component.toggleFoodstuff(1);
     component.searchValue.set('pasta');
     let resolveRefresh!: (records: FoodstuffOut[]) => void;
-    getAllFoodstuffs.mockReturnValueOnce(new Promise<FoodstuffOut[]>((resolve) => { resolveRefresh = resolve; }));
+    getAllFoodstuffs.mockReturnValueOnce(
+      new Promise<FoodstuffOut[]>((resolve) => {
+        resolveRefresh = resolve;
+      }),
+    );
     component.openCreateFoodstuffDialog();
     foodstuffsChanged.next();
     const created = { ...foodstuffs[0], id: 3, name: 'Reis' };
@@ -130,13 +202,17 @@ describe('FoodstuffSelectionDialogComponent', () => {
     foodstuffsChanged.next();
     await fixture.whenStable();
     creationResult.next(created);
-    expect(component.foodstuffs().filter((foodstuff) => foodstuff.id === created.id)).toHaveLength(1);
+    expect(
+      component.foodstuffs().filter((foodstuff) => foodstuff.id === created.id),
+    ).toHaveLength(1);
     expect(component.selectedFoodstuffs()).toEqual([foodstuffs[0], created]);
   });
 
   it('ignores superseded responses and retains pending records after a failed refresh', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
@@ -144,7 +220,11 @@ describe('FoodstuffSelectionDialogComponent', () => {
     const component = fixture.componentInstance;
     component.toggleFoodstuff(1);
     let resolveOlder!: (records: FoodstuffOut[]) => void;
-    getAllFoodstuffs.mockReturnValueOnce(new Promise<FoodstuffOut[]>((resolve) => { resolveOlder = resolve; }));
+    getAllFoodstuffs.mockReturnValueOnce(
+      new Promise<FoodstuffOut[]>((resolve) => {
+        resolveOlder = resolve;
+      }),
+    );
     foodstuffsChanged.next();
     const updated = { ...foodstuffs[0], name: 'Pasta neu' };
     getAllFoodstuffs.mockResolvedValue([updated]);
@@ -153,7 +233,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     expect(component.foodstuffs()).toEqual([updated]);
     expect(component.catalogue.state().status).toBe('success');
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       getAllFoodstuffs.mockRejectedValue(new Error('unavailable'));
       foodstuffsChanged.next();
@@ -169,20 +251,27 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('loads and sorts the catalogue, filters by name or brand, and restores the list when cleared', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    const names = (): string[] => Array.from(element.querySelectorAll('.foodstuff-name'))
-      .map((item) => item.textContent?.trim() ?? '');
-    const search = fixture.debugElement.query(By.directive(FoodstuffsSearchComponent))
-      .componentInstance as FoodstuffsSearchComponent;
+    const names = (): string[] =>
+      Array.from(element.querySelectorAll('.foodstuff-name')).map(
+        (item) => item.textContent?.trim() ?? '',
+      );
+    const search = fixture.debugElement.query(
+      By.directive(FoodstuffsSearchComponent),
+    ).componentInstance as FoodstuffsSearchComponent;
 
     expect(names()).toEqual(['Olivenöl', 'Pasta']);
-    expect(element.querySelectorAll('button[mat-list-item] img').length).toBe(2);
+    expect(element.querySelectorAll('button[mat-list-item] img').length).toBe(
+      2,
+    );
 
     for (const query of ['pAs', 'bAR']) {
       search.searchValueChange.emit(query);
@@ -195,7 +284,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     expect(names()).toEqual([]);
     expect(element.textContent).toContain('Keine Lebensmittel gefunden.');
 
-    const clearButton = element.querySelector<HTMLButtonElement>('.empty-state button');
+    const clearButton = element.querySelector<HTMLButtonElement>(
+      '.empty-state button',
+    );
     expect(clearButton).not.toBeNull();
     clearButton?.click();
     fixture.detectChanges();
@@ -205,14 +296,18 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('confirms records in selection order, including filtered-out items, and rejects empty confirmation', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    const confirm = element.querySelector<HTMLButtonElement>('.basket-summary button');
+    const confirm = element.querySelector<HTMLButtonElement>(
+      '.basket-summary button',
+    );
     expect(confirm?.disabled).toBe(true);
     expect(element.querySelector('.basket-preview')).toBeNull();
     fixture.componentInstance.confirmSelection();
@@ -222,16 +317,25 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.componentInstance.searchValue.set('missing');
     fixture.detectChanges();
     expect(confirm?.disabled).toBe(false);
-    expect(Array.from(element.querySelectorAll<HTMLImageElement>('.basket-preview img'))
-      .map((image) => image.alt)).toEqual(['Olivenöl', 'Pasta · Barilla']);
-    expect(element.querySelector('.basket-preview button, .basket-preview a, .basket-preview [tabindex]')).toBeNull();
+    expect(
+      Array.from(
+        element.querySelectorAll<HTMLImageElement>('.basket-preview img'),
+      ).map((image) => image.alt),
+    ).toEqual(['Olivenöl', 'Pasta · Barilla']);
+    expect(
+      element.querySelector(
+        '.basket-preview button, .basket-preview a, .basket-preview [tabindex]',
+      ),
+    ).toBeNull();
     confirm?.click();
     expect(close).toHaveBeenCalledWith([foodstuffs[1], foodstuffs[0]]);
   });
 
   it('adds a created foodstuff to the basket without changing search or existing selections', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     const component = fixture.componentInstance;
@@ -244,8 +348,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    element.querySelector<HTMLButtonElement>('.create-foodstuff-button')?.click();
-    expect(open).toHaveBeenCalledWith(FoodstuffCreateDialogComponent, expect.any(Object));
+    element
+      .querySelector<HTMLButtonElement>('.create-foodstuff-button')
+      ?.click();
+    expect(open).toHaveBeenCalledWith(
+      FoodstuffCreateDialogComponent,
+      expect.any(Object),
+    );
     creationResult.next(created);
     creationResult.complete();
     fixture.detectChanges();
@@ -257,7 +366,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     expect(close).toHaveBeenCalledWith([foodstuffs[1], created]);
     component.searchValue.set('reis');
     fixture.detectChanges();
-    const result = element.querySelector<HTMLButtonElement>('button[mat-list-item]');
+    const result = element.querySelector<HTMLButtonElement>(
+      'button[mat-list-item]',
+    );
     expect(result?.getAttribute('aria-pressed')).toBe('true');
     result?.click();
     expect(component.selectedFoodstuffs()).toEqual([foodstuffs[1]]);
@@ -265,7 +376,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
 
   it('preserves the picker when foodstuff creation is cancelled', async () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } }],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     const component = fixture.componentInstance;
@@ -283,18 +396,27 @@ describe('FoodstuffSelectionDialogComponent', () => {
   });
 
   it('preserves selections across filtering, toggles them, and blocks existing ingredients', async () => {
-    getAllFoodstuffs.mockResolvedValue([...foodstuffs, { ...foodstuffs[0], id: 3, brand: 'Andere Marke' }]);
+    getAllFoodstuffs.mockResolvedValue([
+      ...foodstuffs,
+      { ...foodstuffs[0], id: 3, brand: 'Andere Marke' },
+    ]);
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: {
-        existingFoodstuffIds: [2],
-      } }],
+      providers: [
+        {
+          provide: MAT_DIALOG_DATA,
+          useValue: {
+            existingFoodstuffIds: [2],
+          },
+        },
+      ],
     });
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
-    const buttons = (): HTMLButtonElement[] => Array.from(element.querySelectorAll('button[mat-list-item]'));
+    const buttons = (): HTMLButtonElement[] =>
+      Array.from(element.querySelectorAll('button[mat-list-item]'));
 
     expect(buttons()[0].disabled).toBe(true);
     expect(buttons()[0].textContent).toContain('Bereits hinzugefügt');
@@ -303,7 +425,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     buttons()[2].click();
     fixture.detectChanges();
     expect(buttons()[1].getAttribute('aria-pressed')).toBe('true');
-    expect(element.querySelector('.selection-count')?.textContent).toContain('2');
+    expect(element.querySelector('.selection-count')?.textContent).toContain(
+      '2',
+    );
 
     fixture.componentInstance.searchValue.set('missing');
     fixture.detectChanges();
@@ -317,11 +441,17 @@ describe('FoodstuffSelectionDialogComponent', () => {
     buttons()[1].click();
     fixture.detectChanges();
     expect(buttons()[1].getAttribute('aria-pressed')).toBe('false');
-    expect(element.querySelector('.selection-count')?.textContent).toContain('1');
-    expect(element.querySelector<HTMLImageElement>('.basket-preview img')?.alt).toBe('Pasta · Andere Marke');
+    expect(element.querySelector('.selection-count')?.textContent).toContain(
+      '1',
+    );
+    expect(
+      element.querySelector<HTMLImageElement>('.basket-preview img')?.alt,
+    ).toBe('Pasta · Andere Marke');
     buttons()[2].click();
     fixture.detectChanges();
-    expect(element.querySelector('.selection-count')?.textContent).toContain('0');
+    expect(element.querySelector('.selection-count')?.textContent).toContain(
+      '0',
+    );
     expect(element.querySelector('.basket-preview')).toBeNull();
   });
 });

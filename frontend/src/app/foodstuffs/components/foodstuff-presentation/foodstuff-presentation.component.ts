@@ -13,7 +13,8 @@ const NUTRITION_BASIS: Record<Unit, string> = {
 @Component({
   selector: 'app-foodstuff-presentation',
   imports: [NutritionCardComponent, NutritionSummaryPipe],
-  template: '<app-nutrition-card [nutrition]="foodstuff() | nutritionSummary" [basis]="basis()" />',
+  template:
+    '<app-nutrition-card [nutrition]="foodstuff() | nutritionSummary" [basis]="basis()" />',
 })
 export class FoodstuffPresentationComponent {
   readonly foodstuff = input.required<FoodstuffPresentation>();

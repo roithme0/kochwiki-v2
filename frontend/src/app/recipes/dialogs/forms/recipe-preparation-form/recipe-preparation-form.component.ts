@@ -26,8 +26,8 @@ import { MatIconModule } from '@angular/material/icon';
     MatInputModule,
     MatFormFieldModule,
     MatIconModule,
-    DragDropModule
-],
+    DragDropModule,
+  ],
   templateUrl: './recipe-preparation-form.component.html',
   styleUrl: './recipe-preparation-form.component.scss',
 })
@@ -46,7 +46,7 @@ export class RecipePreparationFormComponent {
   ngOnInit() {
     this.recipeForm = this.recipeFormDirective.control;
     this.preparationFormGroup = this.recipeForm.get(
-      'preparationFormGroup'
+      'preparationFormGroup',
     ) as FormGroup;
 
     const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
@@ -70,7 +70,7 @@ export class RecipePreparationFormComponent {
     this.steps.push(
       this.fb.group({
         description: [step?.description ?? '', Validators.required],
-      })
+      }),
     );
   }
 

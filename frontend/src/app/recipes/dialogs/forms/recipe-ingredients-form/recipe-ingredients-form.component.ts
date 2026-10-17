@@ -77,13 +77,12 @@ export class RecipeIngredientsFormComponent {
   recipeForm!: FormGroup;
   ingredientsFormGroup!: FormGroup;
   readonly ingredientDrafts = signal<DraftIngredientNutrition[]>([]);
-  readonly nutritionState = computed(
-    (): DraftNutritionState =>
-      calculateDraftNutrition(
-        this.ingredientDrafts(),
-        this.servings(),
-        this.selectedFoodstuffs(),
-      ),
+  readonly nutritionState = computed((): DraftNutritionState =>
+    calculateDraftNutrition(
+      this.ingredientDrafts(),
+      this.servings(),
+      this.selectedFoodstuffs(),
+    ),
   );
   readonly legend = computed(() => {
     const state = this.nutritionState();

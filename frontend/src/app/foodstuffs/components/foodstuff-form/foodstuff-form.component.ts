@@ -1,12 +1,18 @@
-
 import { Component, effect, inject, input, output } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import type { FoodstuffCreate, FoodstuffOut, Unit } from '../../../core/api/generated';
-import { foodstuffFieldLabels, foodstuffUnitChoices } from '../../models/foodstuff-labels';
+import type {
+  FoodstuffCreate,
+  FoodstuffOut,
+  Unit,
+} from '../../../core/api/generated';
+import {
+  foodstuffFieldLabels,
+  foodstuffUnitChoices,
+} from '../../models/foodstuff-labels';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
@@ -55,5 +61,4 @@ export class FoodstuffFormComponent {
     if (unit === null) return;
     this.submitted.emit({ name, brand, unit, kcal, carbs, protein, fat });
   }
-
 }

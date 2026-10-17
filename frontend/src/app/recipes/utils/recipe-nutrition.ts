@@ -11,8 +11,7 @@ export interface DraftIngredientNutrition {
 }
 
 export type DraftNutritionState =
-  | { status: 'invalid' }
-  | { status: 'ready'; nutrition: NutritionSummary };
+  { status: 'invalid' } | { status: 'ready'; nutrition: NutritionSummary };
 
 type NutritionField = keyof NutritionSummary;
 
