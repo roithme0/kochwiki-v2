@@ -173,10 +173,10 @@ No resizing, re-encoding or metadata stripping is performed.
 Accepted bytes are written unchanged to `recipe-images/<new-image-uuid>.png`
 with `image/png` content type. The returned immutable result contains image UUID,
 object key, size, dimensions, SHA-256, content type and UTC creation time. The
-`recipe_image` table persists these fields, with unique object keys and database
-constraints for format and size limits. Completion returns success only after
-the metadata transaction commits. Images are not yet attachable through a recipe API. Completion never
-copies the temporary object after validation: a concurrent upload cannot change
+shared `image_asset` table persists these fields, with unique object keys per image
+kind and database constraints for format and size limits. Completion returns success
+only after the metadata transaction commits. Recipe writes attach the validated
+image ID separately. Completion never copies the temporary object after validation: a concurrent upload cannot change
 the bytes being promoted. The service never issues PUT URLs for permanent keys.
 
 After successful promotion or invalid-image rejection, completion attempts to
@@ -299,6 +299,27 @@ versions start without images. PostgreSQL rejects deletion of referenced image
 metadata. Replacing/removing references, discarding drafts and deleting lineages
 leave image metadata and objects for the deferred cleanup slice. No storage access
 is required for recipe writes that keep/remove an image or reads of recipe metadata.
+
+## Shared image metadata and bucket routing
+
+Migration `20261017_13` renames `recipe_image` to `image_asset`, preserving image
+IDs, metadata, and recipe-version foreign keys. `app.images.models.ImageAsset`
+and shared image limits live in `app.images`. Every record has a required
+`recipe` or `foodstuff` kind; existing records are backfilled as `recipe`.
+Object keys are unique within each kind. Recipe completion always writes
+recipe-kind metadata, and recipe attachment/download reject foodstuff-kind IDs.
+Recipe HTTP routes and payloads remain unchanged. Downgrade refuses to proceed
+while foodstuff-kind records exist.
+
+The storage adapter requires an explicit backend-selected bucket:
+`Storage(config, bucket=config.bucket_recipe_images)`. It no longer selects the
+recipe bucket implicitly. Logical image kinds distinguish storage destinations;
+the current recipe callers still use the existing configured bucket. This slice
+does not provision a foodstuff bucket, change deployment settings, or expose
+foodstuff image operations. The shared metadata migration is verified against
+dedicated test PostgreSQL; it has not been applied to the running application
+database as part of this slice.
+
 ## Deferred storage cleanup
 
 Scheduled storage cleanup is explicitly deferred. Remaining tasks are:

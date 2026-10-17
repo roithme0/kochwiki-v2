@@ -23,8 +23,27 @@ def configuration() -> StorageConfig:
 
 class StorageTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.storage = Storage(configuration())
+        self.storage = Storage(configuration(), bucket=configuration().bucket_recipe_images)
         self.addCleanup(self.storage.close)
+
+    def test_two_buckets_route_all_operations_independently(self) -> None:
+        key = "folder/food +%?#ä.png"
+        for bucket in ("recipe-images", "foodstuff-images"):
+            with self.subTest(bucket=bucket):
+                storage = Storage(configuration(), bucket=bucket)
+                self.addCleanup(storage.close)
+                for transfer in (storage.presign_upload(key), storage.presign_download(key)):
+                    assert urlsplit(transfer.url).path == f"/storage/{bucket}/" + quote(key, safe="/")
+                with Stubber(storage._internal) as stub:
+                    stub.add_response("get_object", {"ContentLength": 3, "Body": StreamingBody(BytesIO(b"png"), 3)}, {"Bucket": bucket, "Key": key})
+                    stub.add_response("put_object", {}, {"Bucket": bucket, "Key": key, "Body": b"png", "ContentType": "image/png"})
+                    stub.add_response("head_object", {"ContentLength": 3, "ETag": '"opaque"'}, {"Bucket": bucket, "Key": key})
+                    stub.add_response("delete_object", {}, {"Bucket": bucket, "Key": key})
+                    self.assertEqual(storage.read(key, max_bytes=3), b"png")
+                    storage.write(key, b"png", content_type="image/png")
+                    self.assertIsNotNone(storage.inspect(key))
+                    storage.delete(key)
+                    stub.assert_no_pending_responses()
 
     def test_public_signature_preserves_encoded_path_and_port(self) -> None:
         key = "folder/plate +%?#ä.png"

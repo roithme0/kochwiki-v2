@@ -9,7 +9,7 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset
 from app.recipes.schemas.image import RecipeImageDownloadOut, RecipeImageOut, RecipeImageUploadOut
 from app.infrastructure.storage.storage import Storage
 
@@ -39,7 +39,7 @@ def main() -> None:
     config = Settings().storage_config
     if config is None:
         raise RuntimeError("Configure STORAGE_* before verification")
-    storage = Storage(config)
+    storage = Storage(config, bucket=config.bucket_recipe_images)
     keys: list[str] = []
     image_ids: list[UUID] = []
     api = config.public_origin + "/api/recipe-image-uploads"
@@ -59,7 +59,7 @@ def main() -> None:
                 image = RecipeImageOut.model_validate_json(body)
                 image_ids.append(image.id)
                 with SessionLocal() as session:
-                    saved = session.get(RecipeImage, image.id)
+                    saved = session.get(ImageAsset, image.id)
                     assert saved is not None, "Completion did not persist metadata"
                     keys.append(saved.object_key)
                     assert storage.read(saved.object_key, max_bytes=len(png)) == png
@@ -83,7 +83,7 @@ def main() -> None:
         try:
             with SessionLocal.begin() as session:
                 for image_id in image_ids:
-                    saved = session.get(RecipeImage, image_id)
+                    saved = session.get(ImageAsset, image_id)
                     if saved is not None:
                         session.delete(saved)
             for key in keys:

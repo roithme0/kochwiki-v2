@@ -11,8 +11,8 @@ from PIL.PngImagePlugin import PngImageFile
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.recipes.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
-from app.recipes.models.image import RecipeImage
+from app.images.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
+from app.images.models import ImageAsset, ImageKind
 from app.recipes.schemas.image import ImageUpload, ValidatedRecipeImage
 from app.infrastructure.storage.storage import (
     Storage,
@@ -68,7 +68,8 @@ class RecipeImageUploads:
         self._storage.write(object_key, data, content_type=IMAGE_CONTENT_TYPE)
         created_at = datetime.now(timezone.utc)
         digest = sha256(data).hexdigest()
-        record = RecipeImage(
+        record = ImageAsset(
+            kind=ImageKind.RECIPE,
             id=image_id,
             object_key=object_key,
             size=len(data),
@@ -84,7 +85,7 @@ class RecipeImageUploads:
         except SQLAlchemyError as error:
             try:
                 with self._sessions() as session:
-                    persisted = session.get(RecipeImage, image_id) is not None
+                    persisted = session.get(ImageAsset, image_id) is not None
             except SQLAlchemyError:
                 raise ImagePersistenceFailed(cleanup_pending=True) from None
             if not persisted:

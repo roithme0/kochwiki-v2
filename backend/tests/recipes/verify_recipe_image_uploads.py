@@ -5,7 +5,7 @@ from uuid import UUID
 
 from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset
 from app.recipes.services.image_uploads import InvalidRecipeImage, RecipeImageUploads
 from app.infrastructure.storage.storage import Storage
 from tests.infrastructure.storage.verify_storage_adapter import transfer
@@ -15,7 +15,7 @@ def main() -> None:
     config = Settings().storage_config
     if config is None:
         raise RuntimeError("Configure STORAGE_* settings before verification")
-    storage = Storage(config)
+    storage = Storage(config, bucket=config.bucket_recipe_images)
     uploads = RecipeImageUploads(storage, SessionLocal)
     keys: list[str] = []
     image_ids: list[UUID] = []
@@ -30,7 +30,7 @@ def main() -> None:
         keys.append(result.object_key)
         image_ids.append(result.id)
         with SessionLocal() as session:
-            saved = session.get(RecipeImage, result.id)
+            saved = session.get(ImageAsset, result.id)
             assert saved is not None
             assert (saved.object_key, saved.sha256) == (result.object_key, result.sha256)
         assert (result.width, result.height, result.size) == (1, 1, len(png))
@@ -53,7 +53,7 @@ def main() -> None:
         try:
             with SessionLocal.begin() as session:
                 for image_id in image_ids:
-                    saved = session.get(RecipeImage, image_id)
+                    saved = session.get(ImageAsset, image_id)
                     if saved is not None:
                         session.delete(saved)
             for key in keys:

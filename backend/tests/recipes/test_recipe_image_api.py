@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from app.recipes.routes.images import get_recipe_image_storage, get_recipe_image_uploads
 from app.core.config import get_settings
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset, ImageKind
 from app.recipes.services.image_uploads import ImagePersistenceFailed, RecipeImageUploads
 from app.infrastructure.storage.storage import PresignedTransfer, Storage, StorageUnavailable
 from tests.recipes.test_recipe_image_uploads import png
@@ -52,8 +52,9 @@ def test_start_and_complete_persist_only_validated_metadata(client: TestClient, 
     image = completed.json()
     assert set(image) == {"id", "contentType", "size", "width", "height", "createdAt"}
     with SessionLocal() as session:
-        saved = session.get(RecipeImage, UUID(image["id"]))
+        saved = session.get(ImageAsset, UUID(image["id"]))
         assert saved is not None
+        assert saved.kind == ImageKind.RECIPE
         assert saved.size == image["size"] == len(png())
     storage.read.assert_called_once()
     recipe = client.post("/recipes", json={"name": "Uploaded image", "servings": 2, "imageId": image["id"]})
@@ -123,7 +124,7 @@ def test_download_uses_persisted_key_without_reading_object(client: TestClient, 
     completed = client.post(f"/recipe-image-uploads/{uuid4()}/complete")
     image_id = UUID(completed.json()["id"])
     with SessionLocal() as session:
-        image = session.get(RecipeImage, image_id)
+        image = session.get(ImageAsset, image_id)
         assert image is not None
         key = image.object_key
     storage.reset_mock()
@@ -146,6 +147,21 @@ def test_download_missing_image_and_invalid_id(client: TestClient, storage: Mock
     assert response.json() == {"detail": "Recipe image not found"}
     assert response.headers["cache-control"] == "no-store"
     assert client.get("/recipe-images/invalid/download").status_code == 422
+    storage.presign_download.assert_not_called()
+
+
+def test_recipe_download_rejects_foodstuff_image(client: TestClient, storage: Mock) -> None:
+    storage.read.return_value = png()
+    completed = client.post(f"/recipe-image-uploads/{uuid4()}/complete")
+    image_id = UUID(completed.json()["id"])
+    with SessionLocal.begin() as session:
+        image = session.get(ImageAsset, image_id)
+        assert image is not None
+        image.kind = ImageKind.FOODSTUFF
+    response = client.get(f"/recipe-images/{image_id}/download")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Recipe image not found"}
+    assert response.headers["cache-control"] == "no-store"
     storage.presign_download.assert_not_called()
 
 

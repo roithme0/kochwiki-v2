@@ -74,11 +74,11 @@ Include optional manual image selection, preview, upload, replacement/removal, p
 
 Work proceeds through narrow slices. Discuss and agree on each slice's scope and acceptance criteria before implementation, then validate and review it before selecting the next slice. Agreement on this concept does not authorize all slices at once.
 
-### Proposed First Slice: Shared Metadata and Explicit Storage Routing
+### First Slice: Shared Metadata and Explicit Storage Routing
 
-Prepared for discussion; not yet authorized for implementation. Establish the shared metadata boundary and preserve the working recipe-image flow before adding foodstuff uploads or UI.
+Authorized and implemented on 2026-10-17. The shared metadata boundary and explicit storage bucket selection are in place, preserving the recipe-image flow before adding foodstuff uploads or UI. Validation and review results are recorded below; subsequent slices still require their own agreement.
 
-Move validated image metadata into an `app.images` module with a shared `ImageAsset` model. Recommend renaming the existing `recipe_image` table to `image_asset` through a new migration, preserving every image UUID, metadata value, and recipe-version reference. Add a required, constrained image kind (`recipe` or `foodstuff`), backfilling existing records as `recipe`. The kind identifies the logical bucket; deployment configuration resolves the physical bucket name. Retain object-key uniqueness within each kind so objects in separate buckets can have the same key.
+Validated image metadata lives in an `app.images` module with a shared `ImageAsset` model and shared image limits. Migration `20261017_13` renames the existing `recipe_image` table to `image_asset`, preserving every image UUID, metadata value, and recipe-version reference. It adds a required, constrained image kind (`recipe` or `foodstuff`), backfilling existing records as `recipe`. The kind identifies the logical bucket; deployment configuration resolves the physical bucket name. Object-key uniqueness is enforced within each kind so objects in separate buckets can have the same key.
 
 Update existing recipe upload, download, association checks, and model registration to use the shared model. Recipe upload completion records kind `recipe`; recipe-specific download and attachment paths reject foodstuff-kind IDs. Preserve recipe API routes, response schemas, validation limits, immutable object keys, and version inheritance behavior. Moving the upload-validation service and its internal result types into the shared module is a later slice; only the metadata dependency moves now.
 
@@ -92,7 +92,11 @@ Acceptance criteria:
 - Controlled storage tests verify explicit bucket selection for PUT/GET signing and internal read, write, inspect, and delete operations, including encoded paths and two distinct buckets.
 - Existing upload validation and persistence-failure regressions, image API/association checks, and the backend suite pass against dedicated test storage. Verify that generated OpenAPI remains unchanged; no frontend source edits are expected.
 
-Review the migration and bucket routing together after validation. Report PostgreSQL or live-storage checks that cannot run as incomplete validation. Do not apply the migration to the running application database or redeploy services as part of this proposed slice. No object movement, live-data reset, foodstuff association/API, second-bucket provisioning, cleanup scheduling, or frontend work is included.
+Review the migration and bucket routing together after validation. Report PostgreSQL or live-storage checks that cannot run as incomplete validation. Do not apply the migration to the running application database or redeploy services as part of this slice. No object movement, live-data reset, foodstuff association/API, second-bucket provisioning, cleanup scheduling, or frontend work is included.
+
+Validation: the complete backend suite passed against dedicated test PostgreSQL (355 tests and 202 subtests). The migration regression checks existing metadata and recipe references, deletion protection, kind constraints, per-kind uniqueness, and safe downgrade refusal while foodstuff records exist. Controlled storage tests cover both bucket destinations. No live Garage transfers or application migration/deployment were performed for this slice.
+
+The exported OpenAPI document remains byte-identical. `npm run check:kochwiki-contract` fails on generated TypeScript byte comparisons because the worktree uses CRLF and fresh output uses LF. Independent regeneration from the unchanged OpenAPI confirms all three generated TypeScript files match after newline normalization. This is a failed exact contract check, not a passing command; generated frontend files and tooling were left unchanged.
 
 ## Remaining Technical Choices
 

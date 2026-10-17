@@ -10,8 +10,8 @@ from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.recipes.config import MAX_IMAGE_BYTES
-from app.recipes.models.image import RecipeImage
+from app.images.config import MAX_IMAGE_BYTES
+from app.images.models import ImageAsset
 
 from app.recipes.services.image_uploads import (
     ImageUploadNotFound,
@@ -38,7 +38,7 @@ class RecipeImageUploadTests(unittest.TestCase):
     def setUp(self) -> None:
         self.storage = Mock()
         self.engine = create_engine("sqlite://")
-        RecipeImage.__table__.create(self.engine)
+        ImageAsset.__table__.create(self.engine)
         self.addCleanup(self.engine.dispose)
         self.sessions = sessionmaker(self.engine)
         self.service = RecipeImageUploads(self.storage, self.sessions)
@@ -61,7 +61,7 @@ class RecipeImageUploadTests(unittest.TestCase):
         self.assertEqual(result.object_key, f"recipe-images/{result.id}.png")
         self.assertFalse(result.cleanup_pending)
         with self.sessions() as session:
-            saved = session.get(RecipeImage, result.id)
+            saved = session.get(ImageAsset, result.id)
             self.assertIsNotNone(saved)
             assert saved is not None
             self.assertEqual(
@@ -179,13 +179,13 @@ class RecipeImageUploadTests(unittest.TestCase):
         key = self.storage.write.call_args.args[0]
         self.storage.delete.assert_called_once_with(key)
         with self.sessions() as session:
-            self.assertEqual(list(session.scalars(select(RecipeImage))), [])
+            self.assertEqual(list(session.scalars(select(ImageAsset))), [])
         event.remove(self.sessions, "before_commit", fail_commit)
         self.assertFalse(self.service.complete(self.upload_id).cleanup_pending)
 
     def test_unknown_database_outcome_retains_permanent_object(self) -> None:
         self.storage.read.return_value = png()
-        RecipeImage.__table__.drop(self.engine)
+        ImageAsset.__table__.drop(self.engine)
         with self.assertRaises(ImagePersistenceFailed) as failure:
             self.service.complete(self.upload_id)
         self.assertTrue(failure.exception.cleanup_pending)
@@ -225,7 +225,7 @@ class RecipeImageUploadTests(unittest.TestCase):
         event.listen(self.sessions, "after_commit", fail_acknowledgement)
         result = self.service.complete(self.upload_id)
         with self.sessions() as session:
-            self.assertIsNotNone(session.get(RecipeImage, result.id))
+            self.assertIsNotNone(session.get(ImageAsset, result.id))
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
 

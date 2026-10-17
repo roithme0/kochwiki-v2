@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.recipes.config import IMAGE_CONTENT_TYPE
+from app.images.config import IMAGE_CONTENT_TYPE
 from app.infrastructure.database.session import SessionLocal, get_db
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset, ImageKind
 from app.core.schemas.errors import ErrorResponse
 from app.recipes.schemas.image import (
     RecipeImageDownloadOut,
@@ -31,7 +31,7 @@ def get_recipe_image_storage() -> Iterator[Storage]:
         raise HTTPException(
             503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
         )
-    storage = Storage(config)
+    storage = Storage(config, bucket=config.bucket_recipe_images)
     try:
         yield storage
     finally:
@@ -56,8 +56,8 @@ def download_image(
     storage: Storage = Depends(get_recipe_image_storage),
 ) -> RecipeImageDownloadOut:
     headers = {"Cache-Control": "no-store"}
-    image = session.get(RecipeImage, image_id)
-    if image is None:
+    image = session.get(ImageAsset, image_id)
+    if image is None or image.kind != ImageKind.RECIPE:
         raise HTTPException(404, "Recipe image not found", headers=headers)
     try:
         transfer = storage.presign_download(image.object_key)

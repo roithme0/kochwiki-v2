@@ -5,7 +5,7 @@ from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
 from app.recipes.models.embedding import RecipeEmbedding
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset
 from app.identity.models.user import User
 from app.identity.models.login_transaction import LoginTransaction
 
@@ -17,7 +17,7 @@ __all__ = [
     "RecipeLineage",
     "RecipeVersion",
     "RecipeEmbedding",
-    "RecipeImage",
+    "ImageAsset",
     "Step",
     "User",
     "LoginTransaction",
