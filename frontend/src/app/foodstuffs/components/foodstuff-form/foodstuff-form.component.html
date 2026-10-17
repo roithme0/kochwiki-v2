@@ -1,32 +1,117 @@
-<form [formGroup]="form" (ngSubmit)="onSubmit()">
-  <div class="fields">
-    <div class="required-fields">
-      <mat-form-field
-        appearance="outline"
-        floatLabel="always"
-        class="name-field"
-      >
-        <mat-label>{{ fieldLabels.name }}</mat-label>
-        <input matInput formControlName="name" />
+<form [formGroup]="form" (ngSubmit)="onSubmit()" [attr.aria-busy]="busy()">
+  <mat-card>
+    <mat-card-header
+      ><mat-card-title><h3>Basisdaten</h3></mat-card-title></mat-card-header
+    >
+    <mat-card-content class="fields">
+      <div class="required-fields">
+        <mat-form-field
+          appearance="outline"
+          floatLabel="always"
+          class="name-field"
+        >
+          <mat-label>{{ fieldLabels.name }}</mat-label>
+          <input matInput formControlName="name" />
+        </mat-form-field>
+        <mat-form-field
+          appearance="outline"
+          floatLabel="always"
+          class="unit-select"
+        >
+          <mat-label>{{ fieldLabels.unit }}</mat-label>
+          <mat-select formControlName="unit">
+            @for (choice of unitChoices; track choice.value) {
+              <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>{{ fieldLabels.brand }}</mat-label>
+        <input matInput formControlName="brand" />
       </mat-form-field>
-      <mat-form-field
-        appearance="outline"
-        floatLabel="always"
-        class="unit-select"
-      >
-        <mat-label>{{ fieldLabels.unit }}</mat-label>
-        <mat-select formControlName="unit">
-          @for (choice of unitChoices; track choice.value) {
-            <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
+      <div class="image-preview">
+        @if (image.imagePreview(); as preview) {
+          <img
+            [src]="preview"
+            alt="Bildvorschau des Lebensmittels"
+            (error)="image.imageLoadFailed()"
+          />
+        } @else {
+          <img
+            src="assets/images/question-mark.png"
+            alt="Kein Lebensmittelbild verfügbar"
+          />
+        }
+        <div class="image-actions">
+          @if (image.hasImage()) {
+            <button
+              mat-mini-fab
+              type="button"
+              aria-label="Bild entfernen"
+              [disabled]="busy()"
+              (click)="image.removeImage()"
+            >
+              <mat-icon fontIcon="delete" />
+            </button>
           }
-        </mat-select>
-      </mat-form-field>
-    </div>
-    <mat-form-field appearance="outline" floatLabel="always">
-      <mat-label>{{ fieldLabels.brand }}</mat-label>
-      <input matInput formControlName="brand" />
-    </mat-form-field>
-    <div class="nutrition-wrapper">
+          <button
+            mat-mini-fab
+            type="button"
+            [attr.aria-label]="
+              image.hasImage() ? 'Bild ersetzen' : 'Bild auswählen'
+            "
+            [disabled]="busy()"
+            (click)="imageInput.click()"
+          >
+            <mat-icon
+              [fontIcon]="image.hasImage() ? 'edit' : 'add_photo_alternate'"
+            />
+          </button>
+        </div>
+        <input
+          #imageInput
+          type="file"
+          accept="image/png,.png"
+          hidden
+          [disabled]="busy()"
+          (change)="image.selectImage(imageInput)"
+        />
+      </div>
+      @if (image.loadingImage()) {
+        <p role="status">Bild wird geladen …</p>
+      }
+      @if (image.imageAccessFailed()) {
+        <p role="status">Bild konnte nicht geladen werden.</p>
+        <button
+          mat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="image.loadImagePreview()"
+        >
+          Bild erneut laden
+        </button>
+      }
+      @if (image.imageError(); as error) {
+        <p role="alert">{{ error }}</p>
+      }
+      @if (image.invalidImageSelection()) {
+        <button
+          mat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="image.discardInvalidSelection()"
+        >
+          Ungültige Auswahl verwerfen
+        </button>
+      }
+    </mat-card-content>
+  </mat-card>
+  <mat-card>
+    <mat-card-header
+      ><mat-card-title><h3>Nährwerte</h3></mat-card-title></mat-card-header
+    >
+    <mat-card-content class="nutrition-wrapper">
       <mat-form-field appearance="outline" floatLabel="always">
         <mat-label>{{ fieldLabels.kcal }}</mat-label>
         <input matInput type="number" formControlName="kcal" />
@@ -49,13 +134,22 @@
           <span matTextSuffix>g</span>
         </mat-form-field>
       </div>
-    </div>
-  </div>
+    </mat-card-content>
+  </mat-card>
+  @if (busy()) {
+    <p role="status">
+      {{
+        image.uploadingImage()
+          ? 'Bild wird hochgeladen und geprüft …'
+          : 'Lebensmittel wird gespeichert …'
+      }}
+    </p>
+  }
   <button
     mat-flat-button
     type="submit"
     color="primary"
-    [disabled]="form.invalid"
+    [disabled]="form.invalid || busy() || image.invalidImageSelection()"
   >
     <mat-icon aria-hidden="true" fontIcon="save" />
     {{ submitLabel() }}

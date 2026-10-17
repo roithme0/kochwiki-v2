@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { Router } from '@angular/router';
 import { DialogHeaderComponent } from '../../../core/components/dialog-header/dialog-header.component';
@@ -24,6 +24,14 @@ export class RecipeCreateDialogComponent {
   private readonly recipeBackendService = inject(RecipeBackendService);
   private readonly snackBarService = inject(SnackBarService);
   readonly isSubmitting = signal(false);
+  private readonly uploading = signal(false);
+  private readonly initialDisableClose = this.dialogRef.disableClose;
+  readonly busy = computed(() => this.isSubmitting() || this.uploading());
+
+  onUploadingChange(uploading: boolean): void {
+    this.uploading.set(uploading);
+    this.dialogRef.disableClose = this.busy() || this.initialDisableClose;
+  }
 
   async onSubmit(submission: RecipeEditorSubmission): Promise<void> {
     if (this.isSubmitting()) return;
@@ -42,7 +50,8 @@ export class RecipeCreateDialogComponent {
           : 'Rezept konnte nicht erstellt werden',
       );
       this.isSubmitting.set(false);
-      this.dialogRef.disableClose = false;
+      this.dialogRef.disableClose =
+        this.uploading() || this.initialDisableClose;
       return;
     }
 

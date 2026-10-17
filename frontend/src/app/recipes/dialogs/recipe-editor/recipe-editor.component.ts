@@ -29,11 +29,11 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type { RecipeVersionWrite } from '../../../core/api/generated';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
+import { ImageEditorState } from '../../../core/services/image-editor-state.service';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import {
@@ -82,6 +82,7 @@ export interface RecipeEditorSubmission {
 
 @Component({
   selector: 'app-recipe-editor',
+  providers: [ImageEditorState],
   imports: [
     FormsModule,
     ReactiveFormsModule,
@@ -102,15 +103,9 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly recipeBackendService = inject(RecipeBackendService);
-  private readonly recipeImageService = inject(RecipeImageService);
+  readonly image = inject(ImageEditorState);
   private readonly snackBarService = inject(SnackBarService);
   private readonly renderer = inject(Renderer2);
-  private readonly dialogRef = inject<MatDialogRef<unknown>>(MatDialogRef, {
-    optional: true,
-  });
-
-  private closing = false;
-
   @ViewChild('sectionNav', { read: ElementRef })
   private sectionNav?: ElementRef<HTMLElement>;
   @ViewChildren('editorSection') private editorSections!: QueryList<
@@ -127,28 +122,16 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
   readonly mode = input<RecipeEditorMode>('create');
   readonly submitting = input(false);
   readonly submitted = output<RecipeEditorSubmission>();
+
+  readonly uploadingChanged = output<boolean>();
+
   readonly state = signal<RecipeEditorState>({ status: 'loading' });
   readonly recipeVersion = signal<RecipeVersionOut | null>(null);
 
-  readonly uploadingImage = signal(false);
-  readonly busy = computed(() => this.submitting() || this.uploadingImage());
-  readonly imagePreview = signal<string | null>(null);
-  readonly imageError = signal<string | null>(null);
-  readonly invalidImageSelection = signal(false);
-  readonly imageAccessFailed = signal(false);
-  readonly loadingImage = signal(false);
-  private readonly selectedImageId = signal<string | null | undefined>(
-    undefined,
-  );
-  readonly hasImage = computed(
-    () => this.selectedFile() !== null || this.currentImageId() !== null,
-  );
-  private readonly selectedFile = signal<File | null>(null);
-  private localPreviewUrl: string | null = null;
-  private previewRequest = 0;
+  readonly busy = this.image.busy;
 
   readonly sectionNavItems: readonly SectionNavItem[] = [
-    { id: 'basics', label: 'Basis' },
+    { id: 'basics', label: 'Basisdaten' },
     { id: 'ingredients', label: 'Zutaten' },
     { id: 'preparation', label: 'Zubereitung' },
   ];
@@ -169,16 +152,14 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
   });
 
   constructor() {
-    this.dialogRef
-      ?.beforeClosed()
+    this.image.connect(
+      inject(RecipeImageService),
+      computed(() => this.recipeVersion()?.imageId ?? null),
+      this.submitting,
+    );
+    this.image.preparingChanged
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.closing = true;
-      });
-    this.destroyRef.onDestroy(() => {
-      this.previewRequest++;
-      this.releaseLocalPreview();
-    });
+      .subscribe((busy) => this.uploadingChanged.emit(busy));
   }
 
   ngOnInit(): void {
@@ -286,8 +267,8 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
   }
 
   async onSubmit(action: 'publish' | 'draft'): Promise<void> {
-    if (this.busy() || this.closing) return;
-    if (this.invalidImageSelection()) {
+    if (this.busy()) return;
+    if (this.image.invalidImageSelection()) {
       this.goToSection('basics');
       return;
     }
@@ -334,138 +315,32 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    const file = this.selectedFile();
-    if (file !== null) {
-      this.uploadingImage.set(true);
-      this.imageError.set(null);
-      try {
-        const image = await this.recipeImageService.upload(file);
-        if (this.destroyRef.destroyed || this.closing) return;
-        this.selectedImageId.set(image.id);
-        this.selectedFile.set(null);
-      } catch {
-        if (!this.destroyRef.destroyed) {
-          this.imageError.set(
-            'Bild konnte nicht hochgeladen oder validiert werden. Bitte erneut speichern oder ein anderes PNG auswählen.',
-          );
-        }
-        return;
-      } finally {
-        this.uploadingImage.set(false);
-      }
-    }
-    if (this.destroyRef.destroyed || this.closing) return;
-    const imageId = this.currentImageId();
-    this.submitted.emit({
-      action,
-      recipeVersion: {
-        ...(this.recipeVersion() === null &&
-        this.selectedImageId() === undefined
-          ? {}
-          : { imageId }),
-        name: metaFormGroup.name,
-        servings: ingredientsFormGroup.servings,
-        ingredients: ingredientsFormGroup.ingredients.map((ingredient) => ({
-          index: ingredient.index!,
-          amount: ingredient.amount!,
-          foodstuffId: ingredient.foodstuffId!,
-        })),
-        preptime: preparationFormGroup.preptime,
-        steps: preparationFormGroup.steps.map((step, index) => ({
-          index: index + 1,
-          description: step.description!,
-        })),
-      },
+    const name = metaFormGroup.name;
+    const servings = ingredientsFormGroup.servings;
+    await this.image.submit((imageIdChange) => {
+      if (this.destroyRef.destroyed) return;
+      const imageId = this.image.imageId();
+      this.submitted.emit({
+        action,
+        recipeVersion: {
+          ...(this.recipeVersion() === null && imageIdChange === undefined
+            ? {}
+            : { imageId }),
+          name,
+          servings,
+          ingredients: ingredientsFormGroup.ingredients.map((ingredient) => ({
+            index: ingredient.index!,
+            amount: ingredient.amount!,
+            foodstuffId: ingredient.foodstuffId!,
+          })),
+          preptime: preparationFormGroup.preptime,
+          steps: preparationFormGroup.steps.map((step, index) => ({
+            index: index + 1,
+            description: step.description!,
+          })),
+        },
+      });
     });
-  }
-
-  selectImage(input: HTMLInputElement): void {
-    const file = input.files?.item(0);
-    input.value = '';
-    if (!file || this.busy()) return;
-    if (
-      file.size === 0 ||
-      file.size > 10 * 1024 * 1024 ||
-      (file.type !== 'image/png' &&
-        !(file.type === '' && file.name.toLowerCase().endsWith('.png')))
-    ) {
-      this.imageError.set('Bitte ein PNG mit höchstens 10 MiB auswählen.');
-      this.invalidImageSelection.set(true);
-      return;
-    }
-    this.previewRequest++;
-    this.releaseLocalPreview();
-    this.localPreviewUrl = URL.createObjectURL(file);
-    this.imagePreview.set(this.localPreviewUrl);
-    this.selectedFile.set(file);
-    this.selectedImageId.set(undefined);
-    this.imageError.set(null);
-    this.invalidImageSelection.set(false);
-    this.imageAccessFailed.set(false);
-    this.loadingImage.set(false);
-  }
-
-  removeImage(): void {
-    if (this.busy()) return;
-    this.previewRequest++;
-    this.releaseLocalPreview();
-    this.selectedFile.set(null);
-    this.selectedImageId.set(null);
-    this.imagePreview.set(null);
-    this.imageError.set(null);
-    this.invalidImageSelection.set(false);
-    this.imageAccessFailed.set(false);
-    this.loadingImage.set(false);
-  }
-
-  discardInvalidSelection(): void {
-    this.invalidImageSelection.set(false);
-    this.imageError.set(null);
-  }
-
-  imageLoadFailed(): void {
-    this.imagePreview.set(null);
-    if (this.localPreviewUrl !== null) {
-      this.imageError.set(
-        'Bildvorschau nicht verfügbar. Beim Speichern wird das PNG geprüft.',
-      );
-    } else {
-      this.imageAccessFailed.set(true);
-    }
-  }
-
-  async loadImagePreview(): Promise<void> {
-    const imageId = this.currentImageId();
-    if (imageId === null || this.selectedFile() !== null) return;
-    const request = ++this.previewRequest;
-    this.loadingImage.set(true);
-    this.imageAccessFailed.set(false);
-    try {
-      const download = await this.recipeImageService.download(imageId);
-      if (!this.destroyRef.destroyed && request === this.previewRequest) {
-        this.imagePreview.set(download.url);
-      }
-    } catch {
-      if (!this.destroyRef.destroyed && request === this.previewRequest) {
-        this.imageAccessFailed.set(true);
-      }
-    } finally {
-      if (!this.destroyRef.destroyed && request === this.previewRequest)
-        this.loadingImage.set(false);
-    }
-  }
-
-  private currentImageId(): string | null {
-    const selected = this.selectedImageId();
-    return selected === undefined
-      ? (this.recipeVersion()?.imageId ?? null)
-      : selected;
-  }
-
-  private releaseLocalPreview(): void {
-    if (this.localPreviewUrl !== null)
-      URL.revokeObjectURL(this.localPreviewUrl);
-    this.localPreviewUrl = null;
   }
 
   errorMessage(): string {
@@ -492,7 +367,6 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
             );
       if (this.destroyRef.destroyed) return;
       this.recipeVersion.set(recipeVersion);
-      void this.loadImagePreview();
       this.state.set({ status: 'ready' });
     } catch (error: unknown) {
       if (this.destroyRef.destroyed) return;

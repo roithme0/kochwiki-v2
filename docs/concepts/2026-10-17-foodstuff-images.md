@@ -12,14 +12,16 @@ Make foodstuffs recognizable through one optional, manually supplied image. Reus
 
 Recipe images use private Garage storage through the same-origin `/storage/` gateway. Upload start issues a five-minute temporary PUT URL. Completion validates static PNG bytes, a maximum of 10 MiB, and dimensions up to 4096 pixels per side, then writes immutable permanent bytes and commits metadata before returning an image ID. Download access returns a five-minute signed URL with a non-cacheable instruction response. Completion is not idempotent and clients do not retry automatically.
 
-The recipe editor previews selections locally and uploads only on Save after form validation. Successful uploads are reused after a failed recipe save. Replacement and removal change the pending reference; cancellation preserves saved data. Closing during upload prevents a subsequent recipe write, while closing during the recipe write is disabled. Saved-image failures offer explicit fresh-URL retry. Scheduled cleanup remains deferred.
+The recipe editor previews selections locally and uploads only on Save after form validation. Successful uploads are reused after a failed recipe save. Replacement and removal change the pending reference; cancellation preserves saved data. Both recipe and foodstuff editors now block dialog dismissal during upload and the domain write. A forced programmatic close or destruction prevents a subsequent domain write. Saved-image failures offer explicit fresh-URL retry. Scheduled cleanup remains deferred.
 
 Shared image metadata and limits now live in `app.images`, and the storage adapter
 requires explicit bucket selection. Both buckets are configured and provisioned
 through the existing initializer. The third slice shares validation and transfers
-behind domain-specific image routes. Frontend image editing and display remain
-recipe-specific. The fourth slice adds catalogue image associations and their
-HTTP/MCP save semantics; foodstuff image editing and display remain pending.
+behind domain-specific image routes. The fourth slice adds catalogue image
+associations and their HTTP/MCP save semantics. The fifth slice adds foodstuff
+form image editing and shared frontend transfers. A follow-up extracts common
+component-scoped image editor state and aligns upload/save dismissal behavior. Catalogue and
+ingredient/picker/basket thumbnails remain pending.
 
 Foodstuffs are mutable catalogue records without version history. Recipe ingredients reference those records and responses embed current foodstuff summaries. Create and edit dialogs share `FoodstuffFormComponent`. The foodstuff catalogue uses a responsive table whose first column is a nutrition chart; there is no dedicated foodstuff detail page. `FoodstuffPresentationComponent` serves nutrition-only AI artifacts.
 
@@ -37,9 +39,9 @@ The agreed image association belongs to the catalogue foodstuff, with no separat
 
 ### Editing
 
-Add a contained preview with selection/replacement and removal controls to the shared foodstuff form. Recommend placing it after name/unit and brand, before nutrition. Use the existing foodstuff question-mark placeholder when no image is selected. Fit images without stretching or cropping and retain transparent backgrounds.
+Follow the supplied form illustration: a `Basisdaten` card contains name and unit on one row, brand below, then a large contained image preview with remove and select/replace icon buttons at the lower right. A separate `Nährwerte` card contains calories followed by the three macros. Place a full-width create/save button below the cards. Preserve the application's existing theme and adapt the field rows to narrow screens. Use the existing foodstuff question-mark placeholder when no image is selected. Fit images without stretching or cropping and retain transparent backgrounds. Icon buttons need accessible labels; hide removal when there is no image to remove.
 
-Carry over the recipe editor's local preview, upload-on-save, validation, failure preservation, successful-upload reuse, and close-during-upload safeguards. File selection alone performs no upload. Cancelling a replacement selection preserves the current preview. Invalid selections block Save until replaced or explicitly discarded. Prevent duplicate submissions while upload or save is pending and release local object URLs when no longer needed.
+Carry over the recipe editor's local preview, upload-on-save, validation, failure preservation, and successful-upload reuse. Both recipe and foodstuff dialogs disable the close button, Escape, and backdrop dismissal throughout upload and the subsequent domain save. Disable duplicate submission and editing during that interval, show the current upload/save status, and restore controls after failure. Browser reload/tab closure is outside dialog dismissal control. File selection alone performs no upload. Cancelling a replacement file chooser preserves the current preview. Invalid selections block Save until replaced or explicitly discarded. Release local object URLs when no longer needed.
 
 Creation from the ingredient picker uses the same form. Return the saved foodstuff including its image reference so its basket preview can display immediately without changing the current search or requiring another catalogue fetch. Cancelling the recipe still leaves independently created foodstuffs in the catalogue, as today.
 
@@ -55,7 +57,7 @@ Compact thumbnails use `question-mark.png` when no image is supplied, while load
 
 Reuse Garage, private storage, gateway signing, immutable object identities, byte validation, and the upload-completion-before-attachment sequence. The agreed foodstuff limits match recipes: static PNG only, at most 10 MiB, and dimensions from 1 to 4096 pixels per side. PNG-only selection restricts direct use of ordinary JPEG/HEIC phone photos; this limitation is accepted. Additional formats or client conversion remain outside this scope.
 
-Use a shared image module for validated metadata, byte validation, upload completion, and download access. Recipe and foodstuff domains retain their own association and save rules. Foodstuffs must not depend directly on recipe-owned image services or duplicate the full validation and failure-handling implementation. Shared frontend preview behavior remains a recommendation; compact foodstuff rendering can differ from recipe rendering. Avoid a general media framework.
+Use a shared image module for validated metadata, byte validation, upload completion, and download access. Recipe and foodstuff domains retain their own association and save rules. Foodstuffs must not depend directly on recipe-owned image services or duplicate the full validation and failure-handling implementation. A shared frontend transfer helper behind separate recipe and foodstuff image services is agreed. A component-scoped `ImageEditorState` service in `core/services` owns common selection validation, preview lifecycle, upload state, errors and completed-upload reuse. Both editors follow the same behavior at this level; domain save payloads and version/catalogue rules remain with their respective editors. Dialogs enforce the same upload/save dismissal policy. Compact foodstuff rendering can differ from recipe rendering. Avoid a general media framework.
 
 Store foodstuff images in a private `foodstuff-images` bucket alongside the existing private `recipe-images` bucket in each environment's Garage instance. Sharing the image module does not merge buckets. Temporary uploads and permanent objects must use the bucket selected for their domain. Backend-controlled upload context and persisted metadata must retain enough storage identity to complete uploads and resolve downloads to the correct bucket; callers do not supply arbitrary bucket names or object keys. Foodstuff associations must accept foodstuff images, and recipe associations must accept recipe images.
 
@@ -69,7 +71,7 @@ Evolve backend schemas, generated frontend contracts, and frontend consumers tog
 
 Review HTTP and MCP create/update/read paths together so omitted image fields preserve existing associations. Existing AI foodstuff/recipe presentation payloads remain unchanged: adding images to ordinary domain summaries must not implicitly add them to artifact contracts or send image bytes/access URLs to the AI Service.
 
-Meaningful later verification includes invalid upload/reference rejection, omitted/null/replacement behavior, failed-save preservation, cancellation during upload, upload reuse, create-from-picker handoff, embedded summary propagation, and thumbnail fallback without selection changes. Also verify correct bucket routing through upload completion and download, rejection of cross-domain image associations, and preservation of existing recipe image IDs and references through the metadata migration. No application code was changed or executed to verify the proposed behavior during concept discovery.
+Meaningful later verification includes invalid upload/reference rejection, omitted/null/replacement behavior, failed-save preservation, blocked recipe and foodstuff dialog dismissal during upload/save, upload reuse, create-from-picker handoff, embedded summary propagation, and thumbnail fallback without selection changes. A forced close must prevent subsequent domain writes in both editors. Also verify correct bucket routing through upload completion and download, rejection of cross-domain image associations, and preservation of existing recipe image IDs and references through the metadata migration. No application code was changed or executed to verify the proposed behavior during concept discovery.
 
 ## Scope Boundaries
 
@@ -200,6 +202,96 @@ Existing Alembic configuration deprecation warnings and jsdom canvas notices
 remain. No migration was applied to the running application database, and no
 deployment or new live Garage/gateway checks ran. Foodstuff image UI and orphan
 cleanup remain pending.
+
+### Fifth Slice: Foodstuff Form Image Editing
+
+Authorized, implemented and reviewed on 2026-10-17 with the supplied form layout,
+blocked foodstuff dialog dismissal throughout upload/save, and a shared frontend
+transfer helper behind domain-specific image services.
+
+Deliver image preview, selection/replacement, removal, and saved-image retry in
+the shared create/edit form, including creation from the ingredient picker.
+Upload only after valid submission, preserve pending values after failure, and
+reuse a completed upload when retrying a failed foodstuff save. Limit recipe
+changes to the shared transfer extraction and practical validation/preview reuse,
+preserving recipe domain save semantics. The shared-state follow-up below aligns
+image editing and dialog dismissal behavior across both domains.
+
+Acceptance covers create/edit success, image removal, failed-save retry without
+another completed upload, blocked close/Escape/backdrop dismissal while busy,
+controls restored after failure, stale-response handling and object-URL release,
+picker creation returning the saved image reference, and recipe regressions.
+Catalogue and ingredient/picker/basket thumbnails, caching, deployment, and
+build/tooling configuration changes remain outside this slice.
+
+`ImageTransferService` lives in frontend `core/services`, following the core
+module's technical folder structure. It shares start/PUT/completion and fresh download instructions
+with domain-specific generated response validators. Common preview and upload
+state now lives in the component-scoped `ImageEditorState` service. Dialogs own
+domain saves and enforce the common closing policy. Existing caller dismissal
+settings are restored after failure. The edit dialog waits for
+the loaded record and shows loading/error feedback rather than an empty form.
+
+Validation: formatting, lint, all 13 tooling tests and all 640 Angular tests pass,
+including parameterized recipe/foodstuff HTTP transfer checks and real-dialog
+tests for blocked close/Escape/backdrop dismissal, upload/save failure recovery,
+completed-upload reuse and cancellation before submission. Form tests cover
+selection validation, removal, preserved references, cancelled replacement
+selection, fresh access retry, stale responses and object-URL release. The exact
+generated-contract check passes.
+
+After the user requested a local backend rebuild for browser review, only the
+local backend service was rebuilt/recreated. Its normal startup applied migrations
+through `20261017_14`; the running foodstuff API now includes `imageId`. Browser
+review verified create/edit rendering and the 390-pixel phone layout without
+writing catalogue records. Automated file selection was blocked by the browser
+extension's file-URL access setting, so no live upload/save was verified. No
+storage provisioning, staging/production deployment, cleanup or configuration
+changes were performed. Existing jsdom canvas and npm configuration notices remain.
+
+### Fifth Slice Follow-up: Shared Image Editor State
+
+Authorized, implemented and reviewed on 2026-10-17. Recipe and foodstuff image
+editing share validation, pending reference state, local previews, object-URL
+cleanup, download access/retry, stale-response protection, upload errors and
+completed-upload reuse in `core/services/image-editor-state.service.ts`.
+Each editor provides its own service instance and connects its domain image
+client, loaded image ID and submission signal through a small typed interface.
+No selection or pending upload state is shared between editor instances.
+
+Behavioral alignment is explicitly agreed. Both domains block close, Escape and
+backdrop dismissal during upload and save, disable editing/repeat submission,
+retain selections and values after failure, restore the caller's prior dismissal
+settings, and allow cancellation before submission. Forced programmatic closing
+or destruction suppresses subsequent domain writes. Recipe uploads therefore no
+longer allow ordinary dialog cancellation while in flight. Layout and domain
+association/version rules remain separate.
+
+Validation passed formatting, lint, all 13 tooling tests and all 652 Angular tests.
+The existing real-dialog tests moved from the foodstuff domain into a shared test
+suite and now cover recipe and foodstuff create/edit flows with the same blocked
+dismissal, retry, invalid-selection save blocking and cancellation assertions. Existing component regressions are
+retained. New service tests verify isolation between simultaneous editors and
+source-image removal invalidating a pending download. No backend, deployment or
+build/tooling configuration changes were needed for this follow-up. Browser file
+selection remains unverified under the extension limitation recorded above.
+
+### Development Storage Routing Follow-up
+
+Approved on 2026-10-17. Both domain clients use the shared transfer service to
+convert signed storage URLs to same-origin `/storage/...` paths without changing
+the encoded path or signature query. Angular proxies storage requests to the
+local gateway, replacing Host with the gateway target used by the signer. This
+keeps upload PUTs and image downloads on the browser's app origin and avoids the
+rejected cross-origin upload preflight. Backend signing and storage configuration
+remain unchanged. The development proxy target must match `STORAGE_PUBLIC_ORIGIN`;
+proxy configuration changes require restarting the development server.
+
+Verified through a temporary Angular server on port 4203: both buckets accepted
+signed PNG uploads and completion, returned identical bytes through signed
+same-origin downloads, and rejected unsigned downloads. Existing domain records
+were unchanged. Formatting, lint, 13 tooling tests and 660 Angular tests passed.
+The running server on 4202 needs a restart to load the new proxy configuration.
 
 ## Remaining Technical Choices
 

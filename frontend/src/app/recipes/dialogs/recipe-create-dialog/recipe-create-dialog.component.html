@@ -1,11 +1,13 @@
 <app-dialog-header
   title="Rezept erstellen"
-  [showCloseButon]="!isSubmitting()"
+  [showCloseButon]="true"
+  [closeDisabled]="busy()"
 />
 
 <mat-dialog-content class="mat-dialog-content">
   <app-recipe-editor
     [submitting]="isSubmitting()"
+    (uploadingChanged)="onUploadingChange($event)"
     (submitted)="onSubmit($event)"
   />
 </mat-dialog-content>

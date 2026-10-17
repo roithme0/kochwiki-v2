@@ -28,39 +28,44 @@
           <mat-card>
             <mat-card-header>
               <mat-card-title
-                ><h2 id="basics-heading">Basis</h2></mat-card-title
+                ><h2 id="basics-heading">Basisdaten</h2></mat-card-title
               >
             </mat-card-header>
             <mat-card-content>
               <app-recipe-meta-form
                 [recipeVersion]="recipeVersion() ?? undefined"
               />
-              <div class="image-preview" [attr.aria-busy]="loadingImage()">
+              <div
+                class="image-preview"
+                [attr.aria-busy]="image.loadingImage()"
+              >
                 <img
                   [src]="
-                    imagePreview() ??
+                    image.imagePreview() ??
                     'assets/images/recipe-image-placeholder.png'
                   "
                   [alt]="
-                    imagePreview() ? 'Rezeptbild' : 'Kein Rezeptbild vorhanden'
+                    image.imagePreview()
+                      ? 'Rezeptbild'
+                      : 'Kein Rezeptbild vorhanden'
                   "
-                  (error)="imageLoadFailed()"
+                  (error)="image.imageLoadFailed()"
                 />
                 <input
                   #imageInput
                   hidden
                   type="file"
                   accept="image/png,.png"
-                  (change)="selectImage(imageInput)"
+                  (change)="image.selectImage(imageInput)"
                 />
                 <div class="image-actions">
-                  @if (hasImage()) {
+                  @if (image.hasImage()) {
                     <button
                       mat-mini-fab
                       type="button"
                       aria-label="Rezeptbild entfernen"
                       [disabled]="busy()"
-                      (click)="removeImage()"
+                      (click)="image.removeImage()"
                     >
                       <mat-icon aria-hidden="true">delete</mat-icon>
                     </button>
@@ -76,28 +81,28 @@
                   </button>
                 </div>
               </div>
-              @if (loadingImage()) {
+              @if (image.loadingImage()) {
                 <p role="status">Bild wird geladen …</p>
               }
-              @if (imageAccessFailed()) {
+              @if (image.imageAccessFailed()) {
                 <p role="status">Rezeptbild konnte nicht geladen werden.</p>
                 <button
                   mat-button
                   type="button"
                   [disabled]="busy()"
-                  (click)="loadImagePreview()"
+                  (click)="image.loadImagePreview()"
                 >
                   Bild erneut laden
                 </button>
               }
-              @if (imageError()) {
-                <p role="alert">{{ imageError() }}</p>
+              @if (image.imageError()) {
+                <p role="alert">{{ image.imageError() }}</p>
               }
-              @if (invalidImageSelection()) {
+              @if (image.invalidImageSelection()) {
                 <button
                   mat-button
                   type="button"
-                  (click)="discardInvalidSelection()"
+                  (click)="image.discardInvalidSelection()"
                 >
                   Ungültige Auswahl verwerfen
                 </button>
@@ -144,7 +149,7 @@
           </mat-card>
         </section>
       </div>
-      @if (uploadingImage()) {
+      @if (image.uploadingImage()) {
         <p class="upload-status" role="status">
           Bild wird hochgeladen und geprüft …
         </p>
@@ -154,7 +159,7 @@
           mat-flat-button
           type="button"
           color="primary"
-          [disabled]="busy()"
+          [disabled]="busy() || image.invalidImageSelection()"
           (click)="onSubmit('publish')"
         >
           <mat-icon aria-hidden="true" fontIcon="save" />
@@ -164,7 +169,7 @@
           <button
             mat-button
             type="button"
-            [disabled]="busy()"
+            [disabled]="busy() || image.invalidImageSelection()"
             (click)="onSubmit('draft')"
           >
             Als Entwurf speichern

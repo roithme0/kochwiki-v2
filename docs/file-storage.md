@@ -11,7 +11,8 @@ short-lived access URLs. Basis image editing, detail-page display and grid image
 
 Foodstuff upload-start, completion, and download endpoints use the shared image
 transfer implementation and their own bucket. Foodstuff record associations and
-frontend image editing/display remain pending.
+shared create/edit form image editing are available. Catalogue and
+ingredient/picker/basket thumbnails remain pending.
 
 ## Configuration and startup
 
@@ -168,6 +169,29 @@ with exactly the same signature query. **Do not sign an endpoint containing
 `/storage`, or sign with the internal `file-storage:3900` hostname and then replace it.**
 Both fail verification. Prefix insertion is a routing step, not a new signature.
 
+### Angular development proxy
+
+The shared frontend image transfer service converts signed upload and download
+URLs to same-origin `/storage/...` paths, preserving the encoded path and query.
+The Angular development proxy forwards this route unchanged to
+`http://localhost:8002`, with `changeOrigin: true` so Garage receives the gateway
+Host and port used by the signer. `STORAGE_PUBLIC_ORIGIN` must match that proxy
+target during development. In deployed environments the browser and gateway use
+the configured public origin directly. Neither flow needs browser CORS access.
+
+Restart `ng serve` after changing `proxy.conf.cjs`; rebuilding the backend is not
+required. Proxying `/api/**` alone does not proxy an absolute storage URL returned
+in an API response. Sending that URL directly from port 4202 bypasses Angular and
+causes a cross-origin PUT preflight, which private storage rejects.
+
+Verified on 2026-10-17 through a temporary Angular development server on port
+4203: signed PNG PUT, completion, signed GET with identical bytes, and denied
+unsigned GET passed for both recipe and foodstuff buckets. The server on port
+4202 still requires a restart to load the new proxy route. Verification created
+two unattached 2-by-2 PNG assets without changing existing domain records. Frontend
+formatting, lint, 13 tooling tests and all 660 Angular tests passed; transfer tests
+cover same-origin upload/download routing and preservation of encoded signatures.
+
 User-level authorization remains outside this slice. Private buckets and signed
 URLs do not implement recipe ownership or permissions.
 
@@ -242,7 +266,7 @@ Foodstuff routes expose the same flow and response fields through
 bucket and persist kind `foodstuff`; recipe completion persists kind `recipe`.
 Completing an upload through the other domain returns 404 for the absent upload
 in that domain, without consuming the original. Generated frontend contracts
-include these routes; a foodstuff frontend upload service and editor are pending.
+include these routes, and the foodstuff create/edit form uses them on Save.
 
 Missing temporary objects return 404, rejected images return 400 with a validation
 message, and storage/persistence failures return 503 with a sanitized message.
@@ -251,9 +275,10 @@ storage configuration returns 503 without disabling unrelated application APIs.
 These routes follow the existing domain API authentication baseline; this slice
 adds no session enforcement or authorization policy.
 
-Angular's `RecipeImageService.upload(file)` coordinates start, raw-byte PUT
-and completion, validates API responses against the generated contract and returns
-the persisted metadata. It propagates failures and performs no automatic retry.
+Angular's `RecipeImageService` and `FoodstuffImageService` use a shared
+`ImageTransferService` for start, raw-byte PUT, completion and download access,
+with each domain's routes and generated response validators. Upload returns
+persisted metadata, propagates failures and performs no automatic retry.
 Completion is not idempotent: an ambiguous failure must not trigger an automatic
 repeat. The Basis editor uses this service when saving a selected PNG.
 
@@ -300,12 +325,62 @@ before submitting the recipe with its image ID. Controls are unavailable during
 upload/save. Upload failure leaves entered data and the pending image in place for
 explicit retry. A successful upload is reused if recipe saving subsequently fails.
 
-Cancelling file selection keeps the preview. Closing the dialog before the recipe
-write leaves the saved recipe unchanged; an upload already in flight may finish but cannot trigger a
-recipe save after closing begins. Such unattached uploads, and images abandoned
-after a failed recipe save, remain for the deferred cleanup slice. No automatic
-upload or recipe-write retries are introduced. While the recipe write itself is
-pending, closing is unavailable; a failed save restores the close action.
+Cancelling file selection keeps the preview. Both recipe and foodstuff dialogs
+block close, Escape and backdrop dismissal during upload and the domain write.
+A forced programmatic close or destruction prevents a subsequent domain save.
+Unattached uploads and images abandoned after a failed save remain for the
+explicitly deferred cleanup slice. No automatic upload or domain-write retries
+are introduced. A failed upload/save restores the caller's prior dismissal policy
+and the editor controls.
+
+## Foodstuff image editing
+
+The shared create/edit form has a `Basisdaten` card with name/unit, brand and a
+contained image preview with remove/select/replace controls, followed by a
+`Nährwerte` card and a full-width submit button. Narrow screens stack fields.
+Absent or unavailable previews use the existing question-mark image. Saved-image
+access failures offer explicit fresh-URL retry. PNG filename/MIME and size checks
+run on selection; decoding, dimensions and static-PNG validation remain enforced
+by the backend on upload completion.
+
+Selection previews locally and uploads only after valid submission. Ordinary
+edits omit `imageId`, removal sends null, and a completed replacement sends its ID.
+Failed upload/save retains form values and the selection. A completed upload is
+reused after a failed foodstuff save. Invalid selections block Save until replaced
+or explicitly discarded. Local object URLs are released on replacement, removal
+and destruction; late download/upload results cannot update a destroyed form or
+cause a subsequent foodstuff write.
+
+Both dialogs disable close, Escape and backdrop dismissal throughout upload/save,
+disable editing and duplicate submission, and show the current operation. Failure
+restores controls and the caller's original dismissal policy. Editing waits for
+the catalogue record to load rather than exposing an empty form during loading
+or after failure. Creation from the picker returns the saved record including its
+image ID through the existing handoff; thumbnail rendering is a later slice.
+Recipe and foodstuff editors share `ImageEditorState` from `core/services`,
+provided separately by each component. It owns validation, pending image references,
+local previews, cleanup, fresh access retry, stale-response protection and upload
+reuse, using a typed domain client and the source/submission signals. Dialogs keep
+domain writes and enforce the same upload/save dismissal policy. The recipe editor
+now blocks ordinary cancellation during upload as the foodstuff editor does.
+
+Validation on 2026-10-17 passed formatting, lint, all 13 tooling tests, all 640
+Angular tests and the exact generated-contract check. Controlled tests cover both
+domain transfer routes, blocked dialog dismissal, failed-save upload reuse,
+failure recovery, cancellation before submission and preview lifecycle. Browser
+review verified create/edit forms and a 390-pixel phone viewport after rebuilding
+only the local backend and confirming migration `20261017_14`. File selection
+automation was blocked by the extension's file-URL access setting; no live
+upload/save or new Garage/gateway verification ran. No catalogue records were
+written during review, and staging/production were not changed.
+
+The shared-state follow-up passed formatting, lint, all 13 tooling tests and all
+652 Angular tests. The former foodstuff dialog suite now lives in core and covers
+both domains' create/edit flows, including upload/save dismissal, invalid-selection
+save blocking and retry parity.
+Existing component tests remain, with new service regressions for simultaneous
+editor isolation and source-image changes during a pending download. No backend
+or deployment changes were needed for this follow-up.
 
 ## Recipe image associations
 
@@ -349,8 +424,9 @@ The storage adapter requires an explicit backend-selected bucket:
 recipe bucket implicitly. `app.images.storage.image_bucket(config, kind)` maps
 each image kind to its configured bucket. Both domains' image API dependencies use
 this mapping. The shared metadata migration is verified against
-dedicated test PostgreSQL; it has not been applied to the running application
-database as part of this slice.
+dedicated test PostgreSQL. A user-requested local backend rebuild during foodstuff
+form review on 2026-10-17 applied startup migrations through `20261017_14` to the
+local application database. Staging/production rollout remains unverified.
 
 Two-bucket provisioning and configuration were verified on 2026-10-17 using
 isolated Garage/gateway fixtures with synthetic credentials. Both buckets accept
@@ -395,8 +471,10 @@ Removing/replacing an association or deleting a foodstuff retains metadata and
 stored bytes for deferred cleanup. Association writes require no object-storage
 request; completed metadata is the validation boundary.
 
-Foodstuff image editing and display remain subsequent slices. This migration is
-verified only against dedicated test PostgreSQL; application rollout is pending.
+Foodstuff form image editing is available; catalogue and ingredient/picker/basket
+thumbnails remain pending. This migration is verified against dedicated test
+PostgreSQL and was applied to the local application database during the
+user-requested backend rebuild on 2026-10-17. Staging/production rollout is pending.
 
 Association verification passed on 2026-10-17: 399 backend tests and 218 subtests,
 including migration preservation, foreign-key protection, HTTP/MCP association

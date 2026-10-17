@@ -1,4 +1,14 @@
-import { Component, effect, inject, input, output } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ImageEditorState } from '../../../core/services/image-editor-state.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,9 +24,12 @@ import {
   foodstuffUnitChoices,
 } from '../../models/foodstuff-labels';
 import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 
 @Component({
   selector: 'app-foodstuff-form',
+  providers: [ImageEditorState],
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
@@ -24,16 +37,24 @@ import { MatIconModule } from '@angular/material/icon';
     MatInputModule,
     MatSelectModule,
     MatIconModule,
+    MatCardModule,
   ],
   templateUrl: './foodstuff-form.component.html',
   styleUrl: './foodstuff-form.component.scss',
 })
 export class FoodstuffFormComponent {
   private readonly fb = inject(FormBuilder);
+  readonly image = inject(ImageEditorState);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly foodstuff = input<Partial<FoodstuffOut> | null>(null);
   readonly submitLabel = input.required<string>();
   readonly submitted = output<FoodstuffCreate>();
+  readonly submitting = input(false);
+
+  readonly uploadingChanged = output<boolean>();
+
+  readonly busy = this.image.busy;
 
   readonly unitChoices = foodstuffUnitChoices;
   readonly fieldLabels = foodstuffFieldLabels;
@@ -56,12 +77,40 @@ export class FoodstuffFormComponent {
       const foodstuff = this.foodstuff();
       if (foodstuff) this.form.patchValue(foodstuff);
     });
+    effect(() => {
+      if (this.busy()) this.form.disable({ emitEvent: false });
+      else this.form.enable({ emitEvent: false });
+    });
+    this.image.connect(
+      inject(FoodstuffImageService),
+      computed(() => this.foodstuff()?.imageId ?? null),
+      this.submitting,
+    );
+    this.image.preparingChanged
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((busy) => this.uploadingChanged.emit(busy));
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
+    if (this.busy() || this.image.invalidImageSelection()) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     const { name, brand, unit, kcal, carbs, protein, fat } =
       this.form.getRawValue();
     if (unit === null) return;
-    this.submitted.emit({ name, brand, unit, kcal, carbs, protein, fat });
+    await this.image.submit((imageIdChange) => {
+      this.submitted.emit({
+        name,
+        brand,
+        unit,
+        kcal,
+        carbs,
+        protein,
+        fat,
+        ...(imageIdChange === undefined ? {} : { imageId: imageIdChange }),
+      });
+    });
   }
 }
