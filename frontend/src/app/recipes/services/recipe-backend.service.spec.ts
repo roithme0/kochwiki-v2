@@ -40,6 +40,7 @@ const recipe: RecipeVersionOut = {
         name: 'Oats',
         brand: null,
         unit: 'G',
+        imageId: null,
         unitVerbose: 'g',
         kcal: 370,
         carbs: 60,

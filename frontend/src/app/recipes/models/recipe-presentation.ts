@@ -3,7 +3,7 @@ import type { FoodstuffSummaryOut } from '../../core/api/generated';
 
 export type RecipePresentationFoodstuff = Pick<
   FoodstuffSummaryOut,
-  'name' | 'unitVerbose' | 'kcal' | 'carbs' | 'protein' | 'fat'
+  'name' | 'unitVerbose' | 'kcal' | 'carbs' | 'protein' | 'fat' | 'imageId'
 >;
 
 export interface RecipePresentationIngredient {

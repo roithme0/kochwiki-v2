@@ -7,19 +7,20 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.image import RecipeImage
-from app.recipes.services.image_uploads import RecipeImageUploads
-from tests.recipes.test_recipe_image_uploads import png
+from app.images.models import ImageAsset, ImageKind
+from app.images.transfers import ImageTransfers
+from tests.images.test_image_transfers import png
 
 
 def test_completion_commits_metadata_visible_to_another_session() -> None:
     storage = Mock()
     data = png()
     storage.read.return_value = data
-    result = RecipeImageUploads(storage, SessionLocal).complete(uuid4())
+    result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(uuid4())
     with SessionLocal() as session:
-        saved = session.get(RecipeImage, result.id)
+        saved = session.get(ImageAsset, result.id)
         assert saved is not None
+        assert saved.kind == ImageKind.RECIPE
         assert saved.object_key == result.object_key
         assert (saved.size, saved.width, saved.height) == (len(data), 2, 3)
         assert saved.sha256 == result.sha256
@@ -30,9 +31,11 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
 @pytest.mark.parametrize("field,value", [
     ("size", 0), ("size", 10485761), ("width", 0), ("width", 4097),
     ("height", 0), ("height", 4097), ("content_type", "image/jpeg"), ("sha256", "short"),
+    ("kind", "invalid"),
 ])
 def test_database_rejects_invalid_image_metadata(field: str, value: int | str) -> None:
-    record = RecipeImage(
+    record = ImageAsset(
+        kind=ImageKind.RECIPE,
         id=uuid4(), object_key=f"recipe-images/{uuid4()}.png", content_type="image/png",
         size=100, width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
     )
@@ -41,13 +44,14 @@ def test_database_rejects_invalid_image_metadata(field: str, value: int | str) -
         with SessionLocal.begin() as session:
             session.add(record)
     with SessionLocal() as session:
-        assert session.get(RecipeImage, record.id) is None
+        assert session.get(ImageAsset, record.id) is None
 
 
 def test_database_rejects_duplicate_object_keys() -> None:
     key = f"recipe-images/{uuid4()}.png"
     for attempt in range(2):
-        record = RecipeImage(
+        record = ImageAsset(
+            kind=ImageKind.RECIPE,
             id=uuid4(), object_key=key, content_type="image/png", size=100,
             width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
         )
@@ -59,4 +63,16 @@ def test_database_rejects_duplicate_object_keys() -> None:
                 with SessionLocal.begin() as session:
                     session.add(record)
     with SessionLocal() as session:
-        assert len(list(session.scalars(select(RecipeImage)))) == 1
+        assert len(list(session.scalars(select(ImageAsset)))) == 1
+
+
+def test_separate_kinds_can_use_the_same_object_key() -> None:
+    key = f"shared/{uuid4()}.png"
+    with SessionLocal.begin() as session:
+        for kind in ImageKind:
+            session.add(ImageAsset(
+                id=uuid4(), kind=kind, object_key=key, content_type="image/png", size=100,
+                width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
+            ))
+    with SessionLocal() as session:
+        assert set(session.scalars(select(ImageAsset.kind))) == set(ImageKind)

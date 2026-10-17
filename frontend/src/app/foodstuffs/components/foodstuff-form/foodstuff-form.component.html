@@ -1,61 +1,104 @@
-<form [formGroup]="form" (ngSubmit)="onSubmit()">
-  <div class="fields">
-    <div class="required-fields">
-      <mat-form-field
-        appearance="outline"
-        floatLabel="always"
-        class="name-field"
-      >
-        <mat-label>{{ fieldLabels.name }}</mat-label>
-        <input matInput formControlName="name" />
-      </mat-form-field>
-      <mat-form-field
-        appearance="outline"
-        floatLabel="always"
-        class="unit-select"
-      >
-        <mat-label>{{ fieldLabels.unit }}</mat-label>
-        <mat-select formControlName="unit">
-          @for (choice of unitChoices; track choice.value) {
-            <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-    </div>
-    <mat-form-field appearance="outline" floatLabel="always">
-      <mat-label>{{ fieldLabels.brand }}</mat-label>
-      <input matInput formControlName="brand" />
-    </mat-form-field>
-    <div class="nutrition-wrapper">
+<form [formGroup]="form" (ngSubmit)="onSubmit()" [attr.aria-busy]="busy()">
+  <mat-card>
+    <mat-card-header
+      ><mat-card-title><h3>Basisdaten</h3></mat-card-title></mat-card-header
+    >
+    <mat-card-content class="fields">
+      <div class="required-fields">
+        <mat-form-field
+          appearance="outline"
+          floatLabel="always"
+          class="name-field"
+        >
+          <mat-label>{{ fieldLabels.name }}</mat-label>
+          <input matInput formControlName="name" />
+        </mat-form-field>
+        <mat-form-field
+          appearance="outline"
+          floatLabel="always"
+          class="unit-select"
+        >
+          <mat-label>{{ fieldLabels.unit }}</mat-label>
+          <mat-select formControlName="unit">
+            @for (choice of unitChoices; track choice.value) {
+              <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
       <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>{{ fieldLabels.brand }}</mat-label>
+        <input matInput formControlName="brand" />
+      </mat-form-field>
+      <app-image-editor
+        [state]="image"
+        [square]="true"
+        placeholder="assets/images/question-mark.png"
+      />
+    </mat-card-content>
+  </mat-card>
+  <mat-card>
+    <mat-card-header
+      ><mat-card-title><h3>Nährwerte</h3></mat-card-title></mat-card-header
+    >
+    <mat-card-content class="nutrition-wrapper">
+      <mat-form-field
+        appearance="outline"
+        floatLabel="always"
+        class="calories-field"
+      >
         <mat-label>{{ fieldLabels.kcal }}</mat-label>
         <input matInput type="number" formControlName="kcal" />
         <span matTextSuffix>kcal</span>
       </mat-form-field>
-      <div class="macros-wrapper">
-        <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ fieldLabels.carbs }}</mat-label>
-          <input matInput type="number" formControlName="carbs" />
-          <span matTextSuffix>g</span>
-        </mat-form-field>
-        <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ fieldLabels.protein }}</mat-label>
-          <input matInput type="number" formControlName="protein" />
-          <span matTextSuffix>g</span>
-        </mat-form-field>
-        <mat-form-field appearance="outline" floatLabel="always">
-          <mat-label>{{ fieldLabels.fat }}</mat-label>
-          <input matInput type="number" formControlName="fat" />
-          <span matTextSuffix>g</span>
-        </mat-form-field>
+      <div class="macro-editor">
+        <app-macro-chart
+          class="macro-chart"
+          [nutrition]="nutrition()"
+          [showKcal]="false"
+          role="img"
+          aria-label="Makronährstoffverteilung"
+        />
+        <div class="macros-wrapper">
+          <mat-form-field
+            appearance="outline"
+            floatLabel="always"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>{{ fieldLabels.carbs }}</mat-label>
+            <input matInput type="number" formControlName="carbs" />
+            <span matTextSuffix>g</span>
+          </mat-form-field>
+          <mat-form-field
+            appearance="outline"
+            floatLabel="always"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>{{ fieldLabels.protein }}</mat-label>
+            <input matInput type="number" formControlName="protein" />
+            <span matTextSuffix>g</span>
+          </mat-form-field>
+          <mat-form-field
+            appearance="outline"
+            floatLabel="always"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>{{ fieldLabels.fat }}</mat-label>
+            <input matInput type="number" formControlName="fat" />
+            <span matTextSuffix>g</span>
+          </mat-form-field>
+        </div>
       </div>
-    </div>
-  </div>
+    </mat-card-content>
+  </mat-card>
+  @if (busy() && !image.uploadingImage()) {
+    <p role="status">Lebensmittel wird gespeichert …</p>
+  }
   <button
     mat-flat-button
     type="submit"
     color="primary"
-    [disabled]="form.invalid"
+    [disabled]="form.invalid || busy() || image.invalidImageSelection()"
   >
     <mat-icon aria-hidden="true" fontIcon="save" />
     {{ submitLabel() }}

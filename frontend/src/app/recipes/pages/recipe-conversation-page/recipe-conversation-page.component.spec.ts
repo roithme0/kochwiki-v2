@@ -508,6 +508,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
           amount: 100,
           foodstuff: {
             name: 'Neue Zutat',
+            imageId: null,
             unitVerbose: 'g',
             kcal: null,
             carbs: null,

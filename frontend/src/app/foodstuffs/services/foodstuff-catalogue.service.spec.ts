@@ -10,6 +10,7 @@ const foodstuff: FoodstuffOut = {
   name: 'Pasta',
   brand: null,
   unit: 'G',
+  imageId: null,
   unitVerbose: 'g',
   kcal: null,
   carbs: null,

@@ -33,7 +33,7 @@ def migrate_database() -> None:
 def clear_database() -> None:
     with engine.begin() as connection:
         connection.execute(
-            text('TRUNCATE TABLE recipe_image, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
+            text('TRUNCATE TABLE image_asset, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
         )
 
 

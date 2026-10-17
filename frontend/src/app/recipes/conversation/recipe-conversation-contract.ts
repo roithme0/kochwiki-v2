@@ -60,6 +60,7 @@ export function recipeArtifact(
       index,
       amount,
       foodstuff: {
+        imageId: foodstuff.imageId,
         name: foodstuff.name,
         unitVerbose: foodstuff.unitVerbose,
         kcal: foodstuff.kcal,

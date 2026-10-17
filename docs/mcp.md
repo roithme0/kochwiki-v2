@@ -56,6 +56,13 @@ or metadata definitions. Tool and capability descriptions may state their own
 consequences, such as read-only retrieval, values not being converted by a display,
 or metadata enabling a save button. These are contract facts, not workflow policy.
 
+Recipe presentation ingredient foodstuffs carry a required nullable `imageId`.
+Relay supplied image UUIDs unchanged and use null when unavailable; never invent
+image references or substitute signed URLs. This supported reference is an
+exception to hiding internal IDs in display payloads. Resolved proposals retain
+catalogue ingredient images and return null for temporary ingredients. The same
+frontend schema validates local Original cards and agent recipe artifacts.
+
 For example, "Display calories and macronutrients with the supplied basis"
 belongs in the nutrition capability. "Use the nutrition artifact for nutrition
 questions" and comparisons with full item displays belong in MCP instructions.
@@ -84,7 +91,9 @@ database and cloud calls off the application's event loop.
 
 `create_foodstuff` accepts a `foodstuff` object using the existing REST
 `FoodstuffCreate` schema. Name and unit (`G`, `ML`, `PIECE`) are mandatory;
-brand, kcal, carbs, protein and fat are optional. Nutrition values are per
+brand, kcal, carbs, protein, fat and `imageId` are optional. Omitted or null
+`imageId` creates an entry without an image; a UUID must identify a validated
+foodstuff-kind image. Nutrition values are per
 100 g/ml or per piece. The result is a complete `FoodstuffOut` object directly
 in structured content, including the assigned ID and empty `recipeVersionIds`.
 
@@ -106,13 +115,15 @@ It does not create recipe proposals, temporary ingredients or recipe drafts.
 
 `update_foodstuff` accepts `foodstuff_id` (a positive integer) and `changes`
 using the REST `FoodstuffUpdate` schema. Omitted fields remain unchanged;
-explicit `null` clears brand or nutrition. Name and unit cannot be cleared.
+explicit `null` clears brand, nutrition or the image reference. An `imageId` UUID
+replaces the image and must identify a validated foodstuff-kind image; unknown
+and recipe-kind references reject the whole write. Name and unit cannot be cleared.
 The shared update service runs in a transaction and returns complete
 `FoodstuffOut` structured content after commit, including recipe version IDs.
 Missing targets, name/brand conflicts and invalid inputs produce tool errors.
 Database failures roll back and return a generic error. The tool is marked as a
 potentially destructive, idempotent write. Name/brand changes schedule embedding
-refresh after commit; nutrition and unit changes alone do not.
+refresh after commit; nutrition, unit and image changes alone do not.
 
 Updates affect all recipes using the shared entry. Changing the unit while
 retaining nutrition values changes their basis without converting those values;

@@ -1,5 +1,5 @@
 import type { RecipeVersionOut } from '../../../core/api/generated';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialogModule,
@@ -32,6 +32,14 @@ export class RecipePatchDialogComponent {
   private readonly router = inject(Router);
   readonly data = inject<RecipePatchDialogData>(MAT_DIALOG_DATA);
   readonly isSubmitting = signal(false);
+  private readonly uploading = signal(false);
+  private readonly initialDisableClose = this.dialogRef.disableClose;
+  readonly busy = computed(() => this.isSubmitting() || this.uploading());
+
+  onUploadingChange(uploading: boolean): void {
+    this.uploading.set(uploading);
+    this.dialogRef.disableClose = this.busy() || this.initialDisableClose;
+  }
 
   async onSubmit(submission: RecipeEditorSubmission): Promise<void> {
     if (this.isSubmitting()) return;
@@ -65,7 +73,8 @@ export class RecipePatchDialogComponent {
             : 'Rezept konnte nicht aktualisiert werden',
       );
       this.isSubmitting.set(false);
-      this.dialogRef.disableClose = false;
+      this.dialogRef.disableClose =
+        this.uploading() || this.initialDisableClose;
       return;
     }
 

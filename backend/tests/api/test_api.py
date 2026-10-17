@@ -117,6 +117,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert set(presentation["ingredients"][0]) == {"index", "amount", "foodstuff"}
     assert presentation["ingredients"][1]["foodstuff"] == {
         "id": egg["id"],
+        "imageId": None,
         "name": "Egg",
         "brand": "Farm",
         "unit": "PIECE",

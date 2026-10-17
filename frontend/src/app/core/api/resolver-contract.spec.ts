@@ -18,6 +18,7 @@ const presentation: RecipePresentationOut = {
         name: 'Oats',
         brand: null,
         unit: 'G',
+        imageId: null,
         unitVerbose: 'g',
         kcal: 100,
         carbs: 0,

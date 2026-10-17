@@ -5,12 +5,18 @@ import { NutritionCardComponent } from '../../../core/components/nutrition-card/
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
 import { RecipePresentationComponent } from './recipe-presentation.component';
+import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
 
 describe('RecipePresentationComponent', () => {
   let fixture: ComponentFixture<RecipePresentationComponent>;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ imports: [RecipePresentationComponent] });
+    TestBed.configureTestingModule({
+      imports: [RecipePresentationComponent],
+      providers: [
+        { provide: FoodstuffImageService, useValue: { download: vi.fn() } },
+      ],
+    });
     fixture = TestBed.createComponent(RecipePresentationComponent);
   });
 
@@ -28,6 +34,7 @@ describe('RecipePresentationComponent', () => {
           amount: 200,
           foodstuff: {
             name: 'Tomaten',
+            imageId: null,
             unitVerbose: 'g',
             kcal: 18,
             carbs: 3.9,

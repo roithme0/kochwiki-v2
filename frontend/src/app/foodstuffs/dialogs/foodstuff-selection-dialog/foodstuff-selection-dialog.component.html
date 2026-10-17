@@ -25,12 +25,9 @@
           [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
           (click)="toggleFoodstuff(foodstuff.id)"
         >
-          <img
+          <app-foodstuff-image
             matListItemAvatar
-            src="assets/images/question-mark.png"
-            alt=""
-            width="40"
-            height="40"
+            [imageId]="foodstuff.imageId"
           />
           <span matListItemTitle class="foodstuff-name">{{
             foodstuff.name
@@ -74,14 +71,12 @@
         <ul class="basket-preview" aria-label="Lebensmittel im Korb">
           @for (foodstuff of selectedFoodstuffs(); track foodstuff.id) {
             <li>
-              <img
-                src="assets/images/question-mark.png"
+              <app-foodstuff-image
+                [imageId]="foodstuff.imageId"
                 [alt]="
                   foodstuff.name +
                   (foodstuff.brand ? ' · ' + foodstuff.brand : '')
                 "
-                width="40"
-                height="40"
               />
             </li>
           }

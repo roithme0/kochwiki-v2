@@ -115,7 +115,7 @@ describe('RecipeEditorComponent', () => {
   function selectFile(file: File | null): void {
     const input = document.createElement('input');
     Object.defineProperty(input, 'files', { value: { item: () => file } });
-    component.selectImage(input);
+    component.image.selectImage(input);
   }
 
   it('opens a new recipe without loading the foodstuff catalogue', async () => {
@@ -137,9 +137,9 @@ describe('RecipeEditorComponent', () => {
 
   it('previews locally without uploading, preserves selection on picker cancel and releases it on dialog cancel', () => {
     selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
-    expect(component.imagePreview()).toBe('blob:preview');
+    expect(component.image.imagePreview()).toBe('blob:preview');
     selectFile(null);
-    expect(component.imagePreview()).toBe('blob:preview');
+    expect(component.image.imagePreview()).toBe('blob:preview');
     expect(imageService.upload).not.toHaveBeenCalled();
     fixture.destroy();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
@@ -190,8 +190,8 @@ describe('RecipeEditorComponent', () => {
     component.submitted.subscribe(emitted);
     await component.onSubmit('publish');
     expect(emitted).not.toHaveBeenCalled();
-    expect(component.imageError()).toContain('erneut speichern');
-    expect(component.imagePreview()).toBe('blob:preview');
+    expect(component.image.imageError()).toContain('erneut speichern');
+    expect(component.image.imagePreview()).toBe('blob:preview');
     expect(component.recipeVersion()?.imageId).toBe('previous-image');
     expect(
       component.recipeForm.controls.metaFormGroup.controls.name.value,
@@ -221,8 +221,8 @@ describe('RecipeEditorComponent', () => {
     const save = component.onSubmit('publish');
     expect(component.busy()).toBe(true);
     await component.onSubmit('draft');
-    component.removeImage();
-    expect(component.hasImage()).toBe(true);
+    component.image.removeImage();
+    expect(component.image.hasImage()).toBe(true);
     expect(imageService.upload).toHaveBeenCalledTimes(1);
     closing.next();
     complete({ id: imageId });
@@ -249,14 +249,14 @@ describe('RecipeEditorComponent', () => {
       component.submitted.subscribe(emitted);
       selectFile(new File(['png'], 'valid.png', { type: 'image/png' }));
       selectFile(file);
-      expect(component.imageError()).toContain('höchstens 10 MiB');
-      expect(component.imagePreview()).toBe('blob:preview');
+      expect(component.image.imageError()).toContain('höchstens 10 MiB');
+      expect(component.image.imagePreview()).toBe('blob:preview');
       expect(revokeObjectURL).not.toHaveBeenCalled();
       await component.onSubmit('publish');
       expect(navigate).toHaveBeenCalledWith('basics');
       expect(imageService.upload).not.toHaveBeenCalled();
       expect(emitted).not.toHaveBeenCalled();
-      component.discardInvalidSelection();
+      component.image.discardInvalidSelection();
       await component.onSubmit('publish');
       expect(imageService.upload).toHaveBeenCalledTimes(1);
     },
@@ -270,9 +270,9 @@ describe('RecipeEditorComponent', () => {
     const emitted = vi.fn();
     component.submitted.subscribe(emitted);
     selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
-    component.removeImage();
-    expect(component.hasImage()).toBe(false);
-    expect(component.imagePreview()).toBeNull();
+    component.image.removeImage();
+    expect(component.image.hasImage()).toBe(false);
+    expect(component.image.imagePreview()).toBeNull();
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
     await component.onSubmit('publish');
     expect(emitted).toHaveBeenCalledWith(
@@ -297,15 +297,19 @@ describe('RecipeEditorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(imageService.download).toHaveBeenCalledWith(imageId);
+    await fixture.whenStable();
+    fixture.detectChanges();
     const image = (fixture.nativeElement as HTMLElement).querySelector(
       '.image-preview img',
     ) as HTMLImageElement;
     expect(image.getAttribute('src')).toContain('/storage/saved.png');
     image.dispatchEvent(new Event('error'));
     fixture.detectChanges();
-    expect(image.getAttribute('src')).toBe(
-      'assets/images/recipe-image-placeholder.png',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.image-preview img')
+        ?.getAttribute('src'),
+    ).toBe('assets/images/recipe-image-placeholder.png');
     expect(imageService.download).toHaveBeenCalledTimes(1);
     const retry = Array.from(
       (
@@ -315,7 +319,7 @@ describe('RecipeEditorComponent', () => {
     retry.click();
     await fixture.whenStable();
     expect(imageService.download).toHaveBeenCalledTimes(2);
-    expect(component.imageAccessFailed()).toBe(false);
+    expect(component.image.imageAccessFailed()).toBe(false);
   });
 
   it('does not let a late saved-image request overwrite a selected replacement or removal', async () => {
@@ -326,13 +330,13 @@ describe('RecipeEditorComponent', () => {
       }),
     );
     component.recipeVersion.set({ ...recipeVersion, imageId });
-    const load = component.loadImagePreview();
+    const load = component.image.loadImagePreview();
     selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
     finish({ url: '/storage/old.png', expiresIn: 300 });
     await load;
-    expect(component.imagePreview()).toBe('blob:preview');
-    component.removeImage();
-    expect(component.imagePreview()).toBeNull();
+    expect(component.image.imagePreview()).toBe('blob:preview');
+    component.image.removeImage();
+    expect(component.image.imagePreview()).toBeNull();
   });
 
   it('preserves an existing image reference when preview access fails', async () => {
@@ -341,8 +345,8 @@ describe('RecipeEditorComponent', () => {
       'Recipe',
     );
     imageService.download.mockRejectedValue(new Error('Unavailable'));
-    await component.loadImagePreview();
-    expect(component.imageAccessFailed()).toBe(true);
+    await component.image.loadImagePreview();
+    expect(component.image.imageAccessFailed()).toBe(true);
     const emitted = vi.fn();
     component.submitted.subscribe(emitted);
     await component.onSubmit('draft');
@@ -404,7 +408,7 @@ describe('RecipeEditorComponent', () => {
       sections.map((section) =>
         section.querySelector('h2')?.textContent?.trim(),
       ),
-    ).toEqual(['Basis', 'Zutaten', 'Zubereitung']);
+    ).toEqual(['Basisdaten', 'Zutaten', 'Zubereitung']);
     expect(
       sections.every((section) =>
         section.querySelector(
@@ -520,6 +524,7 @@ describe('RecipeEditorComponent', () => {
         name: 'Pasta',
         brand: 'Barilla',
         unit: 'G' as const,
+        imageId: null,
         unitVerbose: 'g',
         kcal: null,
         carbs: null,
@@ -796,6 +801,7 @@ describe('RecipeEditorComponent', () => {
       name: 'Pasta',
       brand: null,
       unit: 'G',
+      imageId: null,
       unitVerbose: 'g',
       kcal: null,
       carbs: null,

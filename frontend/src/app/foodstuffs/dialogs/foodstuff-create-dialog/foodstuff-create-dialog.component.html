@@ -1,5 +1,14 @@
-<app-dialog-header title="Lebensmittel erstellen" [showCloseButon]="true" />
+<app-dialog-header
+  title="Lebensmittel erstellen"
+  [showCloseButon]="true"
+  [closeDisabled]="busy()"
+/>
 
 <mat-dialog-content>
-  <app-foodstuff-form submitLabel="Erstellen" (submitted)="onSubmit($event)" />
+  <app-foodstuff-form
+    submitLabel="Erstellen"
+    [submitting]="submitting()"
+    (uploadingChanged)="onUploadingChange($event)"
+    (submitted)="onSubmit($event)"
+  />
 </mat-dialog-content>

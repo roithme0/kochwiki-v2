@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.recipes.models.version_state import RecipeVersionState
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset, ImageKind
 from app.recipes.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
@@ -326,8 +326,10 @@ def _resolve_image_id(
 ) -> UUID | None:
     if "imageId" not in payload.model_fields_set:
         return source_image_id
-    if payload.imageId is not None and session.get(RecipeImage, payload.imageId) is None:
-        raise NotFoundError(f"Recipe image with id {payload.imageId} not found")
+    if payload.imageId is not None:
+        image = session.get(ImageAsset, payload.imageId)
+        if image is None or image.kind != ImageKind.RECIPE:
+            raise NotFoundError(f"Recipe image with id {payload.imageId} not found")
     return payload.imageId
 
 

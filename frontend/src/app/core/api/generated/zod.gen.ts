@@ -18,6 +18,37 @@ export const zExactNutrition = z.strictObject({
 });
 
 /**
+ * FoodstuffImageDownloadOut
+ */
+export const zFoodstuffImageDownloadOut = z.strictObject({
+    expiresIn: z.int().check(z.gt(0)),
+    url: z.string()
+});
+
+/**
+ * FoodstuffImageOut
+ */
+export const zFoodstuffImageOut = z.strictObject({
+    contentType: z.literal('image/png'),
+    createdAt: z.iso.datetime(),
+    height: z.int(),
+    id: z.uuid(),
+    size: z.int(),
+    width: z.int()
+});
+
+/**
+ * FoodstuffImageUploadOut
+ */
+export const zFoodstuffImageUploadOut = z.strictObject({
+    expiresIn: z.int(),
+    headers: z.record(z.string(), z.string()),
+    method: z.literal('PUT'),
+    uploadId: z.uuid(),
+    url: z.string()
+});
+
+/**
  * IngredientWrite
  */
 export const zIngredientWrite = z.strictObject({
@@ -169,6 +200,7 @@ export const zFoodstuffCreate = z.strictObject({
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
+    imageId: z.nullish(z.uuid()),
     kcal: z.nullish(z.union([
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
@@ -189,6 +221,7 @@ export const zFoodstuffOut = z.strictObject({
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
+    imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
     protein: z.nullable(z.number().check(z.gte(0))),
@@ -205,6 +238,7 @@ export const zFoodstuffSummaryOut = z.strictObject({
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
+    imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
     protein: z.nullable(z.number().check(z.gte(0))),
@@ -225,6 +259,7 @@ export const zFoodstuffUpdate = z.strictObject({
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
+    imageId: z.nullish(z.uuid()),
     kcal: z.nullish(z.union([
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))

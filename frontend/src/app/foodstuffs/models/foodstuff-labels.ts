@@ -1,6 +1,6 @@
 import type { FoodstuffCreate, Unit } from '../../core/api/generated';
 
-export type FoodstuffField = keyof FoodstuffCreate;
+export type FoodstuffField = Exclude<keyof FoodstuffCreate, 'imageId'>;
 export const foodstuffFieldLabels = {
   name: 'Name',
   brand: 'Marke',

@@ -36,12 +36,9 @@ describe('RecipeCreateDialogComponent', () => {
   >;
 
   beforeEach(() => {
-    createRecipe = vi
-      .fn()
-      .mockName('createRecipe')
-      .mockResolvedValue({
-        recipeLineageId: '00000000-0000-4000-8000-000000000007',
-      });
+    createRecipe = vi.fn().mockName('createRecipe').mockResolvedValue({
+      recipeLineageId: '00000000-0000-4000-8000-000000000007',
+    });
     notifyRecipesChanged = vi.fn().mockName('notifyRecipesChanged');
     navigate = vi.fn().mockName('navigate').mockResolvedValue(true);
     close = vi.fn().mockName('close');
@@ -59,6 +56,8 @@ describe('RecipeCreateDialogComponent', () => {
       dialogRef,
       snackBarService: { open: openSnackBar } as unknown as SnackBarService,
       isSubmitting: signal(false),
+      uploading: signal(false),
+      initialDisableClose: false,
     });
   });
 

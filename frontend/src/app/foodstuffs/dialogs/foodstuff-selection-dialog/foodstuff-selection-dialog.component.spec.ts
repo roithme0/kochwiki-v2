@@ -11,6 +11,8 @@ import {
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
+import { FoodstuffImageService } from '../../services/foodstuff-image.service';
+import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
 
 const foodstuffs: FoodstuffOut[] = [
   {
@@ -18,6 +20,7 @@ const foodstuffs: FoodstuffOut[] = [
     name: 'Pasta',
     brand: 'Barilla',
     unit: 'G',
+    imageId: null,
     unitVerbose: 'Gramm',
     kcal: null,
     carbs: null,
@@ -30,6 +33,7 @@ const foodstuffs: FoodstuffOut[] = [
     name: 'Olivenöl',
     brand: null,
     unit: 'ML',
+    imageId: null,
     unitVerbose: 'Milliliter',
     kcal: null,
     carbs: null,
@@ -44,9 +48,17 @@ describe('FoodstuffSelectionDialogComponent', () => {
   let creationResult: Subject<FoodstuffOut | undefined>;
   const open = vi.fn();
   const getAllFoodstuffs = vi.fn();
+  const download =
+    vi.fn<(id: string) => Promise<{ url: string; expiresIn: number }>>();
   let foodstuffsChanged: Subject<void>;
   beforeEach(() => {
     close.mockReset();
+    download.mockReset().mockImplementation((id) =>
+      Promise.resolve({
+        url: '/storage/' + id,
+        expiresIn: 300,
+      }),
+    );
     foodstuffsChanged = new Subject<void>();
     getAllFoodstuffs.mockReset().mockResolvedValue([...foodstuffs].reverse());
     creationResult = new Subject<FoodstuffOut | undefined>();
@@ -55,6 +67,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
       .mockReturnValue({ afterClosed: () => creationResult.asObservable() });
     TestBed.configureTestingModule({
       providers: [
+        { provide: FoodstuffImageService, useValue: { download } },
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: FoodstuffBackendService,
@@ -65,6 +78,56 @@ describe('FoodstuffSelectionDialogComponent', () => {
     TestBed.overrideComponent(FoodstuffSelectionDialogComponent, {
       add: { providers: [{ provide: MatDialog, useValue: { open } }] },
     });
+  });
+  it('renders catalogue images in results and the basket, including newly created foodstuffs', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
+    });
+    getAllFoodstuffs.mockResolvedValueOnce([
+      { ...foodstuffs[0], imageId: 'pasta-image' },
+      foodstuffs[1],
+    ]);
+    const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const resultImages = fixture.debugElement.queryAll(
+      By.css('button[mat-list-item] app-foodstuff-image'),
+    );
+    expect(
+      resultImages.map((item) =>
+        (item.componentInstance as FoodstuffImageComponent).imageId(),
+      ),
+    ).toEqual([null, 'pasta-image']);
+    fixture.componentInstance.toggleFoodstuff(1);
+    fixture.componentInstance.openCreateFoodstuffDialog();
+    const created = {
+      ...foodstuffs[0],
+      id: 3,
+      name: 'Reis',
+      imageId: 'rice-image',
+    };
+    creationResult.next(created);
+    creationResult.complete();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const basketImages = fixture.debugElement.queryAll(
+      By.css('.basket-preview app-foodstuff-image'),
+    );
+    expect(
+      basketImages.map((item) =>
+        (item.componentInstance as FoodstuffImageComponent).imageId(),
+      ),
+    ).toEqual(['pasta-image', 'rice-image']);
+    expect(download).toHaveBeenCalledWith('rice-image');
+    fixture.componentInstance.confirmSelection();
+    expect(close).toHaveBeenCalledWith([
+      { ...foodstuffs[0], imageId: 'pasta-image' },
+      created,
+    ]);
   });
   it('shows loading and retries a failed catalogue request without showing a false empty result', async () => {
     TestBed.configureTestingModule({

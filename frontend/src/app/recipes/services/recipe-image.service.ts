@@ -1,6 +1,4 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
 import type {
   RecipeImageDownloadOut,
   RecipeImageOut,
@@ -10,40 +8,25 @@ import {
   zRecipeImageDownloadOut,
   zRecipeImageUploadOut,
 } from '../../core/api/generated/zod.gen';
-import { requestApiResponse } from '../../core/api/request-api-response';
+import { ImageTransferService } from '../../core/services/image-transfer.service';
 import { backendUrl } from '../../core/constants/api';
 
 @Injectable({ providedIn: 'root' })
 export class RecipeImageService {
-  private readonly http = inject(HttpClient);
+  private readonly transfers = inject(ImageTransferService);
 
   download(imageId: string): Promise<RecipeImageDownloadOut> {
-    return requestApiResponse(
-      this.http,
-      'GET',
+    return this.transfers.download(
       `${backendUrl}/recipe-images/${encodeURIComponent(imageId)}/download`,
       zRecipeImageDownloadOut,
     );
   }
 
-  async upload(file: File): Promise<RecipeImageOut> {
-    const upload = await requestApiResponse(
-      this.http,
-      'POST',
+  upload(file: File): Promise<RecipeImageOut> {
+    return this.transfers.upload(
+      file,
       backendUrl + '/recipe-image-uploads',
       zRecipeImageUploadOut,
-    );
-    await firstValueFrom(
-      this.http.request(upload.method, upload.url, {
-        body: file,
-        headers: upload.headers,
-        responseType: 'text',
-      }),
-    );
-    return requestApiResponse(
-      this.http,
-      'POST',
-      `${backendUrl}/recipe-image-uploads/${upload.uploadId}/complete`,
       zRecipeImageOut,
     );
   }

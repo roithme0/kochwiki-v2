@@ -1,9 +1,21 @@
-<app-dialog-header title="Lebensmittel bearbeiten" [showCloseButon]="true" />
+<app-dialog-header
+  title="Lebensmittel bearbeiten"
+  [showCloseButon]="true"
+  [closeDisabled]="busy()"
+/>
 
 <mat-dialog-content>
-  <app-foodstuff-form
-    [foodstuff]="foodstuff()"
-    submitLabel="Speichern"
-    (submitted)="onSubmit($event)"
-  />
+  @if (foodstuff(); as loaded) {
+    <app-foodstuff-form
+      [foodstuff]="loaded"
+      [submitting]="submitting()"
+      (uploadingChanged)="onUploadingChange($event)"
+      submitLabel="Speichern"
+      (submitted)="onSubmit($event)"
+    />
+  } @else if (loadFailed()) {
+    <p role="alert">Lebensmittel konnte nicht geladen werden.</p>
+  } @else {
+    <p role="status">Lebensmittel wird geladen …</p>
+  }
 </mat-dialog-content>
