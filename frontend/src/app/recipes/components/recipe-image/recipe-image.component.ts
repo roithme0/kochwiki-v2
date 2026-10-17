@@ -8,13 +8,14 @@ import {
   signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import type { RecipeImageDimensionsOut } from '../../../core/api/generated';
 
 @Component({
   selector: 'app-recipe-image',
-  imports: [MatButtonModule, MatProgressSpinner],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule],
   templateUrl: './recipe-image.component.html',
   styleUrl: './recipe-image.component.scss',
 })

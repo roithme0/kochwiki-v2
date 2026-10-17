@@ -534,14 +534,18 @@ place. Images fit a stable area without stretching or cropping; missing images
 use `frontend/src/assets/images/recipe-image-placeholder.png`.
 
 The image component requests fresh download instructions when its image ID changes
-or the user explicitly retries after an access or image-loading failure. Loading shows a centered Material spinner. Failures
-show centered text above a retry button, separated by a 0.5rem gap. Stale responses and responses after view
+or the user explicitly retries after an access or image-loading failure. The empty
+plate placeholder remains visible while download instructions or image bytes load,
+and after either fails. Failures offer a labelled refresh icon button in the lower
+right corner, with a tooltip; the failure message remains available to screenreaders.
+Retry clicks do not navigate a surrounding recipe link. Stale responses and responses after view
 destruction are ignored. There is no automatic retry or expiry timer: URL expiry
 does not remove an already displayed image.
 
 Grid cards reuse this image component in natural-height mode: images and the
 placeholder fill the existing content width and retain their aspect ratio without
-cropping. Loading and failure states reserve 12rem of height. The existing grid
+cropping. Loading, failure and retry retain the area reserved by the image dimensions,
+with a square fallback when dimensions are unavailable. The existing grid
 resize observer handles image-driven card height changes. Names, preparation
 time, badges and links retain their existing layout. Retry clicks prevent link
 navigation. Authorization changes remain deferred.

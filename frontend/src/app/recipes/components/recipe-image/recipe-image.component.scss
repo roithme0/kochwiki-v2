@@ -10,33 +10,21 @@
 }
 
 img {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.image-status {
+.reload-button {
   position: absolute;
-  inset: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-  text-align: center;
-}
-
-.image-status p {
-  margin: 0;
+  inset-block-end: 0.5rem;
+  inset-inline-end: 0.5rem;
+  background: var(--mat-sys-surface-container);
 }
 
 .natural-height {
   height: auto;
-
-  img {
-    position: absolute;
-    inset: 0;
-  }
 }
