@@ -1,3 +1,4 @@
+import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import {
   Component,
   DestroyRef,
@@ -33,6 +34,7 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
 @Component({
   selector: 'app-foodstuffs-table',
   imports: [
+    NutritionSummaryPipe,
     MatTableModule,
     MatSortModule,
     MatButtonModule,
@@ -106,10 +108,10 @@ export class FoodstuffsTableComponent implements OnDestroy {
   openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
     this.dialog.open(FoodstuffPatchDialogComponent, {
       data: { id: foodstuff.id },
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      maxHeight: 'calc(100vh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });
@@ -125,8 +127,8 @@ export class FoodstuffsTableComponent implements OnDestroy {
 
     this.dialog.open(ConfirmationDialogComponent, {
       data,
-      maxWidth: '95vw',
-      maxHeight: '95vh',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
       autoFocus: false,
     });
   }

@@ -2,6 +2,8 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+from app.recipes.schemas.nutrition import NutrientResult
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.foodstuffs.models.unit import Unit
@@ -123,10 +125,10 @@ class ProposalPresentationIngredientOut(BaseModel):
 
 
 class RecipeProposalPresentationOut(RecipeVersionFields):
-    kcal: NonnegativeJsonDecimal | None
-    carbs: NonnegativeJsonDecimal | None
-    protein: NonnegativeJsonDecimal | None
-    fat: NonnegativeJsonDecimal | None
+    kcal: NutrientResult
+    carbs: NutrientResult
+    protein: NutrientResult
+    fat: NutrientResult
     ingredients: list[ProposalPresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
 

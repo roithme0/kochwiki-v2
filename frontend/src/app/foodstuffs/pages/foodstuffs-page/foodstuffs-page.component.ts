@@ -55,10 +55,10 @@ export class FoodstuffsPageComponent {
 
   openCreateFoodstuffDialog(): void {
     this.dialog.open(FoodstuffCreateDialogComponent, {
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      maxHeight: 'calc(100vh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });

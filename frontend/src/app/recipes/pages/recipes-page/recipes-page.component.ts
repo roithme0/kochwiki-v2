@@ -57,11 +57,11 @@ export class RecipesPageComponent {
 
   openCreateRecipeDialog(): void {
     this.dialog.open(RecipeCreateDialogComponent, {
-      minWidth: 'calc(100vw - 1rem)',
-      maxWidth: 'calc(100vw - 1rem)',
-      height: 'calc(100dvh - 1rem)',
-      maxHeight: 'calc(100dvh - 1rem)',
-      position: { top: '0.5rem', left: '0.5rem' },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
       autoFocus: false,
       disableClose: true,
     });

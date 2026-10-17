@@ -104,10 +104,14 @@ perform no enrichment fetches. This integration requires a chat UI package with
 the capability contract, header guidance, subtitles, and explicit JSON renderer.
 
 The `kochwiki-nutrition` artifact can display nutrition for either a foodstuff or
-recipe. It contains `kcal`, `carbs`, `protein`, and `fat` (with explicit
-`null` for unknown values), plus a required `basis`: `per-100-g`, `per-100-ml`,
+recipe. It contains `kcal`, `carbs`, `protein`, and `fat` as `{ value, status }`
+results: `exact` or `minimum` with a nonnegative number, or `unknown` with a null
+value, plus a required `basis`: `per-100-g`, `per-100-ml`,
 `per-piece`, `per-serving`, or `whole-recipe`. The shared nutrition card displays
-that basis without converting values. Nutrition artifacts have no save actions.
+that basis without converting values. Recipe lower bounds retain their minimum
+status; known foodstuff values (including zero) become exact and missing values
+become unknown. Basis conversions must preserve each nutrient's status. Nutrition
+artifacts have no save actions. Legacy numeric/null nutrition artifacts are rejected.
 The current full foodstuff display uses
 the same nutrition card and can be expanded independently.
 
@@ -115,6 +119,17 @@ Recipe artifacts use the recipe name as their title and render complete data
 through the shared recipe presentation component: servings, preparation time,
 ingredients, steps, and per-serving nutrition. Ingredient foodstuffs contain only
 name, unit label, and nutrition; catalogue IDs and proposal identity are excluded.
+Recipe aggregate nutrient fields use `{ value, status }` results: `exact`,
+`minimum` (the sum of known contributions), or `unknown` with a null value.
+Saved recipes and recipe presentations show minimum values with `≥` and unknown
+values with `—`. Incomplete macros use a gray ring without percentages; calories
+have their own completeness status. Ingredient foodstuff fields remain numeric
+or null. The editor's live preview uses the same per-nutrient statuses and updates
+immediately. Invalid amounts on selected ingredients count as unknown contributions;
+unselected rows are ignored. With valid portions, an empty selection shows unknown
+nutrition. Invalid portions show a hint instead of per-serving results. Form and
+save validation remain unchanged.
+
 Both existing recipes and resolved proposals can be presented. Presentation
 alone does not create or save a proposal or draft. The optional
 artifact metadata field `proposalId` identifies the stored proposal represented

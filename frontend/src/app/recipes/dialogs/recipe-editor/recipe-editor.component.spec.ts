@@ -10,6 +10,7 @@ import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeEditorComponent } from './recipe-editor.component';
+import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 
 describe('RecipeEditorComponent', () => {
     let fixture: ComponentFixture<RecipeEditorComponent>;
@@ -36,10 +37,10 @@ describe('RecipeEditorComponent', () => {
         name: 'Linsensuppe',
         servings: 2,
         preptime: 20,
-        kcal: null,
-        carbs: null,
-        protein: null,
-        fat: null,
+        kcal: { status: 'unknown' as const, value: null },
+        carbs: { status: 'unknown' as const, value: null },
+        protein: { status: 'unknown' as const, value: null },
+        fat: { status: 'unknown' as const, value: null },
         ingredients: [],
         steps: [],
     };
@@ -73,7 +74,7 @@ describe('RecipeEditorComponent', () => {
                 { provide: MatDialog, useValue: {} },
                 { provide: MatDialogRef, useValue: { beforeClosed: () => closing } },
             ],
-        }).compileComponents();
+        }).overrideComponent(MacroChartComponent, { set: { template: '' } }).compileComponents();
 
         fixture = TestBed.createComponent(RecipeEditorComponent);
         component = fixture.componentInstance;

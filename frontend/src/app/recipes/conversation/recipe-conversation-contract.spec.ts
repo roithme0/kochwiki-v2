@@ -30,12 +30,14 @@ describe('Recipe conversation contract', () => {
 
   it('uses enriched nutrition unchanged and creates detached read-only artifact data', () => {
     const source = conversationRecipe();
-    source.kcal = 987;
+    source.kcal = { status: 'exact' as const, value: 987 };
     const artifact = recipeArtifact('original', 'Original', source);
     source.ingredients[0].foodstuff.name = 'Changed';
     expect(isRecipePresentation(artifact.payload)).toBe(true);
     if (!isRecipePresentation(artifact.payload)) throw new Error('Invalid fixture');
-    expect(artifact.payload.kcal).toBe(987);
+    expect(artifact.payload.kcal).toEqual({ status: 'exact', value: 987 });
+    source.kcal.value = 1;
+    expect(artifact.payload.kcal).toEqual({ status: 'exact', value: 987 });
     expect(artifact.payload.ingredients[0].foodstuff.name).toBe('Linsen');
     const proposal = mapConversationArtifact(conversationProposal());
     expect(proposal.type).toBe('kochwiki-recipe');

@@ -3,7 +3,7 @@ import { conversationProposal, proposalId } from '../conversation/recipe-convers
 import { RECIPE_ARTIFACT_CAPABILITY, isRecipePresentation } from './recipe-artifact';
 
 const foodstuff = { name: 'Tomaten', unitVerbose: 'g', kcal: 18, carbs: 3.9, protein: null, fat: 0 };
-const payload = { servings: 2, preptime: 25, kcal: 18, carbs: 3.9, protein: null, fat: 0,
+const payload = { servings: 2, preptime: 25, kcal: { status: 'exact', value: 18 }, carbs: { status: 'exact', value: 3.9 }, protein: { status: 'unknown', value: null }, fat: { status: 'exact', value: 0 },
   ingredients: [{ index: 1, amount: 100, foodstuff }],
   steps: [{ index: 1, description: 'Tomaten schneiden.' }] };
 
@@ -31,7 +31,17 @@ describe('Recipe artifact contract', () => {
   });
 
   it('accepts unknown preparation time and nutrition without inventing values', () => {
-    expect(isRecipePresentation({ ...payload, preptime: null, kcal: null })).toBe(true);
+    expect(isRecipePresentation({ ...payload, preptime: null, kcal: { status: 'unknown', value: null } })).toBe(true);
+  });
+
+  it('preserves lower bounds in recipe artifacts', () => {
+    const partial = { ...payload, kcal: { status: 'minimum', value: 18 },
+      carbs: { status: 'exact', value: 3.9 }, protein: { status: 'minimum', value: 0 } };
+    expect(isRecipePresentation(partial)).toBe(true);
+    const artifact = mapConversationArtifact({ ...conversationProposal(),
+      payload: { title: 'Partial recipe', payload: partial } });
+    expect(artifact.type).toBe('kochwiki-recipe');
+    expect(artifact.payload).toEqual(partial);
   });
 
   it.each([null, {}, { ...payload, preptime: undefined }, { ...payload, preptime: 0 },

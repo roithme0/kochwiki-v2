@@ -10,12 +10,28 @@ export const zErrorResponse = z.strictObject({
 });
 
 /**
+ * ExactNutrition
+ */
+export const zExactNutrition = z.strictObject({
+    status: z.literal('exact'),
+    value: z.number().check(z.gte(0))
+});
+
+/**
  * IngredientWrite
  */
 export const zIngredientWrite = z.strictObject({
     amount: z.number().check(z.gt(0), z.lte(9999)),
     foodstuffId: z.int().check(z.gt(0)),
     index: z.int().check(z.gte(1), z.lte(99))
+});
+
+/**
+ * MinimumNutrition
+ */
+export const zMinimumNutrition = z.strictObject({
+    status: z.literal('minimum'),
+    value: z.number().check(z.gte(0))
 });
 
 /**
@@ -242,15 +258,39 @@ export const zRecipePresentationIngredientOut = z.strictObject({
 });
 
 /**
+ * UnknownNutrition
+ */
+export const zUnknownNutrition = z.strictObject({
+    status: z.literal('unknown'),
+    value: z.null()
+});
+
+/**
  * RecipePresentationOut
  */
 export const zRecipePresentationOut = z.strictObject({
-    carbs: z.nullable(z.number().check(z.gte(0))),
-    fat: z.nullable(z.number().check(z.gte(0))),
+    carbs: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
+    fat: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     ingredients: z.array(zRecipePresentationIngredientOut),
-    kcal: z.nullable(z.number().check(z.gte(0))),
+    kcal: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     preptime: z.nullable(z.int().check(z.gte(1))),
-    protein: z.nullable(z.number().check(z.gte(0))),
+    protein: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     servings: z.int().check(z.gte(1)),
     steps: z.array(zRecipePresentationStepOut)
 });
@@ -259,17 +299,33 @@ export const zRecipePresentationOut = z.strictObject({
  * RecipeVersionOut
  */
 export const zRecipeVersionOut = z.strictObject({
-    carbs: z.nullable(z.number()),
+    carbs: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     createdAt: z.iso.datetime(),
-    fat: z.nullable(z.number()),
+    fat: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     imageDimensions: z.nullable(zRecipeImageDimensionsOut),
     imageId: z.nullable(z.uuid()),
     ingredients: z.array(zIngredientOut),
-    kcal: z.nullable(z.number()),
+    kcal: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     lastModified: z.iso.datetime(),
     name: z.string(),
     preptime: z.nullable(z.int()),
-    protein: z.nullable(z.number()),
+    protein: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     recipeLineageId: z.uuid(),
     recipeVersionId: z.uuid(),
     servings: z.int(),

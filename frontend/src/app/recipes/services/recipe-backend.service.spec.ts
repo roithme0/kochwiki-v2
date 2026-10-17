@@ -14,7 +14,7 @@ const recipe: RecipeVersionOut = {
   recipeLineageId: lineageId, recipeVersionId: versionId, state: 'active',
   createdAt: '2026-09-30T10:00:00Z', lastModified: '2026-09-30T10:00:00Z',
   name: 'Oats', servings: 2, preptime: null,
-  kcal: 46.25, carbs: 7.5, protein: null, fat: null,
+  kcal: { status: 'exact' as const, value: 46.25 }, carbs: { status: 'exact' as const, value: 7.5 }, protein: { status: 'unknown' as const, value: null }, fat: { status: 'unknown' as const, value: null },
   ingredients: [{ id: 1, index: 1, amount: 12.5, recipeVersionId: versionId,
     foodstuff: { id: 1, name: 'Oats', brand: null, unit: 'G', unitVerbose: 'g',
       kcal: 370, carbs: 60, protein: null, fat: null } }],
@@ -128,8 +128,9 @@ describe('RecipeBackendService JSON responses', () => {
     http.expectOne(backendUrl + '/recipes').flush(recipe);
     await rejection;
   });
-  it('accepts an empty recipe with independently nullable nutrients', async () => {
-    const body = { ...recipe, ingredients: [], steps: [], kcal: null, protein: 2.75 };
+  it('accepts independent nutrient result states', async () => {
+    const body = { ...recipe, ingredients: [], steps: [],
+      kcal: { status: 'unknown', value: null }, protein: { status: 'minimum', value: 2.75 } };
     const response = service.getActiveRecipeVersion(lineageId);
     http.expectOne(`${backendUrl}/recipes/${lineageId}`).flush(body);
     await expect(response).resolves.toEqual(body);

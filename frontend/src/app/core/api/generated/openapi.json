@@ -15,6 +15,27 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "ExactNutrition": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "exact",
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "minimum": 0.0,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "value"
+        ],
+        "title": "ExactNutrition",
+        "type": "object"
+      },
       "FoodstuffCreate": {
         "additionalProperties": false,
         "properties": {
@@ -488,6 +509,27 @@
         "title": "IngredientWrite",
         "type": "object"
       },
+      "MinimumNutrition": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "minimum",
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "minimum": 0.0,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "value"
+        ],
+        "title": "MinimumNutrition",
+        "type": "object"
+      },
       "RecipeImageDimensionsOut": {
         "additionalProperties": false,
         "properties": {
@@ -668,25 +710,45 @@
         "additionalProperties": false,
         "properties": {
           "carbs": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "minimum": 0.0,
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Carbs"
           },
           "fat": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "minimum": 0.0,
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Fat"
@@ -699,13 +761,23 @@
             "type": "array"
           },
           "kcal": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "minimum": 0.0,
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Kcal"
@@ -723,13 +795,23 @@
             "title": "Preptime"
           },
           "protein": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "minimum": 0.0,
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Protein"
@@ -855,12 +937,23 @@
         "additionalProperties": false,
         "properties": {
           "carbs": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Carbs"
@@ -871,12 +964,23 @@
             "type": "string"
           },
           "fat": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Fat"
@@ -911,12 +1015,23 @@
             "type": "array"
           },
           "kcal": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Kcal"
@@ -942,12 +1057,23 @@
             "title": "Preptime"
           },
           "protein": {
-            "anyOf": [
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
               {
-                "type": "number"
+                "$ref": "#/components/schemas/ExactNutrition"
               },
               {
-                "type": "null"
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
               }
             ],
             "title": "Protein"
@@ -1131,6 +1257,26 @@
         ],
         "title": "Unit",
         "type": "string"
+      },
+      "UnknownNutrition": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "const": "unknown",
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "null"
+          }
+        },
+        "required": [
+          "status",
+          "value"
+        ],
+        "title": "UnknownNutrition",
+        "type": "object"
       },
       "UserOut": {
         "additionalProperties": false,

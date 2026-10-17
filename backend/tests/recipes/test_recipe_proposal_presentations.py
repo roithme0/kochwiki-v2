@@ -63,8 +63,8 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
         session.expunge(pending)
         assert [session.scalar(select(func.count()).select_from(model)) for model in models] == before
     assert presentation.name == "Proposal" and presentation.servings == 2 and presentation.preptime == 10
-    assert presentation.kcal == expected and presentation.carbs == 25
-    assert presentation.protein == 0 and presentation.fat == 10
+    assert presentation.kcal.value == expected and presentation.carbs.value == 25
+    assert presentation.protein.value == 0 and presentation.fat.value == 10
     assert [ingredient.index for ingredient in presentation.ingredients] == [1, 2]
     assert [step.description for step in presentation.steps] == ["Mix", "Serve"]
     persisted = presentation.ingredients[0].foodstuff
@@ -98,8 +98,8 @@ def test_empty_and_partial_nutrition(ingredients: list[dict[str, object]]) -> No
             "recipe": {"name": "Proposal", "servings": 1, "ingredients": ingredients, "steps": []},
         }))
         result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
-    assert result.kcal == (Decimal(0) if ingredients else None)
-    assert result.carbs is None and result.protein is None and result.fat is None
+    assert result.kcal.value == (Decimal(0) if ingredients else None)
+    assert all(value.status == "unknown" and value.value is None for value in (result.carbs, result.protein, result.fat))
     assert result.steps == []
 
 
@@ -120,7 +120,7 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
         delete_recipe_lineage(session, lineage_id)
     with SessionLocal() as session:
         result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
-    assert result.kcal == 250
+    assert result.kcal.value == 250
     resolved = result.ingredients[0].foodstuff
     assert isinstance(resolved, ResolvedExistingProposalFoodstuff) and resolved.name == "Renamed"
     with SessionLocal.begin() as session:

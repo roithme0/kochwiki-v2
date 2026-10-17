@@ -1,10 +1,12 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormArray, FormControl, FormGroup, FormGroupDirective, } from '@angular/forms';
+import { FormArray, FormControl, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { ChartLegendElementComponent } from '../../../../core/components/chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../../../../core/components/macro-chart/macro-chart.component';
 import { ChartLegendElement } from '../../../../core/models/chart-legend-element';
+import type { NutritionSummary } from '../../../../core/models/nutrition-result';
+import { By } from '@angular/platform-browser';
 import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffUnit } from '../../../../foodstuffs/models/foodstuff-unit';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
@@ -12,8 +14,7 @@ import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.compon
 
 @Component({ selector: 'app-macro-chart', template: '' })
 class MacroChartStubComponent {
-    readonly nutrition = input.required<unknown>();
-    readonly legendUpdated = output<Record<string, ChartLegendElement>>();
+    readonly nutrition = input.required<NutritionSummary>();
 }
 
 @Component({ selector: 'app-chart-legend-element', template: '' })
@@ -77,27 +78,20 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('shows the complete legend beside the chart without a disclosure', () => {
-        fixture.componentInstance.legend.set({
-            carbs: legendElement('Kohlenhydrate'),
-            protein: legendElement('Eiweiß'),
-            fat: legendElement('Fett'),
-        });
-        fixture.detectChanges();
-
         expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
         expect(getChartArea().querySelector('app-macro-chart')).not.toBeNull();
         expect(getChartArea().querySelector('.legend')).not.toBeNull();
         expect(fixture.nativeElement.querySelector('.details-button')).toBeNull();
     });
 
-    it('does not offer a legend when every macro is zero', () => {
+    it('shows exact zero values in the legend when every macro is zero', () => {
         fixture.componentRef.setInput('foodstuffs', [
             { ...foodstuff, carbs: 0, protein: 0, fat: 0 },
         ]);
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('app-macro-chart')).not.toBeNull();
-        expect(getLegend()).toBeNull();
+        expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
     });
 
     it('keeps nutrition visible when a new ingredient has no foodstuff yet', () => {
@@ -126,54 +120,65 @@ describe('RecipeIngredientsFormComponent', () => {
         expect(ingredientIndexes()).toEqual([1, 2, 3]);
     });
 
-    it('keeps the last valid chart while a focused numeric field is invalid', () => {
+    it('replaces nutrition with the hint immediately while servings are invalid', () => {
         const servingsInput = fixture.nativeElement.querySelector('input[formControlName="servings"]') as HTMLInputElement;
         servingsInput.focus();
-        fixture.componentInstance.ingredientsFormGroup
-            .get('servings')
-            ?.setValue(null);
+        fixture.componentInstance.ingredientsFormGroup.get('servings')?.setValue(null);
         fixture.detectChanges();
 
-        expect(fixture.nativeElement.querySelector('app-macro-chart')).not.toBeNull();
+        expect(fixture.nativeElement.querySelector('app-macro-chart')).toBeNull();
+        expect(getNutritionMessage()).not.toBeNull();
+
+        fixture.componentInstance.ingredientsFormGroup.get('servings')?.setValue(4);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'exact', value: 92.5 });
+        expect(getNutritionMessage()).toBeNull();
+    });
+
+    it('updates exact, minimum and unknown values live without retaining the last result', () => {
+        fixture.componentInstance.addIngredient();
+        const second = fixture.componentInstance.ingredients.at(1);
+        second.patchValue({ foodstuffId: 1, amount: 100 });
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'exact', value: 370 });
+
+        second.get('amount')?.setValue(null);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'minimum', value: 185 });
+        expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
+        expect(second.get('amount')?.hasError('required')).toBe(true);
+
+        fixture.componentInstance.ingredients.at(0).get('amount')?.setValue(null);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'unknown', value: null });
+
+        second.get('amount')?.setValue(200);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'minimum', value: 370 });
+
+        fixture.componentInstance.removeIngredient(0);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'exact', value: 370 });
+    });
+
+    it('shows incomplete foodstuff nutrition and an all-unknown empty draft', () => {
+        fixture.componentRef.setInput('foodstuffs', [{ ...foodstuff, protein: null }]);
+        fixture.detectChanges();
+        expect(chartNutrition().protein).toEqual({ status: 'unknown', value: null });
+        expect(chartNutrition().carbs).toEqual({ status: 'exact', value: 30 });
         expect(getNutritionMessage()).toBeNull();
 
-        fixture.componentInstance.ingredientsFormGroup
-            .get('servings')
-            ?.setValue(4);
+        fixture.componentInstance.removeIngredient(0);
         fixture.detectChanges();
-
-        expect(fixture.componentInstance.displayedNutritionState()).toEqual({
-            status: 'complete',
-            nutrition: { kcal: 92.5, carbs: 15, protein: 3.25, fat: 1.75 },
-        });
-
-        fixture.componentInstance.ingredientsFormGroup
-            .get('servings')
-            ?.setValue(null);
-        fixture.detectChanges();
-
-        servingsInput.blur();
-        fixture.detectChanges();
-
-        expect(fixture.nativeElement.querySelector('app-macro-chart')).toBeNull();
-        expect(getNutritionMessage()?.textContent).toContain('Nährwerte werden angezeigt, sobald Mengen und Portionen gültig sind.');
-
-        servingsInput.focus();
-        fixture.detectChanges();
-
-        expect(fixture.nativeElement.querySelector('app-macro-chart')).toBeNull();
-        expect(getNutritionMessage()?.textContent).toContain('Nährwerte werden angezeigt, sobald Mengen und Portionen gültig sind.');
+        expect(chartNutrition().carbs).toEqual({ status: 'unknown', value: null });
+        expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
     });
 
-    it('shows incomplete nutrition immediately for valid foodstuff data', () => {
-        fixture.componentRef.setInput('foodstuffs', [
-            { ...foodstuff, protein: null },
-        ]);
-        fixture.detectChanges();
-
-        expect(fixture.nativeElement.querySelector('app-macro-chart')).toBeNull();
-        expect(getNutritionMessage()?.textContent).toContain('Nährwertangaben der einzelnen Zutaten unvollständig.');
-    });
+    function chartNutrition(): NutritionSummary {
+        const chart = fixture.debugElement.query(By.directive(MacroChartStubComponent))
+            .componentInstance as MacroChartStubComponent;
+        return chart.nutrition();
+    }
 
     it('reserves the preview area in stable states', () => {
         const nutritionSection = fixture.nativeElement.querySelector('.nutrition-section') as HTMLElement;
@@ -201,10 +206,6 @@ describe('RecipeIngredientsFormComponent', () => {
     }
 });
 
-function legendElement(displayName: string): ChartLegendElement {
-    return { displayName, color: '#ffffff', valuePercentage: 33, valueAbsolute: 10 };
-}
-
 function createRecipeForm(): FormGroup {
     return new FormGroup({
         ingredientsFormGroup: new FormGroup({
@@ -213,7 +214,7 @@ function createRecipeForm(): FormGroup {
                 new FormGroup({
                     index: new FormControl(1),
                     foodstuffId: new FormControl(1),
-                    amount: new FormControl(100),
+                    amount: new FormControl(100, Validators.required),
                 }),
             ]),
         }),

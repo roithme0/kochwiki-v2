@@ -91,6 +91,8 @@ video {
 }
 
 html {
+  --app-max-width: 30rem;
+
   // drop down of auto complete field
   --mat-autocomplete-container-shape: 0.5rem;
   --mat-optgroup-label-text-size: #{tokens.$primary-font-size};
@@ -108,7 +110,7 @@ body {
 
 app-root {
   height: 100%;
-  max-width: 30rem;
+  max-width: var(--app-max-width);
   margin: auto;
   display: flex;
   flex-direction: column;

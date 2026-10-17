@@ -164,9 +164,9 @@ function createRecipeVersion(state: RecipeVersionOut['state'], recipeVersionId: 
         preptime: recipeVersionWrite.preptime,
         ingredients: [],
         steps: [],
-        kcal: null,
-        carbs: null,
-        protein: null,
-        fat: null,
+        kcal: { status: 'unknown' as const, value: null },
+        carbs: { status: 'unknown' as const, value: null },
+        protein: { status: 'unknown' as const, value: null },
+        fat: { status: 'unknown' as const, value: null },
     };
 }
