@@ -1,3 +1,4 @@
+import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import { createEnvironmentInjector, EnvironmentInjector, runInInjectionContext, } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
@@ -47,6 +48,7 @@ describe('FoodstuffsPageComponent', () => {
         snackBarOpen.mockClear();
         TestBed.configureTestingModule({
             providers: [
+                FoodstuffCatalogueService,
                 {
                     provide: FoodstuffBackendService,
                     useValue: { foodstuffsChanged$, getAllFoodstuffs },
@@ -68,7 +70,7 @@ describe('FoodstuffsPageComponent', () => {
         await Promise.resolve();
 
         expect(getAllFoodstuffs).toHaveBeenCalledTimes(3);
-        expect(component.foodstuffsState()).toEqual({
+        expect(component.catalogue.state()).toEqual({
             status: 'success',
             data: [foodstuff(3, 'Hafer')],
         });
@@ -84,7 +86,7 @@ describe('FoodstuffsPageComponent', () => {
         foodstuffsChanged$.next();
         await Promise.resolve();
 
-        expect(component.foodstuffsState()).toEqual({
+        expect(component.catalogue.state()).toEqual({
             status: 'error',
             data: loadedFoodstuffs,
         });
@@ -95,7 +97,7 @@ describe('FoodstuffsPageComponent', () => {
     it('ignores a late request failure after destruction', async () => {
         const deferred = createDeferred<ReturnType<typeof foodstuff>[]>();
         getAllFoodstuffs.mockReturnValue(deferred.promise);
-        const injector = createEnvironmentInjector([], TestBed.inject(EnvironmentInjector));
+        const injector = createEnvironmentInjector([FoodstuffCatalogueService], TestBed.inject(EnvironmentInjector));
         const component = runInInjectionContext(injector, () => new FoodstuffsPageComponent());
 
         component.ngOnInit();
@@ -103,7 +105,7 @@ describe('FoodstuffsPageComponent', () => {
         deferred.reject(new Error('request failed'));
         await Promise.resolve();
 
-        expect(component.foodstuffsState()).toEqual({ status: 'loading', data: [] });
+        expect(component.catalogue.state()).toEqual({ status: 'loading', data: [] });
         expect(snackBarOpen).not.toHaveBeenCalled();
     });
 });

@@ -52,7 +52,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(getAllFoodstuffs).toHaveBeenCalledTimes(2);
-      expect(fixture.componentInstance.catalogueState()).toBe('ready');
+      expect(fixture.componentInstance.catalogue.state().status).toBe('success');
       expect(element.querySelectorAll('button[mat-list-item]')).toHaveLength(2);
     } finally {
       error.mockRestore();
@@ -66,7 +66,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     let resolveLoad!: (records: FoodstuffOut[]) => void;
     getAllFoodstuffs.mockReturnValueOnce(new Promise<FoodstuffOut[]>((resolve) => { resolveLoad = resolve; }));
     const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
-    const pending = fixture.componentInstance.loadFoodstuffs();
+    const pending = fixture.componentInstance.catalogue.refresh();
     fixture.destroy();
     resolveLoad(foodstuffs);
     await pending;
@@ -148,17 +148,17 @@ describe('FoodstuffSelectionDialogComponent', () => {
     foodstuffsChanged.next();
     const updated = { ...foodstuffs[0], name: 'Pasta neu' };
     getAllFoodstuffs.mockResolvedValue([updated]);
-    await component.loadFoodstuffs();
+    await component.catalogue.refresh();
     resolveOlder([]);
     await fixture.whenStable();
     expect(component.foodstuffs()).toEqual([updated]);
-    expect(component.catalogueState()).toBe('ready');
+    expect(component.catalogue.state().status).toBe('success');
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       getAllFoodstuffs.mockRejectedValue(new Error('unavailable'));
       foodstuffsChanged.next();
       await fixture.whenStable();
-      expect(component.catalogueState()).toBe('error');
+      expect(component.catalogue.state().status).toBe('error');
       expect(component.selectedFoodstuffs()).toEqual([foodstuffs[0]]);
       component.confirmSelection();
       expect(close).toHaveBeenCalledWith([foodstuffs[0]]);

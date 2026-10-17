@@ -1,12 +1,18 @@
 <app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
 
-<mat-dialog-content [class.no-results]="catalogueState() !== 'ready' || displayedFoodstuffs().length === 0">
-  @if (catalogueState() === 'loading') {
+<mat-dialog-content
+  [class.no-results]="
+    catalogue.state().status !== 'success' || displayedFoodstuffs().length === 0
+  "
+>
+  @if (catalogue.state().status === "loading") {
     <mat-spinner diameter="25" aria-label="Lebensmittel werden geladen" />
-  } @else if (catalogueState() === 'error') {
+  } @else if (catalogue.state().status === "error") {
     <div class="empty-state" role="alert">
       <p>Lebensmittel konnten nicht geladen werden.</p>
-      <button mat-button type="button" (click)="loadFoodstuffs()">Erneut laden</button>
+      <button mat-button type="button" (click)="catalogue.refresh()">
+        Erneut laden
+      </button>
     </div>
   } @else {
     <mat-action-list aria-label="Lebensmittel">
@@ -68,9 +74,15 @@
         <ul class="basket-preview" aria-label="Lebensmittel im Korb">
           @for (foodstuff of selectedFoodstuffs(); track foodstuff.id) {
             <li>
-              <img src="assets/images/question-mark.png"
-                [alt]="foodstuff.name + (foodstuff.brand ? ' · ' + foodstuff.brand : '')"
-                width="40" height="40" />
+              <img
+                src="assets/images/question-mark.png"
+                [alt]="
+                  foodstuff.name +
+                  (foodstuff.brand ? ' · ' + foodstuff.brand : '')
+                "
+                width="40"
+                height="40"
+              />
             </li>
           }
         </ul>
@@ -94,7 +106,7 @@
       mat-flat-button
       type="button"
       class="create-foodstuff-button"
-      [disabled]="catalogueState() === 'loading'"
+      [disabled]="catalogue.state().status === 'loading'"
       aria-label="Lebensmittel erstellen"
       title="Lebensmittel erstellen"
       (click)="openCreateFoodstuffDialog()"
