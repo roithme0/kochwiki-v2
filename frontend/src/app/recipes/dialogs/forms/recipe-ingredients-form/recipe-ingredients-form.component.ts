@@ -1,4 +1,7 @@
-import type { IngredientOut, RecipeVersionOut } from '../../../../core/api/generated';
+import type {
+  IngredientOut,
+  RecipeVersionOut,
+} from '../../../../core/api/generated';
 import {
   Component,
   DestroyRef,
@@ -11,6 +14,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormArray,
+  FormControl,
   FormGroup,
   FormGroupDirective,
   ReactiveFormsModule,
@@ -19,7 +23,10 @@ import {
 } from '@angular/forms';
 import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
-import { FoodstuffSelectionDialogComponent, FoodstuffSelectionDialogData } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
+import {
+  FoodstuffSelectionDialogComponent,
+  FoodstuffSelectionDialogData,
+} from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,7 +34,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { MatSelectModule } from '@angular/material/select';
 import { buildNutritionLegend } from '../../../../core/utils/nutrition-legend';
 import { ChartLegendElementComponent } from '../../../../core/components/chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../../../../core/components/macro-chart/macro-chart.component';
@@ -36,6 +42,12 @@ import {
   DraftNutritionState,
   calculateDraftNutrition,
 } from '../../../utils/recipe-nutrition';
+
+interface IngredientFormControls {
+  index: FormControl<number | null>;
+  foodstuffId: FormControl<number | null>;
+  amount: FormControl<number | null>;
+}
 
 @Component({
   selector: 'app-recipe-ingredients-form',
@@ -47,10 +59,9 @@ import {
     MatFormFieldModule,
     MatIconModule,
     MatExpansionModule,
-    MatSelectModule,
     ChartLegendElementComponent,
-    MacroChartComponent
-],
+    MacroChartComponent,
+  ],
   templateUrl: './recipe-ingredients-form.component.html',
   styleUrl: './recipe-ingredients-form.component.scss',
 })
@@ -66,12 +77,13 @@ export class RecipeIngredientsFormComponent {
   recipeForm!: FormGroup;
   ingredientsFormGroup!: FormGroup;
   readonly ingredientDrafts = signal<DraftIngredientNutrition[]>([]);
-  readonly nutritionState = computed((): DraftNutritionState =>
-    calculateDraftNutrition(
-      this.ingredientDrafts(),
-      this.servings(),
-      this.foodstuffs()
-    )
+  readonly nutritionState = computed(
+    (): DraftNutritionState =>
+      calculateDraftNutrition(
+        this.ingredientDrafts(),
+        this.servings(),
+        this.foodstuffs(),
+      ),
   );
   readonly legend = computed(() => {
     const state = this.nutritionState();
@@ -85,7 +97,7 @@ export class RecipeIngredientsFormComponent {
   ngOnInit(): void {
     this.recipeForm = this.recipeFormDirective.control;
     this.ingredientsFormGroup = this.recipeForm.get(
-      'ingredientsFormGroup'
+      'ingredientsFormGroup',
     ) as FormGroup;
 
     const recipeVersion: RecipeVersionOut | undefined = this.recipeVersion();
@@ -94,10 +106,9 @@ export class RecipeIngredientsFormComponent {
         servings: recipeVersion.servings,
       });
       recipeVersion.ingredients.forEach((ingredient: IngredientOut) =>
-        this.addIngredient(ingredient)
+        this.addIngredient(ingredient.foodstuff.id, ingredient.amount),
       );
     }
-    if (this.ingredients.length === 0) this.addIngredient();
 
     this.ingredientsFormGroup.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -105,19 +116,25 @@ export class RecipeIngredientsFormComponent {
     this.updateNutritionDraft();
   }
 
-  get ingredients(): FormArray {
-    return this.recipeForm.get('ingredientsFormGroup.ingredients') as FormArray;
+  get ingredients(): FormArray<FormGroup<IngredientFormControls>> {
+    return this.ingredientsFormGroup.get('ingredients') as FormArray<
+      FormGroup<IngredientFormControls>
+    >;
   }
 
-  addIngredient(ingredient?: IngredientOut): void {
+  addIngredient(foodstuffId: number, amount: number | null = null): void {
     this.ingredients.push(
       this.fb.group({
         index: [this.ingredients.length + 1, Validators.required],
-        foodstuffId: [ingredient?.foodstuff.id ?? null, Validators.required],
-        amount: [ingredient?.amount ?? null, Validators.required],
-      })
+        foodstuffId: [foodstuffId, Validators.required],
+        amount: [amount, Validators.required],
+      }),
     );
     this.updateNutritionDraft();
+  }
+
+  foodstuffFor(id: number | null): FoodstuffOut | undefined {
+    return this.foodstuffs().find((foodstuff) => foodstuff.id === id);
   }
 
   removeIngredient(index: number): void {
@@ -127,9 +144,12 @@ export class RecipeIngredientsFormComponent {
   }
 
   openFoodstuffSelectionDialog(): void {
-    this.dialog.open<FoodstuffSelectionDialogComponent, FoodstuffSelectionDialogData, void>(
-      FoodstuffSelectionDialogComponent,
-      {
+    this.dialog
+      .open<
+        FoodstuffSelectionDialogComponent,
+        FoodstuffSelectionDialogData,
+        number[]
+      >(FoodstuffSelectionDialogComponent, {
         data: {
           foodstuffs: this.foodstuffs(),
           existingFoodstuffIds: this.ingredientDrafts()
@@ -143,8 +163,20 @@ export class RecipeIngredientsFormComponent {
         maxHeight: '100dvh',
         position: { top: '0' },
         autoFocus: false,
-      }
-    );
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((ids) => {
+        if (!ids?.length) return;
+        const existingIds = new Set(
+          this.ingredientDrafts().map((ingredient) => ingredient.foodstuffId),
+        );
+        for (const id of ids) {
+          if (existingIds.has(id) || !this.foodstuffFor(id)) continue;
+          this.addIngredient(id);
+          existingIds.add(id);
+        }
+      });
   }
 
   openCreateFoodstuffDialog(): void {

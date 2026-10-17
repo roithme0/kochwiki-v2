@@ -43,11 +43,13 @@ mat-dialog-content.no-results {
 }
 
 .foodstuff {
-  @include mat.list-overrides((
-    list-item-disabled-label-text-opacity: 1,
-    list-item-disabled-label-text-color: var(--mat-sys-on-surface),
-    list-item-disabled-state-layer-opacity: 0,
-  ));
+  @include mat.list-overrides(
+    (
+      list-item-disabled-label-text-opacity: 1,
+      list-item-disabled-label-text-color: var(--mat-sys-on-surface),
+      list-item-disabled-state-layer-opacity: 0,
+    )
+  );
   height: auto;
   min-height: 64px;
   padding: 0;
@@ -91,8 +93,16 @@ mat-dialog-content.no-results {
   gap: 0.25rem;
 }
 
+.basket-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .selection-count {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-size: 0.875rem;
 }
 

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
@@ -11,6 +11,11 @@ const foodstuffs: FoodstuffOut[] = [
 ];
 
 describe('FoodstuffSelectionDialogComponent', () => {
+  const close = vi.fn();
+  beforeEach(() => {
+    close.mockReset();
+    TestBed.configureTestingModule({ providers: [{ provide: MatDialogRef, useValue: { close } }] });
+  });
   it('shows all foodstuffs, filters by name or brand, and restores the list when cleared', () => {
     TestBed.configureTestingModule({
       providers: [{ provide: MAT_DIALOG_DATA, useValue: { foodstuffs, existingFoodstuffIds: [] } }],
@@ -43,6 +48,26 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     expect(names()).toEqual(['Pasta', 'Olivenöl']);
     expect(foodstuffs.length).toBe(2);
+  });
+
+  it('confirms in selection order, including filtered-out items, and rejects empty confirmation', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: MAT_DIALOG_DATA, useValue: { foodstuffs, existingFoodstuffIds: [] } }],
+    });
+    const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const confirm = element.querySelector<HTMLButtonElement>('.basket-summary button');
+    expect(confirm?.disabled).toBe(true);
+    fixture.componentInstance.confirmSelection();
+    expect(close).not.toHaveBeenCalled();
+    fixture.componentInstance.toggleFoodstuff(2);
+    fixture.componentInstance.toggleFoodstuff(1);
+    fixture.componentInstance.searchValue.set('missing');
+    fixture.detectChanges();
+    expect(confirm?.disabled).toBe(false);
+    confirm?.click();
+    expect(close).toHaveBeenCalledWith([2, 1]);
   });
 
   it('preserves selections across filtering, toggles them, and blocks existing ingredients', () => {

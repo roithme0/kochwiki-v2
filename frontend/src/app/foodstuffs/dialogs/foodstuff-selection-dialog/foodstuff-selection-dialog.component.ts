@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +20,7 @@ export interface FoodstuffSelectionDialogData {
 })
 export class FoodstuffSelectionDialogComponent {
   readonly data = inject<FoodstuffSelectionDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject<MatDialogRef<FoodstuffSelectionDialogComponent, number[]>>(MatDialogRef);
 
   readonly searchValue = signal('');
   readonly existingFoodstuffIds = new Set(this.data.existingFoodstuffIds);
@@ -31,6 +32,11 @@ export class FoodstuffSelectionDialogComponent {
       (foodstuff.brand?.toLowerCase().includes(query) ?? false)
     );
   });
+
+  confirmSelection(): void {
+    if (this.selectedFoodstuffIds().size === 0) return;
+    this.dialogRef.close([...this.selectedFoodstuffIds()]);
+  }
 
   toggleFoodstuff(id: number): void {
     if (this.existingFoodstuffIds.has(id)) return;

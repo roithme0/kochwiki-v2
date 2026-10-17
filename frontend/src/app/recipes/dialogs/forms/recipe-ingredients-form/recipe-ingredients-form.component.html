@@ -19,7 +19,11 @@
   <div class="ingredients-wrapper" formArrayName="ingredients">
     @for (ingredient of ingredients.controls; track ingredient) {
       <div class="ingredient-wrapper" formGroupName="{{ $index }}">
-        <app-ingredient-field [foodstuffs]="foodstuffs()" [index]="$index" />
+        <app-ingredient-field
+          [foodstuff]="foodstuffFor(ingredient.controls.foodstuffId.value)"
+          [amountControl]="ingredient.controls.amount"
+          [index]="$index"
+        />
         <button
           mat-icon-button
           type="button"

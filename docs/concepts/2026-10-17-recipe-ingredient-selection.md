@@ -6,7 +6,7 @@ Concept direction agreed. The selection-first workflow, fixed foodstuff per ingr
 
 ## Context
 
-Recipe creation, active-version editing, and draft editing share the ingredient form. It currently inserts an empty row initially and when adding an ingredient. Each row offers a foodstuff dropdown and an amount field. A separate action opens foodstuff creation.
+Recipe creation, active-version editing, and draft editing share the ingredient form. Confirming the picker now appends fixed foodstuff rows with empty amounts in selection order. Empty recipes start without ingredient rows. A separate action still opens foodstuff creation until the creation handoff slice.
 
 This concept revises the ingredient interaction recommended in `2026-09-12-recipe-editor-ux.md`, which retained an inline foodstuff select. Other editor directions remain outside this concept.
 
@@ -30,7 +30,7 @@ The selection dialog contains no amount input. Users enter and edit amounts only
 
 ### Selection Basket and Confirmation
 
-Use a Material action list with one native toggle button per foodstuff and selection state owned by the dialog. Do not show checkboxes or override Material internals to hide them. Expose pending selection through `aria-pressed`, a checkmark, and “Im Korb”. Standard button keyboard navigation is accepted for the current mobile scope. The initial selection slice includes pending selection, a count, and disabled existing ingredients; basket previews, confirmation, and recipe row updates follow separately.
+Use a Material action list with one native toggle button per foodstuff and selection state owned by the dialog. Do not show checkboxes or override Material internals to hide them. Expose pending selection through `aria-pressed`, a checkmark, and “Im Korb”. Standard button keyboard navigation is accepted for the current mobile scope. The current slice includes pending selection, a count, disabled existing ingredients, and a confirmation button disabled for an empty basket. Confirmation appends rows in selection order; cancellation leaves existing rows and amounts intact. Basket previews and the creation handoff follow separately.
 
 Use a temporary selection basket, as shown in the supplied picker visualization: users choose one or several foodstuffs across searches, then press “Übernehmen” once to append their ingredient rows, close the picker, and return to the editor. Pending items are marked “Im Korb”; the basket shows a count and image preview. This supports both workflows without separate single-selection and multi-selection modes.
 
@@ -70,7 +70,7 @@ This concept concerns manual ingredient selection in the shared recipe editor an
 
 ## Integration Impact
 
-The ingredient form currently creates an empty row on initialization; the proposed workflow requires an empty ingredient section to be supported visually without changing recipe save requirements implicitly.
+The ingredient form supports an empty ingredient section without adding a placeholder row. Selected rows retain the existing required-amount validation and nutrition handling.
 
 The foodstuff creation dialog currently saves the catalogue entry and closes without returning the created record to its caller. Adding the created foodstuff to the pending basket requires an explicit result handoff.
 

@@ -1,3 +1,4 @@
+import { Subject } from 'rxjs';
 import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
@@ -23,14 +24,9 @@ class ChartLegendElementStubComponent {
     readonly legendElement = input.required<ChartLegendElement>();
 }
 
-@Component({ selector: 'app-ingredient-field', template: '' })
-class IngredientFieldStubComponent {
-    readonly foodstuffs = input.required<FoodstuffOut[]>();
-    readonly index = input.required<number>();
-}
-
 describe('RecipeIngredientsFormComponent', () => {
     let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
+    let dialogResult: Subject<number[] | undefined>;
 
     const foodstuff: FoodstuffOut = {
         id: 1,
@@ -47,12 +43,13 @@ describe('RecipeIngredientsFormComponent', () => {
 
     beforeEach(async () => {
         const recipeForm = createRecipeForm();
+        dialogResult = new Subject<number[] | undefined>();
 
         await TestBed.configureTestingModule({
             imports: [RecipeIngredientsFormComponent],
             providers: [
                 { provide: FormGroupDirective, useValue: { control: recipeForm } },
-                { provide: MatDialog, useValue: { open: vi.fn().mockName('open') } },
+                { provide: MatDialog, useValue: { open: vi.fn().mockReturnValue({ afterClosed: () => dialogResult.asObservable() }) } },
             ],
         })
             .overrideComponent(RecipeIngredientsFormComponent, {
@@ -60,14 +57,12 @@ describe('RecipeIngredientsFormComponent', () => {
                 imports: [
                     MacroChartComponent,
                     ChartLegendElementComponent,
-                    IngredientFieldComponent,
                 ],
             },
             add: {
                 imports: [
                     MacroChartStubComponent,
                     ChartLegendElementStubComponent,
-                    IngredientFieldStubComponent,
                 ],
             },
         })
@@ -90,6 +85,46 @@ describe('RecipeIngredientsFormComponent', () => {
         expect(fixture.componentInstance.ingredients.getRawValue()).toEqual(before);
     });
 
+    it('appends confirmed IDs in order, prevents duplicates, and preserves existing amounts', () => {
+        const other = { ...foodstuff, id: 2, name: 'Pasta', brand: 'Barilla' };
+        fixture.componentRef.setInput('foodstuffs', [foodstuff, other, { ...foodstuff, id: 3 }]);
+        fixture.detectChanges();
+        fixture.componentInstance.openFoodstuffSelectionDialog();
+        dialogResult.next([3, 2, 1, 2]);
+        dialogResult.complete();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.ingredients.getRawValue()).toEqual([
+            { index: 1, foodstuffId: 1, amount: 100 },
+            { index: 2, foodstuffId: 3, amount: null },
+            { index: 3, foodstuffId: 2, amount: null },
+        ]);
+        expect(fixture.componentInstance.ingredients.at(1).controls.amount.hasError('required')).toBe(true);
+        expect(fixture.nativeElement.querySelector('mat-select')).toBeNull();
+        expect(fixture.nativeElement.textContent).toContain('Barilla');
+        fixture.componentInstance.removeIngredient(1);
+        fixture.detectChanges();
+        const fields = fixture.debugElement.queryAll(By.directive(IngredientFieldComponent));
+        const remaining = fields[1].componentInstance as IngredientFieldComponent;
+        remaining.amountControl().setValue(75);
+        expect(fixture.componentInstance.ingredients.getRawValue()).toEqual([
+            { index: 1, foodstuffId: 1, amount: 100 },
+            { index: 2, foodstuffId: 2, amount: 75 },
+        ]);
+        fixture.componentInstance.openFoodstuffSelectionDialog();
+        expect(TestBed.inject(MatDialog).open).toHaveBeenLastCalledWith(
+            FoodstuffSelectionDialogComponent,
+            expect.objectContaining({ data: expect.objectContaining({ existingFoodstuffIds: [1, 2] }) }),
+        );
+    });
+
+    it('leaves rows untouched when the picker is dismissed', () => {
+        const before = fixture.componentInstance.ingredients.getRawValue();
+        fixture.componentInstance.openFoodstuffSelectionDialog();
+        dialogResult.next(undefined);
+        dialogResult.complete();
+        expect(fixture.componentInstance.ingredients.getRawValue()).toEqual(before);
+    });
+
     it('shows the complete legend beside the chart without a disclosure', () => {
         expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
         expect(getChartArea().querySelector('app-macro-chart')).not.toBeNull();
@@ -107,8 +142,8 @@ describe('RecipeIngredientsFormComponent', () => {
         expect(getLegend()?.querySelectorAll('app-chart-legend-element').length).toBe(3);
     });
 
-    it('keeps nutrition visible when a new ingredient has no foodstuff yet', () => {
-        fixture.componentInstance.addIngredient();
+    it('keeps nutrition visible when a selected ingredient has no amount yet', () => {
+        fixture.componentInstance.addIngredient(1);
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('app-macro-chart')).not.toBeNull();
@@ -122,13 +157,13 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('keeps ingredient indexes unique and sequential after adding and removing rows', () => {
-        fixture.componentInstance.addIngredient();
-        fixture.componentInstance.addIngredient();
+        fixture.componentInstance.addIngredient(1);
+        fixture.componentInstance.addIngredient(1);
 
         expect(ingredientIndexes()).toEqual([1, 2, 3]);
 
         fixture.componentInstance.removeIngredient(1);
-        fixture.componentInstance.addIngredient();
+        fixture.componentInstance.addIngredient(1);
 
         expect(ingredientIndexes()).toEqual([1, 2, 3]);
     });
@@ -149,7 +184,7 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('updates exact, minimum and unknown values live without retaining the last result', () => {
-        fixture.componentInstance.addIngredient();
+        fixture.componentInstance.addIngredient(1);
         const second = fixture.componentInstance.ingredients.at(1);
         second.patchValue({ foodstuffId: 1, amount: 100 });
         fixture.detectChanges();

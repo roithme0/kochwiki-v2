@@ -1,3 +1,5 @@
+import { By } from '@angular/platform-browser';
+import { RecipeIngredientsFormComponent } from '../forms/recipe-ingredients-form/recipe-ingredients-form.component';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from "vitest";
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -279,30 +281,56 @@ describe('RecipeEditorComponent', () => {
         expect(sections.every((section) => section.querySelector('app-recipe-meta-form, app-recipe-ingredients-form, app-recipe-preparation-form'))).toBe(true);
     });
 
-    it('starts create mode with one removable ingredient and preparation row', async () => {
+    it('starts create mode with no ingredients and one removable preparation row', async () => {
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
 
         const ingredients = component.recipeForm.controls.ingredientsFormGroup.controls.ingredients;
         const steps = component.recipeForm.controls.preparationFormGroup.controls.steps;
-        expect(ingredients.length).toBe(1);
+        expect(ingredients.length).toBe(0);
         expect(steps.length).toBe(1);
 
-        component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.removeAt(0);
         component.recipeForm.controls.preparationFormGroup.controls.steps.removeAt(0);
         expect(ingredients.length).toBe(0);
         expect(steps.length).toBe(0);
     });
 
-    it('starts an empty edited recipe with one ingredient and preparation row', async () => {
+    it('starts an empty edited recipe with no ingredients and one preparation row', async () => {
         fixture.componentRef.setInput('recipeLineageId', recipeVersion.recipeLineageId);
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
 
-        expect(component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.length).toBe(1);
+        expect(component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.length).toBe(0);
         expect(component.recipeForm.controls.preparationFormGroup.controls.steps.length).toBe(1);
+    });
+
+    it.each(['active', 'draft'] as const)('preserves existing ingredients and amounts in %s mode with fixed foodstuffs', async (mode) => {
+        const foodstuff = {
+            id: 1, name: 'Pasta', brand: 'Barilla', unit: 'G' as const, unitVerbose: 'g',
+            kcal: null, carbs: null, protein: null, fat: null, recipeVersionIds: [],
+        };
+        const version = {
+            ...recipeVersion,
+            state: mode,
+            ingredients: [{ id: 1, index: 1, amount: 125, foodstuff, recipeVersionId: recipeVersion.recipeVersionId }],
+        };
+        foodstuffBackend.getAllFoodstuffs.mockResolvedValue([foodstuff]);
+        recipeBackend.getActiveRecipeVersion.mockResolvedValue(version);
+        recipeBackend.getRecipeVersion.mockResolvedValue(version);
+        fixture.componentRef.setInput('mode', mode);
+        fixture.componentRef.setInput('recipeLineageId', version.recipeLineageId);
+        fixture.componentRef.setInput('recipeVersionId', version.recipeVersionId);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.getRawValue()).toEqual([
+            { index: 1, foodstuffId: 1, amount: 125 },
+        ]);
+        const ingredientSection: HTMLElement = fixture.nativeElement.querySelector('app-recipe-ingredients-form');
+        expect(ingredientSection.querySelector('mat-select')).toBeNull();
+        expect(ingredientSection.textContent).toContain('Barilla');
     });
 
     it('navigates to a section and follows manual dialog scrolling', async () => {
@@ -453,7 +481,9 @@ describe('RecipeEditorComponent', () => {
         fixture.detectChanges();
         component.recipeForm.controls.metaFormGroup.controls.name.setValue('Linsensuppe');
         const ingredients = fixture.nativeElement.querySelector('app-recipe-ingredients-form') as HTMLElement;
-        (ingredients.querySelector('.add-ingredient-button') as HTMLButtonElement).click();
+        const ingredientForm = fixture.debugElement.query(By.directive(RecipeIngredientsFormComponent))
+            .componentInstance as RecipeIngredientsFormComponent;
+        ingredientForm.addIngredient(1);
         fixture.detectChanges();
 
         (fixture.nativeElement.querySelector('.button-wrapper button') as HTMLButtonElement).click();
@@ -461,13 +491,14 @@ describe('RecipeEditorComponent', () => {
 
         expect(component.activeSection()).toBe('ingredients');
         expect(scrollTo).toHaveBeenCalled();
-        expect(ingredients.querySelector('.ingredient-errors')?.textContent).toContain('Bitte ein Lebensmittel auswählen.');
-        expect(ingredients.querySelector('.ingredient-errors')?.textContent).toContain('Bitte eine Menge eingeben.');
+        const amount = component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.at(0).controls.amount;
+        expect(amount.hasError('required')).toBe(true);
+        expect(amount.touched).toBe(true);
+        expect(ingredients.querySelector('[role="alert"]')).toBeNull();
 
-        component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.at(0).controls.foodstuffId.setValue(1);
+        component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.at(0).controls.amount.setValue(100);
         fixture.detectChanges();
-        expect(ingredients.querySelector('.ingredient-errors')?.textContent).not.toContain('Bitte ein Lebensmittel auswählen.');
-        expect(ingredients.querySelector('.ingredient-errors')?.textContent).toContain('Bitte eine Menge eingeben.');
+        expect(amount.valid).toBe(true);
         scrollArea.remove();
     });
 });

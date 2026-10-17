@@ -3,17 +3,33 @@
 <mat-dialog-content [class.no-results]="displayedFoodstuffs().length === 0">
   <mat-action-list aria-label="Lebensmittel">
     @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
-      <button mat-list-item type="button" class="foodstuff"
+      <button
+        mat-list-item
+        type="button"
+        class="foodstuff"
         [disabled]="existingFoodstuffIds.has(foodstuff.id)"
         [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
-        (click)="toggleFoodstuff(foodstuff.id)">
-        <img matListItemAvatar src="assets/images/question-mark.png" alt="" width="40" height="40" />
-        <span matListItemTitle class="foodstuff-name">{{ foodstuff.name }}</span>
+        (click)="toggleFoodstuff(foodstuff.id)"
+      >
+        <img
+          matListItemAvatar
+          src="assets/images/question-mark.png"
+          alt=""
+          width="40"
+          height="40"
+        />
+        <span matListItemTitle class="foodstuff-name">{{
+          foodstuff.name
+        }}</span>
         @if (foodstuff.brand) {
-          <span matListItemLine class="foodstuff-description">{{ foodstuff.brand }}</span>
+          <span matListItemLine class="foodstuff-description">{{
+            foodstuff.brand
+          }}</span>
         }
         @if (existingFoodstuffIds.has(foodstuff.id)) {
-          <span matListItemMeta class="selection-status">Bereits hinzugefügt</span>
+          <span matListItemMeta class="selection-status"
+            >Bereits hinzugefügt</span
+          >
         } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
           <span matListItemMeta class="selection-status selected-status">
             <mat-icon aria-hidden="true">check_circle</mat-icon>
@@ -26,13 +42,27 @@
   @if (displayedFoodstuffs().length === 0) {
     <div class="empty-state">
       <p class="empty-message">Keine Lebensmittel gefunden.</p>
-      <button mat-button type="button" (click)="searchValue.set('')">Suche zurücksetzen</button>
+      <button mat-button type="button" (click)="searchValue.set('')">
+        Suche zurücksetzen
+      </button>
     </div>
   }
 </mat-dialog-content>
 
 <div class="search-footer">
-  <p class="selection-count" role="status">Im Korb · {{ selectedFoodstuffIds().size }}</p>
+  <div class="basket-summary">
+    <p class="selection-count" role="status">
+      Im Korb · {{ selectedFoodstuffIds().size }}
+    </p>
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="selectedFoodstuffIds().size === 0"
+      (click)="confirmSelection()"
+    >
+      Übernehmen
+    </button>
+  </div>
   <app-foodstuffs-search
     [searchValue]="searchValue()"
     (searchValueChange)="searchValue.set($event)"
