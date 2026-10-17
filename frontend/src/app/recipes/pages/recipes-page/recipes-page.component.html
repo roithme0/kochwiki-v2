@@ -18,7 +18,10 @@
   </div>
 
   <div class="bottom-elements">
-    <app-recipes-search [recipeVersions]="recipeVersionsState().data" />
+    <app-recipes-search
+      [searchValue]="recipesGridControlsService.searchBy()"
+      (searchValueChange)="recipesGridControlsService.searchBy = $event"
+    />
 
     <button
       mat-mini-fab

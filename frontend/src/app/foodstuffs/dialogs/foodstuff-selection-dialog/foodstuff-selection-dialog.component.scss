@@ -1,4 +1,7 @@
+@use "../../../../styles/page-background";
+
 :host {
+  @include page-background.illustrated();
   display: flex;
   flex-direction: column;
   height: 100%;

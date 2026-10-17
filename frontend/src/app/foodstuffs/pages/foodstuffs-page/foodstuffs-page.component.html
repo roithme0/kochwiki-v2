@@ -25,7 +25,6 @@
   <div class="bottom-elements-placeholder"></div>
   <div class="bottom-elements">
     <app-foodstuffs-search
-      [foodstuffs]="foodstuffsState().data"
       [searchValue]="foodstuffTableControlsService.searchBy()"
       (searchValueChange)="foodstuffTableControlsService.searchBy = $event"
     />

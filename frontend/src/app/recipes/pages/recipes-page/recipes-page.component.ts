@@ -13,6 +13,7 @@ import { RecipeCreateDialogComponent } from '../../dialogs/recipe-create-dialog/
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipesGridComponent } from '../../components/recipes-grid/recipes-grid.component';
 import { RecipesSearchComponent } from '../../components/recipes-search/recipes-search.component';
+import { RecipesGridControlsService } from '../../services/recipes-grid-controls.service';
 
 @Component({
   selector: 'app-recipes-page',
@@ -34,6 +35,7 @@ export class RecipesPageComponent {
   private readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
   readonly pageHeaderService = inject(PageHeaderService);
+  readonly recipesGridControlsService = inject(RecipesGridControlsService);
 
   readonly showSearch = signal(false);
   readonly recipeVersionsState = signal<LoadState<RecipeVersionOut[]>>({
