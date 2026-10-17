@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 
 class StorageConfig(BaseModel):
@@ -10,8 +10,15 @@ class StorageConfig(BaseModel):
     public_origin: str
     region: str = Field(min_length=1)
     bucket_recipe_images: str = Field(min_length=1)
+    bucket_foodstuff_images: str = Field(min_length=1)
     access_key_id: SecretStr
     secret_access_key: SecretStr
+
+    @model_validator(mode="after")
+    def validate_distinct_buckets(self) -> "StorageConfig":
+        if self.bucket_recipe_images == self.bucket_foodstuff_images:
+            raise ValueError("Recipe and foodstuff image buckets must be distinct")
+        return self
 
     @field_validator("endpoint_url", "public_origin")
     @classmethod

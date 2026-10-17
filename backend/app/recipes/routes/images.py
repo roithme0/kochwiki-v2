@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.images.config import IMAGE_CONTENT_TYPE
+from app.images.storage import image_bucket
 from app.infrastructure.database.session import SessionLocal, get_db
 from app.images.models import ImageAsset, ImageKind
 from app.core.schemas.errors import ErrorResponse
@@ -31,7 +32,7 @@ def get_recipe_image_storage() -> Iterator[Storage]:
         raise HTTPException(
             503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
         )
-    storage = Storage(config, bucket=config.bucket_recipe_images)
+    storage = Storage(config, bucket=image_bucket(config, ImageKind.RECIPE))
     try:
         yield storage
     finally:

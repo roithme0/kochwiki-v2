@@ -104,7 +104,7 @@ def test_persistence_errors_are_sanitized(client: TestClient) -> None:
 def test_storage_not_configured(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
         "storage_endpoint_url", "storage_public_origin", "storage_region",
-        "storage_bucket_recipe_images", "storage_access_key_id", "storage_secret_access_key",
+        "storage_bucket_recipe_images", "storage_bucket_foodstuff_images", "storage_access_key_id", "storage_secret_access_key",
     ):
         monkeypatch.setattr(get_settings(), name, None)
     response = client.post("/recipe-image-uploads")

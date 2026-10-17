@@ -1,7 +1,8 @@
 # File storage
 
 Local, staging, and production Compose deployments each run a `file-storage` service using their own pinned
-`dxflrs/garage:v2.4.1` instance with a private `recipe-images` bucket. This slice
+`dxflrs/garage:v2.4.1` instance with private `recipe-images` and `foodstuff-images`
+buckets sharing the environment's application credentials. This slice
 provides storage infrastructure and a backend adapter for presigned upload/download
 URLs, object inspection and deletion, plus PNG validation and metadata persistence.
 Upload-start/completion endpoints and a typed frontend service expose the upload
@@ -39,6 +40,7 @@ From `deployment`, choose the appropriate Compose file:
 docker compose -f docker-compose-local.yml up -d --wait file-storage
 docker compose -f docker-compose-local.yml run --rm file-storage-init
 docker compose -f docker-compose-local.yml exec file-storage /garage bucket info recipe-images
+docker compose -f docker-compose-local.yml exec file-storage /garage bucket info foodstuff-images
 ```
 
 Use `docker-compose-staging.yml` or `docker-compose-production.yml` on those
@@ -57,11 +59,18 @@ rotation explicitly through Garage administration. Existing grants are preserved
 new application keys receive read/write access without bucket owner rights.
 Never distribute application keys or the administration token to browser clients.
 
+Both image buckets deliberately use the same `GARAGE_ACCESS_KEY_ID` and
+`GARAGE_SECRET_ACCESS_KEY`. No additional secrets or credential rotation are
+needed when adding `foodstuff-images`; the initializer grants the existing key
+read/write access without replacing its recipe-bucket grants or objects.
+
 To add another bucket, add an entry to `buckets.json` using the same fields as
 `recipe-images`: `name`, `access_key_id_env`, and `secret_access_key_env`.
-The last two fields name environment variables, not secret values. Supply the
-new credentials through each environment's `.env` and forward those variables in
-the `file-storage-init` service's `environment` section in all three Compose files.
+The last two fields name environment variables, not secret values. Reuse existing
+credential variables for a shared application key, as the two image buckets do.
+If using a separate key, supply its credentials through each environment's `.env`
+and forward those variables in the `file-storage-init` service's `environment`
+section in all three Compose files.
 Rerun `file-storage-init`; no change to Garage's startup command is needed.
 Removing an entry does not delete its stored bucket, data, key, or permissions.
 
@@ -77,12 +86,15 @@ path-style S3 addressing.
 
 Compose forwards the application's Garage credentials as `STORAGE_ACCESS_KEY_ID`
 and `STORAGE_SECRET_ACCESS_KEY`, with `STORAGE_ENDPOINT_URL=http://file-storage:3900`,
-`STORAGE_REGION=garage`, `STORAGE_BUCKET_RECIPE_IMAGES=recipe-images`, and the configured
+`STORAGE_REGION=garage`, `STORAGE_BUCKET_RECIPE_IMAGES=recipe-images`,
+`STORAGE_BUCKET_FOODSTUFF_IMAGES=foodstuff-images`, and the configured
 `STORAGE_PUBLIC_ORIGIN`. The backend receives no Garage administration credentials.
-For a backend outside Compose, supply these six `STORAGE_*` settings directly in
-its environment or ignored `.env`. All six are required together; leaving all six
+For a backend outside Compose, supply these seven `STORAGE_*` settings directly in
+its environment or ignored `.env`. All seven are required together; leaving all seven
 absent disables storage configuration. Both addresses must be HTTP(S) origins
-without paths, queries, fragments or embedded credentials.
+without paths, queries, fragments or embedded credentials. The two bucket names
+must differ. Existing enabled deployments must add the foodstuff bucket setting
+together with the backend update; there is no fallback to the recipe bucket.
 
 `Settings.storage_config` supplies the strictly typed configuration to
 `app.infrastructure.storage.storage.Storage`. The adapter uses boto3 with explicit credentials,
@@ -313,12 +325,20 @@ while foodstuff-kind records exist.
 
 The storage adapter requires an explicit backend-selected bucket:
 `Storage(config, bucket=config.bucket_recipe_images)`. It no longer selects the
-recipe bucket implicitly. Logical image kinds distinguish storage destinations;
-the current recipe callers still use the existing configured bucket. This slice
-does not provision a foodstuff bucket, change deployment settings, or expose
-foodstuff image operations. The shared metadata migration is verified against
+recipe bucket implicitly. `app.images.storage.image_bucket(config, kind)` maps
+each image kind to its configured bucket. Recipe API dependencies use this mapping;
+foodstuff upload/association APIs remain pending. The shared metadata migration is verified against
 dedicated test PostgreSQL; it has not been applied to the running application
 database as part of this slice.
+
+Two-bucket provisioning and configuration were verified on 2026-10-17 using
+isolated Garage/gateway fixtures with synthetic credentials. Both buckets accept
+the existing shared key, retain distinct bytes at identical object keys, reject
+unsigned listing/read/write, and preserve objects through repeated initialization,
+restart, and container recreation. All three deployment definitions validated,
+and the backend suite passed (357 tests, 209 subtests). The running application
+stack and its secrets were not changed; application, staging, and production
+rollout of the second bucket remain pending.
 
 ## Deferred storage cleanup
 

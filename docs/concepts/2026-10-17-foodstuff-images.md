@@ -98,6 +98,20 @@ Validation: the complete backend suite passed against dedicated test PostgreSQL 
 
 The exported OpenAPI document remains byte-identical. `npm run check:kochwiki-contract` fails on generated TypeScript byte comparisons because the worktree uses CRLF and fresh output uses LF. Independent regeneration from the unchanged OpenAPI confirms all three generated TypeScript files match after newline normalization. This is a failed exact contract check, not a passing command; generated frontend files and tooling were left unchanged.
 
+### Second Slice: Foodstuff Bucket Provisioning and Configuration
+
+Authorized and implemented on 2026-10-17, including deployment configuration edits. The private `foodstuff-images` bucket is defined beside `recipe-images` in the existing initializer, and its name is supplied to the backend in local, staging, and production definitions. No foodstuff upload routes, associations, frontend work, or further extraction of validation services is included.
+
+Sharing the existing environment-specific application key across both buckets is agreed and configured. Both belong to the same backend and share its trust boundary; separate credentials would add configuration and rotation work without separating the running process. Separate buckets provide explicit storage organization, and image-kind checks remain responsible for preventing cross-domain attachment. Existing recipe credentials and grants are preserved.
+
+Add `STORAGE_BUCKET_FOODSTUFF_IMAGES` to backend storage configuration, require distinct recipe and foodstuff bucket names when storage is enabled, and resolve `ImageKind` to the corresponding configured bucket through a small shared-image helper. Keep the adapter's explicit bucket argument. Update Compose definitions, environment examples, and operational documentation together. Storage-disabled startup remains supported; partial enabled configuration should fail clearly without exposing secrets. No temporary compatibility mode for old enabled configuration is proposed; configuration and backend changes must ship together.
+
+Acceptance criteria: repeated initialization preserves objects and keys in both buckets; signed PUT/GET through the gateway reaches the intended bucket with byte-identical results; unsigned listing/read/write remains denied; backend tests cover kind-to-bucket routing, missing configuration, and accidental duplicate bucket names; all three Compose definitions validate; existing recipe storage checks and backend regressions pass.
+
+Validation passed using isolated Garage/gateway fixtures with synthetic credentials: both buckets accept the shared key, preserve distinct bytes under identical object keys, reject unsigned access, and retain objects through repeated initialization, restart, and container recreation. Existing signature rejection, separate-key isolation, and log/port checks also passed. All three Compose definitions validated. The complete backend suite passed against dedicated test PostgreSQL (357 tests, 209 subtests). No frontend sources or API schemas changed.
+
+The running application stack, its ignored secrets, and staging/production services were not modified. Preparing their definitions and verifying isolated fixtures does not establish rollout to those environments. Existing enabled backend configurations must add `STORAGE_BUCKET_FOODSTUFF_IMAGES` with the backend update. The isolated verifier stops its containers and retains its test volumes, following the existing fixture lifecycle.
+
 ## Remaining Technical Choices
 
 No blocking product questions remain. During implementation, decide whether repeated visible references should share download instructions. The current recipe service fetches fresh instructions on every call; caching and request coalescing are not existing guarantees. Any sharing must respect URL expiry, image replacement, and explicit fresh-URL retry. This does not expand scope into broader catalogue performance work.
