@@ -478,6 +478,15 @@ export class RecipeEditorComponent {
     this.state.set({ status: 'ready' });
   }
 
+  onFoodstuffCreated(created: FoodstuffOut): void {
+    this.foodstuffs.update((foodstuffs) =>
+      this.sortFoodstuffs([
+        ...foodstuffs.filter((foodstuff) => foodstuff.id !== created.id),
+        created,
+      ]),
+    );
+  }
+
   private async refreshFoodstuffs(): Promise<void> {
     try {
       this.foodstuffs.set(

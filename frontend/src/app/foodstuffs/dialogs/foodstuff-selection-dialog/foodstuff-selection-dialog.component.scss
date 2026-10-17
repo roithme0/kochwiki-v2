@@ -1,4 +1,5 @@
 @use "../../../../styles/page-background";
+@use "../../../../styles/search-bar";
 @use "@angular/material" as mat;
 
 :host {
@@ -142,7 +143,28 @@ mat-dialog-content.no-results {
   font-size: 0.875rem;
 }
 
+.search-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
 app-foodstuffs-search {
   display: block;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+}
+
+.create-foodstuff-button {
+  @include search-bar.add-button();
+  @include mat.button-overrides((
+    filled-container-shape: 0.75rem,
+    filled-container-height: 3.5rem,
+  ));
+  min-width: 0;
+  padding: 0;
+}
+
+.create-foodstuff-button > mat-icon {
+  margin: 0;
 }

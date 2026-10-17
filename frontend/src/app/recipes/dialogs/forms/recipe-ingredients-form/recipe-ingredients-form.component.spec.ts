@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
-import { Component, input } from '@angular/core';
+
+import { Component, EventEmitter, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -14,6 +15,10 @@ import { IngredientFieldComponent } from './ingredient-field/ingredient-field.co
 import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.component';
 import { FoodstuffSelectionDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 
+class PickerStub {
+    readonly foodstuffCreated = new EventEmitter<FoodstuffOut>();
+}
+
 @Component({ selector: 'app-macro-chart', template: '' })
 class MacroChartStubComponent {
     readonly nutrition = input.required<NutritionSummary>();
@@ -26,6 +31,7 @@ class ChartLegendElementStubComponent {
 
 describe('RecipeIngredientsFormComponent', () => {
     let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
+    let picker: PickerStub;
     let dialogResult: Subject<number[] | undefined>;
 
     const foodstuff: FoodstuffOut = {
@@ -68,6 +74,8 @@ describe('RecipeIngredientsFormComponent', () => {
         })
             .compileComponents();
 
+        picker = new PickerStub();
+        vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ componentInstance: picker, afterClosed: () => dialogResult.asObservable() } as ReturnType<MatDialog['open']>);
         fixture = TestBed.createComponent(RecipeIngredientsFormComponent);
         fixture.componentRef.setInput('foodstuffs', [foodstuff]);
         fixture.detectChanges();
@@ -115,6 +123,23 @@ describe('RecipeIngredientsFormComponent', () => {
             FoodstuffSelectionDialogComponent,
             expect.objectContaining({ data: expect.objectContaining({ existingFoodstuffIds: [1, 2] }) }),
         );
+    });
+
+    it('forwards created foodstuffs before confirmation and uses the updated catalogue for rows', () => {
+        const created = { ...foodstuff, id: 2, name: 'Reis' };
+        fixture.componentInstance.foodstuffCreated.subscribe((record) => {
+            fixture.componentRef.setInput('foodstuffs', [foodstuff, record]);
+            fixture.detectChanges();
+        });
+        fixture.componentInstance.openFoodstuffSelectionDialog();
+        picker.foodstuffCreated.emit(created);
+        expect(fixture.componentInstance.ingredients.length).toBe(1);
+        dialogResult.next([2]);
+        dialogResult.complete();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.ingredients.at(1).controls.foodstuffId.value).toBe(2);
+        expect(fixture.nativeElement.textContent).toContain('Reis');
+        expect(fixture.nativeElement.querySelector('.create-foodstuff-button')).toBeNull();
     });
 
     it('leaves rows untouched when the picker is dismissed', () => {

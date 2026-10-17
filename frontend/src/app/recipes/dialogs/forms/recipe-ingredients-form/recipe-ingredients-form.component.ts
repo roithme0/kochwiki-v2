@@ -8,6 +8,7 @@ import {
   computed,
   inject,
   input,
+  output,
   signal,
 } from '@angular/core';
 
@@ -22,7 +23,6 @@ import {
   FormBuilder,
 } from '@angular/forms';
 import type { FoodstuffOut } from '../../../../core/api/generated';
-import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 import {
   FoodstuffSelectionDialogComponent,
   FoodstuffSelectionDialogData,
@@ -68,6 +68,8 @@ interface IngredientFormControls {
 export class RecipeIngredientsFormComponent {
   foodstuffs = input.required<FoodstuffOut[]>();
   recipeVersion = input<RecipeVersionOut>();
+
+  readonly foodstuffCreated = output<FoodstuffOut>();
 
   readonly recipeFormDirective = inject(FormGroupDirective);
   readonly fb: FormBuilder = inject(FormBuilder);
@@ -144,26 +146,29 @@ export class RecipeIngredientsFormComponent {
   }
 
   openFoodstuffSelectionDialog(): void {
-    this.dialog
-      .open<
-        FoodstuffSelectionDialogComponent,
-        FoodstuffSelectionDialogData,
-        number[]
-      >(FoodstuffSelectionDialogComponent, {
-        data: {
-          foodstuffs: this.foodstuffs(),
-          existingFoodstuffIds: this.ingredientDrafts()
-            .map((ingredient) => ingredient.foodstuffId)
-            .filter((id): id is number => id !== null),
-        },
-        ariaLabel: 'Zutat hinzufügen',
-        width: '100vw',
-        maxWidth: 'min(var(--app-max-width), 100vw)',
-        height: '100dvh',
-        maxHeight: '100dvh',
-        position: { top: '0' },
-        autoFocus: false,
-      })
+    const dialogRef = this.dialog.open<
+      FoodstuffSelectionDialogComponent,
+      FoodstuffSelectionDialogData,
+      number[]
+    >(FoodstuffSelectionDialogComponent, {
+      data: {
+        foodstuffs: this.foodstuffs(),
+        existingFoodstuffIds: this.ingredientDrafts()
+          .map((ingredient) => ingredient.foodstuffId)
+          .filter((id): id is number => id !== null),
+      },
+      ariaLabel: 'Zutat hinzufügen',
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
+      autoFocus: false,
+    });
+    dialogRef.componentInstance.foodstuffCreated.subscribe((created) =>
+      this.foodstuffCreated.emit(created),
+    );
+    dialogRef
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((ids) => {
@@ -177,17 +182,6 @@ export class RecipeIngredientsFormComponent {
           existingIds.add(id);
         }
       });
-  }
-
-  openCreateFoodstuffDialog(): void {
-    this.dialog.open(FoodstuffCreateDialogComponent, {
-      width: '100vw',
-      maxWidth: 'min(var(--app-max-width), 100vw)',
-      maxHeight: '100dvh',
-      position: { top: '0' },
-      autoFocus: false,
-      disableClose: true,
-    });
   }
 
   private updateNutritionDraft(): void {

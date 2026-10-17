@@ -76,8 +76,20 @@
       Übernehmen
     </button>
   </div>
-  <app-foodstuffs-search
-    [searchValue]="searchValue()"
-    (searchValueChange)="searchValue.set($event)"
-  />
+  <div class="search-actions">
+    <app-foodstuffs-search
+      [searchValue]="searchValue()"
+      (searchValueChange)="searchValue.set($event)"
+    />
+    <button
+      mat-flat-button
+      type="button"
+      class="create-foodstuff-button"
+      aria-label="Lebensmittel erstellen"
+      title="Lebensmittel erstellen"
+      (click)="openCreateFoodstuffDialog()"
+    >
+      <mat-icon aria-hidden="true">add</mat-icon>
+    </button>
+  </div>
 </div>

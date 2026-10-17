@@ -93,6 +93,28 @@ describe('RecipeEditorComponent', () => {
         component.selectImage(input);
     }
 
+    it('uses foodstuffs created in the picker immediately without waiting for a catalogue refresh', async () => {
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        const form = fixture.debugElement.query(By.directive(RecipeIngredientsFormComponent))
+            .componentInstance as RecipeIngredientsFormComponent;
+        const created = {
+            id: 7, name: 'Reis', brand: null, unit: 'G' as const, unitVerbose: 'g',
+            kcal: 350, carbs: 75, protein: 7, fat: 1, recipeVersionIds: [],
+        };
+        form.foodstuffCreated.emit(created);
+        fixture.detectChanges();
+        expect(component.foodstuffs()).toEqual([created]);
+        expect(form.foodstuffFor(7)).toEqual(created);
+        form.addIngredient(7, 100);
+        fixture.detectChanges();
+        expect(fixture.nativeElement.textContent).toContain('Reis');
+        form.foodstuffCreated.emit(created);
+        expect(component.foodstuffs()).toEqual([created]);
+        expect(foodstuffBackend.getAllFoodstuffs).toHaveBeenCalledOnce();
+    });
+
     it('previews locally without uploading, preserves selection on picker cancel and releases it on dialog cancel', () => {
         selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
         expect(component.imagePreview()).toBe('blob:preview');

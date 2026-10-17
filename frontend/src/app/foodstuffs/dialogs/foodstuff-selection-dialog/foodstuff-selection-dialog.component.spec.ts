@@ -1,6 +1,8 @@
+import { Subject } from 'rxjs';
+import { FoodstuffCreateDialogComponent } from '../foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
@@ -12,9 +14,16 @@ const foodstuffs: FoodstuffOut[] = [
 
 describe('FoodstuffSelectionDialogComponent', () => {
   const close = vi.fn();
+  let creationResult: Subject<FoodstuffOut | undefined>;
+  const open = vi.fn();
   beforeEach(() => {
     close.mockReset();
+    creationResult = new Subject<FoodstuffOut | undefined>();
+    open.mockReset().mockReturnValue({ afterClosed: () => creationResult.asObservable() });
     TestBed.configureTestingModule({ providers: [{ provide: MatDialogRef, useValue: { close } }] });
+    TestBed.overrideComponent(FoodstuffSelectionDialogComponent, {
+      add: { providers: [{ provide: MatDialog, useValue: { open } }] },
+    });
   });
   it('shows all foodstuffs, filters by name or brand, and restores the list when cleared', () => {
     TestBed.configureTestingModule({
@@ -72,6 +81,59 @@ describe('FoodstuffSelectionDialogComponent', () => {
     expect(element.querySelector('.basket-preview button, .basket-preview a, .basket-preview [tabindex]')).toBeNull();
     confirm?.click();
     expect(close).toHaveBeenCalledWith([2, 1]);
+  });
+
+  it('adds a created foodstuff to the basket without changing search or existing selections', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: MAT_DIALOG_DATA, useValue: { foodstuffs, existingFoodstuffIds: [] } }],
+    });
+    const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+    const component = fixture.componentInstance;
+    const created: FoodstuffOut = { ...foodstuffs[0], id: 3, name: 'Reis' };
+    const emitted = vi.fn();
+    component.foodstuffCreated.subscribe(emitted);
+    component.toggleFoodstuff(2);
+    component.searchValue.set('pasta');
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    element.querySelector<HTMLButtonElement>('.create-foodstuff-button')?.click();
+    expect(open).toHaveBeenCalledWith(FoodstuffCreateDialogComponent, expect.any(Object));
+    creationResult.next(created);
+    creationResult.complete();
+    fixture.detectChanges();
+    expect(component.searchValue()).toBe('pasta');
+    expect(component.displayedFoodstuffs()).toEqual([foodstuffs[0]]);
+    expect(component.selectedFoodstuffs()).toEqual([foodstuffs[1], created]);
+    expect(emitted).toHaveBeenCalledExactlyOnceWith(created);
+    expect(foodstuffs).toHaveLength(2);
+    component.confirmSelection();
+    expect(close).toHaveBeenCalledWith([2, 3]);
+    component.searchValue.set('reis');
+    fixture.detectChanges();
+    const result = element.querySelector<HTMLButtonElement>('button[mat-list-item]');
+    expect(result?.getAttribute('aria-pressed')).toBe('true');
+    result?.click();
+    expect(component.selectedFoodstuffs()).toEqual([foodstuffs[1]]);
+  });
+
+  it('preserves the picker when foodstuff creation is cancelled', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: MAT_DIALOG_DATA, useValue: { foodstuffs, existingFoodstuffIds: [] } }],
+    });
+    const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+    const component = fixture.componentInstance;
+    const emitted = vi.fn();
+    component.foodstuffCreated.subscribe(emitted);
+    component.toggleFoodstuff(1);
+    component.searchValue.set('missing');
+    component.openCreateFoodstuffDialog();
+    creationResult.next(undefined);
+    creationResult.complete();
+    expect(component.searchValue()).toBe('missing');
+    expect(component.selectedFoodstuffs()).toEqual([foodstuffs[0]]);
+    expect(component.foodstuffs()).toEqual(foodstuffs);
+    expect(emitted).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
   });
 
   it('preserves selections across filtering, toggles them, and blocks existing ingredients', () => {

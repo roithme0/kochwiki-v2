@@ -6,7 +6,7 @@ Concept direction agreed. The selection-first workflow, fixed foodstuff per ingr
 
 ## Context
 
-Recipe creation, active-version editing, and draft editing share the ingredient form. Confirming the picker now appends fixed foodstuff rows with empty amounts in selection order. Empty recipes start without ingredient rows. A separate action still opens foodstuff creation until the creation handoff slice.
+Recipe creation, active-version editing, and draft editing share the ingredient form. Confirming the picker now appends fixed foodstuff rows with empty amounts in selection order. Empty recipes start without ingredient rows. Foodstuff creation is available through the plus action beside the picker search; the separate creation action in the ingredient form is removed.
 
 This concept revises the ingredient interaction recommended in `2026-09-12-recipe-editor-ux.md`, which retained an inline foodstuff select. Other editor directions remain outside this concept.
 
@@ -30,7 +30,7 @@ The selection dialog contains no amount input. Users enter and edit amounts only
 
 ### Selection Basket and Confirmation
 
-Use a Material action list with one native toggle button per foodstuff and selection state owned by the dialog. Do not show checkboxes or override Material internals to hide them. Expose pending selection through `aria-pressed`, a checkmark, and “Im Korb”. Standard button keyboard navigation is accepted for the current mobile scope. The current slice includes pending selection, a count, disabled existing ingredients, and a confirmation button disabled for an empty basket. Confirmation appends rows in selection order; cancellation leaves existing rows and amounts intact. The basket now includes a read-only, horizontally scrollable image preview in selection order. Basket items have no tap actions; deselection stays in the results list. The creation handoff follows separately.
+Use a Material action list with one native toggle button per foodstuff and selection state owned by the dialog. Do not show checkboxes or override Material internals to hide them. Expose pending selection through `aria-pressed`, a checkmark, and “Im Korb”. Standard button keyboard navigation is accepted for the current mobile scope. The current slice includes pending selection, a count, disabled existing ingredients, and a confirmation button disabled for an empty basket. Confirmation appends rows in selection order; cancellation leaves existing rows and amounts intact. The basket now includes a read-only, horizontally scrollable image preview in selection order. Basket items have no tap actions; deselection stays in the results list. The plus action opens the existing creation dialog above the picker; successful creation adds the returned record to the pending basket without changing the search.
 
 Use a temporary selection basket, as shown in the supplied picker visualization: users choose one or several foodstuffs across searches, then press “Übernehmen” once to append their ingredient rows, close the picker, and return to the editor. Pending items are marked “Im Korb”; the basket shows a count and image preview. This supports both workflows without separate single-selection and multi-selection modes.
 
@@ -72,7 +72,7 @@ This concept concerns manual ingredient selection in the shared recipe editor an
 
 The ingredient form supports an empty ingredient section without adding a placeholder row. Selected rows retain the existing required-amount validation and nutrition handling.
 
-The foodstuff creation dialog currently saves the catalogue entry and closes without returning the created record to its caller. Adding the created foodstuff to the pending basket requires an explicit result handoff.
+The foodstuff creation dialog returns the saved catalogue record through its typed dialog result. The picker adds that record to its local catalogue and pending basket, then emits it through the ingredient form to update the editor catalogue immediately. The existing catalogue-change notification still refreshes other consumers. Confirmation can therefore resolve the new foodstuff without waiting for the background catalogue refresh. Cancelling the picker discards pending ingredient selections but retains the independently created catalogue entry.
 
 Existing backend semantic search remains outside this scope. The picker uses ordinary string comparison without additional semantic API integration.
 
