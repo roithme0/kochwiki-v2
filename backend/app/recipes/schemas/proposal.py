@@ -95,6 +95,7 @@ class ResolvedProposalFoodstuffFields(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     name: str
+    imageId: UUID | None
     brand: str | None
     unit: Unit = Field(strict=False)
     unitVerbose: str

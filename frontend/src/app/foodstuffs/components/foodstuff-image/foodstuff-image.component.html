@@ -1,0 +1,14 @@
+<div class="image-area" [attr.aria-busy]="loading()">
+  @if (!imageUrl() || loading()) {
+    <img src="assets/images/question-mark.png" [alt]="alt()" />
+  }
+  @if (imageUrl(); as url) {
+    <img
+      [src]="url"
+      [alt]="alt()"
+      [style.visibility]="loading() ? 'hidden' : 'visible'"
+      (load)="imageLoaded(url)"
+      (error)="imageLoadFailed(url)"
+    />
+  }
+</div>

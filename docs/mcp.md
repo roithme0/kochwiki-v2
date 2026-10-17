@@ -56,6 +56,13 @@ or metadata definitions. Tool and capability descriptions may state their own
 consequences, such as read-only retrieval, values not being converted by a display,
 or metadata enabling a save button. These are contract facts, not workflow policy.
 
+Recipe presentation ingredient foodstuffs carry a required nullable `imageId`.
+Relay supplied image UUIDs unchanged and use null when unavailable; never invent
+image references or substitute signed URLs. This supported reference is an
+exception to hiding internal IDs in display payloads. Resolved proposals retain
+catalogue ingredient images and return null for temporary ingredients. The same
+frontend schema validates local Original cards and agent recipe artifacts.
+
 For example, "Display calories and macronutrients with the supplied basis"
 belongs in the nutrition capability. "Use the nutrition artifact for nutrition
 questions" and comparisons with full item displays belong in MCP instructions.

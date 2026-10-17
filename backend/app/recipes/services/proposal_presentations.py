@@ -71,9 +71,9 @@ def _resolve_proposal_foodstuff(
     if isinstance(foodstuff, ExistingProposalFoodstuff):
         summary = foodstuff_summary_out(foodstuffs[foodstuff.foodstuffId])
         return ResolvedExistingProposalFoodstuff.model_validate({
-            **summary.model_dump(exclude={"imageId"}), "kind": "existing",
+            **summary.model_dump(), "kind": "existing",
         })
     definition = foodstuff.definition
     return ResolvedTemporaryProposalFoodstuff.model_validate({
-        **definition.model_dump(), "kind": "temporary", "unitVerbose": definition.unit.verbose_name,
+        **definition.model_dump(), "kind": "temporary", "imageId": None, "unitVerbose": definition.unit.verbose_name,
     })

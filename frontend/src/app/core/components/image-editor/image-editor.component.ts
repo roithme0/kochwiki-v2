@@ -12,6 +12,7 @@ import type { ImageEditorState } from '../../services/image-editor-state.service
 export class ImageEditorComponent {
   readonly state = input.required<ImageEditorState>();
   readonly placeholder = input.required<string>();
+  readonly square = input(false);
   readonly feedback = computed(() => {
     const state = this.state();
     if (state.uploadingImage()) return 'Bild wird hochgeladen und geprüft …';

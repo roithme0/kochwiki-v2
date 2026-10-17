@@ -9,6 +9,7 @@ import {
 } from './recipe-artifact';
 
 const foodstuff = {
+  imageId: null,
   name: 'Tomaten',
   unitVerbose: 'g',
   kcal: 18,
@@ -28,6 +29,43 @@ const payload = {
 };
 
 describe('Recipe artifact contract', () => {
+  it.each([null, '00000000-0000-4000-8000-000000000002'])(
+    'accepts and relays a supplied image reference: %s',
+    (imageId) => {
+      const recipe = {
+        ...payload,
+        ingredients: [
+          { ...payload.ingredients[0], foodstuff: { ...foodstuff, imageId } },
+        ],
+      };
+      expect(isRecipePresentation(recipe)).toBe(true);
+      const artifact = mapConversationArtifact({
+        ...conversationProposal(),
+        payload: { title: 'Recipe', payload: recipe },
+      });
+      expect(artifact.type).toBe('kochwiki-recipe');
+      expect(artifact.payload).toEqual(recipe);
+    },
+  );
+
+  it.each([undefined, 'invalid', 42, '/storage/image.png'])(
+    'rejects a missing or malformed image reference: %j',
+    (imageId) => {
+      const recipe = {
+        ...payload,
+        ingredients: [
+          { ...payload.ingredients[0], foodstuff: { ...foodstuff, imageId } },
+        ],
+      };
+      expect(isRecipePresentation(recipe)).toBe(false);
+      expect(
+        mapConversationArtifact({
+          ...conversationProposal(),
+          payload: { title: 'Recipe', payload: recipe },
+        }).type,
+      ).toBe('kochwiki-unsupported');
+    },
+  );
   it('retains proposal identity only in metadata', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
@@ -134,6 +172,19 @@ describe('Recipe artifact contract', () => {
   });
 
   it('advertises a strict presentation schema and recipe name header guidance', () => {
+    expect(RECIPE_ARTIFACT_CAPABILITY.payloadSchema).toMatchObject({
+      properties: {
+        ingredients: {
+          items: {
+            properties: {
+              foodstuff: {
+                required: expect.arrayContaining(['imageId']) as unknown,
+              },
+            },
+          },
+        },
+      },
+    });
     expect(
       RECIPE_ARTIFACT_CAPABILITY.payloadSchema['additionalProperties'],
     ).toBe(false);

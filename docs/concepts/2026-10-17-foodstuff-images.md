@@ -20,8 +20,9 @@ through the existing initializer. The third slice shares validation and transfer
 behind domain-specific image routes. The fourth slice adds catalogue image
 associations and their HTTP/MCP save semantics. The fifth slice adds foodstuff
 form image editing and shared frontend transfers. A follow-up extracts common
-component-scoped image editor state and aligns upload/save dismissal behavior. Catalogue and
-ingredient/picker/basket thumbnails remain pending.
+component-scoped image editor state and aligns upload/save dismissal behavior. Catalogue
+thumbnails and square foodstuff editor previews are now implemented, along with
+recipe-detail ingredient, picker, basket, and recipe-editor ingredient thumbnails.
 
 Foodstuffs are mutable catalogue records without version history. Recipe ingredients reference those records and responses embed current foodstuff summaries. Create and edit dialogs share `FoodstuffFormComponent`. The foodstuff catalogue uses a responsive table whose first column is a nutrition chart; there is no dedicated foodstuff detail page. `FoodstuffPresentationComponent` serves nutrition-only AI artifacts.
 
@@ -47,6 +48,10 @@ Creation from the ingredient picker uses the same form. Return the saved foodstu
 
 ### Display
 
+The requested display scope includes the foodstuff catalogue, recipe-detail ingredient rows, recipe create/edit ingredient rows, picker results, and basket previews. Replace the per-foodstuff macro charts in the catalogue and recipe detail, and replace the existing question-mark placeholders in the other locations. Recipe-level nutrition charts and the foodstuff form's nutrition chart remain available.
+
+All foodstuff image areas must be square, including the foodstuff create/edit preview. This applies equally to saved images, local previews, and placeholders. Preserve image proportions with contained rendering, without stretching or cropping; source files do not need to be square. Sizes can differ by location. Recipe image areas retain their existing layout. This square-display rule is agreed and supersedes the earlier foodstuff editor preview height convention.
+
 Replace placeholders in recipe-editor ingredient rows, picker results, and basket previews. These display locations are agreed. Preserve their compact image areas, text labels, selection controls, and basket order. Use contained images rather than recipe-grid natural-height rendering.
 
 Replace the catalogue table's leading macro chart with an image, following the recipe grid's image-first direction. Numeric nutrition columns retain their current responsive behavior. Removal of the chart, including at narrow widths, is agreed.
@@ -69,7 +74,7 @@ Retain the existing deferred cleanup boundary for this proposal. Removing/replac
 
 Evolve backend schemas, generated frontend contracts, and frontend consumers together. Foodstuff list/detail responses and embedded ingredient summaries need image identity for the selected display scope. Review explicit summary construction, catalogue refresh, pending basket records, and foodstuff creation results rather than assuming an added ORM field flows through automatically.
 
-Review HTTP and MCP create/update/read paths together so omitted image fields preserve existing associations. Existing AI foodstuff/recipe presentation payloads remain unchanged: adding images to ordinary domain summaries must not implicitly add them to artifact contracts or send image bytes/access URLs to the AI Service.
+Review HTTP and MCP create/update/read paths together so omitted image fields preserve existing associations. Recipe presentation ingredient foodstuffs include required nullable image identity: relay a known image UUID, otherwise null. Foodstuff artifact payloads remain unchanged. Image bytes, object keys, and signed access URLs are not part of presentation payloads.
 
 Meaningful later verification includes invalid upload/reference rejection, omitted/null/replacement behavior, failed-save preservation, blocked recipe and foodstuff dialog dismissal during upload/save, upload reuse, create-from-picker handoff, embedded summary propagation, and thumbnail fallback without selection changes. A forced close must prevent subsequent domain writes in both editors. Also verify correct bucket routing through upload completion and download, rejection of cross-domain image associations, and preservation of existing recipe image IDs and references through the metadata migration. No application code was changed or executed to verify the proposed behavior during concept discovery.
 
@@ -174,10 +179,10 @@ image. Image-only changes do not trigger semantic embedding refresh. Generate
 frontend contracts and adapt existing consumers/fixtures together; image editing
 and rendering remain later slices.
 
-Keep AI presentation payloads unchanged. Temporary proposal foodstuff definitions
+This slice initially kept AI presentation payloads unchanged; the 2026-10-18 contract simplification below supersedes its image-identity exclusion. Temporary proposal foodstuff definitions
 use the existing name/unit/brand/nutrition base fields; materialization explicitly
 converts those fields to catalogue creation input. Image-bearing catalogue
-summaries explicitly exclude image identity when resolving proposal presentations.
+summaries now retain image identity when resolving proposal presentations, while temporary ingredients resolve with null image identity.
 Removal, replacement and foodstuff deletion retain image metadata and bytes under
 the existing deferred cleanup boundary.
 
@@ -327,6 +332,38 @@ Browser review checked both create editors and domain placeholders, including
 application data changes were performed during this extraction.
 
 ## Remaining Technical Choices
+
+### First Display Slice: Catalogue Thumbnails and Square Editor Preview
+
+Approved and implemented on 2026-10-17. `FoodstuffImageComponent` under `foodstuffs/components` uses the existing foodstuff download service and replaces the catalogue table's leading macro chart at all existing responsive breakpoints. It retains the 24-pixel image area and existing table pagination. The area is square with contained rendering and the question-mark fallback for absent, loading, or failed images. The saved image appears only after its bytes load. Obsolete requests, obsolete image events, and responses after destruction are ignored; URL expiry does not refresh already displayed bytes. No thumbnail retry controls or automatic retries are added.
+
+The shared `ImageEditorComponent` now offers an optional square preview, enabled by the foodstuff form for saved images, local previews, and placeholders. Recipe preview proportions and shared editing behavior remain unchanged.
+
+Formatting, lint, 13 tooling tests, and 678 Angular tests passed. New regressions cover absent images, instruction and byte loading, access and byte failures, image replacement/removal during pending access, stale image events, late success/failure after destruction, URL expiry, and catalogue integration. No browser visual review or live transfer was performed for this slice. Original image bytes are still used for compact thumbnails; bandwidth optimization remains deferred.
+
+### Second Display Slice: Recipe Detail, Picker Results, and Basket
+
+Approved and implemented on 2026-10-17. The shared recipe ingredient grid now renders `FoodstuffImageComponent` instead of per-ingredient macro charts, retaining its 24-pixel image area, ingredient ordering, names, and quantities. The foodstuff selection dialog uses the same component for its 40-pixel result avatars and basket previews, including foodstuffs returned directly from creation. Basket image labels retain foodstuff names and optional brands; images next to visible names are decorative. Selection, search, ordering, confirmation, and recipe-level nutrition remain unchanged.
+
+The frontend recipe presentation model initially accepted optional foodstuff image identity, subsequently replaced by the required nullable contract below. Ordinary recipe responses already supply it. Formatting, lint, 13 tooling tests, and 680 Angular tests passed. Integration regressions cover ingredient image propagation and ordering, fallback for presentation data, picker and basket image references, and creation handoff. No browser visual review or live transfers were performed.
+
+### Third Display Slice: Recipe Editor Ingredient Fields
+
+Approved and implemented on 2026-10-17. `IngredientFieldComponent` uses the shared foodstuff image component in a 40-pixel square area, passing the selected catalogue foodstuff's image reference. Missing foodstuff records and absent images use the question-mark fallback. Amount controls, labels, brand display, and selection behavior are preserved. The artifact ingredient grid already uses the same thumbnail component; artifact data without image identity continues to display the fallback without enrichment requests.
+
+Formatting, lint, 13 tooling tests, and 681 Angular tests passed. A regression covers picker-to-editor image propagation and fallback when a selected foodstuff record becomes unavailable while retaining its entered amount. No browser visual review or live transfers were performed.
+
+Use the existing `RecipeImageComponent` as the implementation reference for the foodstuff thumbnail: react to image-reference changes, obtain signed download instructions through the domain service, reveal bytes after successful loading, ignore obsolete requests and responses after destruction, and keep already loaded bytes displayed after URL expiry. Adapt its regression scenarios for the foodstuff component. Its visible spinner, error message, retry button, and variable image proportions do not apply to compact foodstuff thumbnails; retain the agreed square area and question-mark fallback throughout loading or failure. The foodstuff editor continues using the shared image editor rather than the read-only thumbnail. Taking inspiration from the recipe component does not require a broader refactor of recipe image rendering in this slice.
+
+The recipe-detail ingredient grid is shared with AI recipe presentations. Both use required nullable foodstuff image identity without fetching catalogue data for artifacts. Null image references use the question-mark fallback.
+
+Browser verification of the supplied recipe exposed a separate mapping issue in the chat's local Original card: its presentation mapping dropped known foodstuff image references. The mapping now preserves optional image identity in detached display data, and frontend display validation accepts it without changing the advertised AI payload schema. The regression verifies image-reference preservation and snapshot isolation. Formatting, lint, 13 tooling tests, and 681 Angular tests passed. Browser review confirmed the basil image on both the recipe detail and the chat Original card; no chat messages or recipe writes were submitted.
+
+### Recipe Presentation Contract Simplification
+
+Approved on 2026-10-18. Recipe presentation ingredient foodstuffs require `imageId`, accepting a valid UUID or explicit null. The agent relays available references unchanged and supplies null when unavailable; it must not invent identifiers or substitute URLs. The advertised recipe capability and renderer use one schema, and the frontend model no longer uses an optional-property workaround. The local Original card copies the same required field. Resolved backend proposals retain catalogue image references and explicitly emit null for temporary foodstuffs; proposal creation still accepts no image selection for temporary definitions. The earlier optional frontend display schema and AI image-identity exclusion are superseded. This contract change ships across backend outputs, generated contracts, frontend validation, and agent guidance together.
+
+Implemented and verified: backend 399 tests and 218 subtests, frontend 687 Angular tests and 13 tooling tests, formatting, lint, and exact generated-contract verification passed. Regression coverage includes relaying known UUIDs, explicit null for temporary ingredients, required-field and malformed-reference rejection, advertised capability shape, and preservation of the local Original snapshot. Existing recipe artifact payloads must now supply the field; omission is rejected rather than supported through a compatibility schema. Backend rollout and a fresh conversation are needed to consume the updated resolver and MCP guidance in a running deployment.
 
 No blocking product questions remain. During implementation, decide whether repeated visible references should share download instructions. The current recipe service fetches fresh instructions on every call; caching and request coalescing are not existing guarantees. Any sharing must respect URL expiry, image replacement, and explicit fresh-URL retry. This does not expand scope into broader catalogue performance work.
 

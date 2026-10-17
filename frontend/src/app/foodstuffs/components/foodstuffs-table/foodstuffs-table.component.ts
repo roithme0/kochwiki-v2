@@ -1,5 +1,4 @@
 import type { AfterViewInit } from '@angular/core';
-import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import {
   Component,
   DestroyRef,
@@ -26,7 +25,7 @@ import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dia
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
-import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { FoodstuffImageComponent } from '../foodstuff-image/foodstuff-image.component';
 import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
@@ -38,12 +37,11 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
 @Component({
   selector: 'app-foodstuffs-table',
   imports: [
-    NutritionSummaryPipe,
     MatTableModule,
     MatSortModule,
     MatButtonModule,
     MatIconModule,
-    MacroChartComponent,
+    FoodstuffImageComponent,
     MatPaginatorModule,
   ],
   templateUrl: './foodstuffs-table.component.html',

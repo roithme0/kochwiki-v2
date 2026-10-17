@@ -1,5 +1,6 @@
 <div
   class="image-preview"
+  [class.square]="square()"
   [attr.aria-busy]="state().loadingImage() || state().busy()"
 >
   @if (state().imagePreview(); as preview) {

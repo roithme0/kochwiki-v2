@@ -72,9 +72,11 @@ describe('Recipe conversation contract', () => {
     source.kcal.value = 1;
     expect(artifact.payload.kcal).toEqual({ status: 'exact', value: 987 });
     expect(artifact.payload.ingredients[0].foodstuff.name).toBe('Linsen');
-    expect(artifact.payload.ingredients[0].foodstuff).not.toHaveProperty(
-      'imageId',
+    expect(artifact.payload.ingredients[0].foodstuff.imageId).toBe(
+      source.ingredients[0].foodstuff.imageId,
     );
+    source.ingredients[0].foodstuff.imageId = null;
+    expect(artifact.payload.ingredients[0].foodstuff.imageId).not.toBeNull();
     const proposal = mapConversationArtifact(conversationProposal());
     expect(proposal.type).toBe('kochwiki-recipe');
     expect(proposal.headline).toBe('Neue Linsensuppe');

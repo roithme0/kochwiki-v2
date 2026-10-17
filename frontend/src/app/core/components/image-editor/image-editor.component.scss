@@ -9,6 +9,16 @@
   block-size: clamp(12rem, 40vw, 22rem);
 }
 
+.image-preview.square {
+  block-size: auto;
+  aspect-ratio: 1;
+
+  > img {
+    position: absolute;
+    inset: 0;
+  }
+}
+
 img {
   display: block;
   inline-size: 100%;

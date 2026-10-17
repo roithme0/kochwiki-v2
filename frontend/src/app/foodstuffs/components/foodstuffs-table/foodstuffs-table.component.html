@@ -7,15 +7,14 @@
       (contentChanged)="contentChanged()"
     >
       @for (field of displayedFields(); track field) {
-        <!-- chart -->
-        @if (field === 'chart') {
+        <!-- image -->
+        @if (field === 'image') {
           <ng-container [matColumnDef]="field">
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let foodstuff">
-              <app-macro-chart
-                class="macro-chart"
-                [nutrition]="foodstuff | nutritionSummary"
-                [showKcal]="false"
+              <app-foodstuff-image
+                class="foodstuff-image"
+                [imageId]="foodstuff.imageId"
               />
             </td>
           </ng-container>

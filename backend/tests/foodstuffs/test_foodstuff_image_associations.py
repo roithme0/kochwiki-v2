@@ -135,7 +135,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
     assert search_service(provider).search("Carrot", 5)[0].foodstuff.imageId == images[1]
 
 
-def test_proposal_presentation_excludes_catalogue_image_identity(
+def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_foodstuffs(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
     saved = client.post("/foodstuffs", json={"name": "Carrot", "unit": "G", "imageId": str(images[0])}).json()
@@ -150,8 +150,10 @@ def test_proposal_presentation_excludes_catalogue_image_identity(
             ]},
         }))
         presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
-        for ingredient in presentation.ingredients:
-            assert "imageId" not in ingredient.foodstuff.model_dump()
+        assert presentation.ingredients[0].foodstuff.imageId == images[0]
+        assert presentation.ingredients[1].foodstuff.imageId is None
+        body = presentation.model_dump(mode="json")
+        assert [ingredient["foodstuff"]["imageId"] for ingredient in body["ingredients"]] == [str(images[0]), None]
         definitions = RecipeProposalCreate.model_json_schema()['$defs']
         assert 'imageId' not in definitions['FoodstuffFields']['properties']
 

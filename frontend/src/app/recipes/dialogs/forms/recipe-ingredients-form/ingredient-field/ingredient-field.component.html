@@ -1,10 +1,7 @@
 <div class="ingredient-fields">
-  <img
+  <app-foodstuff-image
     class="foodstuff-image"
-    src="assets/images/question-mark.png"
-    alt=""
-    width="40"
-    height="40"
+    [imageId]="foodstuff()?.imageId ?? null"
   />
   <div class="foodstuff-label">
     <span>{{ foodstuff()?.name ?? 'Lebensmittel nicht verfügbar' }}</span>

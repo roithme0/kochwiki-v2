@@ -11,6 +11,7 @@ import { FoodstuffsTableComponent } from './foodstuffs-table.component';
 import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
 import { ElementWidthService } from '../../../core/services/element-width.service';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
+import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 
 describe('FoodstuffsTableComponent', () => {
   const foodstuff: FoodstuffOut = {
@@ -41,6 +42,14 @@ describe('FoodstuffsTableComponent', () => {
 
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: FoodstuffImageService,
+          useValue: {
+            download: vi
+              .fn()
+              .mockResolvedValue({ url: '/storage/tomato', expiresIn: 300 }),
+          },
+        },
         {
           provide: ElementRef,
           useValue: new ElementRef(document.createElement('div')),
@@ -123,6 +132,37 @@ describe('FoodstuffsTableComponent', () => {
     width.set(480);
     fixture.detectChanges();
     expect(element.querySelectorAll('th')).toHaveLength(4);
+  });
+
+  it('renders the catalogue image instead of a macro chart and retains it at narrow widths', async () => {
+    const download = vi.spyOn(
+      TestBed.inject(FoodstuffImageService),
+      'download',
+    );
+    vi.spyOn(
+      TestBed.inject(FoodstuffTableDisplayedFieldsService),
+      'getDisplayedFields',
+    ).mockReturnValue(signal(['image', 'name', 'edit', 'delete']));
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput('foodstuffs', [
+      { ...foodstuff, imageId: 'tomato-image' },
+    ]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('app-macro-chart')).toBeNull();
+    expect(
+      element.querySelector('.mat-column-image app-foodstuff-image'),
+    ).not.toBeNull();
+    expect(download).toHaveBeenCalledWith('tomato-image');
+    const image = element.querySelector<HTMLImageElement>(
+      'img[src="/storage/tomato"]',
+    )!;
+    image.dispatchEvent(new Event('load'));
+    fixture.detectChanges();
+    expect(image.style.visibility).toBe('visible');
+    expect(element.textContent).toContain('Tomate');
   });
 
   it('adjusts pagination to the available height while keeping the current item in view', async () => {
