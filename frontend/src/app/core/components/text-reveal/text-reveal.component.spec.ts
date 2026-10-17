@@ -7,7 +7,7 @@ describe('TextRevealComponent', () => {
     const text = 'Schön,\n👩‍🍳 cafe\u0301';
     fixture.componentRef.setInput('text', text);
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const visual = element.querySelector('[aria-hidden="true"]');
 
     expect(element.querySelector('.accessible-text')?.textContent).toBe(text);
@@ -29,7 +29,7 @@ describe('TextRevealComponent', () => {
     fixture.componentRef.setInput('characterDelay', 75);
     fixture.componentRef.setInput('startDelay', 500);
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const previous = element.querySelector('.character');
     expect(
       element.querySelectorAll<HTMLElement>('.character')[0].style

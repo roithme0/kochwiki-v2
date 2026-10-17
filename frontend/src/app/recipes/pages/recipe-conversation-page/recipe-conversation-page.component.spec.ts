@@ -98,8 +98,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
       }),
     );
     getRecipe.mockResolvedValue(source);
-    fetchMock.mockImplementation(async () =>
-      response({ session_id: 'session-1', expires_at: 'later' }),
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        response({ session_id: 'session-1', expires_at: 'later' }),
+      ),
     );
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({
@@ -299,7 +301,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
         By.directive(FoodstuffPresentationComponent),
       ),
     ).toHaveLength(1);
-    expect(fixture.nativeElement.textContent).toContain('Meine Marke');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Meine Marke',
+    );
     const cards = fixture.debugElement.queryAll(
       By.directive(NutritionCardComponent),
     );
@@ -356,7 +360,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(
-        fixture.nativeElement.querySelector('button.proposal-save'),
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'button.proposal-save',
+        ),
       ).not.toBeNull();
     });
     expect(page.view().composerDisabled).toBe(true);
@@ -393,7 +399,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
     fixture.detectChanges();
     expect(
-      fixture.nativeElement.querySelector('button.proposal-save'),
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button.proposal-save',
+      ),
     ).not.toBeNull();
     expect(page.view().status?.kind).toBe('error');
     expect(page.view().status?.message).toContain('Ausgang ist unbekannt');
@@ -459,9 +467,13 @@ describe('Recipe conversation page through published controller and HTTP transpo
       const card = cards[1].componentInstance as NutritionCardComponent;
       expect(card.basis()).toBe(item.label);
       expect(card.nutrition()).toEqual(payload);
-      expect(fixture.nativeElement.textContent).toContain(item.title);
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        item.title,
+      );
       if (item.subtitle)
-        expect(fixture.nativeElement.textContent).toContain(item.subtitle);
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+          item.subtitle,
+        );
       expect(
         fixture.debugElement.queryAll(
           By.directive(FoodstuffPresentationComponent),
@@ -472,7 +484,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
           By.directive(RecipePresentationComponent),
         ),
       ).toHaveLength(1);
-      expect(fixture.nativeElement.textContent).not.toContain(
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
         'Als Entwurf speichern',
       );
       expect(getRecipe).toHaveBeenCalledTimes(1);
@@ -544,9 +556,13 @@ describe('Recipe conversation page through published controller and HTTP transpo
             .ingredients[0].foodstuff.name === 'Neue Zutat',
       ),
     ).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('25 min');
-    expect(fixture.nativeElement.textContent).toContain('Neues Rezept');
-    expect(fixture.nativeElement.textContent).not.toContain(
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '25 min',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Neues Rezept',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
       'Als Entwurf speichern',
     );
     expect(getRecipe).toHaveBeenCalledTimes(1);
@@ -587,10 +603,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
       );
     await page.submit({ text: 'Show the foodstuff', acknowledge: vi.fn() });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('pre')?.textContent).toContain(
-      '"name": "Linsen"',
-    );
-    expect(fixture.nativeElement.textContent).not.toContain(
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('pre')?.textContent,
+    ).toContain('"name": "Linsen"');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
       'Als Entwurf speichern',
     );
     expect(save).not.toHaveBeenCalled();
@@ -604,7 +620,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
       await submit(page);
       fixture.detectChanges();
       expect(
-        fixture.nativeElement.textContent.match(/Als Entwurf speichern/g),
+        (fixture.nativeElement as HTMLElement).textContent.match(
+          /Als Entwurf speichern/g,
+        ),
       ).toHaveLength(1);
       const payload = mapConversationArtifact(conversationProposal()).metadata;
       const pending = deferred<ReturnType<typeof conversationRecipe>>();
@@ -676,7 +694,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     await submit(page);
     fixture.detectChanges();
-    const button = fixture.nativeElement.querySelector(
+    const button = (fixture.nativeElement as HTMLElement).querySelector(
       'button.proposal-save',
     ) as HTMLButtonElement;
     expect(button).not.toBeNull();
@@ -839,7 +857,15 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock.mock.calls[0][0]).toBe(
       '/ai/api/v1/agents/kochwiki/sessions',
     );
-    const request = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    const body = fetchMock.mock.calls[0][1]?.body;
+    if (typeof body !== 'string')
+      throw new Error('Expected a JSON request body');
+    const request = JSON.parse(body) as {
+      input: {
+        artifactCapabilities: string[];
+        context: { source: ReturnType<typeof conversationRecipe> };
+      };
+    };
     expect(Object.keys(request.input)).toEqual([
       'context',
       'artifactCapabilities',
@@ -875,7 +901,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(
       fixture.debugElement.queryAll(By.directive(RecipePresentationComponent)),
     ).toHaveLength(3);
-    expect(fixture.nativeElement.textContent).toContain(
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Inhalt nicht darstellbar',
     );
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
@@ -908,7 +934,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(getRecipe).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(page.phase()).toBe('waiting-for-user');
-    expect(fixture.nativeElement.textContent).toContain('Anmelden');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Anmelden',
+    );
     expect(page.original()).toBeNull();
     user.set({ id: 2, display_name: 'Restored' });
     fixture.detectChanges();
@@ -1109,7 +1137,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     expect(page.phase()).toBe('error');
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Erneut versuchen');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Erneut versuchen',
+    );
   });
 
   it('keeps historical sources unavailable', async () => {

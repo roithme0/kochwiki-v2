@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import { Component, inject } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
@@ -13,7 +14,7 @@ import { TextRevealComponent } from '../../components/text-reveal/text-reveal.co
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',
 })
-export class HomePageComponent {
+export class HomePageComponent implements OnInit {
   private readonly document = inject(DOCUMENT);
   readonly pageHeaderService = inject(PageHeaderService);
   readonly backendMetaService = inject(BackendMetaService);

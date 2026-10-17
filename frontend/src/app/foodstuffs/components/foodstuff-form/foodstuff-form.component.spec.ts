@@ -34,8 +34,9 @@ describe('FoodstuffFormComponent', () => {
     });
     component.onSubmit();
 
-    const labels: NodeListOf<Element> =
-      fixture.nativeElement.querySelectorAll('mat-label');
+    const labels: NodeListOf<Element> = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll('mat-label');
     expect(Array.from(labels, (label) => label.textContent?.trim())).toEqual([
       'Name',
       'Einheit',

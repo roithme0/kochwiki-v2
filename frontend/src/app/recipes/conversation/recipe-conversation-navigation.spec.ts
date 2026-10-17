@@ -30,24 +30,34 @@ describe('Version-specific conversation routing', () => {
   const path = `/recipes/${source.recipeLineageId}/versions/${source.recipeVersionId}/improve`;
   const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
 
+  const dismiss = vi.fn();
   const snackbar = vi.fn<SnackBarService['open']>();
   beforeEach(() => {
-    snackbar.mockReset().mockReturnValue({ dismiss: vi.fn() });
-    getRecipe
-      .mockReset()
-      .mockImplementation(async (_lineageId, versionId) => ({
+    dismiss.mockClear();
+    snackbar.mockReset().mockReturnValue({ dismiss });
+    getRecipe.mockReset().mockImplementation((_lineageId, versionId) =>
+      Promise.resolve({
         ...conversationRecipe(),
         recipeVersionId: versionId,
-      }));
+      }),
+    );
     vi.stubGlobal(
       'fetch',
-      vi.fn<typeof fetch>().mockImplementation(async (url) => {
-        const payload = String(url).endsWith('/messages')
+      vi.fn<typeof fetch>().mockImplementation((url) => {
+        const address =
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url;
+        const payload = address.endsWith('/messages')
           ? { kind: 'expired', detail: 'Session expired' }
           : { session_id: 'test', expires_at: 'later' };
-        return new Response(JSON.stringify(payload), {
-          status: String(url).endsWith('/messages') ? 410 : 200,
-        });
+        return Promise.resolve(
+          new Response(JSON.stringify(payload), {
+            status: address.endsWith('/messages') ? 410 : 200,
+          }),
+        );
       }),
     );
     TestBed.configureTestingModule({
@@ -73,11 +83,12 @@ describe('Version-specific conversation routing', () => {
           provide: RecipeBackendService,
           useValue: {
             getRecipeVersion: getRecipe,
-            saveRecipeProposal: async () => ({
-              ...conversationRecipe(),
-              recipeVersionId: 'returned-draft',
-              state: 'draft',
-            }),
+            saveRecipeProposal: () =>
+              Promise.resolve({
+                ...conversationRecipe(),
+                recipeVersionId: 'returned-draft',
+                state: 'draft',
+              }),
             notifyRecipesChanged: vi.fn(),
             recipesChanged$: EMPTY,
           },
@@ -201,7 +212,7 @@ describe('Version-specific conversation routing', () => {
     expect(TestBed.inject(Router).url).toBe('/signed-out');
     expect(auth.activeUser()).toBeNull();
     expect(confirm).not.toHaveBeenCalled();
-    expect(snackbar.mock.results[0].value.dismiss).toHaveBeenCalled();
+    expect(dismiss).toHaveBeenCalled();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
     action.run();
     expect(navigate).not.toHaveBeenCalled();
@@ -215,7 +226,7 @@ describe('Version-specific conversation routing', () => {
       recipe.state = state;
       TestBed.overrideProvider(RecipeBackendService, {
         useValue: {
-          getRecipeVersion: async () => recipe,
+          getRecipeVersion: () => Promise.resolve(recipe),
           recipesChanged$: EMPTY,
         },
       });

@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
@@ -28,7 +29,7 @@ import { RecipesGridControlsService } from '../../services/recipes-grid-controls
   templateUrl: './recipes-page.component.html',
   styleUrl: './recipes-page.component.scss',
 })
-export class RecipesPageComponent {
+export class RecipesPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private isDestroyed = false;
   private readonly recipeBackendService = inject(RecipeBackendService);

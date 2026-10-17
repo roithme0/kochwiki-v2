@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import {
   Component,
@@ -39,7 +40,7 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
   templateUrl: './recipe-page.component.html',
   styleUrl: './recipe-page.component.scss',
 })
-export class RecipePageComponent {
+export class RecipePageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);

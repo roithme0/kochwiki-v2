@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import { Component, inject, signal } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
@@ -23,7 +24,7 @@ interface FoodstuffPatchDialogData {
   templateUrl: './foodstuff-patch-dialog.component.html',
   styleUrl: './foodstuff-patch-dialog.component.scss',
 })
-export class FoodstuffPatchDialogComponent {
+export class FoodstuffPatchDialogComponent implements OnInit {
   private readonly dialogRef = inject(
     MatDialogRef<FoodstuffPatchDialogComponent>,
   );

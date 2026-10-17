@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../../core/api/generated';
 import { Component, inject, input } from '@angular/core';
 
@@ -15,7 +16,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
   templateUrl: './recipe-meta-form.component.html',
   styleUrl: './recipe-meta-form.component.scss',
 })
-export class RecipeMetaFormComponent {
+export class RecipeMetaFormComponent implements OnInit {
   recipeVersion = input<RecipeVersionOut>();
 
   recipeForm!: FormGroup;

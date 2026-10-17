@@ -37,7 +37,7 @@ describe('App icon registration', () => {
     }
     await fixture.whenStable();
 
-    const host: HTMLElement = fixture.nativeElement;
+    const host: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(
       host.querySelector('mat-icon[svgIcon="home"] svg[data-icon="home"]'),
     ).not.toBeNull();

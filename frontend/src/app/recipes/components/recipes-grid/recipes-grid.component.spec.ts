@@ -9,7 +9,7 @@ import { RecipesGridElementComponent } from '../recipes-grid-element/recipes-gri
 import { RecipesGridComponent } from './recipes-grid.component';
 
 describe('RecipesGridComponent', () => {
-  it('reflows varying card heights without changing link order and releases its observer', async () => {
+  it('reflows varying card heights without changing link order and releases its observer', () => {
     let resizeCallback: ResizeObserverCallback | undefined;
     const disconnect = vi.fn();
     const observer: ResizeObserver = {
@@ -45,7 +45,7 @@ describe('RecipesGridComponent', () => {
         recipeVersion('long', '2026-09-10T10:00:00Z', 'draft'),
       ]);
       fixture.detectChanges();
-      const element: HTMLElement = fixture.nativeElement;
+      const element: HTMLElement = fixture.nativeElement as HTMLElement;
       const links = Array.from(
         element.querySelectorAll<HTMLAnchorElement>('a.recipe-link'),
       );
@@ -92,7 +92,7 @@ describe('RecipesGridComponent', () => {
     });
     const fixture = TestBed.createComponent(RecipesGridComponent);
 
-    expect(observe.mock.calls[0][0]).toBe(fixture.nativeElement);
+    expect(observe.mock.calls[0][0]).toBe(fixture.nativeElement as HTMLElement);
     expect(fixture.componentInstance.displayedColumns()).toBe(2);
     width.set(599);
     expect(fixture.componentInstance.displayedColumns()).toBe(2);
@@ -200,9 +200,9 @@ describe('RecipesGridComponent', () => {
     ]);
     fixture.detectChanges();
 
-    const links = fixture.nativeElement.querySelectorAll(
-      'a.recipe-link',
-    ) as NodeListOf<HTMLAnchorElement>;
+    const links = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLAnchorElement>('a.recipe-link');
 
     expect(links.length).toBe(2);
     expect(links[0].getAttribute('href')).toBe(

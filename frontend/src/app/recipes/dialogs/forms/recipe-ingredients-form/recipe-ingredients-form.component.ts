@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import type {
   IngredientOut,
   RecipeVersionOut,
@@ -64,7 +65,7 @@ interface IngredientFormControls {
   templateUrl: './recipe-ingredients-form.component.html',
   styleUrl: './recipe-ingredients-form.component.scss',
 })
-export class RecipeIngredientsFormComponent {
+export class RecipeIngredientsFormComponent implements OnInit {
   recipeVersion = input<RecipeVersionOut>();
 
   readonly selectedFoodstuffs = signal<FoodstuffSummaryOut[]>([]);
@@ -131,9 +132,12 @@ export class RecipeIngredientsFormComponent {
     ]);
     this.ingredients.push(
       this.fb.group({
-        index: [this.ingredients.length + 1, Validators.required],
-        foodstuffId: [foodstuff.id, Validators.required],
-        amount: [amount, Validators.required],
+        index: [
+          this.ingredients.length + 1,
+          Validators.required.bind(Validators),
+        ],
+        foodstuffId: [foodstuff.id, Validators.required.bind(Validators)],
+        amount: [amount, Validators.required.bind(Validators)],
       }),
     );
     this.updateNutritionDraft();

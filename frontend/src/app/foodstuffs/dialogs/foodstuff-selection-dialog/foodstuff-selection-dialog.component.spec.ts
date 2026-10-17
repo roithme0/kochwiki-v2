@@ -86,7 +86,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
         FoodstuffSelectionDialogComponent,
       );
       fixture.detectChanges();
-      const element: HTMLElement = fixture.nativeElement;
+      const element: HTMLElement = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('mat-spinner')).not.toBeNull();
       expect(element.textContent).not.toContain('Keine Lebensmittel gefunden.');
       expect(
@@ -259,7 +259,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const names = (): string[] =>
       Array.from(element.querySelectorAll('.foodstuff-name')).map(
         (item) => item.textContent?.trim() ?? '',
@@ -304,7 +304,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const confirm = element.querySelector<HTMLButtonElement>(
       '.basket-summary button',
     );
@@ -347,7 +347,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     element
       .querySelector<HTMLButtonElement>('.create-foodstuff-button')
       ?.click();
@@ -414,7 +414,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const buttons = (): HTMLButtonElement[] =>
       Array.from(element.querySelectorAll('button[mat-list-item]'));
 

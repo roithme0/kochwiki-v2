@@ -111,7 +111,9 @@ describe('FoodstuffBackendService', () => {
         name: 'ApiContractError',
         endpoint,
         message: `Invalid response from ${endpoint}`,
-        cause: expect.objectContaining({ issues: expect.any(Array) }),
+        cause: expect.objectContaining({
+          issues: expect.any(Array) as object,
+        }) as object,
       });
       request.flush(operation.list ? [foodstuff, body] : body);
       await rejection;

@@ -27,7 +27,7 @@ describe('RecipesGridElementComponent', () => {
   });
 
   it('overlays the draft badge on the image without last-modified text', () => {
-    const chartContent = fixture.nativeElement.querySelector(
+    const chartContent = (fixture.nativeElement as HTMLElement).querySelector(
       'mat-card-content',
     ) as HTMLElement;
     const badge = chartContent.querySelector(
@@ -36,7 +36,9 @@ describe('RecipesGridElementComponent', () => {
 
     expect(badge.textContent).toContain('Entwurf');
     expect(getComputedStyle(badge).position).toBe('absolute');
-    expect(fixture.nativeElement.textContent).not.toContain('Zuletzt geändert');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'Zuletzt geändert',
+    );
   });
 
   it('uses the placeholder and preserves the name and preparation time', () => {

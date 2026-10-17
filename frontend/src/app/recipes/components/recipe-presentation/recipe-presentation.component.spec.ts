@@ -53,8 +53,14 @@ describe('RecipePresentationComponent', () => {
     expect(ingredients.recipe()).toBe(recipe);
     expect(steps.recipe()).toBe(recipe);
     expect(nutrition.nutrition()).toBe(recipe);
-    expect(fixture.nativeElement.textContent).toContain('Tomaten');
-    expect(fixture.nativeElement.textContent).toContain('Tomaten schneiden.');
-    expect(fixture.nativeElement.textContent).toContain('25 min');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Tomaten',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Tomaten schneiden.',
+    );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      '25 min',
+    );
   });
 });

@@ -17,7 +17,7 @@ Generated API contracts, generated `src/version.ts`, dependencies, Angular cache
 
 ## Codex integration
 
-Review and trust the updated `.codex/hooks.json` definitions in Codex. `UserPromptSubmit` records frontend content before a turn. `Stop` compares that content, formats changed files, then checks the whole frontend. Unchanged discussion turns skip validation. Successful lint results are reused only for identical input content, including the lockfile, installed dependency lock, lint configuration, and scripts. Edits during linting invalidate the result.
+The updated `.codex/hooks.json` definitions were reviewed and trusted in Codex. Live-client checks confirmed unchanged-turn skipping and changed-file lint failure feedback. `UserPromptSubmit` records frontend content before a turn. `Stop` compares that content, formats changed files, then checks the whole frontend. Unchanged discussion turns skip validation. Successful lint results are reused only for identical input content, including the lockfile, installed dependency lock, lint configuration, and scripts. Edits during linting invalidate the result.
 
 Session state and full lint diagnostics are stored under the ignored `frontend/.angular/cache/codex-validation/` directory. First-run fallback checks an already-dirty frontend if no prompt snapshot exists. This uses Git's worktree rather than per-agent ownership, so existing user edits are also part of the checked state. Formatting retains its existing whole-changed-file scope.
 
@@ -27,7 +27,7 @@ The CI workflow runs `npm run lint` after dependency installation. Findings fail
 
 ## Initial debt assessment — 2026-10-17
 
-The initial scan found **235 errors and 12 warnings across 50 files**, with no configuration or parser failures. Of the 247 findings, 216 were in tests (including formatter tests) and 31 in application TypeScript or templates. Existing source and test remediation is intentionally deferred to a separate change; the new gate fails until these findings are addressed.
+The initial scan found **235 errors and 12 warnings across 50 files**, with no configuration or parser failures. Of the 247 findings, 216 were in tests (including formatter tests) and 31 in application TypeScript or templates. The separately authorized source and test cleanup has now addressed all 247 findings. The whole frontend passes `npm run lint` with zero errors and warnings, without rule suppressions or configuration exceptions.
 
 | Rule or category | Findings |
 | --- | ---: |
@@ -53,4 +53,4 @@ npm.cmd run lint -- --format json --output-file .angular/cache/lint-report.json
 
 The full frontend suite currently has two existing recipe-editor failures (596 passing, 2 failing), both expecting an initial preparation row where none exists. They remain separate from lint adoption.
 
-Tooling verification passes 12 regression tests and a strict TypeScript check. The new configuration, validator, and validator tests have no lint findings. Both ESLint CLI and Angular CLI report the same existing debt. Re-run the tooling tests with `node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts` from `frontend`. Local PowerShell checks cover unchanged-turn skipping, failure feedback, and bounded continuation; the changed hook definitions still need live-client review and trust.
+Verification after cleanup passes 12 formatter/validator regression tests and strict TypeScript checking with `node node_modules/typescript/bin/tsc -p tsconfig.eslint.json --noEmit`. The full Angular suite still reports 596 passing tests and the same two recipe-editor failures described above. Re-run the tooling tests with `node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts` from `frontend`. Local PowerShell checks cover unchanged-turn skipping, failure feedback, and bounded continuation. The user reviewed and trusted the changed hook definitions, then verified unchanged-turn skipping and changed-file lint failure feedback in the live Codex client.

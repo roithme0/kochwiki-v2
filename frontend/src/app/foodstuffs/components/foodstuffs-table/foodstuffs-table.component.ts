@@ -1,3 +1,4 @@
+import type { AfterViewInit } from '@angular/core';
 import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import {
   Component,
@@ -48,7 +49,7 @@ import { ElementWidthService } from '../../../core/services/element-width.servic
   templateUrl: './foodstuffs-table.component.html',
   styleUrl: './foodstuffs-table.component.scss',
 })
-export class FoodstuffsTableComponent implements OnDestroy {
+export class FoodstuffsTableComponent implements OnDestroy, AfterViewInit {
   private readonly elementWidthService = inject(ElementWidthService);
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);

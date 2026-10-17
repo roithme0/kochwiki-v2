@@ -34,18 +34,18 @@ function git(root: string, args: string[]): string {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' });
 }
 
-async function commit(root: string): Promise<void> {
+function commit(root: string): void {
   git(root, ['add', '.']);
   git(root, ['commit', '-qm', 'Fixture']);
 }
 
-test('formats staged, unstaged and new files, preserving unchanged files and index', async () => {
+void test('formats staged, unstaged and new files, preserving unchanged files and index', async () => {
   const root = await fixture();
   const original = 'export const value=  1';
   for (const name of ['unchanged.ts', 'staged.ts', 'unstaged.ts']) {
     await writeFile(join(root, 'frontend', name), original);
   }
-  await commit(root);
+  commit(root);
   await writeFile(join(root, 'frontend/staged.ts'), 'export const value=  2');
   git(root, ['add', 'frontend/staged.ts']);
   const stagedBefore = git(root, ['show', ':frontend/staged.ts']);
@@ -68,10 +68,10 @@ test('formats staged, unstaged and new files, preserving unchanged files and ind
   assert.deepEqual((await formatChangedFiles(root)).formatted, []);
 });
 
-test('skips generated, ignored, unsupported and backend files; handles missing tracked files', async () => {
+void test('skips generated, ignored, unsupported and backend files; handles missing tracked files', async () => {
   const root = await fixture();
   await writeFile(join(root, 'frontend/tracked.ts'), 'export const value=1');
-  await commit(root);
+  commit(root);
   git(root, ['mv', 'frontend/tracked.ts', 'backend/moved.ts']);
   const ignored = [
     'frontend/src/app/core/api/generated/types.gen.ts',
@@ -95,9 +95,9 @@ test('skips generated, ignored, unsupported and backend files; handles missing t
   }
 });
 
-test('formats Angular control flow using the Angular parser', async () => {
+void test('formats Angular control flow using the Angular parser', async () => {
   const root = await fixture();
-  await commit(root);
+  commit(root);
   await writeFile(
     join(root, 'frontend/template.html'),
     '@if(visible){<span>{{value}}</span>}',
@@ -111,9 +111,9 @@ test('formats Angular control flow using the Angular parser', async () => {
   assert.deepEqual((await formatChangedFiles(root)).formatted, []);
 });
 
-test('parse errors prevent any planned formatting writes', async () => {
+void test('parse errors prevent any planned formatting writes', async () => {
   const root = await fixture();
-  await commit(root);
+  commit(root);
   const original = 'export const value=  1';
   await writeFile(join(root, 'frontend/a.ts'), original);
   await writeFile(join(root, 'frontend/z.ts'), 'export const =');

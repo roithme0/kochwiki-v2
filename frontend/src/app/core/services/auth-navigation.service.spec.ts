@@ -7,7 +7,7 @@ import { AuthNavigationService } from './auth-navigation.service';
 describe('Browser authentication navigation', () => {
   const location = { assign: vi.fn() };
   const activeUser = { logout: vi.fn<ActiveUserService['logout']>() };
-  const router = { navigate: vi.fn(async () => true) };
+  const router = { navigate: vi.fn().mockResolvedValue(true) };
 
   beforeEach(() => {
     location.assign.mockReset();

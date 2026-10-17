@@ -90,7 +90,7 @@ describe('FoodstuffsTableComponent', () => {
       { ...foodstuff, unitVerbose: 'Backend label' },
     ]);
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
     expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
     expect(element.textContent).not.toContain('Backend label');
@@ -112,7 +112,7 @@ describe('FoodstuffsTableComponent', () => {
     const fixture = TestBed.createComponent(FoodstuffsTableComponent);
     fixture.componentRef.setInput('foodstuffs', [foodstuff]);
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
 
     expect(observe.mock.calls[0][0]).toBe(element);
     expect(element.querySelectorAll('th')).toHaveLength(4);
@@ -146,7 +146,9 @@ describe('FoodstuffsTableComponent', () => {
     await vi.waitFor(() => expect(table.paginator.pageSize).toBe(3));
     expect(table.paginator.pageIndex).toBe(3);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('tbody tr')).toHaveLength(3);
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('tbody tr'),
+    ).toHaveLength(3);
   });
 
   it('uses one row rather than overflowing with twelve when space is tight', async () => {

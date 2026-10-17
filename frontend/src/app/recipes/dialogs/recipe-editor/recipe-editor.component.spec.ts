@@ -25,6 +25,7 @@ describe('RecipeEditorComponent', () => {
     getActiveRecipeVersion: Mock;
     getRecipeVersion: Mock;
   };
+  const revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>();
   let imageService: { upload: Mock; download: Mock };
   let closing: Subject<void>;
   const imageId = '00000000-0000-4000-8000-000000000003';
@@ -49,15 +50,14 @@ describe('RecipeEditorComponent', () => {
   };
 
   beforeEach(async () => {
+    revokeObjectURL.mockClear();
     closing = new Subject<void>();
     imageService = {
       upload: vi.fn().mockResolvedValue({ id: imageId }),
-      download: vi
-        .fn()
-        .mockResolvedValue({
-          url: '/storage/saved.png?signature=test',
-          expiresIn: 300,
-        }),
+      download: vi.fn().mockResolvedValue({
+        url: '/storage/saved.png?signature=test',
+        expiresIn: 300,
+      }),
     };
     vi.stubGlobal(
       'URL',
@@ -65,7 +65,7 @@ describe('RecipeEditorComponent', () => {
         static override createObjectURL = vi
           .fn()
           .mockReturnValue('blob:preview');
-        static override revokeObjectURL = vi.fn();
+        static override revokeObjectURL = revokeObjectURL;
       },
     );
     foodstuffBackend = {
@@ -142,7 +142,7 @@ describe('RecipeEditorComponent', () => {
     expect(component.imagePreview()).toBe('blob:preview');
     expect(imageService.upload).not.toHaveBeenCalled();
     fixture.destroy();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
   });
 
   it('uploads only after form validation and reuses the validated image after a failed recipe save', async () => {
@@ -159,7 +159,7 @@ describe('RecipeEditorComponent', () => {
     expect(imageService.upload).toHaveBeenCalledExactlyOnceWith(file);
     expect(emitted).toHaveBeenCalledWith(
       expect.objectContaining({
-        recipeVersion: expect.objectContaining({ imageId }),
+        recipeVersion: expect.objectContaining({ imageId }) as object,
       }),
     );
     fixture.componentRef.setInput('submitting', true);
@@ -171,7 +171,7 @@ describe('RecipeEditorComponent', () => {
     expect(emitted).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: 'draft',
-        recipeVersion: expect.objectContaining({ imageId }),
+        recipeVersion: expect.objectContaining({ imageId }) as object,
       }),
     );
   });
@@ -200,7 +200,7 @@ describe('RecipeEditorComponent', () => {
     expect(imageService.upload).toHaveBeenCalledTimes(2);
     expect(emitted).toHaveBeenCalledWith(
       expect.objectContaining({
-        recipeVersion: expect.objectContaining({ imageId }),
+        recipeVersion: expect.objectContaining({ imageId }) as object,
       }),
     );
   });
@@ -251,7 +251,7 @@ describe('RecipeEditorComponent', () => {
       selectFile(file);
       expect(component.imageError()).toContain('höchstens 10 MiB');
       expect(component.imagePreview()).toBe('blob:preview');
-      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+      expect(revokeObjectURL).not.toHaveBeenCalled();
       await component.onSubmit('publish');
       expect(navigate).toHaveBeenCalledWith('basics');
       expect(imageService.upload).not.toHaveBeenCalled();
@@ -273,11 +273,11 @@ describe('RecipeEditorComponent', () => {
     component.removeImage();
     expect(component.hasImage()).toBe(false);
     expect(component.imagePreview()).toBeNull();
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
     await component.onSubmit('publish');
     expect(emitted).toHaveBeenCalledWith(
       expect.objectContaining({
-        recipeVersion: expect.objectContaining({ imageId: null }),
+        recipeVersion: expect.objectContaining({ imageId: null }) as object,
       }),
     );
     expect(component.recipeVersion()?.imageId).toBe(imageId);
@@ -297,7 +297,7 @@ describe('RecipeEditorComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(imageService.download).toHaveBeenCalledWith(imageId);
-    const image = fixture.nativeElement.querySelector(
+    const image = (fixture.nativeElement as HTMLElement).querySelector(
       '.image-preview img',
     ) as HTMLImageElement;
     expect(image.getAttribute('src')).toContain('/storage/saved.png');
@@ -308,9 +308,9 @@ describe('RecipeEditorComponent', () => {
     );
     expect(imageService.download).toHaveBeenCalledTimes(1);
     const retry = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        'button',
-      ) as NodeListOf<HTMLButtonElement>,
+      (
+        fixture.nativeElement as HTMLElement
+      ).querySelectorAll<HTMLButtonElement>('button'),
     ).find((button) => button.textContent?.includes('Bild erneut laden'))!;
     retry.click();
     await fixture.whenStable();
@@ -348,7 +348,7 @@ describe('RecipeEditorComponent', () => {
     await component.onSubmit('draft');
     expect(emitted).toHaveBeenCalledWith(
       expect.objectContaining({
-        recipeVersion: expect.objectContaining({ imageId }),
+        recipeVersion: expect.objectContaining({ imageId }) as object,
       }),
     );
   });
@@ -396,9 +396,9 @@ describe('RecipeEditorComponent', () => {
     fixture.detectChanges();
 
     const sections = Array.from(
-      fixture.nativeElement.querySelectorAll(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
         'section.form-section',
-      ) as NodeListOf<HTMLElement>,
+      ),
     );
     expect(
       sections.map((section) =>
@@ -493,8 +493,9 @@ describe('RecipeEditorComponent', () => {
       expect(
         component.recipeForm.controls.ingredientsFormGroup.controls.ingredients.getRawValue(),
       ).toEqual([{ index: 1, foodstuffId: 1, amount: 125 }]);
-      const ingredientSection: HTMLElement =
-        fixture.nativeElement.querySelector('app-recipe-ingredients-form');
+      const ingredientSection = (
+        fixture.nativeElement as HTMLElement
+      ).querySelector<HTMLElement>('app-recipe-ingredients-form')!;
       expect(ingredientSection.querySelector('mat-select')).toBeNull();
       expect(ingredientSection.textContent).toContain('Barilla');
       expect(foodstuffBackend.getAllFoodstuffs).not.toHaveBeenCalled();
@@ -507,19 +508,19 @@ describe('RecipeEditorComponent', () => {
 
   it('navigates to a section and follows manual dialog scrolling', async () => {
     const scrollArea = document.createElement('mat-dialog-content');
-    scrollArea.appendChild(fixture.nativeElement);
+    scrollArea.appendChild(fixture.nativeElement as HTMLElement);
     const scrollTo = vi.fn();
     Object.defineProperty(scrollArea, 'scrollTo', { value: scrollTo });
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const nav = fixture.nativeElement.querySelector(
+    const nav = (fixture.nativeElement as HTMLElement).querySelector(
       '.section-nav',
     ) as HTMLElement;
-    const sections = fixture.nativeElement.querySelectorAll(
-      '.form-section',
-    ) as NodeListOf<HTMLElement>;
+    const sections = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLElement>('.form-section');
     vi.spyOn(nav, 'offsetHeight', 'get').mockReturnValue(44);
     vi.spyOn(scrollArea, 'getBoundingClientRect').mockReturnValue({
       top: 0,
@@ -528,9 +529,9 @@ describe('RecipeEditorComponent', () => {
     vi.spyOn(sections[1], 'getBoundingClientRect').mockReturnValue({
       top: 280,
     } as DOMRect);
-    const buttons = fixture.nativeElement.querySelectorAll(
-      '.section-nav button',
-    ) as NodeListOf<HTMLButtonElement>;
+    const buttons = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLButtonElement>('.section-nav button');
 
     buttons[1].click();
     expect(scrollTo).toHaveBeenCalled();
@@ -547,7 +548,7 @@ describe('RecipeEditorComponent', () => {
     } as DOMRect);
     (sections[1].getBoundingClientRect as Mock).mockReturnValue({
       top: 40,
-    } as DOMRect);
+    });
     vi.spyOn(sections[2], 'getBoundingClientRect').mockReturnValue({
       top: 300,
     } as DOMRect);
@@ -561,7 +562,7 @@ describe('RecipeEditorComponent', () => {
 
     (sections[2].getBoundingClientRect as Mock).mockReturnValue({
       top: 180,
-    } as DOMRect);
+    });
     buttons[2].click();
     scrollArea.dispatchEvent(new Event('scroll'));
     expect(component.activeSection()).toBe('preparation');
@@ -573,7 +574,7 @@ describe('RecipeEditorComponent', () => {
 
     (sections[2].getBoundingClientRect as Mock).mockReturnValue({
       top: 340,
-    } as DOMRect);
+    });
     scrollArea.dispatchEvent(new Event('scroll'));
     expect(component.activeSection()).toBe('preparation');
 
@@ -595,7 +596,7 @@ describe('RecipeEditorComponent', () => {
     scrollArea.remove();
   });
 
-  it('submits a complete numeric write payload with step indexes derived from visible form order', () => {
+  it('submits a complete numeric write payload with step indexes derived from visible form order', async () => {
     component.recipeForm.controls.metaFormGroup.controls.name.setValue(
       'Linsensuppe',
     );
@@ -608,18 +609,24 @@ describe('RecipeEditorComponent', () => {
     );
     component.recipeForm.controls.preparationFormGroup.controls.steps.push(
       new FormGroup({
-        description: new FormControl('Servieren', Validators.required),
+        description: new FormControl(
+          'Servieren',
+          Validators.required.bind(Validators),
+        ),
       }),
     );
     component.recipeForm.controls.preparationFormGroup.controls.steps.push(
       new FormGroup({
-        description: new FormControl('Kochen', Validators.required),
+        description: new FormControl(
+          'Kochen',
+          Validators.required.bind(Validators),
+        ),
       }),
     );
     const emitted = vi.fn().mockName('emitted');
     component.submitted.subscribe(emitted);
 
-    component.onSubmit('publish');
+    await component.onSubmit('publish');
 
     expect(emitted).toHaveBeenCalledTimes(1);
 
@@ -640,7 +647,7 @@ describe('RecipeEditorComponent', () => {
 
   it.each([null, '00000000-0000-4000-8000-000000000003'])(
     'preserves the loaded image reference %s when publishing or saving a draft',
-    (imageId) => {
+    async (imageId) => {
       component.recipeVersion.set({ ...recipeVersion, imageId });
       component.recipeForm.controls.metaFormGroup.controls.name.setValue(
         'Edited',
@@ -648,37 +655,39 @@ describe('RecipeEditorComponent', () => {
       const emitted = vi.fn();
       component.submitted.subscribe(emitted);
 
-      component.onSubmit('publish');
-      component.onSubmit('draft');
+      await component.onSubmit('publish');
+      await component.onSubmit('draft');
 
       expect(emitted).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({
           action: 'publish',
-          recipeVersion: expect.objectContaining({ imageId }),
+          recipeVersion: expect.objectContaining({ imageId }) as object,
         }),
       );
       expect(emitted).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({
           action: 'draft',
-          recipeVersion: expect.objectContaining({ imageId }),
+          recipeVersion: expect.objectContaining({ imageId }) as object,
         }),
       );
     },
   );
 
-  it('does not submit an invalid step description', () => {
+  it('does not submit an invalid step description', async () => {
     component.recipeForm.controls.metaFormGroup.controls.name.setValue(
       'Linsensuppe',
     );
     component.recipeForm.controls.preparationFormGroup.controls.steps.push(
-      new FormGroup({ description: new FormControl('', Validators.required) }),
+      new FormGroup({
+        description: new FormControl('', Validators.required.bind(Validators)),
+      }),
     );
     const emitted = vi.fn().mockName('emitted');
     component.submitted.subscribe(emitted);
 
-    component.onSubmit('publish');
+    await component.onSubmit('publish');
 
     expect(emitted).not.toHaveBeenCalled();
   });
@@ -687,7 +696,7 @@ describe('RecipeEditorComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const save = fixture.nativeElement.querySelector(
+    const save = (fixture.nativeElement as HTMLElement).querySelector(
       '.button-wrapper button',
     ) as HTMLButtonElement;
     expect(save.disabled).toBe(false);
@@ -699,13 +708,14 @@ describe('RecipeEditorComponent', () => {
       component.recipeForm.controls.metaFormGroup.controls.name.touched,
     ).toBe(true);
     expect(
-      fixture.nativeElement.querySelector('#basics mat-error')?.textContent,
+      (fixture.nativeElement as HTMLElement).querySelector('#basics mat-error')
+        ?.textContent,
     ).toContain('Bitte einen Namen eingeben.');
   });
 
   it('jumps to the first invalid ingredient field after Basics is valid', async () => {
     const scrollArea = document.createElement('mat-dialog-content');
-    scrollArea.appendChild(fixture.nativeElement);
+    scrollArea.appendChild(fixture.nativeElement as HTMLElement);
     const scrollTo = vi.fn();
     Object.defineProperty(scrollArea, 'scrollTo', { value: scrollTo });
     fixture.detectChanges();
@@ -714,7 +724,7 @@ describe('RecipeEditorComponent', () => {
     component.recipeForm.controls.metaFormGroup.controls.name.setValue(
       'Linsensuppe',
     );
-    const ingredients = fixture.nativeElement.querySelector(
+    const ingredients = (fixture.nativeElement as HTMLElement).querySelector(
       'app-recipe-ingredients-form',
     ) as HTMLElement;
     const ingredientForm = fixture.debugElement.query(
@@ -734,7 +744,7 @@ describe('RecipeEditorComponent', () => {
     fixture.detectChanges();
 
     (
-      fixture.nativeElement.querySelector(
+      (fixture.nativeElement as HTMLElement).querySelector(
         '.button-wrapper button',
       ) as HTMLButtonElement
     ).click();

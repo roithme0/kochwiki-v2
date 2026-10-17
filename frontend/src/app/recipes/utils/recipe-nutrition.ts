@@ -3,7 +3,6 @@ import type {
   NutritionResult,
   NutritionSummary,
 } from '../../core/models/nutrition-result';
-import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 export interface DraftIngredientNutrition {
   foodstuffId: number | null;
@@ -36,8 +35,7 @@ export function calculateDraftNutrition(
       if (!isFiniteNutritionValue(value)) continue;
 
       const multiplier =
-        foodstuff.unit === FoodstuffUnit.Gram ||
-        foodstuff.unit === FoodstuffUnit.Milliliter
+        foodstuff.unit === 'G' || foodstuff.unit === 'ML'
           ? ingredient.amount / 100
           : ingredient.amount;
       total += value * multiplier;

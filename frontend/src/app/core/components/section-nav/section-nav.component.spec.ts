@@ -19,7 +19,9 @@ describe('SectionNavComponent', () => {
   });
 
   it('marks the active item and emits the selected section id', () => {
-    const nav = fixture.nativeElement.querySelector('nav') as HTMLElement;
+    const nav = (fixture.nativeElement as HTMLElement).querySelector(
+      'nav',
+    ) as HTMLElement;
     const buttons = nav.querySelectorAll('button');
     const selected = vi.fn().mockName('selected');
     fixture.componentInstance.selected.subscribe(selected);

@@ -39,9 +39,12 @@ export class FoodstuffFormComponent {
   readonly fieldLabels = foodstuffFieldLabels;
 
   readonly form = this.fb.group({
-    name: this.fb.nonNullable.control('', Validators.required),
+    name: this.fb.nonNullable.control('', Validators.required.bind(Validators)),
     brand: this.fb.control<string | null>(''),
-    unit: this.fb.control<Unit | null>(null, Validators.required),
+    unit: this.fb.control<Unit | null>(
+      null,
+      Validators.required.bind(Validators),
+    ),
     kcal: this.fb.control<number | null>(null),
     carbs: this.fb.control<number | null>(null),
     protein: this.fb.control<number | null>(null),

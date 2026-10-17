@@ -30,7 +30,9 @@ describe('Foodstuff nutrition presentation', () => {
       const chart = fixture.debugElement.query(
         By.directive(MacroChartComponent),
       ).componentInstance as MacroChartComponent;
-      expect(fixture.nativeElement.textContent).toContain(basis);
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        basis,
+      );
       expect(chart.dataIncompleteOrInvalid()).toBe(false);
       fixture.componentRef.setInput('foodstuff', {
         unit,
@@ -42,9 +44,11 @@ describe('Foodstuff nutrition presentation', () => {
       fixture.detectChanges();
       expect(chart.dataIncompleteOrInvalid()).toBe(true);
       expect(chart.nutrition().kcal.value).toBe(0);
-      expect(fixture.nativeElement.textContent).not.toContain('%');
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+        '%',
+      );
       expect(
-        fixture.nativeElement.querySelectorAll(
+        (fixture.nativeElement as HTMLElement).querySelectorAll(
           'app-chart-legend-element [aria-label]',
         ),
       ).toHaveLength(2);

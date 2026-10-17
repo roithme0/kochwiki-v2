@@ -47,7 +47,7 @@
             <th mat-header-cell *matHeaderCellDef></th>
             <td mat-cell *matCellDef="let foodstuff">
               <!-- ony deletable if not used in any recipe -->
-              @if (foodstuff.recipeVersionIds.length == 0) {
+              @if (foodstuff.recipeVersionIds.length === 0) {
                 <button
                   mat-icon-button
                   color="warn"

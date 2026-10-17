@@ -1,7 +1,4 @@
-import {
-  DraftIngredientNutrition,
-  calculateDraftNutrition,
-} from './recipe-nutrition';
+import { calculateDraftNutrition } from './recipe-nutrition';
 import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 

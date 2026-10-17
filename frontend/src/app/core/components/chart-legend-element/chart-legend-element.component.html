@@ -5,7 +5,10 @@
       {{ legendElement().displayName }}
     </p>
     <div class="spacer"></div>
-    @if (displayedValuePercentage() != null) {
+    @if (
+      displayedValuePercentage() !== null &&
+      displayedValuePercentage() !== undefined
+    ) {
       <mat-card>
         <mat-card-content class="percentage-content">
           <p class="value-percentage">

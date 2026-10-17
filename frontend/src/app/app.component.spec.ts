@@ -53,7 +53,7 @@ describe('Session-gated application routing', () => {
 
   it('keeps header and content hidden until the current session is verified', async () => {
     const fixture = TestBed.createComponent(AppComponent);
-    const page: HTMLElement = fixture.nativeElement;
+    const page: HTMLElement = fixture.nativeElement as HTMLElement;
     const router = TestBed.inject(Router);
     const pending = router.navigateByUrl('/protected');
     await vi.waitFor(() =>
@@ -89,7 +89,7 @@ describe('Session-gated application routing', () => {
       .flush(null, { status: 503, statusText: 'Unavailable' });
     expect(await pending).toBe(false);
     fixture.detectChanges();
-    const page: HTMLElement = fixture.nativeElement;
+    const page: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(page.querySelector('[role="alert"]')).not.toBeNull();
     expect(page.querySelector('button')).toBeNull();
     expect(page.textContent).not.toContain('Protected page');
@@ -121,7 +121,7 @@ describe('Session-gated application routing', () => {
     await TestBed.inject(Router).navigateByUrl('/signed-out');
     fixture.detectChanges();
     await fixture.whenStable();
-    const page: HTMLElement = fixture.nativeElement;
+    const page: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(page.textContent).toContain('Du bist abgemeldet.');
     expect(page.textContent).not.toContain('Authenticated header');
     expect(navigation.signIn).not.toHaveBeenCalled();

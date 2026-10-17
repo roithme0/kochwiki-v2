@@ -90,7 +90,9 @@ describe('ConfirmationDialogComponent', () => {
     expect(component.isExecuting()).toBe(false);
     expect(dialogRef.disableClose).toBe(false);
     expect(dialogRef.close).not.toHaveBeenCalled();
-    expect(fixture.nativeElement.querySelector('mat-spinner')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('mat-spinner'),
+    ).toBeNull();
   });
 
   it('prevents duplicate submissions and closing while the action runs', async () => {
@@ -105,8 +107,9 @@ describe('ConfirmationDialogComponent', () => {
     const secondConfirmation: Promise<void> = component.confirm();
     fixture.detectChanges();
 
-    const buttons: NodeListOf<HTMLButtonElement> =
-      fixture.nativeElement.querySelectorAll('button');
+    const buttons: NodeListOf<HTMLButtonElement> = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll('button');
     expect(action).toHaveBeenCalledTimes(1);
     expect(component.isExecuting()).toBe(true);
     expect(dialogRef.disableClose).toBe(true);

@@ -13,6 +13,7 @@ import type { UserOut } from '../../api/generated';
 const USER: UserOut = { id: 7, display_name: 'Roi' };
 
 describe('PageHeaderComponent', () => {
+  const navigate = vi.fn<Router['navigate']>();
   let fixture: ComponentFixture<PageHeaderComponent>;
   let activeUserService: Pick<
     ActiveUserService,
@@ -22,7 +23,7 @@ describe('PageHeaderComponent', () => {
   beforeEach(async () => {
     activeUserService = {
       activeUser: signal<UserOut | null>(USER),
-      logout: vi.fn(async () => true),
+      logout: vi.fn().mockResolvedValue(true),
       logoutPending: signal(false),
     };
 
@@ -49,18 +50,23 @@ describe('PageHeaderComponent', () => {
       ],
     }).compileComponents();
 
-    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    navigate.mockReset().mockResolvedValue(true);
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockImplementation(navigate);
     fixture = TestBed.createComponent(PageHeaderComponent);
     fixture.detectChanges();
   });
 
   it('offers the active user and logout action from an accessible options menu', async () => {
-    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector(
+    const trigger = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector<HTMLButtonElement>(
       'button[aria-label="Benutzeroptionen öffnen"]',
-    );
+    )!;
     expect(trigger).not.toBeNull();
     expect(
-      fixture.nativeElement.querySelector('[fontIcon="logout"]'),
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[fontIcon="logout"]',
+      ),
     ).toBeNull();
 
     const loader = TestbedHarnessEnvironment.loader(fixture);
@@ -76,16 +82,14 @@ describe('PageHeaderComponent', () => {
     await items[1].click();
     expect(activeUserService.logout).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
-      expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith([
-        '/signed-out',
-      ]),
+      expect(navigate).toHaveBeenCalledWith(['/signed-out']),
     );
   });
 
   it('stays on the current page when logout is not confirmed', async () => {
     vi.mocked(activeUserService.logout).mockResolvedValue(false);
     await fixture.componentInstance.logout();
-    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('keeps the light theme action visible and disabled', async () => {

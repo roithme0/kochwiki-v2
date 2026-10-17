@@ -25,7 +25,7 @@ describe('FoodstuffsSearchComponent', () => {
     const fixture = TestBed.createComponent(SearchHostComponent);
     fixture.detectChanges();
     await fixture.whenStable();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const inputs = element.querySelectorAll<HTMLInputElement>('input');
     const input = inputs[0];
 

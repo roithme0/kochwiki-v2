@@ -38,7 +38,7 @@ describe('Standalone nutrition artifact rendering', () => {
     fixture.detectChanges();
     TestBed.tick();
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
       .componentInstance as MacroChartComponent;
     expect(chart.displayedKcal()).toBe('≥ 200 kcal');

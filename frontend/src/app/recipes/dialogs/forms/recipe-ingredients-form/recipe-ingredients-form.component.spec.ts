@@ -32,6 +32,7 @@ class ChartLegendElementStubComponent {
 }
 
 describe('RecipeIngredientsFormComponent', () => {
+  const openDialog = vi.fn();
   let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
   let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
@@ -59,11 +60,9 @@ describe('RecipeIngredientsFormComponent', () => {
         {
           provide: MatDialog,
           useValue: {
-            open: vi
-              .fn()
-              .mockReturnValue({
-                afterClosed: () => dialogResult.asObservable(),
-              }),
+            open: openDialog.mockReset().mockReturnValue({
+              afterClosed: () => dialogResult.asObservable(),
+            }),
           },
         },
       ],
@@ -85,12 +84,12 @@ describe('RecipeIngredientsFormComponent', () => {
 
   it('opens the foodstuff dialog without adding or changing ingredient rows', () => {
     const before = fixture.componentInstance.ingredients.getRawValue();
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector(
-      '.add-ingredient-button',
-    );
+    const button = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector<HTMLButtonElement>('.add-ingredient-button')!;
     button.click();
 
-    expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
+    expect(openDialog).toHaveBeenCalledWith(
       FoodstuffSelectionDialogComponent,
       expect.objectContaining({ data: { existingFoodstuffIds: [1] } }),
     );
@@ -119,8 +118,12 @@ describe('RecipeIngredientsFormComponent', () => {
         .at(1)
         .controls.amount.hasError('required'),
     ).toBe(true);
-    expect(fixture.nativeElement.querySelector('mat-select')).toBeNull();
-    expect(fixture.nativeElement.textContent).toContain('Barilla');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('mat-select'),
+    ).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Barilla',
+    );
     fixture.componentInstance.removeIngredient(1);
     fixture.detectChanges();
     const fields = fixture.debugElement.queryAll(
@@ -133,10 +136,12 @@ describe('RecipeIngredientsFormComponent', () => {
       { index: 2, foodstuffId: 2, amount: 75 },
     ]);
     fixture.componentInstance.openFoodstuffSelectionDialog();
-    expect(TestBed.inject(MatDialog).open).toHaveBeenLastCalledWith(
+    expect(openDialog).toHaveBeenLastCalledWith(
       FoodstuffSelectionDialogComponent,
       expect.objectContaining({
-        data: expect.objectContaining({ existingFoodstuffIds: [1, 2] }),
+        data: expect.objectContaining({
+          existingFoodstuffIds: [1, 2],
+        }) as object,
       }),
     );
   });
@@ -152,7 +157,9 @@ describe('RecipeIngredientsFormComponent', () => {
       fixture.componentInstance.ingredients.at(1).controls.foodstuffId.value,
     ).toBe(2);
     expect(fixture.componentInstance.foodstuffFor(2)).toEqual(created);
-    expect(fixture.nativeElement.textContent).toContain('Reis');
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'Reis',
+    );
     fixture.componentInstance.ingredients.at(1).controls.amount.setValue(100);
     fixture.detectChanges();
     expect(chartNutrition().kcal).toEqual({ status: 'exact', value: 370 });
@@ -175,7 +182,9 @@ describe('RecipeIngredientsFormComponent', () => {
     ).toBe(3);
     expect(getChartArea().querySelector('app-macro-chart')).not.toBeNull();
     expect(getChartArea().querySelector('.legend')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.details-button')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.details-button'),
+    ).toBeNull();
   });
 
   it('shows exact zero values in the legend when every macro is zero', () => {
@@ -185,7 +194,7 @@ describe('RecipeIngredientsFormComponent', () => {
     fixture.detectChanges();
 
     expect(
-      fixture.nativeElement.querySelector('app-macro-chart'),
+      (fixture.nativeElement as HTMLElement).querySelector('app-macro-chart'),
     ).not.toBeNull();
     expect(
       getLegend()?.querySelectorAll('app-chart-legend-element').length,
@@ -197,7 +206,7 @@ describe('RecipeIngredientsFormComponent', () => {
     fixture.detectChanges();
 
     expect(
-      fixture.nativeElement.querySelector('app-macro-chart'),
+      (fixture.nativeElement as HTMLElement).querySelector('app-macro-chart'),
     ).not.toBeNull();
     expect(getNutritionMessage()).toBeNull();
   });
@@ -221,7 +230,7 @@ describe('RecipeIngredientsFormComponent', () => {
   });
 
   it('replaces nutrition with the hint immediately while servings are invalid', () => {
-    const servingsInput = fixture.nativeElement.querySelector(
+    const servingsInput = (fixture.nativeElement as HTMLElement).querySelector(
       'input[formControlName="servings"]',
     ) as HTMLInputElement;
     servingsInput.focus();
@@ -230,7 +239,9 @@ describe('RecipeIngredientsFormComponent', () => {
       ?.setValue(null);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('app-macro-chart')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('app-macro-chart'),
+    ).toBeNull();
     expect(getNutritionMessage()).not.toBeNull();
 
     fixture.componentInstance.ingredientsFormGroup.get('servings')?.setValue(4);
@@ -295,25 +306,29 @@ describe('RecipeIngredientsFormComponent', () => {
   }
 
   it('reserves the preview area in stable states', () => {
-    const nutritionSection = fixture.nativeElement.querySelector(
-      '.nutrition-section',
-    ) as HTMLElement;
+    const nutritionSection = (
+      fixture.nativeElement as HTMLElement
+    ).querySelector('.nutrition-section') as HTMLElement;
 
     expect(getComputedStyle(nutritionSection).minHeight).toBe('208px');
   });
 
   function getLegend(): HTMLElement | null {
-    return fixture.nativeElement.querySelector('#recipe-draft-macro-legend');
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      '#recipe-draft-macro-legend',
+    );
   }
 
   function getChartArea(): HTMLElement {
-    return fixture.nativeElement.querySelector(
+    return (fixture.nativeElement as HTMLElement).querySelector(
       '.nutrition-chart-area',
     ) as HTMLElement;
   }
 
   function getNutritionMessage(): HTMLElement | null {
-    return fixture.nativeElement.querySelector('.nutrition-message');
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      '.nutrition-message',
+    );
   }
 
   function ingredientIndexes(): Array<number | null> {
@@ -332,7 +347,7 @@ function createRecipeForm(): FormGroup {
         new FormGroup({
           index: new FormControl(1),
           foodstuffId: new FormControl(1),
-          amount: new FormControl(100, Validators.required),
+          amount: new FormControl(100, Validators.required.bind(Validators)),
         }),
       ]),
     }),

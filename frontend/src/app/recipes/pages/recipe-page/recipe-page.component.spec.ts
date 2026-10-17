@@ -263,13 +263,11 @@ describe('RecipePageComponent presentation integration', () => {
       const path =
         `/recipes/${draftRecipeVersion.recipeLineageId}` +
         (specificVersion ? `/versions/${versionId}` : '');
-      http
-        .expectOne(backendUrl + path)
-        .flush({
-          ...draftRecipeVersion,
-          recipeVersionId: versionId,
-          unexpected: true,
-        });
+      http.expectOne(backendUrl + path).flush({
+        ...draftRecipeVersion,
+        recipeVersionId: versionId,
+        unexpected: true,
+      });
       await fixture.whenStable();
       fixture.detectChanges();
 
@@ -279,7 +277,9 @@ describe('RecipePageComponent presentation integration', () => {
         fixture.debugElement.query(By.directive(RecipePresentationComponent)),
       ).toBeNull();
       expect(
-        fixture.nativeElement.querySelector('.recipe-not-found-placeholder'),
+        (fixture.nativeElement as HTMLElement).querySelector(
+          '.recipe-not-found-placeholder',
+        ),
       ).not.toBeNull();
       expect(pageHeader.headline).toBe('Fehler');
       expect(snackBarOpen).toHaveBeenCalledWith(
@@ -377,9 +377,13 @@ describe('RecipePageComponent presentation integration', () => {
         )!.nextElementSibling?.tagName,
       ).toBe('APP-RECIPE-PRESENTATION');
       expect(
-        fixture.nativeElement.querySelector('app-recipe-version-state-badge'),
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'app-recipe-version-state-badge',
+        ),
       ).not.toBeNull();
-      expect(fixture.nativeElement.querySelector('.spacer')).not.toBeNull();
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('.spacer'),
+      ).not.toBeNull();
     },
   );
 });

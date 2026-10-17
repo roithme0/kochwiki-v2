@@ -34,7 +34,9 @@ describe('RecipePreparationFormComponent', () => {
 
     expect(descriptions()).toEqual(['Erst kochen', 'Dann servieren']);
     expect(
-      fixture.nativeElement.querySelector('[formControlName="index"]'),
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[formControlName="index"]',
+      ),
     ).toBeNull();
   });
 
@@ -42,7 +44,9 @@ describe('RecipePreparationFormComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.steps.length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.step-wrapper')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.step-wrapper'),
+    ).toBeNull();
   });
 
   it('renders no step rows for an existing recipe without steps', () => {
@@ -53,7 +57,9 @@ describe('RecipePreparationFormComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.steps.length).toBe(0);
-    expect(fixture.nativeElement.querySelector('.step-wrapper')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.step-wrapper'),
+    ).toBeNull();
   });
 
   it('reorders a dragged step without losing its control or validation state', () => {
@@ -76,9 +82,9 @@ describe('RecipePreparationFormComponent', () => {
   it('renders step-specific accessible drag handles', () => {
     fixture.componentRef.setInput('recipeVersion', recipeVersionWithSteps());
     fixture.detectChanges();
-    const buttons = fixture.nativeElement.querySelectorAll(
-      '.drag-handle',
-    ) as NodeListOf<HTMLButtonElement>;
+    const buttons = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLButtonElement>('.drag-handle');
 
     expect(buttons.length).toBe(2);
     expect(buttons[0].getAttribute('aria-label')).toBe(
@@ -99,13 +105,15 @@ describe('RecipePreparationFormComponent', () => {
     expect(fixture.componentInstance.steps.length).toBe(99);
     fixture.componentInstance.addStep();
     expect(fixture.componentInstance.steps.length).toBe(99);
-    const removeButton = fixture.nativeElement.querySelector(
+    const removeButton = (fixture.nativeElement as HTMLElement).querySelector(
       '.remove-button',
     ) as HTMLButtonElement;
     removeButton.click();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('#step-limit')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('#step-limit'),
+    ).toBeNull();
     fixture.componentInstance.addStep();
     expect(fixture.componentInstance.steps.length).toBe(99);
   });

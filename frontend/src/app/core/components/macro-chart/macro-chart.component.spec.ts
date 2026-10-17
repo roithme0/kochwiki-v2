@@ -41,7 +41,7 @@ describe('MacroChartComponent', () => {
 
   it('centers the kcal overlay across the full chart area', () => {
     fixture.detectChanges();
-    const kcalWrapper = fixture.nativeElement.querySelector(
+    const kcalWrapper = (fixture.nativeElement as HTMLElement).querySelector(
       '.kcal-wrapper',
     ) as HTMLElement;
     const styles = getComputedStyle(kcalWrapper);
@@ -62,7 +62,9 @@ describe('MacroChartComponent', () => {
     );
     fixture.detectChanges();
 
-    const kcal = fixture.nativeElement.querySelector('.kcal') as HTMLElement;
+    const kcal = (fixture.nativeElement as HTMLElement).querySelector(
+      '.kcal',
+    ) as HTMLElement;
     expect(kcal.textContent?.trim()).toBe('421 kcal');
   });
 
@@ -75,7 +77,9 @@ describe('MacroChartComponent', () => {
     });
     fixture.detectChanges();
     expect(
-      fixture.nativeElement.querySelector('.kcal').textContent.trim(),
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.kcal')
+        ?.textContent?.trim(),
     ).toBe('≥ 420 kcal');
     expect(fixture.componentInstance.chart?.data.datasets[0].data).toEqual([1]);
     expect(fixture.componentInstance.legend()['carbs'].value).toEqual({
@@ -96,10 +100,12 @@ describe('MacroChartComponent', () => {
     });
     fixture.detectChanges();
     expect(
-      fixture.nativeElement.querySelector('.kcal').textContent.trim(),
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.kcal')
+        ?.textContent?.trim(),
     ).toBe('— kcal');
     expect(
-      fixture.nativeElement.querySelector(
+      (fixture.nativeElement as HTMLElement).querySelector(
         '[aria-label="Kalorienangabe fehlt"]',
       ),
     ).not.toBeNull();
@@ -108,7 +114,9 @@ describe('MacroChartComponent', () => {
     ]);
     fixture.componentRef.setInput('showKcal', false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kcal-wrapper')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.kcal-wrapper'),
+    ).toBeNull();
   });
 
   it('keeps the nutrient legend when the rendered chart falls back to gray', () => {

@@ -52,7 +52,7 @@ describe('Packaged chat UI integration', () => {
     fixture.detectChanges();
 
     const library = fixture.debugElement.query(By.directive(ChatUiComponent));
-    const element: HTMLElement = library.nativeElement;
+    const element: HTMLElement = library.nativeElement as HTMLElement;
     expect(element.querySelector('.host-renderer')?.textContent?.trim()).toBe(
       'host-owned-id: Host name / Host description',
     );
@@ -66,7 +66,7 @@ describe('Packaged chat UI integration', () => {
     fixture.componentInstance.showRenderer = false;
     fixture.detectChanges();
 
-    const element: HTMLElement = fixture.nativeElement;
+    const element: HTMLElement = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.banner h2')?.textContent?.trim()).toBe(
       'Banner',
     );

@@ -117,8 +117,10 @@ const operations: {
     run: (service) => service.publishRecipeDraft(lineageId, versionId),
   },
 ];
-const { name: _name, ...missingName } = recipe;
-const { imageId: _imageId, ...missingImageId } = recipe;
+const missingName: Partial<RecipeVersionOut> = { ...recipe };
+delete missingName.name;
+const missingImageId: Partial<RecipeVersionOut> = { ...recipe };
+delete missingImageId.imageId;
 const malformedResponses = [
   { reason: 'missing field', body: missingName },
   { reason: 'missing image reference', body: missingImageId },
@@ -220,7 +222,9 @@ describe('RecipeBackendService JSON responses', () => {
         const rejection = expect(response).rejects.toMatchObject({
           name: 'ApiContractError',
           endpoint: `${operation.method ?? 'GET'} ${backendUrl}${operation.path}`,
-          cause: expect.objectContaining({ issues: expect.any(Array) }),
+          cause: expect.objectContaining({
+            issues: expect.any(Array) as object,
+          }) as object,
         });
         http
           .expectOne(backendUrl + operation.path)
