@@ -1,6 +1,6 @@
 import { Subject } from 'rxjs';
 
-import { Component, EventEmitter, input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormArray, FormControl, FormGroup, FormGroupDirective, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -15,10 +15,6 @@ import { IngredientFieldComponent } from './ingredient-field/ingredient-field.co
 import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.component';
 import { FoodstuffSelectionDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 
-class PickerStub {
-    readonly foodstuffCreated = new EventEmitter<FoodstuffOut>();
-}
-
 @Component({ selector: 'app-macro-chart', template: '' })
 class MacroChartStubComponent {
     readonly nutrition = input.required<NutritionSummary>();
@@ -31,8 +27,7 @@ class ChartLegendElementStubComponent {
 
 describe('RecipeIngredientsFormComponent', () => {
     let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
-    let picker: PickerStub;
-    let dialogResult: Subject<number[] | undefined>;
+    let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
     const foodstuff: FoodstuffOut = {
         id: 1,
@@ -49,7 +44,7 @@ describe('RecipeIngredientsFormComponent', () => {
 
     beforeEach(async () => {
         const recipeForm = createRecipeForm();
-        dialogResult = new Subject<number[] | undefined>();
+        dialogResult = new Subject<FoodstuffOut[] | undefined>();
 
         await TestBed.configureTestingModule({
             imports: [RecipeIngredientsFormComponent],
@@ -74,10 +69,8 @@ describe('RecipeIngredientsFormComponent', () => {
         })
             .compileComponents();
 
-        picker = new PickerStub();
-        vi.mocked(TestBed.inject(MatDialog).open).mockReturnValue({ componentInstance: picker, afterClosed: () => dialogResult.asObservable() } as ReturnType<MatDialog['open']>);
         fixture = TestBed.createComponent(RecipeIngredientsFormComponent);
-        fixture.componentRef.setInput('foodstuffs', [foodstuff]);
+        fixture.componentInstance.selectedFoodstuffs.set( [foodstuff]);
         fixture.detectChanges();
     });
 
@@ -88,17 +81,17 @@ describe('RecipeIngredientsFormComponent', () => {
 
         expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
             FoodstuffSelectionDialogComponent,
-            expect.objectContaining({ data: { foodstuffs: [foodstuff], existingFoodstuffIds: [1] } }),
+            expect.objectContaining({ data: { existingFoodstuffIds: [1] } }),
         );
         expect(fixture.componentInstance.ingredients.getRawValue()).toEqual(before);
     });
 
     it('appends confirmed IDs in order, prevents duplicates, and preserves existing amounts', () => {
         const other = { ...foodstuff, id: 2, name: 'Pasta', brand: 'Barilla' };
-        fixture.componentRef.setInput('foodstuffs', [foodstuff, other, { ...foodstuff, id: 3 }]);
+        fixture.componentInstance.selectedFoodstuffs.set( [foodstuff, other, { ...foodstuff, id: 3 }]);
         fixture.detectChanges();
         fixture.componentInstance.openFoodstuffSelectionDialog();
-        dialogResult.next([3, 2, 1, 2]);
+        dialogResult.next([{ ...foodstuff, id: 3 }, other, foodstuff, other]);
         dialogResult.complete();
         fixture.detectChanges();
         expect(fixture.componentInstance.ingredients.getRawValue()).toEqual([
@@ -125,21 +118,22 @@ describe('RecipeIngredientsFormComponent', () => {
         );
     });
 
-    it('forwards created foodstuffs before confirmation and uses the updated catalogue for rows', () => {
+    it('retains confirmed records for display and nutrition, and releases removed records', () => {
         const created = { ...foodstuff, id: 2, name: 'Reis' };
-        fixture.componentInstance.foodstuffCreated.subscribe((record) => {
-            fixture.componentRef.setInput('foodstuffs', [foodstuff, record]);
-            fixture.detectChanges();
-        });
         fixture.componentInstance.openFoodstuffSelectionDialog();
-        picker.foodstuffCreated.emit(created);
-        expect(fixture.componentInstance.ingredients.length).toBe(1);
-        dialogResult.next([2]);
+        expect(fixture.componentInstance.selectedFoodstuffs()).toEqual([foodstuff]);
+        dialogResult.next([created]);
         dialogResult.complete();
         fixture.detectChanges();
         expect(fixture.componentInstance.ingredients.at(1).controls.foodstuffId.value).toBe(2);
+        expect(fixture.componentInstance.foodstuffFor(2)).toEqual(created);
         expect(fixture.nativeElement.textContent).toContain('Reis');
-        expect(fixture.nativeElement.querySelector('.create-foodstuff-button')).toBeNull();
+        fixture.componentInstance.ingredients.at(1).controls.amount.setValue(100);
+        fixture.detectChanges();
+        expect(chartNutrition().kcal).toEqual({ status: 'exact', value: 370 });
+        fixture.componentInstance.removeIngredient(1);
+        expect(fixture.componentInstance.selectedFoodstuffs()).toEqual([foodstuff]);
+        expect(fixture.componentInstance.foodstuffFor(2)).toBeUndefined();
     });
 
     it('leaves rows untouched when the picker is dismissed', () => {
@@ -158,7 +152,7 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('shows exact zero values in the legend when every macro is zero', () => {
-        fixture.componentRef.setInput('foodstuffs', [
+        fixture.componentInstance.selectedFoodstuffs.set( [
             { ...foodstuff, carbs: 0, protein: 0, fat: 0 },
         ]);
         fixture.detectChanges();
@@ -168,7 +162,7 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('keeps nutrition visible when a selected ingredient has no amount yet', () => {
-        fixture.componentInstance.addIngredient(1);
+        fixture.componentInstance.addIngredient(foodstuff);
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('app-macro-chart')).not.toBeNull();
@@ -182,13 +176,13 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('keeps ingredient indexes unique and sequential after adding and removing rows', () => {
-        fixture.componentInstance.addIngredient(1);
-        fixture.componentInstance.addIngredient(1);
+        fixture.componentInstance.addIngredient(foodstuff);
+        fixture.componentInstance.addIngredient(foodstuff);
 
         expect(ingredientIndexes()).toEqual([1, 2, 3]);
 
         fixture.componentInstance.removeIngredient(1);
-        fixture.componentInstance.addIngredient(1);
+        fixture.componentInstance.addIngredient(foodstuff);
 
         expect(ingredientIndexes()).toEqual([1, 2, 3]);
     });
@@ -209,7 +203,7 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('updates exact, minimum and unknown values live without retaining the last result', () => {
-        fixture.componentInstance.addIngredient(1);
+        fixture.componentInstance.addIngredient(foodstuff);
         const second = fixture.componentInstance.ingredients.at(1);
         second.patchValue({ foodstuffId: 1, amount: 100 });
         fixture.detectChanges();
@@ -235,7 +229,7 @@ describe('RecipeIngredientsFormComponent', () => {
     });
 
     it('shows incomplete foodstuff nutrition and an all-unknown empty draft', () => {
-        fixture.componentRef.setInput('foodstuffs', [{ ...foodstuff, protein: null }]);
+        fixture.componentInstance.selectedFoodstuffs.set( [{ ...foodstuff, protein: null }]);
         fixture.detectChanges();
         expect(chartNutrition().protein).toEqual({ status: 'unknown', value: null });
         expect(chartNutrition().carbs).toEqual({ status: 'exact', value: 30 });

@@ -1,51 +1,60 @@
 <app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
 
-<mat-dialog-content [class.no-results]="displayedFoodstuffs().length === 0">
-  <mat-action-list aria-label="Lebensmittel">
-    @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
-      <button
-        mat-list-item
-        type="button"
-        class="foodstuff"
-        [disabled]="existingFoodstuffIds.has(foodstuff.id)"
-        [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
-        (click)="toggleFoodstuff(foodstuff.id)"
-      >
-        <img
-          matListItemAvatar
-          src="assets/images/question-mark.png"
-          alt=""
-          width="40"
-          height="40"
-        />
-        <span matListItemTitle class="foodstuff-name">{{
-          foodstuff.name
-        }}</span>
-        @if (foodstuff.brand) {
-          <span matListItemLine class="foodstuff-description">{{
-            foodstuff.brand
-          }}</span>
-        }
-        @if (existingFoodstuffIds.has(foodstuff.id)) {
-          <span matListItemMeta class="selection-status"
-            >Bereits hinzugefügt</span
-          >
-        } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
-          <span matListItemMeta class="selection-status selected-status">
-            <mat-icon aria-hidden="true">check_circle</mat-icon>
-            <span>Im Korb</span>
-          </span>
-        }
-      </button>
-    }
-  </mat-action-list>
-  @if (displayedFoodstuffs().length === 0) {
-    <div class="empty-state">
-      <p class="empty-message">Keine Lebensmittel gefunden.</p>
-      <button mat-button type="button" (click)="searchValue.set('')">
-        Suche zurücksetzen
-      </button>
+<mat-dialog-content [class.no-results]="catalogueState() !== 'ready' || displayedFoodstuffs().length === 0">
+  @if (catalogueState() === 'loading') {
+    <mat-spinner diameter="25" aria-label="Lebensmittel werden geladen" />
+  } @else if (catalogueState() === 'error') {
+    <div class="empty-state" role="alert">
+      <p>Lebensmittel konnten nicht geladen werden.</p>
+      <button mat-button type="button" (click)="loadFoodstuffs()">Erneut laden</button>
     </div>
+  } @else {
+    <mat-action-list aria-label="Lebensmittel">
+      @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
+        <button
+          mat-list-item
+          type="button"
+          class="foodstuff"
+          [disabled]="existingFoodstuffIds.has(foodstuff.id)"
+          [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
+          (click)="toggleFoodstuff(foodstuff.id)"
+        >
+          <img
+            matListItemAvatar
+            src="assets/images/question-mark.png"
+            alt=""
+            width="40"
+            height="40"
+          />
+          <span matListItemTitle class="foodstuff-name">{{
+            foodstuff.name
+          }}</span>
+          @if (foodstuff.brand) {
+            <span matListItemLine class="foodstuff-description">{{
+              foodstuff.brand
+            }}</span>
+          }
+          @if (existingFoodstuffIds.has(foodstuff.id)) {
+            <span matListItemMeta class="selection-status"
+              >Bereits hinzugefügt</span
+            >
+          } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
+            <span matListItemMeta class="selection-status selected-status">
+              <mat-icon aria-hidden="true">check_circle</mat-icon>
+              <span>Im Korb</span>
+            </span>
+          }
+        </button>
+      }
+    </mat-action-list>
+    @if (displayedFoodstuffs().length === 0) {
+      <div class="empty-state">
+        <p class="empty-message">Keine Lebensmittel gefunden.</p>
+        <button mat-button type="button" (click)="searchValue.set('')">
+          Suche zurücksetzen
+        </button>
+      </div>
+    }
   }
 </mat-dialog-content>
 
@@ -85,6 +94,7 @@
       mat-flat-button
       type="button"
       class="create-foodstuff-button"
+      [disabled]="catalogueState() === 'loading'"
       aria-label="Lebensmittel erstellen"
       title="Lebensmittel erstellen"
       (click)="openCreateFoodstuffDialog()"

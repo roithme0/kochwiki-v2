@@ -8,7 +8,6 @@ import {
   computed,
   inject,
   input,
-  output,
   signal,
 } from '@angular/core';
 
@@ -22,7 +21,7 @@ import {
   Validators,
   FormBuilder,
 } from '@angular/forms';
-import type { FoodstuffOut } from '../../../../core/api/generated';
+import type { FoodstuffSummaryOut } from '../../../../core/api/generated';
 import {
   FoodstuffSelectionDialogComponent,
   FoodstuffSelectionDialogData,
@@ -66,10 +65,9 @@ interface IngredientFormControls {
   styleUrl: './recipe-ingredients-form.component.scss',
 })
 export class RecipeIngredientsFormComponent {
-  foodstuffs = input.required<FoodstuffOut[]>();
   recipeVersion = input<RecipeVersionOut>();
 
-  readonly foodstuffCreated = output<FoodstuffOut>();
+  readonly selectedFoodstuffs = signal<FoodstuffSummaryOut[]>([]);
 
   readonly recipeFormDirective = inject(FormGroupDirective);
   readonly fb: FormBuilder = inject(FormBuilder);
@@ -84,7 +82,7 @@ export class RecipeIngredientsFormComponent {
       calculateDraftNutrition(
         this.ingredientDrafts(),
         this.servings(),
-        this.foodstuffs(),
+        this.selectedFoodstuffs(),
       ),
   );
   readonly legend = computed(() => {
@@ -108,7 +106,7 @@ export class RecipeIngredientsFormComponent {
         servings: recipeVersion.servings,
       });
       recipeVersion.ingredients.forEach((ingredient: IngredientOut) =>
-        this.addIngredient(ingredient.foodstuff.id, ingredient.amount),
+        this.addIngredient(ingredient.foodstuff, ingredient.amount),
       );
     }
 
@@ -124,24 +122,37 @@ export class RecipeIngredientsFormComponent {
     >;
   }
 
-  addIngredient(foodstuffId: number, amount: number | null = null): void {
+  addIngredient(
+    foodstuff: FoodstuffSummaryOut,
+    amount: number | null = null,
+  ): void {
+    this.selectedFoodstuffs.update((foodstuffs) => [
+      ...foodstuffs.filter((item) => item.id !== foodstuff.id),
+      foodstuff,
+    ]);
     this.ingredients.push(
       this.fb.group({
         index: [this.ingredients.length + 1, Validators.required],
-        foodstuffId: [foodstuffId, Validators.required],
+        foodstuffId: [foodstuff.id, Validators.required],
         amount: [amount, Validators.required],
       }),
     );
     this.updateNutritionDraft();
   }
 
-  foodstuffFor(id: number | null): FoodstuffOut | undefined {
-    return this.foodstuffs().find((foodstuff) => foodstuff.id === id);
+  foodstuffFor(id: number | null): FoodstuffSummaryOut | undefined {
+    return this.selectedFoodstuffs().find((foodstuff) => foodstuff.id === id);
   }
 
   removeIngredient(index: number): void {
     this.ingredients.removeAt(index);
     this.reindexIngredients();
+    const remainingIds = new Set(
+      this.ingredients.controls.map((row) => row.controls.foodstuffId.value),
+    );
+    this.selectedFoodstuffs.update((foodstuffs) =>
+      foodstuffs.filter((foodstuff) => remainingIds.has(foodstuff.id)),
+    );
     this.updateNutritionDraft();
   }
 
@@ -149,10 +160,9 @@ export class RecipeIngredientsFormComponent {
     const dialogRef = this.dialog.open<
       FoodstuffSelectionDialogComponent,
       FoodstuffSelectionDialogData,
-      number[]
+      FoodstuffSummaryOut[]
     >(FoodstuffSelectionDialogComponent, {
       data: {
-        foodstuffs: this.foodstuffs(),
         existingFoodstuffIds: this.ingredientDrafts()
           .map((ingredient) => ingredient.foodstuffId)
           .filter((id): id is number => id !== null),
@@ -165,21 +175,18 @@ export class RecipeIngredientsFormComponent {
       position: { top: '0' },
       autoFocus: false,
     });
-    dialogRef.componentInstance.foodstuffCreated.subscribe((created) =>
-      this.foodstuffCreated.emit(created),
-    );
     dialogRef
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((ids) => {
-        if (!ids?.length) return;
+      .subscribe((foodstuffs) => {
+        if (!foodstuffs?.length) return;
         const existingIds = new Set(
           this.ingredientDrafts().map((ingredient) => ingredient.foodstuffId),
         );
-        for (const id of ids) {
-          if (existingIds.has(id) || !this.foodstuffFor(id)) continue;
-          this.addIngredient(id);
-          existingIds.add(id);
+        for (const foodstuff of foodstuffs) {
+          if (existingIds.has(foodstuff.id)) continue;
+          this.addIngredient(foodstuff);
+          existingIds.add(foodstuff.id);
         }
       });
   }

@@ -93,26 +93,18 @@ describe('RecipeEditorComponent', () => {
         component.selectImage(input);
     }
 
-    it('uses foodstuffs created in the picker immediately without waiting for a catalogue refresh', async () => {
+    it('opens a new recipe without loading the foodstuff catalogue', async () => {
+        foodstuffBackend.getAllFoodstuffs.mockRejectedValue(new Error('Catalogue unavailable'));
         fixture.detectChanges();
         await fixture.whenStable();
         fixture.detectChanges();
+        expect(component.state()).toEqual({ status: 'ready' });
+        expect(foodstuffBackend.getAllFoodstuffs).not.toHaveBeenCalled();
         const form = fixture.debugElement.query(By.directive(RecipeIngredientsFormComponent))
             .componentInstance as RecipeIngredientsFormComponent;
-        const created = {
-            id: 7, name: 'Reis', brand: null, unit: 'G' as const, unitVerbose: 'g',
-            kcal: 350, carbs: 75, protein: 7, fat: 1, recipeVersionIds: [],
-        };
-        form.foodstuffCreated.emit(created);
-        fixture.detectChanges();
-        expect(component.foodstuffs()).toEqual([created]);
-        expect(form.foodstuffFor(7)).toEqual(created);
-        form.addIngredient(7, 100);
-        fixture.detectChanges();
-        expect(fixture.nativeElement.textContent).toContain('Reis');
-        form.foodstuffCreated.emit(created);
-        expect(component.foodstuffs()).toEqual([created]);
-        expect(foodstuffBackend.getAllFoodstuffs).toHaveBeenCalledOnce();
+        expect(form.selectedFoodstuffs()).toEqual([]);
+        foodstuffBackend.foodstuffsChanged$.next();
+        expect(foodstuffBackend.getAllFoodstuffs).not.toHaveBeenCalled();
     });
 
     it('previews locally without uploading, preserves selection on picker cancel and releases it on dialog cancel', () => {
@@ -267,7 +259,7 @@ describe('RecipeEditorComponent', () => {
         expect(emitted).toHaveBeenCalledWith(expect.objectContaining({ recipeVersion: expect.objectContaining({ imageId }) }));
     });
 
-    it('becomes ready only after recipe and foodstuff data load', async () => {
+    it('becomes ready after loading the recipe without loading the catalogue', async () => {
         fixture.componentRef.setInput('recipeLineageId', recipeVersion.recipeLineageId);
         fixture.detectChanges();
         await fixture.whenStable();
@@ -338,7 +330,7 @@ describe('RecipeEditorComponent', () => {
             state: mode,
             ingredients: [{ id: 1, index: 1, amount: 125, foodstuff, recipeVersionId: recipeVersion.recipeVersionId }],
         };
-        foodstuffBackend.getAllFoodstuffs.mockResolvedValue([foodstuff]);
+        foodstuffBackend.getAllFoodstuffs.mockRejectedValue(new Error('Catalogue unavailable'));
         recipeBackend.getActiveRecipeVersion.mockResolvedValue(version);
         recipeBackend.getRecipeVersion.mockResolvedValue(version);
         fixture.componentRef.setInput('mode', mode);
@@ -353,6 +345,10 @@ describe('RecipeEditorComponent', () => {
         const ingredientSection: HTMLElement = fixture.nativeElement.querySelector('app-recipe-ingredients-form');
         expect(ingredientSection.querySelector('mat-select')).toBeNull();
         expect(ingredientSection.textContent).toContain('Barilla');
+        expect(foodstuffBackend.getAllFoodstuffs).not.toHaveBeenCalled();
+        const form = fixture.debugElement.query(By.directive(RecipeIngredientsFormComponent))
+            .componentInstance as RecipeIngredientsFormComponent;
+        expect(form.selectedFoodstuffs()).toEqual([foodstuff]);
     });
 
     it('navigates to a section and follows manual dialog scrolling', async () => {
@@ -505,7 +501,10 @@ describe('RecipeEditorComponent', () => {
         const ingredients = fixture.nativeElement.querySelector('app-recipe-ingredients-form') as HTMLElement;
         const ingredientForm = fixture.debugElement.query(By.directive(RecipeIngredientsFormComponent))
             .componentInstance as RecipeIngredientsFormComponent;
-        ingredientForm.addIngredient(1);
+        ingredientForm.addIngredient({
+            id: 1, name: 'Pasta', brand: null, unit: 'G', unitVerbose: 'g',
+            kcal: null, carbs: null, protein: null, fat: null,
+        });
         fixture.detectChanges();
 
         (fixture.nativeElement.querySelector('.button-wrapper button') as HTMLButtonElement).click();
