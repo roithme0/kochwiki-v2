@@ -118,6 +118,7 @@ export class FoodstuffsTableComponent implements OnDestroy, AfterViewInit {
       data: { id: foodstuff.id },
       width: '100vw',
       maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
       maxHeight: '100dvh',
       position: { top: '0' },
       autoFocus: false,

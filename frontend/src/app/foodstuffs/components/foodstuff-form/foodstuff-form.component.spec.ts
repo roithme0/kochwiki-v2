@@ -4,6 +4,9 @@ import { FoodstuffFormComponent } from './foodstuff-form.component';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
+import { By } from '@angular/platform-browser';
+import type { Chart } from 'chart.js';
+import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 
 describe('FoodstuffFormComponent', () => {
   let component: FoodstuffFormComponent;
@@ -15,6 +18,10 @@ describe('FoodstuffFormComponent', () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    vi.spyOn(
+      MacroChartComponent.prototype,
+      'ngAfterViewInit',
+    ).mockImplementation(() => {});
     upload.mockResolvedValue({ id: imageId });
     download.mockResolvedValue({ url: '/storage/saved.png', expiresIn: 300 });
     vi.stubGlobal(
@@ -38,7 +45,73 @@ describe('FoodstuffFormComponent', () => {
     fixture.componentRef.setInput('submitLabel', 'Speichern');
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('updates the distribution live, using gray for missing or all-zero macros without calories or a legend', () => {
+    fixture.detectChanges();
+    const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
+      .componentInstance as MacroChartComponent;
+    const renderedChart: Pick<Chart, 'data' | 'update' | 'destroy'> = {
+      data: { datasets: [{ data: [], backgroundColor: [] }] },
+      update: vi.fn(),
+      destroy: vi.fn(),
+    };
+    chart.chart = renderedChart as Chart;
+    expect(chart.dataIncompleteOrInvalid()).toBe(true);
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('.kcal-wrapper')).toBeNull();
+    expect(element.querySelector('app-chart-legend-element')).toBeNull();
+    expect(
+      element.querySelector('.nutrition-wrapper app-macro-chart'),
+    ).not.toBeNull();
+
+    component.form.patchValue({ carbs: 12, protein: 6 });
+    fixture.detectChanges();
+    expect(renderedChart.data.datasets[0].data).toEqual([1]);
+    expect(renderedChart.data.datasets[0].backgroundColor).toEqual([
+      'rgb(157, 145, 129)',
+    ]);
+
+    component.form.controls.fat.setValue(0);
+    fixture.detectChanges();
+    expect(renderedChart.data.datasets[0].data).toEqual([12, 6, 0]);
+    expect(chart.nutrition().kcal.status).toBe('unknown');
+
+    for (const macro of ['carbs', 'protein', 'fat'] as const) {
+      const previous = component.form.controls[macro].value;
+      component.form.controls[macro].setValue(null);
+      fixture.detectChanges();
+      expect(renderedChart.data.datasets[0].data).toEqual([1]);
+      component.form.controls[macro].setValue(previous);
+      fixture.detectChanges();
+      expect(renderedChart.data.datasets[0].data).toEqual([12, 6, 0]);
+    }
+
+    component.form.patchValue({ carbs: 0, protein: 0, fat: 0 });
+    fixture.detectChanges();
+    expect(renderedChart.data.datasets[0].data).toEqual([1]);
+  });
+
+  it('previews existing nutrition when the edit form is initialized', () => {
+    fixture.componentRef.setInput('foodstuff', {
+      carbs: 15,
+      protein: 7,
+      fat: 1,
+    });
+    fixture.detectChanges();
+    const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
+      .componentInstance as MacroChartComponent;
+    expect(chart.dataIncompleteOrInvalid()).toBe(false);
+    expect(chart.nutrition()).toEqual({
+      kcal: { status: 'unknown', value: null },
+      carbs: { status: 'exact', value: 15 },
+      protein: { status: 'exact', value: 7 },
+      fat: { status: 'exact', value: 1 },
+    });
+  });
 
   function select(file: File | null): void {
     const input = document.createElement('input');

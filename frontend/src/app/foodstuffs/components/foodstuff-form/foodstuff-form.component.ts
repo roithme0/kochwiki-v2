@@ -8,7 +8,9 @@ import {
   input,
   output,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { toNutritionSummary } from '../../../core/models/nutrition-result';
 import { ImageEditorState } from '../../../core/services/image-editor-state.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,6 +35,7 @@ import { FoodstuffImageService } from '../../services/foodstuff-image.service';
   providers: [ImageEditorState],
   imports: [
     ImageEditorComponent,
+    MacroChartComponent,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -73,6 +76,11 @@ export class FoodstuffFormComponent {
     protein: this.fb.control<number | null>(null),
     fat: this.fb.control<number | null>(null),
   });
+
+  private readonly formValue = toSignal(this.form.valueChanges, {
+    initialValue: this.form.getRawValue(),
+  });
+  readonly nutrition = computed(() => toNutritionSummary(this.formValue()));
 
   constructor() {
     effect(() => {

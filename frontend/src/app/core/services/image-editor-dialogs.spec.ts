@@ -1,4 +1,10 @@
-import { Component, DebugElement, NgZone, getDebugNode } from '@angular/core';
+import {
+  Component,
+  DebugElement,
+  NgZone,
+  getDebugNode,
+  input,
+} from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import type { FoodstuffOut, RecipeVersionOut } from '../api/generated';
@@ -15,6 +21,14 @@ import { RecipeImageService } from '../../recipes/services/recipe-image.service'
 import { RecipeCreateDialogComponent } from '../../recipes/dialogs/recipe-create-dialog/recipe-create-dialog.component';
 import { RecipePatchDialogComponent } from '../../recipes/dialogs/recipe-patch-dialog/recipe-patch-dialog.component';
 import { RecipeEditorComponent } from '../../recipes/dialogs/recipe-editor/recipe-editor.component';
+import { MacroChartComponent } from '../components/macro-chart/macro-chart.component';
+import type { NutritionSummary } from '../models/nutrition-result';
+
+@Component({ selector: 'app-macro-chart', template: '' })
+class MacroChartStubComponent {
+  readonly nutrition = input.required<NutritionSummary>();
+  readonly showKcal = input(true);
+}
 
 @Component({ template: '' })
 class HostComponent {}
@@ -127,6 +141,10 @@ describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
         },
         { provide: SnackBarService, useValue: { open: vi.fn() } },
       ],
+    });
+    TestBed.overrideComponent(FoodstuffFormComponent, {
+      remove: { imports: [MacroChartComponent] },
+      add: { imports: [MacroChartStubComponent] },
     });
   });
 
