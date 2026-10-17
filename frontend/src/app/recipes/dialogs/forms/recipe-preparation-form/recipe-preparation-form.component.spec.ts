@@ -79,10 +79,13 @@ describe('RecipePreparationFormComponent', () => {
         expect(fixture.componentInstance.steps.length).toBe(99);
         fixture.componentInstance.addStep();
         expect(fixture.componentInstance.steps.length).toBe(99);
-        fixture.componentInstance.removeStep(0);
+        const removeButton = fixture.nativeElement.querySelector('.remove-button') as HTMLButtonElement;
+        removeButton.click();
         fixture.detectChanges();
 
         expect(fixture.nativeElement.querySelector('#step-limit')).toBeNull();
+        fixture.componentInstance.addStep();
+        expect(fixture.componentInstance.steps.length).toBe(99);
     });
 
     function descriptions(): string[] {
