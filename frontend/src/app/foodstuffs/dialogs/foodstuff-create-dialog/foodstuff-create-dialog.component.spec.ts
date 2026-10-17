@@ -14,6 +14,7 @@ describe('FoodstuffCreateDialogComponent', () => {
     ...request,
     id: 3,
     brand: null,
+    imageId: null,
     unitVerbose: 'g',
     kcal: null,
     carbs: null,

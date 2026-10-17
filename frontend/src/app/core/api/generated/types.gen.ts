@@ -45,6 +45,10 @@ export type FoodstuffCreate = {
      */
     fat?: number | string | null;
     /**
+     * Imageid
+     */
+    imageId?: string | null;
+    /**
      * Kcal
      */
     kcal?: number | string | null;
@@ -152,6 +156,10 @@ export type FoodstuffOut = {
      */
     id: number;
     /**
+     * Imageid
+     */
+    imageId: string | null;
+    /**
      * Kcal
      */
     kcal: number | null;
@@ -195,6 +203,10 @@ export type FoodstuffSummaryOut = {
      */
     id: number;
     /**
+     * Imageid
+     */
+    imageId: string | null;
+    /**
      * Kcal
      */
     kcal: number | null;
@@ -229,6 +241,10 @@ export type FoodstuffUpdate = {
      * Fat
      */
     fat?: number | string | null;
+    /**
+     * Imageid
+     */
+    imageId?: string | null;
     /**
      * Kcal
      */
@@ -971,6 +987,10 @@ export type PostFoodstuffFoodstuffsPostData = {
 };
 
 export type PostFoodstuffFoodstuffsPostErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
     /**
      * Conflict
      */

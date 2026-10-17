@@ -18,6 +18,7 @@ const foodstuff = (id: number, name: string) => ({
   name,
   brand: null,
   unit: FoodstuffUnit.Gram,
+  imageId: null,
   unitVerbose: 'Gramm',
   kcal: null,
   carbs: null,

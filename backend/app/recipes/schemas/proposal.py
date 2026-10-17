@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.foodstuffs.models.unit import Unit
 from app.core.schemas.common import JsonDecimal, NonnegativeJsonDecimal
-from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.schemas.foodstuff import FoodstuffFields
 from app.recipes.config import (
     MAX_INGREDIENT_AMOUNT,
     MAX_INGREDIENT_INDEX,
@@ -32,7 +32,7 @@ class TemporaryProposalFoodstuff(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     kind: Literal["temporary"]
-    definition: FoodstuffCreate
+    definition: FoodstuffFields
 
 
 ProposalFoodstuff = Annotated[

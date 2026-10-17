@@ -18,7 +18,8 @@ Shared image metadata and limits now live in `app.images`, and the storage adapt
 requires explicit bucket selection. Both buckets are configured and provisioned
 through the existing initializer. The third slice shares validation and transfers
 behind domain-specific image routes. Frontend image editing and display remain
-recipe-specific; foodstuff associations and UI are still pending.
+recipe-specific. The fourth slice adds catalogue image associations and their
+HTTP/MCP save semantics; foodstuff image editing and display remain pending.
 
 Foodstuffs are mutable catalogue records without version history. Recipe ingredients reference those records and responses embed current foodstuff summaries. Create and edit dialogs share `FoodstuffFormComponent`. The foodstuff catalogue uses a responsive table whose first column is a nutrition chart; there is no dedicated foodstuff detail page. `FoodstuffPresentationComponent` serves nutrition-only AI artifacts.
 
@@ -155,6 +156,50 @@ configuration deprecation warnings; Angular emitted jsdom canvas notices.
 No new live Garage/API gateway verification or application deployment was
 performed in this slice. Foodstuff images can be uploaded and downloaded but
 remain unattached until the association slice; orphan cleanup remains deferred.
+
+### Fourth Slice: Foodstuff Associations and Save Semantics
+
+Authorized, implemented, and reviewed on 2026-10-17. Attach completed foodstuff images to mutable catalogue
+entries through a nullable foreign key. Existing entries start without images.
+Creation omission/null means no image; update omission preserves, null removes,
+and a validated foodstuff-kind ID replaces. Reject missing and recipe-kind IDs
+without committing any foodstuff changes. HTTP and MCP use the same service.
+
+Return required nullable `imageId` in foodstuff outputs and summaries, including
+semantic search results and embedded recipe ingredients. Historical recipe reads
+resolve the current catalogue image, independently of each recipe version's own
+image. Image-only changes do not trigger semantic embedding refresh. Generate
+frontend contracts and adapt existing consumers/fixtures together; image editing
+and rendering remain later slices.
+
+Keep AI presentation payloads unchanged. Temporary proposal foodstuff definitions
+use the existing name/unit/brand/nutrition base fields; materialization explicitly
+converts those fields to catalogue creation input. Image-bearing catalogue
+summaries explicitly exclude image identity when resolving proposal presentations.
+Removal, replacement and foodstuff deletion retain image metadata and bytes under
+the existing deferred cleanup boundary.
+
+Acceptance covers migration preservation and deletion protection, omitted/null/
+replacement behavior, invalid and cross-kind rejection, failed-write rollback,
+HTTP/MCP parity, current images in historical recipes and search, no embedding
+refresh for image-only updates, unchanged artifact payloads, and generated frontend
+contract validation. No application migration, deployment, image UI, cleanup or
+build/tooling configuration changes are included.
+
+Validation: the complete backend suite passed against dedicated test PostgreSQL
+(399 tests, 218 subtests). Migration `20261017_14` preserves existing records with
+null image references and protects referenced metadata. Regression tests cover
+HTTP/MCP association rules, malformed/unknown/cross-kind references, rollback
+after flush, metadata retention, current images in historical recipes and search,
+embedding refresh behavior, and unchanged AI artifact payloads. Frontend
+formatting, lint, all 13 tooling tests and all 610 Angular tests passed, along with
+the exact generated-contract check. Review confirmed the frontend field-label
+type excludes image identity until image editing/display is introduced.
+
+Existing Alembic configuration deprecation warnings and jsdom canvas notices
+remain. No migration was applied to the running application database, and no
+deployment or new live Garage/gateway checks ran. Foodstuff image UI and orphan
+cleanup remain pending.
 
 ## Remaining Technical Choices
 

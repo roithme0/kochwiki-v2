@@ -41,6 +41,7 @@ describe('RecipeIngredientsFormComponent', () => {
     name: 'Haferflocken',
     brand: null,
     unit: FoodstuffUnit.Gram,
+    imageId: null,
     unitVerbose: 'g',
     kcal: 370,
     carbs: 60,

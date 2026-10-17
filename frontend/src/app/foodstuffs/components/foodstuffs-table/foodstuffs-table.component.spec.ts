@@ -18,6 +18,7 @@ describe('FoodstuffsTableComponent', () => {
     name: 'Tomate',
     brand: null,
     unit: FoodstuffUnit.Gram,
+    imageId: null,
     unitVerbose: 'Gramm',
     kcal: 18,
     carbs: 3,

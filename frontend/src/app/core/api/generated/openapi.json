@@ -83,6 +83,18 @@
             ],
             "title": "Fat"
           },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
+          },
           "kcal": {
             "anyOf": [
               {
@@ -276,6 +288,18 @@
             "title": "Id",
             "type": "integer"
           },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
+          },
           "kcal": {
             "anyOf": [
               {
@@ -322,6 +346,7 @@
         },
         "required": [
           "id",
+          "imageId",
           "name",
           "brand",
           "unit",
@@ -378,6 +403,18 @@
             "title": "Id",
             "type": "integer"
           },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
+          },
           "kcal": {
             "anyOf": [
               {
@@ -416,6 +453,7 @@
         },
         "required": [
           "id",
+          "imageId",
           "name",
           "brand",
           "unit",
@@ -474,6 +512,18 @@
               }
             ],
             "title": "Fat"
+          },
+          "imageId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imageid"
           },
           "kcal": {
             "anyOf": [
@@ -1736,6 +1786,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
           },
           "409": {
             "content": {

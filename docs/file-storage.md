@@ -174,8 +174,8 @@ URLs do not implement recipe ownership or permissions.
 ## Shared image transfers
 
 `app.images.transfers.ImageTransfers` implements validation, persistence, and
-download access behind domain-specific HTTP routes. Recipe services attach its
-persisted image IDs separately; foodstuff associations remain pending. Construct
+download access behind domain-specific HTTP routes. Recipe and foodstuff services
+attach its persisted image IDs separately. Construct
 it with the domain's storage adapter, a SQLAlchemy session factory (normally
 `SessionLocal`), and an explicit backend-selected `ImageKind`.
 `begin()` returns an upload UUID and a 300-second presigned PUT transfer for
@@ -348,7 +348,7 @@ The storage adapter requires an explicit backend-selected bucket:
 `Storage(config, bucket=config.bucket_recipe_images)`. It no longer selects the
 recipe bucket implicitly. `app.images.storage.image_bucket(config, kind)` maps
 each image kind to its configured bucket. Both domains' image API dependencies use
-this mapping; foodstuff associations remain pending. The shared metadata migration is verified against
+this mapping. The shared metadata migration is verified against
 dedicated test PostgreSQL; it has not been applied to the running application
 database as part of this slice.
 
@@ -369,6 +369,41 @@ completion without consuming the source, and cross-kind download rejection.
 Existing OpenAPI routes and schemas are unchanged; the generated frontend
 contract check, lint, tooling tests, and Angular suite passed. These checks do not
 establish live Garage/gateway operation of the new foodstuff endpoints.
+
+## Foodstuff image associations
+
+Migration `20261017_14` adds a nullable `foodstuff.image_id` foreign key to
+`image_asset`. Existing foodstuffs start without images. PostgreSQL prevents
+deletion of referenced metadata. Foodstuff HTTP and MCP writes share these rules:
+
+- Creation: omitted or null `imageId` means no image.
+- Update: omission preserves the current image; null removes it; a UUID replaces it.
+- Unknown IDs and recipe-kind images are rejected before mutation (HTTP 404).
+  Malformed UUIDs fail request validation (HTTP 422). Failed saves do not commit
+  image changes or other foodstuff edits.
+
+Foodstuff outputs and summaries include a required nullable `imageId`, including
+semantic search results and embedded recipe ingredients. They contain no object
+keys or signed URLs. Foodstuffs remain mutable: replacement changes subsequent
+reads of historical recipe ingredients, while each recipe version's own image
+remains independent. Image-only changes do not schedule embedding refresh.
+
+AI presentation payloads exclude image identity. Temporary proposal foodstuff
+definitions retain the name/unit/brand/nutrition fields through `FoodstuffFields`;
+explicit catalogue creation and updates accept image IDs through their own schemas.
+Removing/replacing an association or deleting a foodstuff retains metadata and
+stored bytes for deferred cleanup. Association writes require no object-storage
+request; completed metadata is the validation boundary.
+
+Foodstuff image editing and display remain subsequent slices. This migration is
+verified only against dedicated test PostgreSQL; application rollout is pending.
+
+Association verification passed on 2026-10-17: 399 backend tests and 218 subtests,
+including migration preservation, foreign-key protection, HTTP/MCP association
+rules, rollback, historical recipe reads and current search results. Generated
+contracts, frontend formatting and lint, 13 tooling tests and 610 Angular tests
+passed. Existing Alembic deprecation warnings and jsdom canvas notices remain.
+No application database migration, deployment or new live storage checks ran.
 
 ## Deferred storage cleanup
 

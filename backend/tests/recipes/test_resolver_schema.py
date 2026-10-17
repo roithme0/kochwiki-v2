@@ -16,7 +16,7 @@ def presentation() -> dict[str, object]:
         "ingredients": [{
             "index": 1, "amount": 12.5,
             "foodstuff": {
-                "id": 7, "name": "Oats", "brand": None, "unit": "G",
+                "id": 7, "imageId": None, "name": "Oats", "brand": None, "unit": "G",
                 "unitVerbose": "g", "kcal": 100, "carbs": None,
                 "protein": 0, "fat": None,
             },

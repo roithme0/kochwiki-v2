@@ -10,6 +10,7 @@ export function conversationFoodstuff(): FoodstuffOut {
     name: 'Linsen',
     brand: null,
     unit: FoodstuffUnit.Gram,
+    imageId: null,
     unitVerbose: 'g',
     kcal: 120,
     carbs: 20,

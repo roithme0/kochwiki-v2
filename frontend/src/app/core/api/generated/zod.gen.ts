@@ -200,6 +200,7 @@ export const zFoodstuffCreate = z.strictObject({
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
+    imageId: z.nullish(z.uuid()),
     kcal: z.nullish(z.union([
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
@@ -220,6 +221,7 @@ export const zFoodstuffOut = z.strictObject({
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
+    imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
     protein: z.nullable(z.number().check(z.gte(0))),
@@ -236,6 +238,7 @@ export const zFoodstuffSummaryOut = z.strictObject({
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
+    imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
     name: z.string(),
     protein: z.nullable(z.number().check(z.gte(0))),
@@ -256,6 +259,7 @@ export const zFoodstuffUpdate = z.strictObject({
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
+    imageId: z.nullish(z.uuid()),
     kcal: z.nullish(z.union([
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))

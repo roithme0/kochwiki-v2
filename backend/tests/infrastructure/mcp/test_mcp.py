@@ -93,7 +93,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                             assert saved == foodstuffs.foodstuff_out(persisted).model_dump(mode="json")
                             expected = FoodstuffCreate.model_validate(payload)
                             for field, value in expected.model_dump().items():
-                                assert getattr(persisted, field) == value
+                                assert getattr(persisted, "image_id" if field == "imageId" else field) == value
                         assert saved["recipeVersionIds"] == []
                         assert record_id in refreshed
                     duplicate = await client.call_tool("create_foodstuff", {
