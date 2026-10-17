@@ -5,7 +5,7 @@ Run commands from `frontend` using the locked npm installation:
 ```powershell
 npm.cmd run format:changed
 npm.cmd run lint
-node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts
+npm.cmd run test:tooling
 npm.cmd run test -- --watch=false
 ```
 
@@ -19,7 +19,7 @@ Generated API contracts, generated `src/version.ts`, dependencies, Angular cache
 
 ## Codex integration
 
-The formatting/lint hook definitions were reviewed and trusted in Codex. Live-client checks confirmed unchanged-turn skipping and changed-file lint failure feedback. The latest definition adds test execution and needs renewed review and trust. `UserPromptSubmit` records frontend content before a turn. `Stop` compares that content, formats changed files, runs whole-frontend lint, runs the tooling regression tests, then runs the full Angular test suite in non-watch mode. Unchanged discussion turns skip validation. Successful results are reused only after every check passes for identical input content, including the lockfile, installed dependency lock, configuration, and scripts. Edits during validation invalidate the result. A lint or tooling-test failure stops the sequence before later checks.
+The hook definitions were reviewed and trusted in Codex. Live-client checks confirmed unchanged-turn skipping, changed-file lint failure feedback, full-suite execution, and actionable test failure feedback using a temporary failing assertion that was subsequently restored. `UserPromptSubmit` records frontend content before a turn. `Stop` compares that content, formats changed files, runs whole-frontend lint, runs the tooling regression tests, then runs the full Angular test suite in non-watch mode. Unchanged discussion turns skip validation. Successful results are reused only after every check passes for identical input content, including the lockfile, installed dependency lock, configuration, and scripts. Edits during validation invalidate the result. A lint or tooling-test failure stops the sequence before later checks.
 
 Session state and full diagnostics (`lint.log`, `tooling-tests.log`, and `tests.log`) are stored under the ignored `frontend/.codex-validation/` directory. The Angular suite has a ten-minute timeout; lint and tooling tests each have two minutes, within a fifteen-minute hook timeout. Timeouts fail validation. First-run fallback checks an already-dirty frontend if no prompt snapshot exists. This uses Git's worktree rather than per-agent ownership, so existing user edits are also part of the checked state. Formatting retains its existing whole-changed-file scope.
 
@@ -55,4 +55,4 @@ npm.cmd run lint -- --format json --output-file .angular/cache/lint-report.json
 
 The initial full-suite run had two stale recipe-editor tests expecting an initial preparation row. Commit `8265065` intentionally removed that placeholder and updated the preparation-form tests, while leaving the editor assertions behind. The follow-up correction aligns the integration tests with that behavior and covers adding, validating, removing and saving steps, including empty active and draft recipes. The full frontend suite now passes all 599 tests across 49 files.
 
-Verification after cleanup passes 13 formatter/validator regression tests and strict TypeScript checking with `node node_modules/typescript/bin/tsc -p tsconfig.eslint.json --noEmit`. The full Angular suite passes all 599 tests after the stale integration tests were corrected. Re-run the tooling tests with `node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts` from `frontend`. Local PowerShell checks cover unchanged-turn skipping, failure feedback, and bounded continuation. The user reviewed and trusted the changed hook definitions, then verified unchanged-turn skipping and changed-file lint failure feedback in the live Codex client.
+Verification after cleanup passes 13 formatter/validator regression tests and strict TypeScript checking with `node node_modules/typescript/bin/tsc -p tsconfig.eslint.json --noEmit`. The full Angular suite passes all 599 tests after the stale integration tests were corrected. Re-run the tooling tests with `npm run test:tooling` from `frontend`. Local PowerShell checks cover unchanged-turn skipping, failure feedback, and bounded continuation. Live Codex checks additionally verified full-suite execution and test failure feedback.

@@ -185,7 +185,7 @@ export async function validateStop(
         ? `Prettier formatted: ${formattedFiles.join(', ')}. Review the diff; do not undo formatting.\n`
         : '';
     return feedback(
-      `${formattingNotice}${message}\nFix findings in your changes and rerun frontend validation: npm run lint, node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts, and npm run test -- --watch=false from frontend. Do not perform a broad existing-debt cleanup without authorization. If blocked by existing debt or dependencies, report validation as incomplete and explain why; do not claim it passed.`,
+      `${formattingNotice}${message}\nFix findings in your changes and rerun frontend validation: npm run lint, npm run test:tooling, and npm run test -- --watch=false from frontend. Do not perform a broad existing-debt cleanup without authorization. If blocked by existing debt or dependencies, report validation as incomplete and explain why; do not claim it passed.`,
       continued,
     );
   }
