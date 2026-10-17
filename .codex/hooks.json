@@ -18,8 +18,8 @@
           {
             "type": "command",
             "command": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:/Code/kochwiki-v2/.codex/validate-frontend.ps1 -Mode stop",
-            "timeout": 180,
-            "statusMessage": "Formatting changed frontend files and checking frontend lint"
+            "timeout": 900,
+            "statusMessage": "Formatting changed frontend files, checking lint and running all frontend tests"
           }
         ]
       }

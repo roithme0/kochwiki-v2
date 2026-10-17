@@ -34,6 +34,10 @@ function fixture(): {
         calls.push('lint');
         return Promise.resolve();
       },
+      test: () => {
+        calls.push('test');
+        return Promise.resolve();
+      },
     },
   };
 }
@@ -47,7 +51,7 @@ void test('discussion turns skip validation even with uncommitted frontend files
   assert.deepEqual(calls, []);
 });
 
-void test('formats before linting and invalidates successful validation on later edits', async () => {
+void test('formats before lint and tests and invalidates successful validation on later edits', async () => {
   const { dependencies, calls, content } = fixture();
   const state: ValidationState = { promptFingerprint: 'old' };
   dependencies.format = () => {
@@ -57,7 +61,7 @@ void test('formats before linting and invalidates successful validation on later
   };
   const first = await validateStop(state, false, dependencies);
   assert.equal(first.decision, 'block');
-  assert.deepEqual(calls, ['format', 'lint']);
+  assert.deepEqual(calls, ['format', 'lint', 'test']);
   assert.equal(state.successfulFingerprint, 'formatted');
   dependencies.format = () => Promise.resolve({ checked: [], formatted: [] });
   calls.length = 0;
@@ -65,28 +69,50 @@ void test('formats before linting and invalidates successful validation on later
   assert.deepEqual(calls, []);
   content.value = 'edited again';
   await validateStop(state, true, dependencies);
-  assert.deepEqual(calls, ['lint']);
+  assert.deepEqual(calls, ['lint', 'test']);
   assert.equal(state.successfulFingerprint, 'edited again');
 });
 
 void test('failures never become successes and continuation feedback is bounded', async () => {
-  const { dependencies } = fixture();
+  const { dependencies, calls } = fixture();
   const state: ValidationState = { promptFingerprint: 'old' };
   dependencies.lint = () => Promise.reject(new Error('existing lint debt'));
   const first = await validateStop(state, false, dependencies);
   assert.equal(first.decision, 'block');
   assert.match(first.reason ?? '', /existing lint debt/);
   assert.equal(state.successfulFingerprint, undefined);
+  assert.deepEqual(calls, ['format']);
   const next = await validateStop(state, true, dependencies);
   assert.equal(next.decision, undefined);
   assert.match(next.systemMessage ?? '', /validation as incomplete/);
   assert.equal(state.successfulFingerprint, undefined);
 });
 
-void test('concurrent edits invalidate an otherwise successful lint run', async () => {
+void test('test failures are not cached and a successful retry runs the full validation', async () => {
+  const { dependencies, calls } = fixture();
+  const state: ValidationState = { promptFingerprint: 'old' };
+  dependencies.test = () => Promise.reject(new Error('test failed'));
+  const first = await validateStop(state, false, dependencies);
+  assert.equal(first.decision, 'block');
+  assert.match(first.reason ?? '', /test failed/);
+  assert.equal(state.successfulFingerprint, undefined);
+  const next = await validateStop(state, true, dependencies);
+  assert.equal(next.decision, undefined);
+  assert.match(next.systemMessage ?? '', /test failed/);
+  dependencies.test = () => {
+    calls.push('test');
+    return Promise.resolve();
+  };
+  calls.length = 0;
+  assert.deepEqual(await validateStop(state, true, dependencies), {});
+  assert.deepEqual(calls, ['format', 'lint', 'test']);
+  assert.equal(state.successfulFingerprint, 'before');
+});
+
+void test('concurrent edits invalidate an otherwise successful test run', async () => {
   const { dependencies, content } = fixture();
   const state: ValidationState = { promptFingerprint: 'old' };
-  dependencies.lint = () => {
+  dependencies.test = () => {
     content.value = 'concurrent edit';
     return Promise.resolve();
   };
@@ -114,12 +140,17 @@ void test('fingerprints include new, changed, renamed, and deleted inputs but ex
   const root = await mkdtemp(join(tmpdir(), 'kochwiki-lint-'));
   const frontend = join(root, 'frontend');
   await mkdir(join(frontend, '.angular/cache'), { recursive: true });
-  await writeFile(join(frontend, '.gitignore'), '.angular/cache/\n');
+  await mkdir(join(frontend, '.codex-validation'), { recursive: true });
+  await writeFile(
+    join(frontend, '.gitignore'),
+    '.angular/cache/\n.codex-validation/\n',
+  );
   await writeFile(join(frontend, 'source.ts'), 'export const value = 1;');
   execFileSync('git', ['init', '-q'], { cwd: root });
   execFileSync('git', ['add', 'frontend/source.ts'], { cwd: root });
   const initial = await fingerprint(root);
   await writeFile(join(frontend, '.angular/cache/state.json'), '{}');
+  await writeFile(join(frontend, '.codex-validation/state.json'), '{}');
   assert.equal(await fingerprint(root), initial);
   await writeFile(join(frontend, 'source.ts'), 'export const value = 2;');
   const edited = await fingerprint(root);

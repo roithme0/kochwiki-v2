@@ -25,7 +25,7 @@ The project may later expose a constrained API for general-purpose agents. This 
 
 ## Operational Notes
 
-Frontend quality commands, Codex hook behavior, and the initial lint debt are documented in [frontend linting](docs/frontend-linting.md). From `frontend`, run `npm run format:changed` followed by `npm run lint`; CI runs read-only linting and fails on findings.
+Frontend quality commands, Codex hook behavior, and the initial lint debt are documented in [frontend linting](docs/frontend-linting.md). The Codex Stop hook formats changed frontend files, checks lint, and runs tooling tests and the full Angular test suite. CI runs read-only linting and fails on findings.
 
 See [file storage configuration and verification](docs/file-storage.md) for Garage
 credentials, persistence, automatic initialization, and the presigned URL routing

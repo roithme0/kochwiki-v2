@@ -21,6 +21,7 @@ export interface ValidationDependencies {
   hasChanges: () => boolean;
   format: () => Promise<FormatResult>;
   lint: () => Promise<void>;
+  test: () => Promise<void>;
 }
 
 export interface HookOutput {
@@ -79,28 +80,66 @@ function hasFrontendChanges(root: string): boolean {
 
 async function lintFrontend(root: string, logPath: string): Promise<void> {
   const frontend = join(root, 'frontend');
-  const result = spawnSync(
-    process.execPath,
+  await runCheck(
+    frontend,
+    'Frontend lint',
     [
       join(frontend, 'node_modules/eslint/bin/eslint.js'),
       '.',
       '--max-warnings=0',
     ],
-    {
-      cwd: frontend,
-      encoding: 'utf8',
-      timeout: 120_000,
-      maxBuffer: 8 * 1024 * 1024,
-      windowsHide: true,
-    },
+    logPath,
+    120_000,
   );
+}
+
+async function testFrontend(root: string, cache: string): Promise<void> {
+  const frontend = join(root, 'frontend');
+  await runCheck(
+    frontend,
+    'Frontend tooling tests',
+    [
+      '--test',
+      'scripts/format-changed.test.mts',
+      'scripts/validate-frontend.test.mts',
+    ],
+    join(cache, 'tooling-tests.log'),
+    120_000,
+  );
+  await runCheck(
+    frontend,
+    'Frontend tests',
+    [
+      join(frontend, 'node_modules/@angular/cli/bin/ng.js'),
+      'test',
+      '--watch=false',
+    ],
+    join(cache, 'tests.log'),
+    600_000,
+  );
+}
+
+async function runCheck(
+  frontend: string,
+  label: string,
+  args: string[],
+  logPath: string,
+  timeout: number,
+): Promise<void> {
+  const result = spawnSync(process.execPath, args, {
+    cwd: frontend,
+    encoding: 'utf8',
+    timeout,
+    maxBuffer: 8 * 1024 * 1024,
+    windowsHide: true,
+  });
   const output = [result.stdout, result.stderr, result.error?.message]
     .filter(Boolean)
     .join('\n');
   await writeFile(logPath, output);
   if (result.status !== 0) {
     throw new Error(
-      `Frontend lint failed. Full report: ${logPath}\n${output.slice(0, 16_000)}`,
+      `${label} failed. Full report: ${logPath}\n${output.slice(-16_000)}`,
     );
   }
 }
@@ -126,16 +165,17 @@ export async function validateStop(
     const current = await dependencies.fingerprint();
     if (current !== state.successfulFingerprint) {
       await dependencies.lint();
+      await dependencies.test();
       if ((await dependencies.fingerprint()) !== current) {
         throw new Error(
-          'Frontend files changed during linting. Run validation again after edits finish.',
+          'Frontend files changed during validation. Run validation again after edits finish.',
         );
       }
       state.successfulFingerprint = current;
     }
     if (formatting.formatted.length === 0) return {};
     return feedback(
-      `Prettier formatted: ${formatting.formatted.join(', ')}. Review the diff before completing. Do not undo formatting. Frontend lint passed; report any tests that need rerunning.`,
+      `Prettier formatted: ${formatting.formatted.join(', ')}. Review the diff before completing. Do not undo formatting. Frontend lint and the full frontend test suite passed.`,
       continued,
     );
   } catch (error: unknown) {
@@ -145,7 +185,7 @@ export async function validateStop(
         ? `Prettier formatted: ${formattedFiles.join(', ')}. Review the diff; do not undo formatting.\n`
         : '';
     return feedback(
-      `${formattingNotice}${message}\nFix findings in your changes and rerun npm run lint from frontend. Do not perform a broad existing-debt cleanup without authorization. If blocked by existing debt or dependencies, report validation as incomplete and explain why; do not claim it passed.`,
+      `${formattingNotice}${message}\nFix findings in your changes and rerun frontend validation: npm run lint, node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts, and npm run test -- --watch=false from frontend. Do not perform a broad existing-debt cleanup without authorization. If blocked by existing debt or dependencies, report validation as incomplete and explain why; do not claim it passed.`,
       continued,
     );
   }
@@ -216,11 +256,7 @@ async function main(): Promise<void> {
     continued = input.stop_hook_active;
     const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
     const session = createHash('sha256').update(input.session_id).digest('hex');
-    const cache = join(
-      root,
-      'frontend/.angular/cache/codex-validation',
-      session,
-    );
+    const cache = join(root, 'frontend/.codex-validation', session);
     await mkdir(cache, { recursive: true });
     const statePath = join(cache, 'state.json');
     const state = await readState(statePath);
@@ -233,6 +269,7 @@ async function main(): Promise<void> {
         hasChanges: () => hasFrontendChanges(root),
         format: () => formatChangedFiles(root),
         lint: () => lintFrontend(root, join(cache, 'lint.log')),
+        test: () => testFrontend(root, cache),
       });
     }
     await writeFile(statePath, JSON.stringify(state));

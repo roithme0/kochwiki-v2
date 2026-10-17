@@ -3,6 +3,7 @@ dist/
 out-tsc/
 coverage/
 .angular/
+.codex-validation/
 src/app/core/api/generated/
 src/version.ts
 package-lock.json

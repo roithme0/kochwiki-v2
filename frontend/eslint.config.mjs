@@ -10,6 +10,7 @@ export default defineConfig(
   globalIgnores([
     '**/node_modules/**',
     '**/.angular/**',
+    '**/.codex-validation/**',
     'dist/**',
     'out-tsc/**',
     'coverage/**',

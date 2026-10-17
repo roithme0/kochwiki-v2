@@ -35,10 +35,10 @@ Plans and specification files are gitignored. Treat the current code and tracked
 
 - After frontend edits, run `npm run format:changed`, then `npm run lint` from `frontend` before completing coding work. On Windows, use `npm.cmd` if necessary.
 - Lint covers the whole frontend, including tests, handwritten scripts, and Angular templates. Both errors and warnings fail validation. Generated contracts and version output are excluded.
-- The Codex hooks record frontend content before each prompt and run formatting followed by linting when it changes. Successful validation is reused only for identical content. Review and trust changed hook definitions in Codex before relying on them.
+- The Codex hooks record frontend content before each prompt and run formatting, linting, tooling tests, then the full Angular test suite when it changes. Successful validation is reused only for identical content after all checks pass. Review and trust changed hook definitions in Codex before relying on them.
 - Use `npm run lint:fix` only deliberately and review its diff; the hook and CI never apply ESLint fixes. CI runs read-only linting and fails on findings; it does not run formatting.
 - Address findings introduced by your work. Existing lint debt needs separate authorization for broad cleanup. If findings or missing dependencies prevent validation, report the failure and do not claim completion with passing validation.
-- Lint does not replace compilation or tests. Run the full frontend suite with `npm run test -- --watch=false` for frontend coding changes; test automation in the hook is a separate step.
+- Lint does not replace compilation or tests. Run the full frontend suite with `npm run test -- --watch=false` and tooling tests with `node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts` for frontend coding changes. The Stop hook runs both after linting; report failures as incomplete validation. A continuation does not block repeatedly on persistent failures.
 
 ## Communication Preferences
 
