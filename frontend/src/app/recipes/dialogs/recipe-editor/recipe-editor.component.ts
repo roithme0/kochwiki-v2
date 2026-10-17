@@ -1,3 +1,4 @@
+import { ImageEditorComponent } from '../../../core/components/image-editor/image-editor.component';
 import type { OnInit, AfterViewInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 
@@ -84,6 +85,7 @@ export interface RecipeEditorSubmission {
   selector: 'app-recipe-editor',
   providers: [ImageEditorState],
   imports: [
+    ImageEditorComponent,
     FormsModule,
     ReactiveFormsModule,
     MatButtonModule,

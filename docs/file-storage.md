@@ -312,7 +312,8 @@ is needed for this editor flow. No authorization policy or session enforcement i
 ## Basis image editing
 
 The shared create/edit editor previews the saved image or
-`assets/images/recipe-image-placeholder.png` below Name. The pencil selects a static PNG;
+`assets/images/recipe-image-placeholder.png` below Name. The add-photo action selects a static PNG;
+it becomes a pencil for replacement when an image is selected or attached.
 the adjacent trash action removes the image from the pending recipe save. Images
 fit within a stable area without cropping. Selection previews use local object
 URLs, released on replacement, removal or editor destruction.
@@ -332,6 +333,33 @@ Unattached uploads and images abandoned after a failed save remain for the
 explicitly deferred cleanup slice. No automatic upload or domain-write retries
 are introduced. A failed upload/save restores the caller's prior dismissal policy
 and the editor controls.
+
+## Shared image editor UI
+
+Recipe and foodstuff forms render `core/components/image-editor/ImageEditorComponent`,
+passing their existing component-scoped image state and the domain placeholder.
+Foodstuffs keep the question mark; recipes keep the empty dish. The shared preview
+contains images without cropping at a responsive height of 12–22rem. Its bottom
+action row keeps feedback beside the image controls within that stable area,
+wrapping at narrow widths without adding a message below the controls. Feedback
+has a surface background for readability over images.
+
+Both editors use state-specific add/replace icons and labels, generic preview,
+removal and error wording, and 0.75rem action spacing. Loading, access failures,
+validation errors and upload progress share this row; retry and invalid-selection
+dismissal appear with their messages. The file input and all image actions are
+disabled during upload/save. Placeholder failures do not trigger actual-image
+failure handling. Recipe fields remain inert during upload/save, while the image
+feedback stays outside inert regions. Parent submission, dialog behavior and
+existing domain-save feedback remain unchanged.
+
+Verified on 2026-10-17: formatting, lint, 13 tooling tests and all 666 Angular tests
+passed. Shared component tests cover both placeholders, file selection/removal,
+failed-image retry, invalid-selection recovery and upload progress/failure.
+Existing create/edit dialog tests verify inline upload feedback in both domains.
+Browser review checked the create editors and their placeholders, including
+390-pixel viewport bounds without horizontal overflow. Upload/error visual states
+are covered by controlled tests; no new live browser upload was performed.
 
 ## Foodstuff image editing
 

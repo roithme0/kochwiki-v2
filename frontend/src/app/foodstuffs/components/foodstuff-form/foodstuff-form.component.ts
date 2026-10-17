@@ -1,3 +1,4 @@
+import { ImageEditorComponent } from '../../../core/components/image-editor/image-editor.component';
 import {
   Component,
   DestroyRef,
@@ -31,6 +32,7 @@ import { FoodstuffImageService } from '../../services/foodstuff-image.service';
   selector: 'app-foodstuff-form',
   providers: [ImageEditorState],
   imports: [
+    ImageEditorComponent,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

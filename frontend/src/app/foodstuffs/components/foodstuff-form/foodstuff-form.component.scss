@@ -39,26 +39,6 @@ mat-form-field {
   width: 100%;
 }
 
-.image-preview {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 12rem;
-  img {
-    display: block;
-    width: 100%;
-    height: clamp(12rem, 45vw, 24rem);
-    object-fit: contain;
-  }
-}
-.image-actions {
-  position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
-  display: flex;
-  gap: 0.75rem;
-}
 p {
   margin: 0;
 }

@@ -293,6 +293,39 @@ same-origin downloads, and rejected unsigned downloads. Existing domain records
 were unchanged. Formatting, lint, 13 tooling tests and 660 Angular tests passed.
 The running server on 4202 needs a restart to load the new proxy configuration.
 
+### Shared Image Editor UI Follow-up
+
+Approved and implemented on 2026-10-17. A shared `ImageEditorComponent` under
+`core/components` renders the existing component-scoped `ImageEditorState` in both
+domain forms. Its only domain-specific presentation input is the placeholder:
+the question mark for foodstuffs and empty dish for recipes.
+
+The agreed UI uses contained previews at 12–22rem responsive height, 0.75rem
+spacing above the preview and between image buttons, an add-photo icon when
+empty and pencil when replacing, state-specific select/replace labels, and generic
+preview, removal and error wording. File input and all image controls are disabled
+while busy. Loading/upload state is exposed accessibly, and placeholder failures
+do not trigger actual-image error handling.
+
+Image-related status, validation, error and upload feedback sits inline with the
+bottom image action row, with retry and invalid-selection dismissal alongside
+the message. The row stays within the stable preview area and can wrap on narrow
+screens, avoiding additional space appearing beneath the buttons. A surface
+background keeps feedback readable over the preview. Recipe field groups retain
+their busy interaction lock without making image feedback inert.
+
+The latest scope clarification keeps dialog behavior, domain writes and existing
+form-save feedback unchanged. The earlier recommendation to add recipe-save
+messaging is not part of this extraction. Image-upload messaging moves from the
+parent save area into the shared image controls.
+
+Formatting, lint, 13 tooling tests and 666 Angular tests passed. Shared UI tests
+cover placeholder failures, selection/removal, delivery retry, invalid selection,
+and upload progress/failure; existing real-dialog tests cover both domains.
+Browser review checked both create editors and domain placeholders, including
+390-pixel viewport bounds without horizontal overflow. No new browser upload or
+application data changes were performed during this extraction.
+
 ## Remaining Technical Choices
 
 No blocking product questions remain. During implementation, decide whether repeated visible references should share download instructions. The current recipe service fetches fresh instructions on every call; caching and request coalescing are not existing guarantees. Any sharing must respect URL expiry, image replacement, and explicit fresh-URL retry. This does not expand scope into broader catalogue performance work.

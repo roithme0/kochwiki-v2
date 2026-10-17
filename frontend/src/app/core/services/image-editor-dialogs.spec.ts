@@ -207,6 +207,31 @@ describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
     ref.afterClosed().subscribe(closed);
     const pending = submit(form);
     await fixture.whenStable();
+    expect(
+      document.querySelector('app-image-editor .image-actions [role="status"]')
+        ?.textContent,
+    ).toContain('Bild wird hochgeladen und geprüft');
+    expect(
+      document.querySelector('app-image-editor img')?.getAttribute('alt'),
+    ).toBe('Bildvorschau');
+    expect(
+      document.querySelector('app-image-editor')?.closest('[inert]'),
+    ).toBeNull();
+    if (domain === 'recipe') {
+      expect(
+        document.querySelector('app-recipe-meta-form')?.hasAttribute('inert'),
+      ).toBe(true);
+      expect(
+        document
+          .querySelector('app-recipe-ingredients-form')
+          ?.hasAttribute('inert'),
+      ).toBe(true);
+      expect(
+        document
+          .querySelector('app-recipe-preparation-form')
+          ?.hasAttribute('inert'),
+      ).toBe(true);
+    }
     expect(ref.disableClose).toBe(true);
     const close = document.querySelector<HTMLButtonElement>(
       'app-dialog-header button',

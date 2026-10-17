@@ -305,9 +305,11 @@ describe('RecipeEditorComponent', () => {
     expect(image.getAttribute('src')).toContain('/storage/saved.png');
     image.dispatchEvent(new Event('error'));
     fixture.detectChanges();
-    expect(image.getAttribute('src')).toBe(
-      'assets/images/recipe-image-placeholder.png',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.image-preview img')
+        ?.getAttribute('src'),
+    ).toBe('assets/images/recipe-image-placeholder.png');
     expect(imageService.download).toHaveBeenCalledTimes(1);
     const retry = Array.from(
       (

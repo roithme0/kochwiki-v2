@@ -9,7 +9,7 @@
     </div>
   }
   @case ('ready') {
-    <form [formGroup]="recipeForm" class="form">
+    <form [formGroup]="recipeForm" class="form" [attr.aria-busy]="busy()">
       <app-section-nav
         #sectionNav
         class="section-nav"
@@ -18,7 +18,7 @@
         [activeId]="activeSection()"
         (selected)="goToSection($event)"
       />
-      <div class="form-sections" [attr.inert]="busy() ? '' : null">
+      <div class="form-sections">
         <section
           #editorSection
           id="basics"
@@ -33,80 +33,13 @@
             </mat-card-header>
             <mat-card-content>
               <app-recipe-meta-form
+                [attr.inert]="busy() ? '' : null"
                 [recipeVersion]="recipeVersion() ?? undefined"
               />
-              <div
-                class="image-preview"
-                [attr.aria-busy]="image.loadingImage()"
-              >
-                <img
-                  [src]="
-                    image.imagePreview() ??
-                    'assets/images/recipe-image-placeholder.png'
-                  "
-                  [alt]="
-                    image.imagePreview()
-                      ? 'Rezeptbild'
-                      : 'Kein Rezeptbild vorhanden'
-                  "
-                  (error)="image.imageLoadFailed()"
-                />
-                <input
-                  #imageInput
-                  hidden
-                  type="file"
-                  accept="image/png,.png"
-                  (change)="image.selectImage(imageInput)"
-                />
-                <div class="image-actions">
-                  @if (image.hasImage()) {
-                    <button
-                      mat-mini-fab
-                      type="button"
-                      aria-label="Rezeptbild entfernen"
-                      [disabled]="busy()"
-                      (click)="image.removeImage()"
-                    >
-                      <mat-icon aria-hidden="true">delete</mat-icon>
-                    </button>
-                  }
-                  <button
-                    mat-mini-fab
-                    type="button"
-                    aria-label="Rezeptbild auswählen oder ersetzen"
-                    [disabled]="busy()"
-                    (click)="imageInput.click()"
-                  >
-                    <mat-icon aria-hidden="true">edit</mat-icon>
-                  </button>
-                </div>
-              </div>
-              @if (image.loadingImage()) {
-                <p role="status">Bild wird geladen …</p>
-              }
-              @if (image.imageAccessFailed()) {
-                <p role="status">Rezeptbild konnte nicht geladen werden.</p>
-                <button
-                  mat-button
-                  type="button"
-                  [disabled]="busy()"
-                  (click)="image.loadImagePreview()"
-                >
-                  Bild erneut laden
-                </button>
-              }
-              @if (image.imageError()) {
-                <p role="alert">{{ image.imageError() }}</p>
-              }
-              @if (image.invalidImageSelection()) {
-                <button
-                  mat-button
-                  type="button"
-                  (click)="image.discardInvalidSelection()"
-                >
-                  Ungültige Auswahl verwerfen
-                </button>
-              }
+              <app-image-editor
+                [state]="image"
+                placeholder="assets/images/recipe-image-placeholder.png"
+              />
             </mat-card-content>
           </mat-card>
         </section>
@@ -124,6 +57,7 @@
             </mat-card-header>
             <mat-card-content>
               <app-recipe-ingredients-form
+                [attr.inert]="busy() ? '' : null"
                 [recipeVersion]="recipeVersion() ?? undefined"
               />
             </mat-card-content>
@@ -143,17 +77,13 @@
             </mat-card-header>
             <mat-card-content>
               <app-recipe-preparation-form
+                [attr.inert]="busy() ? '' : null"
                 [recipeVersion]="recipeVersion() ?? undefined"
               />
             </mat-card-content>
           </mat-card>
         </section>
       </div>
-      @if (image.uploadingImage()) {
-        <p class="upload-status" role="status">
-          Bild wird hochgeladen und geprüft …
-        </p>
-      }
       <div class="button-wrapper">
         <button
           mat-flat-button
