@@ -19,6 +19,7 @@ import {
 } from '@angular/forms';
 import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
+import { FoodstuffSelectionDialogComponent, FoodstuffSelectionDialogData } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -123,6 +124,22 @@ export class RecipeIngredientsFormComponent {
     this.ingredients.removeAt(index);
     this.reindexIngredients();
     this.updateNutritionDraft();
+  }
+
+  openFoodstuffSelectionDialog(): void {
+    this.dialog.open<FoodstuffSelectionDialogComponent, FoodstuffSelectionDialogData, void>(
+      FoodstuffSelectionDialogComponent,
+      {
+        data: { foodstuffs: this.foodstuffs() },
+        ariaLabel: 'Zutat hinzufügen',
+        width: '100vw',
+        maxWidth: 'min(var(--app-max-width), 100vw)',
+        height: '100dvh',
+        maxHeight: '100dvh',
+        position: { top: '0' },
+        autoFocus: false,
+      }
+    );
   }
 
   openCreateFoodstuffDialog(): void {

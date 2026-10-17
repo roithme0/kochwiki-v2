@@ -11,6 +11,7 @@ import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffUnit } from '../../../../foodstuffs/models/foodstuff-unit';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
 import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.component';
+import { FoodstuffSelectionDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 
 @Component({ selector: 'app-macro-chart', template: '' })
 class MacroChartStubComponent {
@@ -75,6 +76,18 @@ describe('RecipeIngredientsFormComponent', () => {
         fixture = TestBed.createComponent(RecipeIngredientsFormComponent);
         fixture.componentRef.setInput('foodstuffs', [foodstuff]);
         fixture.detectChanges();
+    });
+
+    it('opens the foodstuff dialog without adding or changing ingredient rows', () => {
+        const before = fixture.componentInstance.ingredients.getRawValue();
+        const button: HTMLButtonElement = fixture.nativeElement.querySelector('.add-ingredient-button');
+        button.click();
+
+        expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
+            FoodstuffSelectionDialogComponent,
+            expect.objectContaining({ data: { foodstuffs: [foodstuff] } }),
+        );
+        expect(fixture.componentInstance.ingredients.getRawValue()).toEqual(before);
     });
 
     it('shows the complete legend beside the chart without a disclosure', () => {

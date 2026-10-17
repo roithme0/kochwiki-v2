@@ -1,0 +1,29 @@
+<app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
+
+<mat-dialog-content [class.no-results]="displayedFoodstuffs().length === 0">
+  <mat-list role="list" aria-label="Lebensmittel">
+    @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
+      <mat-list-item role="listitem" class="foodstuff">
+        <img matListItemAvatar src="assets/images/question-mark.png" alt="" width="40" height="40" />
+        <span matListItemTitle class="foodstuff-name">{{ foodstuff.name }}</span>
+        @if (foodstuff.brand) {
+          <span matListItemLine class="foodstuff-description">{{ foodstuff.brand }}</span>
+        }
+      </mat-list-item>
+    }
+  </mat-list>
+  @if (displayedFoodstuffs().length === 0) {
+    <div class="empty-state">
+      <p class="empty-message">Keine Lebensmittel gefunden.</p>
+      <button mat-button type="button" (click)="searchValue.set('')">Suche löschen</button>
+    </div>
+  }
+</mat-dialog-content>
+
+<div class="search-footer">
+  <app-foodstuffs-search
+    [foodstuffs]="data.foodstuffs"
+    [searchValue]="searchValue()"
+    (searchValueChange)="searchValue.set($event)"
+  />
+</div>
