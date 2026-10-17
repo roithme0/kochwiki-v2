@@ -1,4 +1,5 @@
 @use "../../../../styles/page-background";
+@use "@angular/material" as mat;
 
 :host {
   @include page-background.illustrated();
@@ -22,7 +23,7 @@ mat-dialog-content {
   padding: 0.75rem 0 !important;
 }
 
-mat-list {
+mat-action-list {
   padding: 0;
 }
 
@@ -42,6 +43,11 @@ mat-dialog-content.no-results {
 }
 
 .foodstuff {
+  @include mat.list-overrides((
+    list-item-disabled-label-text-opacity: 1,
+    list-item-disabled-label-text-color: var(--mat-sys-on-surface),
+    list-item-disabled-state-layer-opacity: 0,
+  ));
   height: auto;
   min-height: 64px;
   padding: 0;
@@ -66,6 +72,28 @@ mat-dialog-content.no-results {
 
 .search-footer {
   padding-top: 0.5rem;
+}
+
+.foodstuff .selection-status[matListItemMeta] {
+  color: #c5e1a5;
+  align-self: center;
+  max-width: 6rem;
+  margin: 0 0.5rem;
+  white-space: normal;
+  text-align: end;
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.foodstuff .selected-status[matListItemMeta] {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.selection-count {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
 }
 
 app-foodstuffs-search {

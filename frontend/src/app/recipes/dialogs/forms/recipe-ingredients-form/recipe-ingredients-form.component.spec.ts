@@ -85,7 +85,7 @@ describe('RecipeIngredientsFormComponent', () => {
 
         expect(TestBed.inject(MatDialog).open).toHaveBeenCalledWith(
             FoodstuffSelectionDialogComponent,
-            expect.objectContaining({ data: { foodstuffs: [foodstuff] } }),
+            expect.objectContaining({ data: { foodstuffs: [foodstuff], existingFoodstuffIds: [1] } }),
         );
         expect(fixture.componentInstance.ingredients.getRawValue()).toEqual(before);
     });

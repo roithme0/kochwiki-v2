@@ -1,17 +1,28 @@
 <app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
 
 <mat-dialog-content [class.no-results]="displayedFoodstuffs().length === 0">
-  <mat-list role="list" aria-label="Lebensmittel">
+  <mat-action-list aria-label="Lebensmittel">
     @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
-      <mat-list-item role="listitem" class="foodstuff">
+      <button mat-list-item type="button" class="foodstuff"
+        [disabled]="existingFoodstuffIds.has(foodstuff.id)"
+        [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
+        (click)="toggleFoodstuff(foodstuff.id)">
         <img matListItemAvatar src="assets/images/question-mark.png" alt="" width="40" height="40" />
         <span matListItemTitle class="foodstuff-name">{{ foodstuff.name }}</span>
         @if (foodstuff.brand) {
           <span matListItemLine class="foodstuff-description">{{ foodstuff.brand }}</span>
         }
-      </mat-list-item>
+        @if (existingFoodstuffIds.has(foodstuff.id)) {
+          <span matListItemMeta class="selection-status">Bereits hinzugefügt</span>
+        } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
+          <span matListItemMeta class="selection-status selected-status">
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+            <span>Im Korb</span>
+          </span>
+        }
+      </button>
     }
-  </mat-list>
+  </mat-action-list>
   @if (displayedFoodstuffs().length === 0) {
     <div class="empty-state">
       <p class="empty-message">Keine Lebensmittel gefunden.</p>
@@ -21,6 +32,7 @@
 </mat-dialog-content>
 
 <div class="search-footer">
+  <p class="selection-count" role="status">Im Korb · {{ selectedFoodstuffIds().size }}</p>
   <app-foodstuffs-search
     [searchValue]="searchValue()"
     (searchValueChange)="searchValue.set($event)"

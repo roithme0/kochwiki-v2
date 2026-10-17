@@ -30,6 +30,8 @@ The selection dialog contains no amount input. Users enter and edit amounts only
 
 ### Selection Basket and Confirmation
 
+Use a Material action list with one native toggle button per foodstuff and selection state owned by the dialog. Do not show checkboxes or override Material internals to hide them. Expose pending selection through `aria-pressed`, a checkmark, and “Im Korb”. Standard button keyboard navigation is accepted for the current mobile scope. The initial selection slice includes pending selection, a count, and disabled existing ingredients; basket previews, confirmation, and recipe row updates follow separately.
+
 Use a temporary selection basket, as shown in the supplied picker visualization: users choose one or several foodstuffs across searches, then press “Übernehmen” once to append their ingredient rows, close the picker, and return to the editor. Pending items are marked “Im Korb”; the basket shows a count and image preview. This supports both workflows without separate single-selection and multi-selection modes.
 
 Pending basket selections survive changes to the search query. Selecting a pending item again removes it from the basket. Closing with × discards pending selections without changing the recipe.
@@ -54,7 +56,7 @@ Use plain string matching only. Do not change the search algorithm or integrate 
 
 Before a query is entered, show all available foodstuffs. Clearing the query restores this unfiltered list. Catalogue loading and rendering performance optimization are explicitly deferred; the potential performance cost of showing the full catalogue is accepted for this iteration. Existing recipe ingredients remain visible with their unavailable selection state.
 
-Show enough identifying information to distinguish similar foodstuffs; name, brand when present, and unit are candidates. Exact result presentation remains open.
+Show the name and the brand when present, aligned on the left. Do not display the unit in the results. Use a regular search input without autocomplete suggestions. Center the no-results hint vertically and horizontally, with a search-reset button underneath.
 
 ### Creating a Missing Foodstuff
 

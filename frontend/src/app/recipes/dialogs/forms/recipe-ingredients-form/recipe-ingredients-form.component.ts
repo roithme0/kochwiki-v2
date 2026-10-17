@@ -130,7 +130,12 @@ export class RecipeIngredientsFormComponent {
     this.dialog.open<FoodstuffSelectionDialogComponent, FoodstuffSelectionDialogData, void>(
       FoodstuffSelectionDialogComponent,
       {
-        data: { foodstuffs: this.foodstuffs() },
+        data: {
+          foodstuffs: this.foodstuffs(),
+          existingFoodstuffIds: this.ingredientDrafts()
+            .map((ingredient) => ingredient.foodstuffId)
+            .filter((id): id is number => id !== null),
+        },
         ariaLabel: 'Zutat hinzufügen',
         width: '100vw',
         maxWidth: 'min(var(--app-max-width), 100vw)',
