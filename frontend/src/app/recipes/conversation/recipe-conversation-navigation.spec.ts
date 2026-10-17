@@ -2,7 +2,10 @@ import { BackendMetaService } from '../../core/services/backend-meta.service';
 import { PageHeaderComponent } from '../../core/components/page-header/page-header.component';
 import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -16,7 +19,10 @@ import { MacroChartComponent } from '../../core/components/macro-chart/macro-cha
 import { PageHeaderService } from '../../core/services/page-header.service';
 import { SnackBarService } from '../../core/services/snack-bar.service';
 import { mapConversationArtifact } from './recipe-conversation-contract';
-import { conversationProposal, conversationRecipe } from './recipe-conversation.fixtures';
+import {
+  conversationProposal,
+  conversationRecipe,
+} from './recipe-conversation.fixtures';
 import { routes } from '../../app.routes';
 
 describe('Version-specific conversation routing', () => {
@@ -24,34 +30,90 @@ describe('Version-specific conversation routing', () => {
   const path = `/recipes/${source.recipeLineageId}/versions/${source.recipeVersionId}/improve`;
   const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
 
+  const dismiss = vi.fn();
   const snackbar = vi.fn<SnackBarService['open']>();
   beforeEach(() => {
-    snackbar.mockReset().mockReturnValue({ dismiss: vi.fn() });
-    getRecipe.mockReset().mockImplementation(async (_lineageId, versionId) => ({ ...conversationRecipe(), recipeVersionId: versionId }));
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (url) => {
-      const payload = String(url).endsWith('/messages') ? { kind: 'expired', detail: 'Session expired' } : { session_id: 'test', expires_at: 'later' };
-      return new Response(JSON.stringify(payload), { status: String(url).endsWith('/messages') ? 410 : 200 });
-    }));
-    TestBed.configureTestingModule({ providers: [
-      provideRouter(routes),
-      { provide: BackendMetaService, useValue: {} },
-      provideHttpClient(), provideHttpClientTesting(),
-      { provide: AuthNavigationService, useValue: { redirecting: signal(false), signIn: vi.fn() } },
-      { provide: ActiveUserService, useValue: { activeUser: signal({ id: 1, display_name: 'Test' }), restorationState: signal('idle'), ensureSession: async () => {} } },
-      { provide: SnackBarService, useValue: { open: snackbar } },
-      { provide: RecipeBackendService, useValue: { getRecipeVersion: getRecipe, saveRecipeProposal: async () => ({ ...conversationRecipe(), recipeVersionId: 'returned-draft', state: 'draft' }), notifyRecipesChanged: vi.fn(), recipesChanged$: EMPTY } },
-    ] });
+    dismiss.mockClear();
+    snackbar.mockReset().mockReturnValue({ dismiss });
+    getRecipe.mockReset().mockImplementation((_lineageId, versionId) =>
+      Promise.resolve({
+        ...conversationRecipe(),
+        recipeVersionId: versionId,
+      }),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn<typeof fetch>().mockImplementation((url) => {
+        const address =
+          typeof url === 'string'
+            ? url
+            : url instanceof URL
+              ? url.href
+              : url.url;
+        const payload = address.endsWith('/messages')
+          ? { kind: 'expired', detail: 'Session expired' }
+          : { session_id: 'test', expires_at: 'later' };
+        return Promise.resolve(
+          new Response(JSON.stringify(payload), {
+            status: address.endsWith('/messages') ? 410 : 200,
+          }),
+        );
+      }),
+    );
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(routes),
+        { provide: BackendMetaService, useValue: {} },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: AuthNavigationService,
+          useValue: { redirecting: signal(false), signIn: vi.fn() },
+        },
+        {
+          provide: ActiveUserService,
+          useValue: {
+            activeUser: signal({ id: 1, display_name: 'Test' }),
+            restorationState: signal('idle'),
+            ensureSession: async () => {},
+          },
+        },
+        { provide: SnackBarService, useValue: { open: snackbar } },
+        {
+          provide: RecipeBackendService,
+          useValue: {
+            getRecipeVersion: getRecipe,
+            saveRecipeProposal: () =>
+              Promise.resolve({
+                ...conversationRecipe(),
+                recipeVersionId: 'returned-draft',
+                state: 'draft',
+              }),
+            notifyRecipesChanged: vi.fn(),
+            recipesChanged$: EMPTY,
+          },
+        },
+      ],
+    });
     TestBed.overrideComponent(MacroChartComponent, { set: { template: '' } });
   });
 
-  afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it('opens the returned draft through leave confirmation and invalidates its action after leaving', async () => {
     const harness = await RouterTestingHarness.create();
-    const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
+    const page = await harness.navigateByUrl(
+      path,
+      RecipeConversationPageComponent,
+    );
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Improve', acknowledge: vi.fn() });
-    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
+    await page.saveProposal(
+      mapConversationArtifact(conversationProposal()).metadata,
+    );
     const action = snackbar.mock.calls[0][1];
     if (!action) throw new Error('Missing action');
     const router = TestBed.inject(Router);
@@ -62,7 +124,13 @@ describe('Version-specific conversation routing', () => {
     expect(harness.routeDebugElement?.componentInstance).toBe(page);
     confirm.mockReturnValue(true);
     action.run();
-    await vi.waitFor(() => expect(router.url).toBe(path.replace(source.recipeVersionId, 'returned-draft').replace('/improve', '')));
+    await vi.waitFor(() =>
+      expect(router.url).toBe(
+        path
+          .replace(source.recipeVersionId, 'returned-draft')
+          .replace('/improve', ''),
+      ),
+    );
     const navigate = vi.spyOn(router, 'navigate');
     action.run();
     expect(navigate).not.toHaveBeenCalled();
@@ -70,7 +138,10 @@ describe('Version-specific conversation routing', () => {
 
   it('protects application navigation and parameter changes, then reopens with a fresh session', async () => {
     const harness = await RouterTestingHarness.create();
-    const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
+    const page = await harness.navigateByUrl(
+      path,
+      RecipeConversationPageComponent,
+    );
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -78,66 +149,100 @@ describe('Version-specific conversation routing', () => {
     expect(await router.navigateByUrl('/signed-out')).toBe(false);
     expect(router.url).toBe(path);
     expect(harness.routeDebugElement?.componentInstance).toBe(page);
-    const nextPath = path.replace(source.recipeVersionId, '00000000-0000-4000-8000-000000000003');
+    const nextPath = path.replace(
+      source.recipeVersionId,
+      '00000000-0000-4000-8000-000000000003',
+    );
     expect(await router.navigateByUrl(nextPath)).toBe(false);
     expect(getRecipe).toHaveBeenCalledTimes(1);
     confirm.mockReturnValue(true);
     expect(await router.navigateByUrl(nextPath)).toBe(true);
     await vi.waitFor(() => expect(getRecipe).toHaveBeenCalledTimes(2));
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
-    expect(page.original()?.id).toContain('00000000-0000-4000-8000-000000000003');
+    expect(page.original()?.id).toContain(
+      '00000000-0000-4000-8000-000000000003',
+    );
     expect(page.view().content).toEqual([]);
     await router.navigateByUrl('/signed-out');
     expect(TestBed.inject(PageHeaderService).subheader()).toBe('');
-    const reopened = await harness.navigateByUrl(path, RecipeConversationPageComponent);
+    const reopened = await harness.navigateByUrl(
+      path,
+      RecipeConversationPageComponent,
+    );
     expect(reopened).not.toBe(page);
-    await vi.waitFor(() => expect(reopened.view().composerDisabled).toBe(false));
+    await vi.waitFor(() =>
+      expect(reopened.view().composerDisabled).toBe(false),
+    );
     expect(getRecipe).toHaveBeenCalledTimes(3);
   });
 
   it('logs out a submitted conversation without a leave prompt and suppresses its old save action', async () => {
-    TestBed.overrideProvider(ActiveUserService, { useFactory: () => new ActiveUserService() });
-    TestBed.overrideProvider(AuthNavigationService, { useFactory: () => new AuthNavigationService() });
+    TestBed.overrideProvider(ActiveUserService, {
+      useFactory: () => new ActiveUserService(),
+    });
+    TestBed.overrideProvider(AuthNavigationService, {
+      useFactory: () => new AuthNavigationService(),
+    });
     const auth = TestBed.inject(ActiveUserService);
     const http = TestBed.inject(HttpTestingController);
     const check = auth.ensureSession();
     http.expectOne('/api/auth/me').flush({ id: 1, display_name: 'Test' });
     await check;
     const harness = await RouterTestingHarness.create();
-    const page = await harness.navigateByUrl(path, RecipeConversationPageComponent);
+    const page = await harness.navigateByUrl(
+      path,
+      RecipeConversationPageComponent,
+    );
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     await page.submit({ text: 'Improve', acknowledge: vi.fn() });
-    await page.saveProposal(mapConversationArtifact(conversationProposal()).metadata);
+    await page.saveProposal(
+      mapConversationArtifact(conversationProposal()).metadata,
+    );
     const action = snackbar.mock.calls[0][1];
     if (!action) throw new Error('Missing saved draft action');
     const confirm = vi.spyOn(window, 'confirm');
-    const header = TestBed.runInInjectionContext(() => new PageHeaderComponent());
+    const header = TestBed.runInInjectionContext(
+      () => new PageHeaderComponent(),
+    );
     const logout = header.logout();
-    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne('/api/auth/logout')
+      .flush(null, { status: 204, statusText: 'No Content' });
     await logout;
     expect(TestBed.inject(Router).url).toBe('/signed-out');
     expect(auth.activeUser()).toBeNull();
     expect(confirm).not.toHaveBeenCalled();
-    expect(snackbar.mock.results[0].value.dismiss).toHaveBeenCalled();
+    expect(dismiss).toHaveBeenCalled();
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
     action.run();
     expect(navigate).not.toHaveBeenCalled();
     http.verify();
   });
 
-  it.each(['active', 'draft', 'historical'] as const)('exposes the appropriate action for %s recipes', async state => {
-    const recipe = conversationRecipe();
-    recipe.state = state;
-    TestBed.overrideProvider(RecipeBackendService, { useValue: {
-      getRecipeVersion: async () => recipe,
-      recipesChanged$: EMPTY,
-    } });
-    const harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl(path.replace('/improve', ''), RecipePageComponent);
-    await harness.fixture.whenStable();
-    harness.detectChanges();
-    const action = (): HTMLAnchorElement | null => harness.routeNativeElement?.querySelector('a[aria-label="Rezept verbessern"]') ?? null;
-    if (state === 'historical') expect(action()).toBeNull();
-    else expect(action()?.getAttribute('href')).toBe(path);
-  });
+  it.each(['active', 'draft', 'historical'] as const)(
+    'exposes the appropriate action for %s recipes',
+    async (state) => {
+      const recipe = conversationRecipe();
+      recipe.state = state;
+      TestBed.overrideProvider(RecipeBackendService, {
+        useValue: {
+          getRecipeVersion: () => Promise.resolve(recipe),
+          recipesChanged$: EMPTY,
+        },
+      });
+      const harness = await RouterTestingHarness.create();
+      await harness.navigateByUrl(
+        path.replace('/improve', ''),
+        RecipePageComponent,
+      );
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+      const action = (): HTMLAnchorElement | null =>
+        harness.routeNativeElement?.querySelector(
+          'a[aria-label="Rezept verbessern"]',
+        ) ?? null;
+      if (state === 'historical') expect(action()).toBeNull();
+      else expect(action()?.getAttribute('href')).toBe(path);
+    },
+  );
 });

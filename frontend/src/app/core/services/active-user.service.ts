@@ -27,7 +27,7 @@ export class ActiveUserService {
       this.sessionCheck = this.restoreSession();
     }
     return this.state() === 'loading'
-      ? this.sessionCheck ?? Promise.resolve()
+      ? (this.sessionCheck ?? Promise.resolve())
       : Promise.resolve();
   }
 

@@ -8,8 +8,8 @@
     <mat-label>Portionen</mat-label>
     <input matInput type="number" formControlName="servings" />
     @if (
-      ingredientsFormGroup.get("servings")?.hasError("required") &&
-      ingredientsFormGroup.get("servings")?.touched
+      ingredientsFormGroup.get('servings')?.hasError('required') &&
+      ingredientsFormGroup.get('servings')?.touched
     ) {
       <mat-error>Bitte die Anzahl der Portionen eingeben.</mat-error>
     }
@@ -53,7 +53,7 @@
 
   <div class="nutrition-section">
     @if (nutritionState(); as state) {
-      @if (state.status === "ready") {
+      @if (state.status === 'ready') {
         <div class="nutrition-chart-area">
           <div class="nutrition-preview">
             <app-macro-chart

@@ -1,3 +1,4 @@
+import type { OnInit, AfterViewInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 
 import {
@@ -97,7 +98,7 @@ export interface RecipeEditorSubmission {
   templateUrl: './recipe-editor.component.html',
   styleUrl: './recipe-editor.component.scss',
 })
-export class RecipeEditorComponent {
+export class RecipeEditorComponent implements OnInit, AfterViewInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly fb = inject(FormBuilder);
   private readonly recipeBackendService = inject(RecipeBackendService);
@@ -155,10 +156,10 @@ export class RecipeEditorComponent {
 
   readonly recipeForm = this.fb.group<RecipeFormControls>({
     metaFormGroup: this.fb.group({
-      name: this.fb.control('', Validators.required),
+      name: this.fb.control('', Validators.required.bind(Validators)),
     }),
     ingredientsFormGroup: this.fb.group({
-      servings: this.fb.control(2, Validators.required),
+      servings: this.fb.control(2, Validators.required.bind(Validators)),
       ingredients: this.fb.array<FormGroup<IngredientFormControls>>([]),
     }),
     preparationFormGroup: this.fb.group({

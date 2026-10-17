@@ -1,12 +1,20 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NutritionSummary, toNutritionSummary } from '../../models/nutrition-result';
+import {
+  NutritionSummary,
+  toNutritionSummary,
+} from '../../models/nutrition-result';
 import { By } from '@angular/platform-browser';
 import { MacroChartComponent } from '../macro-chart/macro-chart.component';
 import { NutritionCardComponent } from './nutrition-card.component';
 
 describe('NutritionCardComponent', () => {
   let fixture: ComponentFixture<NutritionCardComponent>;
-  const nutrition = toNutritionSummary({ kcal: 330, carbs: 40, protein: 20, fat: 10 });
+  const nutrition = toNutritionSummary({
+    kcal: 330,
+    carbs: 40,
+    protein: 20,
+    fat: 10,
+  });
 
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [NutritionCardComponent] });
@@ -24,7 +32,8 @@ describe('NutritionCardComponent', () => {
   }
 
   function renderedChart(): MacroChartComponent {
-    return fixture.debugElement.query(By.directive(MacroChartComponent)).componentInstance as MacroChartComponent;
+    return fixture.debugElement.query(By.directive(MacroChartComponent))
+      .componentInstance as MacroChartComponent;
   }
 
   it('shows saved-recipe lower bounds and unknowns without misleading percentages', () => {
@@ -38,8 +47,11 @@ describe('NutritionCardComponent', () => {
       .componentInstance as MacroChartComponent;
     expect(chart.dataIncompleteOrInvalid()).toBe(true);
     expect(chart.displayedKcal()).toBe('≥ 120 kcal');
-    expect(Array.from(element.querySelectorAll('.value-absolute')).map(el => el.textContent?.trim()))
-      .toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—']);
+    expect(
+      Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
+        el.textContent?.trim(),
+      ),
+    ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—']);
     expect(element.querySelector('.value-percentage')).toBeNull();
 
     render({
@@ -60,8 +72,11 @@ describe('NutritionCardComponent', () => {
       protein: { status: 'minimum', value: 0 },
       fat: { status: 'exact', value: 0 },
     });
-    expect(Array.from(element.querySelectorAll('.value-absolute')).map(el => el.textContent?.trim()))
-      .toEqual(['—', '≥ 0\u00a0g', '0\u00a0g']);
+    expect(
+      Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
+        el.textContent?.trim(),
+      ),
+    ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g']);
     render({
       kcal: { status: 'exact', value: 0 },
       carbs: { status: 'exact', value: 0 },
@@ -80,9 +95,14 @@ describe('NutritionCardComponent', () => {
     expect(element.querySelector('app-macro-chart')).not.toBeNull();
     expect(element.textContent).toContain('pro Portion');
     expect(element.querySelectorAll('.value-percentage').length).toBe(3);
-    const colors = Array.from(element.querySelectorAll<HTMLElement>('.color-indicator'))
-      .map(entry => entry.style.getPropertyValue('--color'));
-    expect(colors).toEqual(['rgb(105, 153, 174)', 'rgb(139, 166, 96)', 'rgb(201, 92, 82)']);
+    const colors = Array.from(
+      element.querySelectorAll<HTMLElement>('.color-indicator'),
+    ).map((entry) => entry.style.getPropertyValue('--color'));
+    expect(colors).toEqual([
+      'rgb(105, 153, 174)',
+      'rgb(139, 166, 96)',
+      'rgb(201, 92, 82)',
+    ]);
   });
 
   it('accepts a foodstuff basis without recipe-specific input', () => {
@@ -91,17 +111,23 @@ describe('NutritionCardComponent', () => {
   });
 
   it('keeps known absolute values and labels missing values with a gray chart and no percentages', () => {
-    const element = render(toNutritionSummary({ kcal: 120.6, carbs: 0, protein: null, fat: 10 }));
+    const element = render(
+      toNutritionSummary({ kcal: 120.6, carbs: 0, protein: null, fat: 10 }),
+    );
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(renderedChart().nutrition().kcal.value).toBe(120.6);
     expect(element.textContent).toContain('0\u00a0g');
     expect(element.textContent).toContain('10\u00a0g');
-    expect(element.querySelector('[aria-label="Protein: Angabe fehlt"]')).not.toBeNull();
+    expect(
+      element.querySelector('[aria-label="Protein: Angabe fehlt"]'),
+    ).not.toBeNull();
   });
 
   it('shows all zero values with a gray chart and no percentages or missing indicators', () => {
-    const element = render(toNutritionSummary({ kcal: 0, carbs: 0, protein: 0, fat: 0 }));
+    const element = render(
+      toNutritionSummary({ kcal: 0, carbs: 0, protein: 0, fat: 0 }),
+    );
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(element.querySelectorAll('mat-icon').length).toBe(0);
@@ -113,23 +139,38 @@ describe('NutritionCardComponent', () => {
     const element = render(toNutritionSummary({}));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(renderedChart().nutrition().kcal.status).toBe('unknown');
-    expect(Array.from(element.querySelectorAll('.value-absolute')).map(el => el.textContent?.trim()))
-      .toEqual(['—', '—', '—']);
-    expect(element.querySelector('[aria-label="Protein: Angabe fehlt"]')).not.toBeNull();
+    expect(
+      Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
+        el.textContent?.trim(),
+      ),
+    ).toEqual(['—', '—', '—']);
+    expect(
+      element.querySelector('[aria-label="Protein: Angabe fehlt"]'),
+    ).not.toBeNull();
     expect(element.querySelector('.value-percentage')).toBeNull();
   });
 
   it('can show a complete macro distribution when calories are missing', () => {
-    const element = render({ ...nutrition, kcal: { status: 'unknown', value: null } });
+    const element = render({
+      ...nutrition,
+      kcal: { status: 'unknown', value: null },
+    });
     expect(element.querySelector('app-macro-chart')).not.toBeNull();
     expect(renderedChart().nutrition().kcal.status).toBe('unknown');
   });
 
   it('updates between complete, missing, zero and restored values without stale percentages', () => {
     render(nutrition);
-    expect(render({ ...nutrition, fat: { status: 'unknown', value: null } }).querySelector('.value-percentage')).toBeNull();
+    expect(
+      render({
+        ...nutrition,
+        fat: { status: 'unknown', value: null },
+      }).querySelector('.value-percentage'),
+    ).toBeNull();
     render(toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
-    expect(render(nutrition).querySelectorAll('.value-percentage').length).toBe(3);
+    expect(render(nutrition).querySelectorAll('.value-percentage').length).toBe(
+      3,
+    );
   });
 });

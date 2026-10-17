@@ -1,3 +1,4 @@
+import type { OnInit } from '@angular/core';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,7 +27,7 @@ import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-d
   templateUrl: './foodstuffs-page.component.html',
   styleUrl: './foodstuffs-page.component.scss',
 })
-export class FoodstuffsPageComponent {
+export class FoodstuffsPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly catalogue = inject(FoodstuffCatalogueService);
   private readonly recipeBackendService = inject(RecipeBackendService);

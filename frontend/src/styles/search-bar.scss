@@ -1,5 +1,5 @@
-@use "@angular/material" as mat;
-@use "./style-tokens" as tokens;
+@use '@angular/material' as mat;
+@use './style-tokens' as tokens;
 
 $height: 56px;
 $icon-size: 28px;
@@ -17,23 +17,29 @@ $icon-size: 28px;
   .search-field {
     width: 100%;
     border-radius: 0.75rem;
-    background-color: color-mix(in srgb, var(--app-neutral-container-color) 90%, transparent);
+    background-color: color-mix(
+      in srgb,
+      var(--app-neutral-container-color) 90%,
+      transparent
+    );
 
-    @include mat.form-field-overrides((
-      outlined-container-shape: 0.75rem,
-      outlined-outline-color: tokens.$medium-emphasis-font-color,
-      outlined-hover-outline-color: tokens.$high-emphasis-font-color,
-      outlined-focus-outline-color: tokens.$high-emphasis-font-color,
-      outlined-input-text-color: tokens.$high-emphasis-font-color,
-      outlined-input-text-placeholder-color: tokens.$high-emphasis-font-color,
-      leading-icon-color: tokens.$high-emphasis-font-color,
-      trailing-icon-color: tokens.$high-emphasis-font-color,
-      container-height: $height,
-      container-vertical-padding: 16px,
-      container-text-font: tokens.$primary-font-family,
-      container-text-size: 1rem,
-      container-text-tracking: normal,
-    ));
+    @include mat.form-field-overrides(
+      (
+        outlined-container-shape: 0.75rem,
+        outlined-outline-color: tokens.$medium-emphasis-font-color,
+        outlined-hover-outline-color: tokens.$high-emphasis-font-color,
+        outlined-focus-outline-color: tokens.$high-emphasis-font-color,
+        outlined-input-text-color: tokens.$high-emphasis-font-color,
+        outlined-input-text-placeholder-color: tokens.$high-emphasis-font-color,
+        leading-icon-color: tokens.$high-emphasis-font-color,
+        trailing-icon-color: tokens.$high-emphasis-font-color,
+        container-height: $height,
+        container-vertical-padding: 16px,
+        container-text-font: tokens.$primary-font-family,
+        container-text-size: 1rem,
+        container-text-tracking: normal,
+      )
+    );
   }
 
   .search-icon {
@@ -45,11 +51,13 @@ $icon-size: 28px;
   .clear-button {
     margin-right: 4px;
 
-    @include mat.icon-button-overrides((
-      state-layer-size: 48px,
-      touch-target-size: 48px,
-      touch-target-display: block,
-    ));
+    @include mat.icon-button-overrides(
+      (
+        state-layer-size: 48px,
+        touch-target-size: 48px,
+        touch-target-display: block,
+      )
+    );
   }
 }
 

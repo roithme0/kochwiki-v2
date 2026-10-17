@@ -6,12 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 
 @Component({
   selector: 'app-foodstuffs-search',
-  imports: [
-    MatInputModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatButtonModule,
-  ],
+  imports: [MatInputModule, MatFormFieldModule, MatIconModule, MatButtonModule],
   templateUrl: './foodstuffs-search.component.html',
   styleUrl: './foodstuffs-search.component.scss',
 })

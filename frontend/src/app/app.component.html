@@ -2,23 +2,23 @@
   <main class="user-restoration">
     <p role="status">Weiterleitung zur Anmeldung …</p>
   </main>
-} @else if (activeUserService.restorationState() === "idle") {
+} @else if (activeUserService.restorationState() === 'idle') {
   <app-page-header />
   @if (activeUserService.logoutError()) {
     <p role="alert">Die Abmeldung konnte nicht bestätigt werden.</p>
   }
   <router-outlet />
 } @else if (
-  activeUserService.restorationState() === "signed-out" ||
-  activeUserService.restorationState() === "uninitialized"
+  activeUserService.restorationState() === 'signed-out' ||
+  activeUserService.restorationState() === 'uninitialized'
 ) {
   <router-outlet />
 } @else {
   <main class="user-restoration">
-    @if (activeUserService.restorationState() === "loading") {
+    @if (activeUserService.restorationState() === 'loading') {
       <mat-spinner diameter="40" aria-label="Anmeldung wird geprüft" />
       <p role="status">Anmeldung wird geprüft …</p>
-    } @else if (activeUserService.restorationState() === "error") {
+    } @else if (activeUserService.restorationState() === 'error') {
       <p role="alert">Die Anmeldung konnte nicht geprüft werden.</p>
     } @else {
       <p role="status">Weiterleitung zur Anmeldung …</p>

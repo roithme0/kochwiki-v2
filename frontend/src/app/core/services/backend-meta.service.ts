@@ -38,6 +38,6 @@ export class BackendMetaService {
     firstValueFrom(
       this.httpClient.get(backendUrl + '/meta/version', {
         responseType: 'text',
-      })
+      }),
     );
 }

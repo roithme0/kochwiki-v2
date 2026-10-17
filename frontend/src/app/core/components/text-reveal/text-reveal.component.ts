@@ -11,7 +11,9 @@ export class TextRevealComponent {
   readonly animate = input(true);
   readonly characterDelay = input(40);
   readonly startDelay = input(0);
-  private readonly segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+  private readonly segmenter = new Intl.Segmenter(undefined, {
+    granularity: 'grapheme',
+  });
 
   readonly characters = computed(() => {
     const text = this.text();

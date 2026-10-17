@@ -1,3 +1,4 @@
+import type { AfterViewInit } from '@angular/core';
 import {
   Component,
   computed,
@@ -28,12 +29,12 @@ const PLACEHOLDER_COLOR = 'rgb(157, 145, 129)';
   templateUrl: './macro-chart.component.html',
   styleUrl: './macro-chart.component.scss',
 })
-export class MacroChartComponent implements OnDestroy {
+export class MacroChartComponent implements OnDestroy, AfterViewInit {
   nutrition = input.required<NutritionSummary>();
   showKcal = input<boolean>(true);
 
   private readonly locale = inject(LOCALE_ID);
-  
+
   readonly displayedKcal = computed(
     () =>
       `${formatNutritionResult(this.nutrition().kcal, 0, this.locale)} kcal`,
@@ -48,9 +49,8 @@ export class MacroChartComponent implements OnDestroy {
     () => !hasMacroDistribution(this.nutrition()),
   );
 
-  legend = computed(
-    (): Record<string, ChartLegendElement> =>
-      buildNutritionLegend(this.nutrition()),
+  legend = computed((): Record<string, ChartLegendElement> =>
+    buildNutritionLegend(this.nutrition()),
   );
 
   constructor() {

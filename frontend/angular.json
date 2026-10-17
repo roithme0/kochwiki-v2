@@ -10,6 +10,13 @@
       "sourceRoot": "src",
       "prefix": "app",
       "architect": {
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["."],
+            "maxWarnings": 0
+          }
+        },
         "build": {
           "builder": "@angular/build:application",
           "options": {

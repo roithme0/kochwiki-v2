@@ -7,9 +7,7 @@ import type {
 import type { NutritionValues } from './nutrition-values';
 
 export type NutritionResult =
-  | ExactNutrition
-  | MinimumNutrition
-  | UnknownNutrition;
+  ExactNutrition | MinimumNutrition | UnknownNutrition;
 
 export interface NutritionSummary {
   kcal: NutritionResult;

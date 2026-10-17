@@ -10,7 +10,11 @@
     "check:kochwiki-contract": "node scripts/kochwiki-contract.mjs --check",
     "watch": "ng build --watch --configuration development",
     "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
-    "test": "ng test"
+    "test": "ng test",
+    "test:tooling": "node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts",
+    "format:changed": "node scripts/format-changed.mts",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --max-warnings=0 --fix"
   },
   "private": true,
   "dependencies": {
@@ -36,10 +40,16 @@
     "@angular/build": "22.1.8",
     "@angular/cli": "22.1.8",
     "@angular/compiler-cli": "22.1.6",
+    "@eslint/js": "10.0.1",
     "@hey-api/openapi-ts": "0.99.0",
     "@types/node": "24.10.1",
+    "angular-eslint": "22.6.0",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
     "jsdom": "^30.0.1",
+    "prettier": "3.9.10",
     "typescript": "6.0.2",
+    "typescript-eslint": "8.71.2",
     "vitest": "^4.1.11"
   }
 }

@@ -6,8 +6,16 @@ import { FoodstuffBackendService } from './foodstuff-backend.service';
 import { FoodstuffCatalogueService } from './foodstuff-catalogue.service';
 
 const foodstuff: FoodstuffOut = {
-  id: 1, name: 'Pasta', brand: null, unit: 'G', unitVerbose: 'g',
-  kcal: null, carbs: null, protein: null, fat: null, recipeVersionIds: [],
+  id: 1,
+  name: 'Pasta',
+  brand: null,
+  unit: 'G',
+  unitVerbose: 'g',
+  kcal: null,
+  carbs: null,
+  protein: null,
+  fat: null,
+  recipeVersionIds: [],
 };
 
 function deferred<T>(): {
@@ -31,10 +39,15 @@ describe('FoodstuffCatalogueService', () => {
   beforeEach(() => {
     changes = new Subject<void>();
     getAllFoodstuffs.mockReset().mockResolvedValue([foodstuff]);
-    TestBed.configureTestingModule({ providers: [
-      FoodstuffCatalogueService,
-      { provide: FoodstuffBackendService, useValue: { getAllFoodstuffs, foodstuffsChanged$: changes } },
-    ] });
+    TestBed.configureTestingModule({
+      providers: [
+        FoodstuffCatalogueService,
+        {
+          provide: FoodstuffBackendService,
+          useValue: { getAllFoodstuffs, foodstuffsChanged$: changes },
+        },
+      ],
+    });
   });
 
   it('loads initially, refreshes after notifications, and retains data while loading or on failure', async () => {
@@ -48,14 +61,19 @@ describe('FoodstuffCatalogueService', () => {
     catalogue.loadFailed$.subscribe(failed);
     changes.next();
     expect(catalogue.state()).toEqual({ status: 'loading', data: [foodstuff] });
-    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
     try {
       request.reject(new Error('unavailable'));
       await Promise.resolve();
       expect(catalogue.state()).toEqual({ status: 'error', data: [foodstuff] });
       expect(failed).toHaveBeenCalledOnce();
       await catalogue.refresh();
-      expect(catalogue.state()).toEqual({ status: 'success', data: [foodstuff] });
+      expect(catalogue.state()).toEqual({
+        status: 'success',
+        data: [foodstuff],
+      });
     } finally {
       error.mockRestore();
     }
@@ -88,13 +106,22 @@ describe('FoodstuffCatalogueService', () => {
     catalogue.upsert(updated);
     catalogue.upsert(updated);
     catalogue.upsert({ ...foodstuff, id: 2 });
-    expect(catalogue.state()).toEqual({ status: 'success', data: [updated, { ...foodstuff, id: 2 }] });
+    expect(catalogue.state()).toEqual({
+      status: 'success',
+      data: [updated, { ...foodstuff, id: 2 }],
+    });
   });
 
   it('isolates component instances and ignores notifications and pending results after destruction', async () => {
     const parent = TestBed.inject(EnvironmentInjector);
-    const firstInjector = createEnvironmentInjector([FoodstuffCatalogueService], parent);
-    const secondInjector = createEnvironmentInjector([FoodstuffCatalogueService], parent);
+    const firstInjector = createEnvironmentInjector(
+      [FoodstuffCatalogueService],
+      parent,
+    );
+    const secondInjector = createEnvironmentInjector(
+      [FoodstuffCatalogueService],
+      parent,
+    );
     try {
       const first = firstInjector.get(FoodstuffCatalogueService);
       const second = secondInjector.get(FoodstuffCatalogueService);

@@ -7,10 +7,7 @@
   }
   <mat-card-content>
     <div class="nutrition-content">
-      <app-macro-chart
-        class="macro-chart"
-        [nutrition]="nutrition()"
-      />
+      <app-macro-chart class="macro-chart" [nutrition]="nutrition()" />
       @if (showLegend()) {
         <div class="legend">
           @for (entry of nutrientLegend(); track entry.displayName) {

@@ -3,7 +3,6 @@ import type {
   NutritionResult,
   NutritionSummary,
 } from '../../core/models/nutrition-result';
-import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 export interface DraftIngredientNutrition {
   foodstuffId: number | null;
@@ -11,8 +10,7 @@ export interface DraftIngredientNutrition {
 }
 
 export type DraftNutritionState =
-  | { status: 'invalid' }
-  | { status: 'ready'; nutrition: NutritionSummary };
+  { status: 'invalid' } | { status: 'ready'; nutrition: NutritionSummary };
 
 type NutritionField = keyof NutritionSummary;
 
@@ -37,8 +35,7 @@ export function calculateDraftNutrition(
       if (!isFiniteNutritionValue(value)) continue;
 
       const multiplier =
-        foodstuff.unit === FoodstuffUnit.Gram ||
-        foodstuff.unit === FoodstuffUnit.Milliliter
+        foodstuff.unit === 'G' || foodstuff.unit === 'ML'
           ? ingredient.amount / 100
           : ingredient.amount;
       total += value * multiplier;

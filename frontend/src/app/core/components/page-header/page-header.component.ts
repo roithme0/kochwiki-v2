@@ -19,8 +19,8 @@ import { BackendMetaService } from '../../services/backend-meta.service';
     MatIconModule,
     MatButtonModule,
     MatToolbarModule,
-    MatMenuModule
-],
+    MatMenuModule,
+  ],
   templateUrl: './page-header.component.html',
   styleUrl: './page-header.component.scss',
 })

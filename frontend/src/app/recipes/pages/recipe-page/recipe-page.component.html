@@ -10,12 +10,15 @@
           class="version-state-badge"
           [state]="recipeVersion.state"
         />
-        <app-recipe-image [imageId]="recipeVersion.imageId" [imageDimensions]="recipeVersion.imageDimensions" />
+        <app-recipe-image
+          [imageId]="recipeVersion.imageId"
+          [imageDimensions]="recipeVersion.imageDimensions"
+        />
         <app-recipe-presentation [recipe]="recipeVersion" />
         <div class="spacer"></div>
       </article>
 
-      @if (recipeVersion.state !== "historical") {
+      @if (recipeVersion.state !== 'historical') {
         <div class="buttons-wrapper">
           <button
             mat-mini-fab
@@ -43,7 +46,7 @@
           >
             <mat-icon aria-hidden="true" fontIcon="auto_fix_high" />
           </a>
-          @if (recipeVersion.state === "draft") {
+          @if (recipeVersion.state === 'draft') {
             <button
               mat-mini-fab
               color="primary"

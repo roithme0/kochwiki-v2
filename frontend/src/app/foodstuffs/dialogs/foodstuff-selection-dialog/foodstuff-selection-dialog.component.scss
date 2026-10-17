@@ -1,6 +1,6 @@
-@use "../../../../styles/page-background";
-@use "../../../../styles/search-bar";
-@use "@angular/material" as mat;
+@use '../../../../styles/page-background';
+@use '../../../../styles/search-bar';
+@use '@angular/material' as mat;
 
 :host {
   @include page-background.illustrated();
@@ -101,9 +101,14 @@ mat-dialog-content.no-results {
   gap: 0.5rem;
   margin-bottom: 0.5rem;
   padding: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--mat-app-text-color) 35%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--mat-app-text-color) 35%, transparent);
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--mat-app-background-color) 90%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--mat-app-background-color) 90%,
+    transparent
+  );
 }
 
 .basket-content {
@@ -112,10 +117,12 @@ mat-dialog-content.no-results {
 }
 
 .basket-summary > button {
-  @include mat.button-overrides((
-    filled-container-shape: 0.75rem,
-    filled-container-height: 3rem,
-  ));
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 0.75rem,
+      filled-container-height: 3rem,
+    )
+  );
   flex-shrink: 0;
 }
 
@@ -157,10 +164,12 @@ app-foodstuffs-search {
 
 .create-foodstuff-button {
   @include search-bar.add-button();
-  @include mat.button-overrides((
-    filled-container-shape: 0.75rem,
-    filled-container-height: 3.5rem,
-  ));
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 0.75rem,
+      filled-container-height: 3.5rem,
+    )
+  );
   min-width: 0;
   padding: 0;
 }

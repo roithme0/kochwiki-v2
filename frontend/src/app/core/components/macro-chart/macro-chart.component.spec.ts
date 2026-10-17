@@ -8,7 +8,10 @@ describe('MacroChartComponent', () => {
   let fixture: ComponentFixture<MacroChartComponent>;
 
   beforeEach(async () => {
-    vi.spyOn(MacroChartComponent.prototype, 'ngAfterViewInit').mockImplementation(() => {});
+    vi.spyOn(
+      MacroChartComponent.prototype,
+      'ngAfterViewInit',
+    ).mockImplementation(() => {});
     await TestBed.configureTestingModule({
       imports: [MacroChartComponent],
     }).compileComponents();
@@ -20,12 +23,15 @@ describe('MacroChartComponent', () => {
       destroy: vi.fn(),
     };
     fixture.componentInstance.chart = chart as Chart;
-    fixture.componentRef.setInput('nutrition', toNutritionSummary({
-      kcal: 420,
-      carbs: 40,
-      protein: 20,
-      fat: 10,
-    }));
+    fixture.componentRef.setInput(
+      'nutrition',
+      toNutritionSummary({
+        kcal: 420,
+        carbs: 40,
+        protein: 20,
+        fat: 10,
+      }),
+    );
   });
 
   afterEach(() => {
@@ -35,8 +41,8 @@ describe('MacroChartComponent', () => {
 
   it('centers the kcal overlay across the full chart area', () => {
     fixture.detectChanges();
-    const kcalWrapper = fixture.nativeElement.querySelector(
-      '.kcal-wrapper'
+    const kcalWrapper = (fixture.nativeElement as HTMLElement).querySelector(
+      '.kcal-wrapper',
     ) as HTMLElement;
     const styles = getComputedStyle(kcalWrapper);
 
@@ -45,15 +51,20 @@ describe('MacroChartComponent', () => {
   });
 
   it('displays kcal rounded to a whole number', () => {
-    fixture.componentRef.setInput('nutrition', toNutritionSummary({
-      kcal: 420.6,
-      carbs: 40,
-      protein: 20,
-      fat: 10,
-    }));
+    fixture.componentRef.setInput(
+      'nutrition',
+      toNutritionSummary({
+        kcal: 420.6,
+        carbs: 40,
+        protein: 20,
+        fat: 10,
+      }),
+    );
     fixture.detectChanges();
 
-    const kcal = fixture.nativeElement.querySelector('.kcal') as HTMLElement;
+    const kcal = (fixture.nativeElement as HTMLElement).querySelector(
+      '.kcal',
+    ) as HTMLElement;
     expect(kcal.textContent?.trim()).toBe('421 kcal');
   });
 
@@ -65,10 +76,21 @@ describe('MacroChartComponent', () => {
       fat: { status: 'exact', value: 2 },
     });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kcal').textContent.trim()).toBe('≥ 420 kcal');
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.kcal')
+        ?.textContent?.trim(),
+    ).toBe('≥ 420 kcal');
     expect(fixture.componentInstance.chart?.data.datasets[0].data).toEqual([1]);
-    expect(fixture.componentInstance.legend()['carbs'].value).toEqual({ status: 'minimum', value: 12 });
-    expect(Object.values(fixture.componentInstance.legend()).every(entry => entry.valuePercentage === null)).toBe(true);
+    expect(fixture.componentInstance.legend()['carbs'].value).toEqual({
+      status: 'minimum',
+      value: 12,
+    });
+    expect(
+      Object.values(fixture.componentInstance.legend()).every(
+        (entry) => entry.valuePercentage === null,
+      ),
+    ).toBe(true);
 
     fixture.componentRef.setInput('nutrition', {
       kcal: { status: 'unknown', value: null },
@@ -77,39 +99,76 @@ describe('MacroChartComponent', () => {
       fat: { status: 'exact', value: 2 },
     });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kcal').textContent.trim()).toBe('— kcal');
-    expect(fixture.nativeElement.querySelector('[aria-label="Kalorienangabe fehlt"]')).not.toBeNull();
-    expect(fixture.componentInstance.chart?.data.datasets[0].data).toEqual([12, 6, 2]);
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.kcal')
+        ?.textContent?.trim(),
+    ).toBe('— kcal');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[aria-label="Kalorienangabe fehlt"]',
+      ),
+    ).not.toBeNull();
+    expect(fixture.componentInstance.chart?.data.datasets[0].data).toEqual([
+      12, 6, 2,
+    ]);
     fixture.componentRef.setInput('showKcal', false);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kcal-wrapper')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.kcal-wrapper'),
+    ).toBeNull();
   });
 
   it('keeps the nutrient legend when the rendered chart falls back to gray', () => {
-    fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 12, protein: null, fat: 0 }));
+    fixture.componentRef.setInput(
+      'nutrition',
+      toNutritionSummary({ carbs: 12, protein: null, fat: 0 }),
+    );
     fixture.detectChanges();
 
     const chart = fixture.componentInstance.chart;
     expect(chart?.data.datasets[0].data).toEqual([1]);
-    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(157, 145, 129)']);
+    expect(chart?.data.datasets[0].backgroundColor).toEqual([
+      'rgb(157, 145, 129)',
+    ]);
     const legend = fixture.componentInstance.legend();
     expect(Object.keys(legend)).toEqual(['carbs', 'protein', 'fat']);
     expect(legend['carbs'].value).toEqual({ status: 'exact', value: 12 });
     expect(legend['protein'].value).toEqual({ status: 'unknown', value: null });
     expect(legend['fat'].value).toEqual({ status: 'exact', value: 0 });
-    expect(Object.values(legend).every(entry => entry.valuePercentage === null)).toBe(true);
+    expect(
+      Object.values(legend).every((entry) => entry.valuePercentage === null),
+    ).toBe(true);
 
-    fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 12, protein: 6, fat: 2 }));
+    fixture.componentRef.setInput(
+      'nutrition',
+      toNutritionSummary({ carbs: 12, protein: 6, fat: 2 }),
+    );
     fixture.detectChanges();
     expect(fixture.componentInstance.chart).toBe(chart);
     expect(chart?.data.datasets[0].data).toEqual([12, 6, 2]);
-    expect(fixture.componentInstance.legend()['carbs'].valuePercentage).toBe(60);
+    expect(fixture.componentInstance.legend()['carbs'].valuePercentage).toBe(
+      60,
+    );
 
-    fixture.componentRef.setInput('nutrition', toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));
+    fixture.componentRef.setInput(
+      'nutrition',
+      toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }),
+    );
     fixture.detectChanges();
     expect(chart?.data.datasets[0].data).toEqual([1]);
-    expect(chart?.data.datasets[0].backgroundColor).toEqual(['rgb(157, 145, 129)']);
-    expect(Object.keys(fixture.componentInstance.legend())).toEqual(['carbs', 'protein', 'fat']);
-    expect(Object.values(fixture.componentInstance.legend()).every(entry => entry.valuePercentage === null)).toBe(true);
+    expect(chart?.data.datasets[0].backgroundColor).toEqual([
+      'rgb(157, 145, 129)',
+    ]);
+    expect(Object.keys(fixture.componentInstance.legend())).toEqual([
+      'carbs',
+      'protein',
+      'fat',
+    ]);
+    expect(
+      Object.values(fixture.componentInstance.legend()).every(
+        (entry) => entry.valuePercentage === null,
+      ),
+    ).toBe(true);
   });
 });
