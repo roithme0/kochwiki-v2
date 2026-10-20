@@ -162,7 +162,7 @@ describe('Version-specific conversation routing', () => {
     expect(page.original()?.id).toContain(
       '00000000-0000-4000-8000-000000000003',
     );
-    expect(page.view().content).toEqual([]);
+    expect(page.view().turns).toEqual([]);
     await router.navigateByUrl('/signed-out');
     expect(TestBed.inject(PageHeaderService).subheader()).toBe('');
     const reopened = await harness.navigateByUrl(

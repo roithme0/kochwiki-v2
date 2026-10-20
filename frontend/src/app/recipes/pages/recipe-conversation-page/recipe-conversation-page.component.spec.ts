@@ -19,7 +19,6 @@ import {
 } from '@roithme0/chat-ui/ui';
 import type {
   ArtifactResponse,
-  AssistantMessageResponse,
   SessionSnapshotResponse,
   StreamEvent,
 } from '@roithme0/chat-ui/conversation';
@@ -74,15 +73,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     display_name: 'Test',
   });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  let timeline: SessionSnapshotResponse['timeline'];
-  let messages: SessionSnapshotResponse['messages'];
-  let artifacts: ArtifactResponse[];
+  let turns: SessionSnapshotResponse['turns'];
 
   beforeEach(() => {
     vi.resetAllMocks();
-    timeline = [];
-    messages = [];
-    artifacts = [];
+    turns = [];
     snackbar.mockReturnValue({ dismiss });
     save.mockResolvedValue({
       ...conversationRecipe(),
@@ -142,7 +137,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   }
 
   function turn(): Response {
-    const turnId = `turn-${messages.length / 2 + 1}`;
+    const turnId = `turn-${turns.length + 1}`;
     return completedTurn({
       turn_id: turnId,
       message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: turnId },
@@ -157,38 +152,46 @@ describe('Recipe conversation page through published controller and HTTP transpo
     });
   }
 
-  function accepted(turnId = `turn-${messages.length / 2 + 1}`): Response {
+  function accepted(turnId = `turn-${turns.length + 1}`): Response {
     return response({ kind: 'accepted', turn_id: turnId }, 202);
   }
 
   function completedTurn(
     payload: {
       turn_id: string;
-      message: AssistantMessageResponse;
+      message: { role: 'assistant'; text: string; turn_id: string };
       artifacts: ArtifactResponse[];
     },
     userText = 'Mehr Gemüse',
   ): Response {
     const turnId = payload.turn_id;
-    const index = messages.length;
+    const index = turns.length * 10;
     const presented = payload.artifacts.map((artifact) => ({
       ...artifact,
       turn_id: turnId,
     }));
-    const initialTimeline: SessionSnapshotResponse['timeline'] = [
-      ...timeline,
-      {
-        kind: 'message',
-        id: `user-${index}`,
-        role: 'user',
-        text: userText,
-        turn_id: turnId,
-      },
-    ];
-    const initialMessages: SessionSnapshotResponse['messages'] = [
-      ...messages,
-      { role: 'user', text: userText, turn_id: null },
-    ];
+    const userMessageId = `user-${index}`;
+    const initialTurn: SessionSnapshotResponse['turns'][number] = {
+      turn_id: turnId,
+      user_message_id: userMessageId,
+      status: 'in_progress',
+      timeline: [
+        {
+          kind: 'message',
+          id: userMessageId,
+          role: 'user',
+          text: userText,
+          turn_id: turnId,
+          is_final: false,
+        },
+      ],
+    };
+    const assistant: Extract<StreamEvent, { kind: 'upsert' }>['item'] = {
+      kind: 'message',
+      id: `assistant-${index}`,
+      ...payload.message,
+      is_final: true,
+    };
     const events: StreamEvent[] = [
       {
         kind: 'snapshot',
@@ -197,35 +200,24 @@ describe('Recipe conversation page through published controller and HTTP transpo
           session_id: 'session-1',
           expires_at: 'later',
           sequence: index,
-          active_turn_id: turnId,
-          active_turn_status: 'in_progress',
-          terminal_turn_id: null,
-          terminal_turn_kind: null,
-          messages: initialMessages,
-          timeline: initialTimeline,
-          artifacts,
+          turns: [...turns, initialTurn],
         },
       },
       {
         kind: 'upsert',
         turn_id: turnId,
         sequence: index + 1,
-        order: initialTimeline.length,
+        order: 1,
         identity: `assistant-${index}`,
-        item: { kind: 'message', id: `assistant-${index}`, ...payload.message },
+        item: assistant,
       },
       ...presented.map((artifact, order): StreamEvent => ({
         kind: 'upsert',
         turn_id: turnId,
         sequence: index + order + 2,
-        order: initialTimeline.length + order + 1,
+        order: order + 2,
         identity: artifact.artifact_id,
-        item: {
-          kind: 'artifact',
-          artifact_id: artifact.artifact_id,
-          turn_id: turnId,
-        },
-        artifact,
+        item: { kind: 'artifact', artifact, turn_id: turnId },
       })),
       {
         kind: 'closing',
@@ -239,17 +231,22 @@ describe('Recipe conversation page through published controller and HTTP transpo
         outcome: 'completed',
       },
     ];
-    messages = [...initialMessages, payload.message];
-    timeline = [
-      ...initialTimeline,
-      { kind: 'message', id: `assistant-${index}`, ...payload.message },
-      ...presented.map((artifact) => ({
-        kind: 'artifact' as const,
-        artifact_id: artifact.artifact_id,
-        turn_id: turnId,
-      })),
+    turns = [
+      ...turns,
+      {
+        ...initialTurn,
+        status: 'completed',
+        timeline: [
+          ...initialTurn.timeline,
+          assistant,
+          ...presented.map((artifact) => ({
+            kind: 'artifact' as const,
+            artifact,
+            turn_id: turnId,
+          })),
+        ],
+      },
     ];
-    artifacts = [...artifacts, ...presented];
     return new Response(
       events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
       { headers: { 'Content-Type': 'text/event-stream' } },
@@ -260,7 +257,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Zeige die Linsen', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Zeige die Linsen',
+          turn_id: 'foodstuff-turn',
+        }),
       )
       .mockResolvedValueOnce(accepted('foodstuff-turn'))
       .mockResolvedValueOnce(
@@ -320,7 +321,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
   async function submit(page: RecipeConversationPageComponent): Promise<void> {
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Mehr Gemüse',
+          turn_id: `turn-${turns.length + 1}`,
+        }),
       )
       .mockResolvedValueOnce(accepted())
       .mockResolvedValueOnce(turn());
@@ -345,7 +350,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     });
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Mehr Gemüse',
+          turn_id: 'turn-1',
+        }),
       )
       .mockResolvedValueOnce(acceptance)
       .mockResolvedValueOnce(
@@ -366,6 +375,10 @@ describe('Recipe conversation page through published controller and HTTP transpo
       ).not.toBeNull();
     });
     expect(page.view().composerDisabled).toBe(true);
+    expect(page.view().composerEditingDisabled).toBe(false);
+    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
+      .componentInstance as ChatUiComponent;
+    expect(chat.composerEditingDisabled()).toBe(false);
     expect(save).not.toHaveBeenCalled();
     await page.submit({ text: 'Too soon', acknowledge: vi.fn() });
     expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -388,7 +401,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const frames = (await turn().text()).split('\n\n').filter(Boolean);
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Mehr Gemüse', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Mehr Gemüse',
+          turn_id: 'turn-1',
+        }),
       )
       .mockResolvedValueOnce(acceptance)
       .mockResolvedValueOnce(
@@ -431,7 +448,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
       };
       fetchMock
         .mockResolvedValueOnce(
-          response({ role: 'user', text: 'Nährwerte?', turn_id: null }),
+          response({
+            role: 'user',
+            text: 'Nährwerte?',
+            turn_id: 'nutrition-turn',
+          }),
         )
         .mockResolvedValueOnce(accepted('nutrition-turn'))
         .mockResolvedValueOnce(
@@ -521,7 +542,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     };
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Zeige das Rezept', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Zeige das Rezept',
+          turn_id: 'recipe-turn',
+        }),
       )
       .mockResolvedValueOnce(accepted('recipe-turn'))
       .mockResolvedValueOnce(
@@ -575,7 +600,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Show the foodstuff', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Show the foodstuff',
+          turn_id: 'turn-json',
+        }),
       )
       .mockResolvedValueOnce(accepted('turn-json'))
       .mockResolvedValueOnce(
@@ -720,7 +749,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const page = await open();
     await submit(page);
     const original = page.original();
-    const content = page.view().content;
+    const content = page.view().turns;
     const operation = page.saveProposal(
       mapConversationArtifact(conversationProposal()).metadata,
     );
@@ -740,7 +769,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
       'Speichern konnte nicht bestätigt werden. Möglicherweise wurde der Entwurf bereits erstellt.',
     );
     expect(page.original()).toBe(original);
-    expect(page.view().content).toBe(content);
+    expect(page.view().turns).toBe(content);
     expect(page.savePending()).toBe(false);
     http.expectNone(url);
     http.verify();
@@ -896,8 +925,20 @@ describe('Recipe conversation page through published controller and HTTP transpo
     fixture.detectChanges();
     expect(page.original()).toBe(original);
     expect(page.view().status).toBeNull();
+    expect(page.view().turns.map((turn) => turn.id)).toEqual([
+      'turn-1',
+      'turn-2',
+    ]);
+    expect(page.view().turns.every((turn) => turn.status === 'completed')).toBe(
+      true,
+    );
+    expect(page.turns()[0].content).toEqual([original]);
+    expect(page.turns().slice(1)).toEqual(page.view().turns);
     expect(
-      page.view().content.filter((item) => item.kind === 'text'),
+      page
+        .view()
+        .turns.flatMap((turn) => turn.content)
+        .filter((item) => item.kind === 'text'),
     ).toHaveLength(4);
     expect(
       fixture.debugElement.queryAll(By.directive(RecipePresentationComponent)),
@@ -969,13 +1010,17 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock).toHaveBeenCalledTimes(requests);
     expect(save).not.toHaveBeenCalled();
     pending.resolve(
-      response({ role: 'user', text: 'Old owner', turn_id: null }),
+      response({
+        role: 'user',
+        text: 'Old owner',
+        turn_id: `turn-${turns.length + 1}`,
+      }),
     );
     await operation;
     expect(acknowledge).not.toHaveBeenCalled();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(page.view().content).toEqual([]);
+    expect(page.view().turns).toEqual([]);
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(
       new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
@@ -1005,7 +1050,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
       );
       await fixture.whenStable();
       expect(page.view()).toBe(view);
-      expect(page.view().content).toEqual([]);
+      expect(page.view().turns).toEqual([]);
       expect(page.view().status).toBeNull();
       expect(
         new Headers(fetchMock.mock.calls[1][1]?.headers).get(
@@ -1036,7 +1081,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(fetchMock).not.toHaveBeenCalled();
     expect(page.original()).toBeNull();
     fixture.detectChanges();
-    expect(page.view().content).toEqual([]);
+    expect(page.view().turns).toEqual([]);
     expect(page.view().composerDisabled).toBe(true);
   });
 
@@ -1186,10 +1231,16 @@ describe('Recipe conversation page through published controller and HTTP transpo
     );
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     fetchMock.mockResolvedValueOnce(turn());
-    pending.resolve(response({ role: 'user', text: 'Alt', turn_id: null }));
+    pending.resolve(
+      response({
+        role: 'user',
+        text: 'Alt',
+        turn_id: `turn-${turns.length + 1}`,
+      }),
+    );
     await operation;
     expect(acknowledge).not.toHaveBeenCalled();
-    expect(page.view().content).toEqual([]);
+    expect(page.view().turns).toEqual([]);
     expect(page.original()?.headline).toBe('Original: Neue Version');
   });
 
@@ -1198,7 +1249,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const pending = deferred<Response>();
     fetchMock
       .mockResolvedValueOnce(
-        response({ role: 'user', text: 'Verbessern', turn_id: null }),
+        response({
+          role: 'user',
+          text: 'Verbessern',
+          turn_id: `turn-${turns.length + 1}`,
+        }),
       )
       .mockResolvedValueOnce(accepted())
       .mockReturnValueOnce(pending.promise);
@@ -1213,7 +1268,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     pending.resolve(turn());
     await operation;
     expect(page.view()).toBe(oldView);
-    expect(fresh.view().content).toEqual([]);
+    expect(fresh.view().turns).toEqual([]);
     expect(
       fetchMock.mock.calls.filter(
         (call) => call[0] === '/ai/api/v1/agents/kochwiki/sessions',
@@ -1228,7 +1283,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
       const pending = deferred<Response>();
       fetchMock
         .mockResolvedValueOnce(
-          response({ role: 'user', text: 'Verbessern', turn_id: null }),
+          response({
+            role: 'user',
+            text: 'Verbessern',
+            turn_id: `turn-${turns.length + 1}`,
+          }),
         )
         .mockResolvedValueOnce(accepted())
         .mockReturnValueOnce(pending.promise);
@@ -1265,7 +1324,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
       const view = page.view();
       if (boundary === 'user') {
         expect(page.original()).toBeNull();
-        expect(view.content).toEqual([]);
+        expect(view.turns).toEqual([]);
         expect(view.composerDisabled).toBe(true);
       }
       pending.resolve(turn());
@@ -1289,7 +1348,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
     await fixture.whenStable();
     expect(page.view()).toBe(oldView);
-    expect(fresh.view().content).toEqual([]);
+    expect(fresh.view().turns).toEqual([]);
   });
 
   it('suppresses late loads and starts with fresh data on revisiting', async () => {
@@ -1322,7 +1381,11 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(header.subheader()).toBe('');
     header.updateHeader(true, 'Andere Seite', '/recipes');
     pending.resolve(
-      response({ role: 'user', text: 'Verbessern', turn_id: null }),
+      response({
+        role: 'user',
+        text: 'Verbessern',
+        turn_id: `turn-${turns.length + 1}`,
+      }),
     );
     await operation;
     expect(acknowledge).not.toHaveBeenCalled();

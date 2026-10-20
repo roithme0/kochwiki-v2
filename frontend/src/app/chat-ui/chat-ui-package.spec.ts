@@ -5,6 +5,7 @@ import {
   ChatUiComponent,
   artifactRenderer,
   type ChatArtifact,
+  type ChatTurn,
 } from '@roithme0/chat-ui/ui';
 import {
   AgentConfiguration,
@@ -23,7 +24,7 @@ import {
     <ai-chat-ui
       bannerTitle="Banner"
       bannerDescription="Description"
-      [content]="artifact ? [artifact] : []"
+      [turns]="turns"
       [artifactRenderers]="
         showRenderer ? { 'host-content': artifactRenderer(hostRenderer) } : {}
       "
@@ -39,6 +40,18 @@ class RendererTestHost {
     headline: 'Host headline',
     payload: { name: 'Host name', description: 'Host description' },
   };
+  get turns(): readonly ChatTurn[] {
+    return this.artifact
+      ? [
+          {
+            id: 'host-turn',
+            userMessageId: 'host-user',
+            status: 'completed',
+            content: [this.artifact],
+          },
+        ]
+      : [];
+  }
   showRenderer = true;
 }
 

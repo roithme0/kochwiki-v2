@@ -19,6 +19,7 @@ import {
 import {
   ChatArtifact,
   ChatSubmission,
+  ChatTurn,
   ChatUiComponent,
   artifactRenderer,
 } from '@roithme0/chat-ui/ui';
@@ -107,13 +108,25 @@ export class RecipeConversationPageComponent {
   readonly back = signal('/recipes');
   readonly original = signal<ChatArtifact | null>(null);
   readonly view = signal<ConversationViewState>({
-    content: [],
+    turns: [],
     composerDisabled: true,
+    composerEditingDisabled: true,
     status: null,
   });
-  readonly content = computed(() => {
+  readonly turns = computed<readonly ChatTurn[]>(() => {
     const original = this.original();
-    return original ? [original, ...this.view().content] : this.view().content;
+    const turns = this.view().turns;
+    return original
+      ? [
+          {
+            id: original.id,
+            userMessageId: original.id,
+            status: 'completed',
+            content: [original],
+          },
+          ...turns,
+        ]
+      : turns;
   });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
@@ -158,7 +171,12 @@ export class RecipeConversationPageComponent {
     this.actionPending = false;
     this.setSubmitted(false);
     this.original.set(null);
-    this.view.set({ content: [], composerDisabled: true, status: null });
+    this.view.set({
+      turns: [],
+      composerDisabled: true,
+      composerEditingDisabled: true,
+      status: null,
+    });
     this.phase.set('loading');
     this.header.updateHeader(true, '', this.back(), true, 'Rezept verbessern');
     if (userId === null) {
