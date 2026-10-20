@@ -54,7 +54,7 @@ describe('IngredientsGridComponent foodstuff images', () => {
     const images = element.querySelectorAll('app-foodstuff-image img');
     expect(
       Array.from(images).map((image) => image.getAttribute('src')),
-    ).toEqual(['/storage/tomato', 'assets/images/question-mark.png']);
+    ).toEqual(['/storage/tomato', 'images/question-mark.png']);
     expect(
       Array.from(element.querySelectorAll('.amount')).map((item) =>
         item.textContent?.trim(),

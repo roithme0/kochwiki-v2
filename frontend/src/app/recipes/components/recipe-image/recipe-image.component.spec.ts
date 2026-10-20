@@ -7,7 +7,7 @@ describe('RecipeImageComponent', () => {
   let fixture: ComponentFixture<RecipeImageComponent>;
   const download =
     vi.fn<(imageId: string) => Promise<RecipeImageDownloadOut>>();
-  const placeholder = 'assets/images/recipe-image-placeholder.png';
+  const placeholder = 'images/recipe-image-placeholder.png';
 
   const renderedSource = (): string | null =>
     (fixture.nativeElement as HTMLElement)

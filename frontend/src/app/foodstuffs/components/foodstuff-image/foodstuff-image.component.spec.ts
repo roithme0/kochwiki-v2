@@ -6,7 +6,7 @@ import { FoodstuffImageComponent } from './foodstuff-image.component';
 describe('FoodstuffImageComponent', () => {
   let fixture: ComponentFixture<FoodstuffImageComponent>;
   const download = vi.fn<(id: string) => Promise<FoodstuffImageDownloadOut>>();
-  const placeholder = 'assets/images/question-mark.png';
+  const placeholder = 'images/question-mark.png';
   const element = (): HTMLElement => fixture.nativeElement as HTMLElement;
   const visibleSource = (): string | null =>
     Array.from(element().querySelectorAll('img'))

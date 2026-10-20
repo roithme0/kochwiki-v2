@@ -49,7 +49,7 @@ describe('RecipesGridElementComponent', () => {
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('img')!.getAttribute('src')).toBe(
-      'assets/images/recipe-image-placeholder.png',
+      'images/recipe-image-placeholder.png',
     );
     expect(element.querySelector('app-macro-chart')).toBeNull();
     expect(element.querySelector('mat-card-title')!.textContent).toContain(

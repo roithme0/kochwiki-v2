@@ -312,7 +312,7 @@ is needed for this editor flow. No authorization policy or session enforcement i
 ## Basis image editing
 
 The shared create/edit editor previews the saved image or
-`assets/images/recipe-image-placeholder.png` below Name. The add-photo action selects a static PNG;
+`images/recipe-image-placeholder.png` below Name. The add-photo action selects a static PNG;
 it becomes a pencil for replacement when an image is selected or attached.
 the adjacent trash action removes the image from the pending recipe save. Images
 fit within a stable area without cropping. Selection previews use local object
@@ -531,7 +531,7 @@ Active, draft and historical detail pages display the viewed version's image abo
 the ingredients card, outside the shared presentation used by AI artifacts. The
 existing title, version badge, preparation time, servings and nutrition stay in
 place. Images fit a stable area without stretching or cropping; missing images
-use `frontend/src/assets/images/recipe-image-placeholder.png`.
+use `frontend/public/images/recipe-image-placeholder.png`.
 
 The image component requests fresh download instructions when its image ID changes
 or the user explicitly retries after an access or image-loading failure. The empty

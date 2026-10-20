@@ -309,7 +309,7 @@ describe('RecipeEditorComponent', () => {
       (fixture.nativeElement as HTMLElement)
         .querySelector('.image-preview img')
         ?.getAttribute('src'),
-    ).toBe('assets/images/recipe-image-placeholder.png');
+    ).toBe('images/recipe-image-placeholder.png');
     expect(imageService.download).toHaveBeenCalledTimes(1);
     const retry = Array.from(
       (
