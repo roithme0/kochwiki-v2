@@ -12,7 +12,7 @@ import { ImageEditorComponent } from './image-editor.component';
 })
 class EditorHost {
   readonly image = inject(ImageEditorState);
-  readonly placeholder = signal('assets/images/question-mark.png');
+  readonly placeholder = signal('images/question-mark.png');
   readonly source = signal<string | null>(null);
   readonly saving = signal(false);
   readonly upload = vi.fn<(file: File) => Promise<{ id: string }>>();
@@ -70,25 +70,25 @@ describe('ImageEditorComponent', () => {
     fixture.detectChanges();
   }
 
-  it.each([
-    'assets/images/question-mark.png',
-    'assets/images/recipe-image-placeholder.png',
-  ])('keeps the domain placeholder %s and ignores its load failure', (path) => {
-    host.placeholder.set(path);
-    fixture.detectChanges();
-    const image = element.querySelector('img')!;
-    expect(image.getAttribute('src')).toBe(path);
-    expect(image.alt).toBe('Kein Bild vorhanden');
-    image.dispatchEvent(new Event('error'));
-    expect(host.image.imageAccessFailed()).toBe(false);
-    expect(host.image.imageError()).toBeNull();
-    expect(
-      button('Bild auswählen')
-        .querySelector('mat-icon')
-        ?.getAttribute('data-mat-icon-name'),
-    ).toContain('add_photo_alternate');
-    expect(element.querySelector('[aria-label="Bild entfernen"]')).toBeNull();
-  });
+  it.each(['images/question-mark.png', 'images/recipe-image-placeholder.png'])(
+    'keeps the domain placeholder %s and ignores its load failure',
+    (path) => {
+      host.placeholder.set(path);
+      fixture.detectChanges();
+      const image = element.querySelector('img')!;
+      expect(image.getAttribute('src')).toBe(path);
+      expect(image.alt).toBe('Kein Bild vorhanden');
+      image.dispatchEvent(new Event('error'));
+      expect(host.image.imageAccessFailed()).toBe(false);
+      expect(host.image.imageError()).toBeNull();
+      expect(
+        button('Bild auswählen')
+          .querySelector('mat-icon')
+          ?.getAttribute('data-mat-icon-name'),
+      ).toContain('add_photo_alternate');
+      expect(element.querySelector('[aria-label="Bild entfernen"]')).toBeNull();
+    },
+  );
 
   it('opens selection, previews locally, changes add to replace, and removes the image', () => {
     const input = element.querySelector('input')!;

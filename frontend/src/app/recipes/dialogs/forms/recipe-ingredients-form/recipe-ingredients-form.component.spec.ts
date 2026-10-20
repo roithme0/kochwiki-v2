@@ -115,7 +115,7 @@ describe('RecipeIngredientsFormComponent', () => {
     fixture.detectChanges();
     const fields = element.querySelectorAll('app-ingredient-field');
     expect(fields[1].querySelector('img')?.getAttribute('src')).toBe(
-      'assets/images/question-mark.png',
+      'images/question-mark.png',
     );
     expect(fields[1].textContent).toContain('Lebensmittel nicht verfügbar');
     expect(component.ingredients.at(1).controls.amount.value).toBe(75);
