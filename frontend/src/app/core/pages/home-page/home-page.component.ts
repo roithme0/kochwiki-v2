@@ -4,8 +4,6 @@ import { DOCUMENT } from '@angular/common';
 
 import { RouterLink } from '@angular/router';
 import { PageHeaderService } from '../../services/page-header.service';
-import { VERSION } from '../../../../version';
-import { BackendMetaService } from '../../services/backend-meta.service';
 import { TextRevealComponent } from '../../components/text-reveal/text-reveal.component';
 
 @Component({
@@ -17,9 +15,6 @@ import { TextRevealComponent } from '../../components/text-reveal/text-reveal.co
 export class HomePageComponent implements OnInit {
   private readonly document = inject(DOCUMENT);
   readonly pageHeaderService = inject(PageHeaderService);
-  readonly backendMetaService = inject(BackendMetaService);
-
-  readonly frontendVersion: string = VERSION;
   readonly animateGreeting = this.claimGreetingReveal();
 
   private claimGreetingReveal(): boolean {

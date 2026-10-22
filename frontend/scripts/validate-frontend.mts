@@ -109,11 +109,7 @@ async function testFrontend(root: string, cache: string): Promise<void> {
   await runCheck(
     frontend,
     'Frontend tests',
-    [
-      join(frontend, 'node_modules/@angular/cli/bin/ng.js'),
-      'test',
-      '--watch=false',
-    ],
+    [join(frontend, 'scripts/test.mts'), '--watch=false'],
     join(cache, 'tests.log'),
     600_000,
   );
