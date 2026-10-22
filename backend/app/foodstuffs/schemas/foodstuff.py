@@ -12,6 +12,7 @@ class FoodstuffSummaryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True, extra="forbid", strict=True)
 
     id: int = Field(gt=0)
+    imageId: UUID | None
     name: str
     brand: str | None
     unit: Unit = Field(strict=False)
@@ -47,10 +48,11 @@ class FoodstuffFields(BaseModel):
 
 
 class FoodstuffCreate(FoodstuffFields):
-    pass
+    imageId: UUID | None = None
 
 
 class FoodstuffUpdate(FoodstuffFields):
+    imageId: UUID | None = None
     name: str | None = Field(default=None, min_length=1, max_length=50)
     brand: str | None = Field(default=None, max_length=100)
     unit: Unit | None = None

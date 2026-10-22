@@ -2,7 +2,12 @@
 <h2 class="title">{{ title() }}</h2>
 @if (showCloseButon() === true) {
   <mat-dialog-actions>
-    <button mat-icon-button mat-dialog-close color="warn">
+    <button
+      mat-icon-button
+      mat-dialog-close
+      color="warn"
+      [disabled]="closeDisabled()"
+    >
       <mat-icon aria-hidden="false" aria-label="Schließen" fontIcon="close" />
     </button>
   </mat-dialog-actions>

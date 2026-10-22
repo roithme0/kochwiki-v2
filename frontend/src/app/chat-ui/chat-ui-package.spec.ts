@@ -5,11 +5,11 @@ import {
   ChatUiComponent,
   artifactRenderer,
   type ChatArtifact,
+  type ChatTurn,
 } from '@roithme0/chat-ui/ui';
 import {
-  AgentConfiguration,
-  ConversationController,
-  HttpConversationTransport,
+  SessionController,
+  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
 
 @Component({
@@ -23,7 +23,7 @@ import {
     <ai-chat-ui
       bannerTitle="Banner"
       bannerDescription="Description"
-      [content]="artifact ? [artifact] : []"
+      [turns]="turns"
       [artifactRenderers]="
         showRenderer ? { 'host-content': artifactRenderer(hostRenderer) } : {}
       "
@@ -39,6 +39,17 @@ class RendererTestHost {
     headline: 'Host headline',
     payload: { name: 'Host name', description: 'Host description' },
   };
+  get turns(): readonly ChatTurn[] {
+    return this.artifact
+      ? [
+          {
+            runKey: 'host-turn',
+            status: 'completed',
+            content: [this.artifact],
+          },
+        ]
+      : [];
+  }
   showRenderer = true;
 }
 
@@ -92,13 +103,13 @@ describe('Packaged chat UI integration', () => {
 
 describe('Packaged conversation entry point', () => {
   it('exposes a controller compatible with the Kochwiki HTTP transport', () => {
-    const transport = new HttpConversationTransport(
+    const transport = new HttpSessionTransport(
       '/ai/api/v1',
-      AgentConfiguration.kochwiki,
+      'kochwiki',
       'kochwiki:1',
     );
-    const controller = new ConversationController(transport, () => {});
+    const controller = new SessionController(transport, () => {});
 
-    expect(controller).toBeInstanceOf(ConversationController);
+    expect(controller).toBeInstanceOf(SessionController);
   });
 });

@@ -11,14 +11,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import {
-  AgentConfiguration,
-  ConversationController,
-  ConversationViewState,
-  HttpConversationTransport,
+  SessionController,
+  SessionViewState,
+  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
 import {
   ChatArtifact,
   ChatSubmission,
+  ChatTurn,
   ChatUiComponent,
   artifactRenderer,
 } from '@roithme0/chat-ui/ui';
@@ -88,7 +88,7 @@ export class RecipeConversationPageComponent {
   readonly savePending = signal(false);
   readonly recipeProposalId = recipeProposalId;
 
-  private controller: ConversationController | null = null;
+  private controller: SessionController | null = null;
   private generation = 0;
   private conversationUserId: number | null = null;
   private submitted = false;
@@ -106,14 +106,28 @@ export class RecipeConversationPageComponent {
   >('loading');
   readonly back = signal('/recipes');
   readonly original = signal<ChatArtifact | null>(null);
-  readonly view = signal<ConversationViewState>({
-    content: [],
+  readonly view = signal<SessionViewState>({
+    snapshot: null,
+    admission: 'idle',
+    observation: 'connecting',
+    turns: [],
     composerDisabled: true,
+    composerEditingDisabled: true,
     status: null,
   });
-  readonly content = computed(() => {
+  readonly turns = computed<readonly ChatTurn[]>(() => {
     const original = this.original();
-    return original ? [original, ...this.view().content] : this.view().content;
+    const turns = this.view().turns;
+    return original
+      ? [
+          {
+            runKey: null,
+            status: 'completed',
+            content: [original],
+          },
+          ...turns,
+        ]
+      : turns;
   });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
@@ -158,7 +172,15 @@ export class RecipeConversationPageComponent {
     this.actionPending = false;
     this.setSubmitted(false);
     this.original.set(null);
-    this.view.set({ content: [], composerDisabled: true, status: null });
+    this.view.set({
+      snapshot: null,
+      admission: 'idle',
+      observation: 'connecting',
+      turns: [],
+      composerDisabled: true,
+      composerEditingDisabled: true,
+      status: null,
+    });
     this.phase.set('loading');
     this.header.updateHeader(true, '', this.back(), true, 'Rezept verbessern');
     if (userId === null) {
@@ -190,13 +212,12 @@ export class RecipeConversationPageComponent {
           source,
         ),
       );
-      const transport = new HttpConversationTransport(
+      const transport = new HttpSessionTransport(
         '/ai/api/v1',
-        AgentConfiguration.kochwiki,
+        'kochwiki',
         `kochwiki:${userId}`,
-        mapSessionInput(source),
       );
-      const controller = new ConversationController(
+      const controller = new SessionController(
         transport,
         (state) => {
           if (this.isCurrent(generation, userId)) this.view.set(state);
@@ -206,7 +227,7 @@ export class RecipeConversationPageComponent {
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');
-      await controller.start();
+      await controller.start(mapSessionInput(source));
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;
       this.phase.set(
@@ -258,7 +279,7 @@ export class RecipeConversationPageComponent {
     this.actionPending = true;
     await controller.performAction(action);
     if (!this.isCurrent(generation, userId)) return;
-    if (action === 'new-session' && controller.state.status === null) {
+    if (action === 'new-session' && controller.state.observation !== 'lost') {
       this.invalidateSaveFeedback();
       this.setSubmitted(false);
     }

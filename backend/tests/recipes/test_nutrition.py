@@ -11,7 +11,7 @@ from app.recipes.services.nutrition import NutritionField, ResolvedNutritionIngr
 
 def ingredient(unit: Unit, amount: int, value: int | None) -> ResolvedNutritionIngredient:
     foodstuff = FoodstuffSummaryOut(
-        id=1, name="Ingredient", brand=None, unit=unit, unitVerbose=unit.verbose_name,
+        id=1, imageId=None, name="Ingredient", brand=None, unit=unit, unitVerbose=unit.verbose_name,
         kcal=value, carbs=value, protein=value, fat=value,
     )
     return ResolvedNutritionIngredient(amount=Decimal(amount), foodstuff=foodstuff)

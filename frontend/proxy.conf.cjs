@@ -55,7 +55,14 @@ module.exports = {
     secure: false,
     changeOrigin: true,
   },
-  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:messages|turns(?:/[A-Za-z0-9_-]+/events)?))?)?(?:\\?.*)?$':
+  '/storage/**': {
+    target: 'http://localhost:8002',
+    secure: false,
+    changeOrigin: true,
+    timeout: 60_000,
+    proxyTimeout: 60_000,
+  },
+  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:turns|events))?)?(?:\\?.*)?$':
     ai,
   '^/ai(?:/|\\?|$)': unsupported,
 };

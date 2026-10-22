@@ -2,23 +2,22 @@ from collections.abc import Iterator
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
-from app.recipes.config import IMAGE_CONTENT_TYPE
-from app.infrastructure.database.session import SessionLocal, get_db
-from app.recipes.models.image import RecipeImage
+from app.images.config import IMAGE_CONTENT_TYPE
+from app.images.dependencies import image_storage
+from app.infrastructure.database.session import SessionLocal
+from app.images.models import ImageKind
 from app.core.schemas.errors import ErrorResponse
 from app.recipes.schemas.image import (
     RecipeImageDownloadOut,
     RecipeImageOut,
     RecipeImageUploadOut,
 )
-from app.recipes.services.image_uploads import (
+from app.images.transfers import (
     ImagePersistenceFailed,
     ImageUploadNotFound,
-    InvalidRecipeImage,
-    RecipeImageUploads,
+    InvalidImage,
+    ImageTransfers,
 )
 from app.infrastructure.storage.storage import Storage, StorageUnavailable
 
@@ -26,22 +25,13 @@ router = APIRouter()
 
 
 def get_recipe_image_storage() -> Iterator[Storage]:
-    config = get_settings().storage_config
-    if config is None:
-        raise HTTPException(
-            503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
-        )
-    storage = Storage(config)
-    try:
-        yield storage
-    finally:
-        storage.close()
+    yield from image_storage(ImageKind.RECIPE)
 
 
-def get_recipe_image_uploads(
+def get_recipe_image_transfers(
     storage: Storage = Depends(get_recipe_image_storage),
-) -> RecipeImageUploads:
-    return RecipeImageUploads(storage, SessionLocal)
+) -> ImageTransfers:
+    return ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE)
 
 
 @router.get(
@@ -52,19 +42,17 @@ def get_recipe_image_uploads(
 def download_image(
     image_id: UUID,
     response: Response,
-    session: Session = Depends(get_db),
-    storage: Storage = Depends(get_recipe_image_storage),
+    uploads: ImageTransfers = Depends(get_recipe_image_transfers),
 ) -> RecipeImageDownloadOut:
     headers = {"Cache-Control": "no-store"}
-    image = session.get(RecipeImage, image_id)
-    if image is None:
-        raise HTTPException(404, "Recipe image not found", headers=headers)
     try:
-        transfer = storage.presign_download(image.object_key)
+        transfer = uploads.download(image_id)
     except StorageUnavailable:
         raise HTTPException(
             503, "Image storage is unavailable", headers=headers
         ) from None
+    if transfer is None:
+        raise HTTPException(404, "Recipe image not found", headers=headers)
     response.headers.update(headers)
     return RecipeImageDownloadOut(url=transfer.url, expiresIn=transfer.expires_in)
 
@@ -75,7 +63,7 @@ def download_image(
     responses={503: {"model": ErrorResponse}},
 )
 def begin_upload(
-    uploads: RecipeImageUploads = Depends(get_recipe_image_uploads),
+    uploads: ImageTransfers = Depends(get_recipe_image_transfers),
 ) -> RecipeImageUploadOut:
     try:
         upload = uploads.begin()
@@ -97,13 +85,13 @@ def begin_upload(
 )
 def complete_upload(
     upload_id: UUID,
-    uploads: RecipeImageUploads = Depends(get_recipe_image_uploads),
+    uploads: ImageTransfers = Depends(get_recipe_image_transfers),
 ) -> RecipeImageOut:
     try:
         image = uploads.complete(upload_id)
     except ImageUploadNotFound:
         raise HTTPException(404, "Upload has not been received") from None
-    except InvalidRecipeImage as error:
+    except InvalidImage as error:
         raise HTTPException(400, str(error)) from None
     except (StorageUnavailable, ImagePersistenceFailed):
         raise HTTPException(503, "Image upload could not be completed") from None

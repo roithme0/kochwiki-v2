@@ -17,10 +17,12 @@ class Settings(BaseSettings):
     oidc_client_secret: SecretStr | None = None
     oidc_callback_url: str | None = None
     oidc_backchannel_url: str | None = None
+    oidc_allow_insecure_http: bool = False
     storage_endpoint_url: str | None = None
     storage_public_origin: str | None = None
     storage_region: str | None = None
     storage_bucket_recipe_images: str | None = None
+    storage_bucket_foodstuff_images: str | None = None
     storage_access_key_id: SecretStr | None = None
     storage_secret_access_key: SecretStr | None = None
     mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
@@ -51,13 +53,14 @@ class Settings(BaseSettings):
             "public_origin": self.storage_public_origin,
             "region": self.storage_region,
             "bucket_recipe_images": self.storage_bucket_recipe_images,
+            "bucket_foodstuff_images": self.storage_bucket_foodstuff_images,
             "access_key_id": self.storage_access_key_id,
             "secret_access_key": self.storage_secret_access_key,
         }
         if all(value is None for value in values.values()):
             return None
         if any(value is None for value in values.values()):
-            raise ValueError("Storage configuration requires all six STORAGE_* settings, including STORAGE_BUCKET_RECIPE_IMAGES")
+            raise ValueError("Storage configuration requires all seven STORAGE_* settings, including both image buckets")
         return StorageConfig.model_validate(values)
 
     @property

@@ -6,7 +6,7 @@ describe('FoodstuffTableDisplayedFieldsService', () => {
     const width = signal(480);
     const fields =
       new FoodstuffTableDisplayedFieldsService().getDisplayedFields(width);
-    const base = ['chart', 'name'];
+    const base = ['image', 'name'];
     const actions = ['edit', 'delete'];
 
     expect(fields()).toEqual([...base, ...actions]);

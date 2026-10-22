@@ -15,6 +15,7 @@ import { DialogHeaderComponent } from '../../../core/components/dialog-header/di
 import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
+import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
 
 export interface FoodstuffSelectionDialogData {
   existingFoodstuffIds: number[];
@@ -26,6 +27,7 @@ export interface FoodstuffSelectionDialogData {
   imports: [
     DialogHeaderComponent,
     FoodstuffsSearchComponent,
+    FoodstuffImageComponent,
     MatDialogModule,
     MatListModule,
     MatButtonModule,
@@ -78,6 +80,7 @@ export class FoodstuffSelectionDialogComponent {
         {
           width: '100vw',
           maxWidth: 'min(var(--app-max-width), 100vw)',
+          height: '100dvh',
           maxHeight: '100dvh',
           position: { top: '0' },
           autoFocus: false,

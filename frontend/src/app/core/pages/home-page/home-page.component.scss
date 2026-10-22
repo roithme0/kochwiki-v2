@@ -65,19 +65,3 @@ main {
   line-height: 1.2;
   text-align: center;
 }
-
-.versions-wrapper {
-  padding: 2rem 0;
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.version {
-  flex: 0 0;
-  font-size: 0.72em;
-  opacity: 0.5;
-}

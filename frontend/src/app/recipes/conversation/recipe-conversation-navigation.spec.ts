@@ -43,19 +43,57 @@ describe('Version-specific conversation routing', () => {
     );
     vi.stubGlobal(
       'fetch',
-      vi.fn<typeof fetch>().mockImplementation((url) => {
+      vi.fn<typeof fetch>().mockImplementation((url, options) => {
         const address =
           typeof url === 'string'
             ? url
             : url instanceof URL
               ? url.href
               : url.url;
-        const payload = address.endsWith('/messages')
-          ? { kind: 'expired', detail: 'Session expired' }
-          : { session_id: 'test', expires_at: 'later' };
+        if (address.endsWith('/events')) {
+          let closed = false;
+          return Promise.resolve(
+            new Response(
+              new ReadableStream<Uint8Array>({
+                start(controller) {
+                  controller.enqueue(
+                    new TextEncoder().encode(
+                      `data: ${JSON.stringify({
+                        kind: 'snapshot',
+                        snapshot: {
+                          session_id: 'test',
+                          expires_at: '2026-10-23T00:00:00Z',
+                          error: null,
+                          history: [],
+                        },
+                      })}\n\n`,
+                    ),
+                  );
+                  options?.signal?.addEventListener(
+                    'abort',
+                    () => {
+                      if (!closed) {
+                        closed = true;
+                        controller.close();
+                      }
+                    },
+                    { once: true },
+                  );
+                },
+                cancel() {
+                  closed = true;
+                },
+              }),
+              { headers: { 'Content-Type': 'text/event-stream' } },
+            ),
+          );
+        }
+        const payload = address.endsWith('/turns')
+          ? { kind: 'unknown' }
+          : { session_id: 'test', expires_at: '2026-10-23T00:00:00Z' };
         return Promise.resolve(
           new Response(JSON.stringify(payload), {
-            status: address.endsWith('/messages') ? 410 : 200,
+            status: address.endsWith('/turns') ? 404 : 201,
           }),
         );
       }),
@@ -162,7 +200,7 @@ describe('Version-specific conversation routing', () => {
     expect(page.original()?.id).toContain(
       '00000000-0000-4000-8000-000000000003',
     );
-    expect(page.view().content).toEqual([]);
+    expect(page.view().turns).toEqual([]);
     await router.navigateByUrl('/signed-out');
     expect(TestBed.inject(PageHeaderService).subheader()).toBe('');
     const reopened = await harness.navigateByUrl(

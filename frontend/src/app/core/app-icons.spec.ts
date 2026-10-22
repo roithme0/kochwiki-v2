@@ -29,7 +29,7 @@ describe('App icon registration', () => {
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
     for (const name of ['home', 'hide_image'] as const) {
-      const request = http.expectOne(`assets/icons/${name}.svg`);
+      const request = http.expectOne(`icons/${name}.svg`);
       expect(request.request.method).toBe('GET');
       request.flush(
         `<svg xmlns="http://www.w3.org/2000/svg" data-icon="${name}"><path /></svg>`,

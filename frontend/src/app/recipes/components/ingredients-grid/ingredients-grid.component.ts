@@ -1,8 +1,7 @@
-import { NutritionSummaryPipe } from '../../../core/pipes/nutrition-summary.pipe';
 import { Component, computed, input } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
-import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { FoodstuffImageComponent } from '../../../foodstuffs/components/foodstuff-image/foodstuff-image.component';
 import {
   RecipePresentation,
   RecipePresentationIngredient,
@@ -10,7 +9,7 @@ import {
 
 @Component({
   selector: 'app-ingredients-grid',
-  imports: [NutritionSummaryPipe, MatCardModule, MacroChartComponent],
+  imports: [MatCardModule, FoodstuffImageComponent],
   templateUrl: './ingredients-grid.component.html',
   styleUrl: './ingredients-grid.component.scss',
 })

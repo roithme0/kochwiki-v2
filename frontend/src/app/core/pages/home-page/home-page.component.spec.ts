@@ -1,6 +1,5 @@
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { BackendMetaService } from '../../services/backend-meta.service';
 import { PageHeaderService } from '../../services/page-header.service';
 import { HomePageComponent } from './home-page.component';
 
@@ -22,7 +21,6 @@ describe('HomePageComponent greeting reveal', () => {
           provide: DOCUMENT,
           useValue: { defaultView: { sessionStorage: storage } },
         },
-        { provide: BackendMetaService, useValue: {} },
         { provide: PageHeaderService, useValue: {} },
       ],
     });

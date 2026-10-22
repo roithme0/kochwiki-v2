@@ -32,7 +32,7 @@ def main() -> None:
     config = Settings().storage_config
     if config is None:
         raise RuntimeError("Configure all STORAGE_* settings, including STORAGE_BUCKET_RECIPE_IMAGES, before verification")
-    storage = Storage(config)
+    storage = Storage(config, bucket=config.bucket_recipe_images)
     key = f"storage-verification/{uuid4()}/plate +%?#ä.png"
     png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")
     try:

@@ -17,7 +17,7 @@ describe('Standalone nutrition artifact rendering', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: 'kochwiki-nutrition',
-      payload: {
+      content: {
         title: 'Suppe',
         payload: {
           basis: 'whole-recipe',

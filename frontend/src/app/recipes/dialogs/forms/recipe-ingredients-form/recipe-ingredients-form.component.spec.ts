@@ -18,6 +18,7 @@ import { By } from '@angular/platform-browser';
 import type { FoodstuffOut } from '../../../../core/api/generated';
 import { FoodstuffUnit } from '../../../../foodstuffs/models/foodstuff-unit';
 import { IngredientFieldComponent } from './ingredient-field/ingredient-field.component';
+import { FoodstuffImageService } from '../../../../foodstuffs/services/foodstuff-image.service';
 import { RecipeIngredientsFormComponent } from './recipe-ingredients-form.component';
 import { FoodstuffSelectionDialogComponent } from '../../../../foodstuffs/dialogs/foodstuff-selection-dialog/foodstuff-selection-dialog.component';
 
@@ -33,6 +34,8 @@ class ChartLegendElementStubComponent {
 
 describe('RecipeIngredientsFormComponent', () => {
   const openDialog = vi.fn();
+  const download =
+    vi.fn<(id: string) => Promise<{ url: string; expiresIn: number }>>();
   let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
   let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
@@ -41,6 +44,7 @@ describe('RecipeIngredientsFormComponent', () => {
     name: 'Haferflocken',
     brand: null,
     unit: FoodstuffUnit.Gram,
+    imageId: null,
     unitVerbose: 'g',
     kcal: 370,
     carbs: 60,
@@ -50,12 +54,16 @@ describe('RecipeIngredientsFormComponent', () => {
   };
 
   beforeEach(async () => {
+    download
+      .mockReset()
+      .mockResolvedValue({ url: '/storage/rice', expiresIn: 300 });
     const recipeForm = createRecipeForm();
     dialogResult = new Subject<FoodstuffOut[] | undefined>();
 
     await TestBed.configureTestingModule({
       imports: [RecipeIngredientsFormComponent],
       providers: [
+        { provide: FoodstuffImageService, useValue: { download } },
         { provide: FormGroupDirective, useValue: { control: recipeForm } },
         {
           provide: MatDialog,
@@ -80,6 +88,37 @@ describe('RecipeIngredientsFormComponent', () => {
     fixture = TestBed.createComponent(RecipeIngredientsFormComponent);
     fixture.componentInstance.selectedFoodstuffs.set([foodstuff]);
     fixture.detectChanges();
+  });
+
+  it('shows a selected ingredient image and falls back when its catalogue record is unavailable without changing the amount', async () => {
+    const component = fixture.componentInstance;
+    component.openFoodstuffSelectionDialog();
+    dialogResult.next([
+      { ...foodstuff, id: 2, name: 'Reis', imageId: 'rice-image' },
+    ]);
+    dialogResult.complete();
+    component.ingredients.at(1).controls.amount.setValue(75);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const image = element.querySelector<HTMLImageElement>(
+      'img[src="/storage/rice"]',
+    )!;
+    image.dispatchEvent(new Event('load'));
+    fixture.detectChanges();
+    expect(download).toHaveBeenCalledExactlyOnceWith('rice-image');
+    expect(image.style.visibility).toBe('visible');
+    component.selectedFoodstuffs.set([foodstuff]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const fields = element.querySelectorAll('app-ingredient-field');
+    expect(fields[1].querySelector('img')?.getAttribute('src')).toBe(
+      'images/question-mark.png',
+    );
+    expect(fields[1].textContent).toContain('Lebensmittel nicht verfügbar');
+    expect(component.ingredients.at(1).controls.amount.value).toBe(75);
   });
 
   it('opens the foodstuff dialog without adding or changing ingredient rows', () => {

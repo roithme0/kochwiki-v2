@@ -1,7 +1,9 @@
+import * as z from 'zod/mini';
 import type { RecipeVersionOut } from '../../core/api/generated';
 import {
-  presentArtifact,
-  ArtifactResponse,
+  presentSessionArtifact,
+  SessionArtifactMapper,
+  SessionCreationRequest,
 } from '@roithme0/chat-ui/conversation';
 import {
   ChatArtifact,
@@ -24,23 +26,41 @@ import {
 } from '../../core/presentation/nutrition-artifact';
 
 export interface RecipeSessionInput {
-  readonly context: RecipeContext;
-  readonly artifactCapabilities: readonly ChatArtifactCapability[];
+  readonly initial_context: RecipeContext;
+  readonly artifact_capabilities: NonNullable<
+    SessionCreationRequest['artifact_capabilities']
+  >;
 }
 
-export interface RecipeContext {
+export type RecipeSessionArtifact = Parameters<SessionArtifactMapper>[0];
+
+export type RecipeContext = {
   readonly source: RecipeVersionOut;
-}
+};
 
 export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
   return {
-    context: { source: structuredClone(source) },
-    artifactCapabilities: [
+    initial_context: { source: structuredClone(source) },
+    artifact_capabilities: [
       JSON_ARTIFACT_CAPABILITY,
       FOODSTUFF_ARTIFACT_CAPABILITY,
       RECIPE_ARTIFACT_CAPABILITY,
       NUTRITION_ARTIFACT_CAPABILITY,
-    ],
+    ].map(sessionCapability),
+  } satisfies SessionCreationRequest;
+}
+
+function sessionCapability(
+  capability: ChatArtifactCapability,
+): NonNullable<SessionCreationRequest['artifact_capabilities']>[number] {
+  const { metadataSchema, payloadSchema, ...header } = capability;
+  const schema = z.record(z.string(), z.json());
+  return {
+    ...header,
+    payloadSchema: schema.parse(payloadSchema),
+    ...(metadataSchema === undefined
+      ? {}
+      : { metadataSchema: schema.parse(metadataSchema) }),
   };
 }
 
@@ -60,6 +80,7 @@ export function recipeArtifact(
       index,
       amount,
       foodstuff: {
+        imageId: foodstuff.imageId,
         name: foodstuff.name,
         unitVerbose: foodstuff.unitVerbose,
         kcal: foodstuff.kcal,
@@ -83,28 +104,26 @@ export function recipeArtifact(
 }
 
 export function mapConversationArtifact(
-  artifact: ArtifactResponse,
+  artifact: RecipeSessionArtifact,
 ): ChatArtifact {
   if (artifact.type === JSON_ARTIFACT_CAPABILITY.type)
-    return presentArtifact(artifact);
+    return presentSessionArtifact(artifact);
   if (
     artifact.type === RECIPE_ARTIFACT_CAPABILITY.type &&
-    isRecord(artifact.payload) &&
-    isRecipePresentation(artifact.payload['payload']) &&
-    isRecipeArtifactMetadata(artifact.payload['metadata'])
+    isRecipePresentation(artifact.content.payload) &&
+    isRecipeArtifactMetadata(artifact.content.metadata)
   ) {
-    return presentArtifact(artifact);
+    return presentSessionArtifact(artifact);
   }
   if (artifact.type === FOODSTUFF_ARTIFACT_CAPABILITY.type) {
-    const presentation = presentArtifact(artifact);
+    const presentation = presentSessionArtifact(artifact);
     if (isFoodstuffPresentation(presentation.payload)) return presentation;
   }
   if (
     artifact.type === NUTRITION_ARTIFACT_CAPABILITY.type &&
-    isRecord(artifact.payload) &&
-    isNutritionPresentation(artifact.payload['payload'])
+    isNutritionPresentation(artifact.content.payload)
   ) {
-    return presentArtifact(artifact);
+    return presentSessionArtifact(artifact);
   }
   return {
     kind: 'artifact',
@@ -113,8 +132,4 @@ export function mapConversationArtifact(
     headline: 'Inhalt nicht darstellbar',
     payload: 'Dieser Inhalt ist nicht unterstützt.',
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

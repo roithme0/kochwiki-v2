@@ -99,6 +99,7 @@ def verify_definitions() -> None:
         "GARAGE_SECRET_ACCESS_KEY": SECRET_KEY,
         "APP_DB_PASSWORD": "test-only",
         "POSTGRES_PASSWORD": "test-only",
+        "STORAGE_PUBLIC_ORIGIN": "https://storage-check.example.invalid",
     }
     environment = os.environ | values
     with tempfile.TemporaryDirectory(prefix="kochwiki-storage-config-") as directory:
@@ -121,6 +122,11 @@ def verify_definitions() -> None:
             assert initializer["network_mode"] == "service:file-storage"
             assert initializer["environment"]["GARAGE_ACCESS_KEY_ID"] == ACCESS_KEY
             assert initializer["depends_on"]["file-storage"]["condition"] == "service_healthy"
+            backend = config["services"]["backend"]["environment"]
+            assert backend["STORAGE_BUCKET_RECIPE_IMAGES"] == "recipe-images"
+            assert backend["STORAGE_BUCKET_FOODSTUFF_IMAGES"] == "foodstuff-images"
+            assert backend["STORAGE_ACCESS_KEY_ID"] == ACCESS_KEY
+            assert backend["STORAGE_SECRET_ACCESS_KEY"] == SECRET_KEY
             mounts = {mount["target"]: mount for mount in garage["volumes"]}
             for name in ("data", "meta"):
                 mount = mounts[f"/var/lib/garage/{name}"]
@@ -175,11 +181,29 @@ main()
 ''', succeeds=False)
 
 
+def verify_domain_buckets() -> dict[str, bytes]:
+    key = "/checks/" + uuid.uuid4().hex + "/same%20key.png"
+    objects: dict[str, bytes] = {}
+    for bucket in ("recipe-images", "foodstuff-images"):
+        path = "/" + bucket + key
+        payload = (bucket + "\x00image-bytes").encode()
+        assert request("PUT", presign("PUT", path), payload)[0] == 200
+        objects[path] = payload
+        assert request("GET", "/storage" + path)[0] == 403
+        assert request("GET", "/storage/" + bucket)[0] == 403
+        assert request("PUT", "/storage" + path, b"anonymous")[0] == 403
+    for path, payload in objects.items():
+        assert request("GET", presign("GET", path)) == (200, payload)
+    print("Both domain buckets accept shared credentials, isolate identical keys, and deny unsigned access", flush=True)
+    return objects
+
+
 def verify() -> None:
     verify_definitions()
     try:
         compose("up", "-d", "--wait", "--wait-timeout", "90")
         ready()
+        domain_objects = verify_domain_buckets()
         for path in ("/", "/api/", "/mcp/"):
             assert request("GET", path)[0] == 200, path
         assert request("GET", "/storage")[0] == 404
@@ -192,6 +216,8 @@ def verify() -> None:
         print("Presigned PUT/GET/HEAD, encoded keys, and >1 MiB transfer passed", flush=True)
 
         compose("run", "--rm", "--no-deps", "file-storage-init")
+        for object_path, object_bytes in domain_objects.items():
+            assert request("GET", presign("GET", object_path)) == (200, object_bytes)
         assert request("GET", presign("GET", path)) == (200, payload)
         verify_additional_bucket()
         assert request("GET", presign("GET", path)) == (200, payload)
@@ -215,6 +241,8 @@ def verify() -> None:
         compose("up", "-d", "--force-recreate", "--no-deps", "--wait", "file-storage")
         ready()
         assert request("GET", presign("GET", path)) == (200, payload)
+        for object_path, object_bytes in domain_objects.items():
+            assert request("GET", presign("GET", object_path)) == (200, object_bytes)
         print("Bucket, key, and object survived restart and container recreation", flush=True)
 
         logs = subprocess.run(

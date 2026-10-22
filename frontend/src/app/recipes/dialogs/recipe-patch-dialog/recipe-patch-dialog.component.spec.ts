@@ -65,6 +65,8 @@ describe('RecipePatchDialogComponent', () => {
       dialogRef,
       snackBarService: { open: openSnackBar } as unknown as SnackBarService,
       isSubmitting: signal(false),
+      uploading: signal(false),
+      initialDisableClose: false,
     });
   });
 

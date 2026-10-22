@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.models.image import RecipeImage
+from app.images.models import ImageAsset, ImageKind
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalCreate
 from app.recipes.services.proposal_saves import save_recipe_proposal
@@ -24,7 +24,8 @@ def images() -> tuple[UUID, UUID]:
     ids = (uuid4(), uuid4())
     with SessionLocal.begin() as session:
         for index, image_id in enumerate(ids):
-            session.add(RecipeImage(
+            session.add(ImageAsset(
+                kind=ImageKind.RECIPE,
                 id=image_id, object_key=f"recipe-images/{image_id}.png", content_type="image/png",
                 size=100, width=800 + index * 200, height=600, sha256="a" * 64, created_at=datetime.now(timezone.utc),
             ))
@@ -127,14 +128,22 @@ def test_new_version_image_choices(
 
 
 @pytest.mark.parametrize("operation", ["create", "publish", "draft", "update"])
+@pytest.mark.parametrize("wrong_kind", [False, True])
 def test_unknown_image_rejects_entire_save(
-    client: TestClient, images: tuple[UUID, UUID], operation: str,
+    client: TestClient, images: tuple[UUID, UUID], operation: str, wrong_kind: bool,
 ) -> None:
     original = create(client, images[0])
     path = f"/recipes/{original.recipeLineageId}"
     draft = client.post(f"{path}/drafts", json={"name": "Draft", "servings": 2}).json()
     before = client.get("/recipes").json()
     unknown = uuid4()
+    if wrong_kind:
+        with SessionLocal.begin() as session:
+            session.add(ImageAsset(
+                id=unknown, kind=ImageKind.FOODSTUFF, object_key=f"foodstuff-images/{unknown}.png",
+                content_type="image/png", size=100, width=1, height=1,
+                sha256="a" * 64, created_at=datetime.now(timezone.utc),
+            ))
     payload = {"name": "Must not be saved", "servings": 3, "imageId": str(unknown)}
     if operation == "update":
         response = client.put(f"{path}/drafts/{draft['recipeVersionId']}", json=payload)
@@ -173,7 +182,7 @@ def test_failed_commit_preserves_image_reference(images: tuple[UUID, UUID], oper
         active = session.get(RecipeVersion, active_id)
         assert active is not None and active.state.value == "active" and active.image_id == images[0]
         assert set(session.scalars(select(RecipeVersion.version_id))) == {active_id, draft_id}
-        assert set(session.scalars(select(RecipeImage.id))) == set(images)
+        assert set(session.scalars(select(ImageAsset.id))) == set(images)
 
 
 def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: TestClient, images: tuple[UUID, UUID]) -> None:
@@ -181,7 +190,7 @@ def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: Te
     path = f"/recipes/{original.recipeLineageId}"
     draft = client.post(f"{path}/drafts", json={"name": "Shared", "servings": 2}).json()
     with pytest.raises(IntegrityError), SessionLocal.begin() as session:
-        image = session.get(RecipeImage, images[0])
+        image = session.get(ImageAsset, images[0])
         assert image is not None
         session.delete(image)
         session.flush()
@@ -189,7 +198,7 @@ def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: Te
     assert client.get(path).json()["imageId"] == str(images[0])
     assert client.delete(path).status_code == 204
     with SessionLocal() as session:
-        assert set(session.scalars(select(RecipeImage.id))) == set(images)
+        assert set(session.scalars(select(ImageAsset.id))) == set(images)
 
 
 @pytest.mark.parametrize("source_state", ["active", "draft", "historical"])

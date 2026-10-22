@@ -7,7 +7,7 @@ describe('RecipeImageComponent', () => {
   let fixture: ComponentFixture<RecipeImageComponent>;
   const download =
     vi.fn<(imageId: string) => Promise<RecipeImageDownloadOut>>();
-  const placeholder = 'assets/images/recipe-image-placeholder.png';
+  const placeholder = 'images/recipe-image-placeholder.png';
 
   const renderedSource = (): string | null =>
     (fixture.nativeElement as HTMLElement)
@@ -72,14 +72,19 @@ describe('RecipeImageComponent', () => {
           .dispatchEvent(new Event('error'));
         fixture.detectChanges();
       }
-      expect(
-        (fixture.nativeElement as HTMLElement).querySelector('img'),
-      ).toBeNull();
+      expect(renderedSource()).toBe(placeholder);
       expect(download).toHaveBeenCalledTimes(1);
       expect(
         (fixture.nativeElement as HTMLElement).querySelector('[role="status"]')!
           .textContent,
       ).toContain('konnte nicht geladen werden');
+      const retry = (fixture.nativeElement as HTMLElement).querySelector(
+        'button',
+      )!;
+      expect(retry.getAttribute('aria-label')).toBe('Bild erneut laden');
+      expect(retry.querySelector('mat-icon')?.getAttribute('fontIcon')).toBe(
+        'refresh',
+      );
       (fixture.nativeElement as HTMLElement).querySelector('button')!.click();
       fixture.detectChanges();
       await fixture.whenStable();
@@ -132,7 +137,7 @@ describe('RecipeImageComponent', () => {
     expect(fixture.componentInstance.imageUrl()).toBeNull();
   });
 
-  it('keeps the Material spinner visible until the image bytes load', async () => {
+  it('keeps the empty plate visible during access and byte loading without a spinner or retry button', async () => {
     let resolveDownload!: (value: RecipeImageDownloadOut) => void;
     download.mockReturnValueOnce(
       new Promise((resolve) => {
@@ -142,20 +147,21 @@ describe('RecipeImageComponent', () => {
     fixture.componentRef.setInput('imageId', 'image-a');
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
-    expect(
-      element.querySelector('.image-area .image-status mat-spinner'),
-    ).not.toBeNull();
-    expect(element.querySelector('img')).toBeNull();
+    expect(element.querySelector('mat-spinner, button')).toBeNull();
+    expect(renderedSource()).toBe(placeholder);
     resolveDownload({ url: '/storage/a', expiresIn: 300 });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(element.querySelector('mat-spinner')).not.toBeNull();
+    expect(element.querySelector('mat-spinner, button')).toBeNull();
+    expect(element.querySelector(`img[src="${placeholder}"]`)).not.toBeNull();
     expect(element.querySelector('img')!.style.visibility).toBe('hidden');
     expect(renderedSource()).toBe('/storage/a');
     element.querySelector('img')!.dispatchEvent(new Event('load'));
     fixture.detectChanges();
     expect(element.querySelector('mat-spinner')).toBeNull();
     expect(element.querySelector('img')!.style.visibility).toBe('visible');
+    expect(element.querySelector(`img[src="${placeholder}"]`)).toBeNull();
+    expect(element.querySelector('[role="status"]')).toBeNull();
   });
 
   it('prevents retry clicks from navigating the surrounding recipe link', async () => {

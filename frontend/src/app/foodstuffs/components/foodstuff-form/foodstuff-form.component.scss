@@ -16,21 +16,59 @@ form {
 
 .required-fields,
 .macros-wrapper {
-  display: flex;
-  flex-direction: row;
+  display: grid;
   gap: 0.75rem;
 }
 
-.name-field {
-  flex: 2 0;
+mat-card-content {
+  padding-top: 1rem;
+}
+h3 {
+  margin: 0;
+  font-size: inherit;
 }
 
-.unit-select {
-  flex: 1 0;
+.required-fields {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
 }
-
+.macro-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  align-items: center;
+  gap: 1.5rem;
+}
 .macros-wrapper {
-  flex: 0 0 100%;
+  grid-template-columns: minmax(0, 1fr);
+}
+.macros-wrapper input {
+  text-align: right;
+}
+.macro-chart {
+  width: 100%;
+  max-width: 11rem;
+  aspect-ratio: 1;
+  justify-self: center;
+}
+mat-form-field {
+  min-width: 0;
+  width: 100%;
+}
+
+.calories-field {
+  align-self: flex-start;
+  width: min(100%, 9rem);
+}
+
+p {
+  margin: 0;
+}
+button[type='submit'] {
+  width: 100%;
+}
+@media (max-width: 380px) {
+  .required-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 input::-webkit-outer-spin-button,

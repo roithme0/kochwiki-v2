@@ -9,7 +9,7 @@ export function registerAppIcons(): void {
   for (const name of ['home', 'hide_image'] as const) {
     registry.addSvgIcon(
       name,
-      sanitizer.bypassSecurityTrustResourceUrl(`assets/icons/${name}.svg`),
+      sanitizer.bypassSecurityTrustResourceUrl(`icons/${name}.svg`),
     );
   }
 }

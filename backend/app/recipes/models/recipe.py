@@ -17,7 +17,7 @@ from app.recipes.models.version_state import RecipeVersionState
 
 if TYPE_CHECKING:
     from app.foodstuffs.models.foodstuff import Foodstuff
-    from app.recipes.models.image import RecipeImage
+    from app.images.models import ImageAsset
 
 
 class RecipeLineage(Base):
@@ -57,8 +57,8 @@ class RecipeVersion(Base):
     name: Mapped[str] = mapped_column(String(MAX_NAME_LENGTH), nullable=False)
     servings: Mapped[int] = mapped_column(nullable=False)
     preptime: Mapped[int | None] = mapped_column(nullable=True)
-    image_id: Mapped[UUID | None] = mapped_column(ForeignKey("recipe_image.id", ondelete="RESTRICT"), nullable=True, index=True)
-    image: Mapped[RecipeImage | None] = relationship(viewonly=True)
+    image_id: Mapped[UUID | None] = mapped_column(ForeignKey("image_asset.id", ondelete="RESTRICT"), nullable=True, index=True)
+    image: Mapped[ImageAsset | None] = relationship(viewonly=True)
     ingredients: Mapped[list[Ingredient]] = relationship(
         back_populates="recipe_version", cascade="all, delete-orphan", order_by="Ingredient.index"
     )

@@ -45,6 +45,10 @@ export type FoodstuffCreate = {
      */
     fat?: number | string | null;
     /**
+     * Imageid
+     */
+    imageId?: string | null;
+    /**
      * Kcal
      */
     kcal?: number | string | null;
@@ -57,6 +61,78 @@ export type FoodstuffCreate = {
      */
     protein?: number | string | null;
     unit: Unit;
+};
+
+/**
+ * FoodstuffImageDownloadOut
+ */
+export type FoodstuffImageDownloadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * FoodstuffImageOut
+ */
+export type FoodstuffImageOut = {
+    /**
+     * Contenttype
+     */
+    contentType: 'image/png';
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Height
+     */
+    height: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Size
+     */
+    size: number;
+    /**
+     * Width
+     */
+    width: number;
+};
+
+/**
+ * FoodstuffImageUploadOut
+ */
+export type FoodstuffImageUploadOut = {
+    /**
+     * Expiresin
+     */
+    expiresIn: number;
+    /**
+     * Headers
+     */
+    headers: {
+        [key: string]: string;
+    };
+    /**
+     * Method
+     */
+    method: 'PUT';
+    /**
+     * Uploadid
+     */
+    uploadId: string;
+    /**
+     * Url
+     */
+    url: string;
 };
 
 /**
@@ -79,6 +155,10 @@ export type FoodstuffOut = {
      * Id
      */
     id: number;
+    /**
+     * Imageid
+     */
+    imageId: string | null;
     /**
      * Kcal
      */
@@ -123,6 +203,10 @@ export type FoodstuffSummaryOut = {
      */
     id: number;
     /**
+     * Imageid
+     */
+    imageId: string | null;
+    /**
      * Kcal
      */
     kcal: number | null;
@@ -157,6 +241,10 @@ export type FoodstuffUpdate = {
      * Fat
      */
     fat?: number | string | null;
+    /**
+     * Imageid
+     */
+    imageId?: string | null;
     /**
      * Kcal
      */
@@ -768,6 +856,111 @@ export type CurrentUserAuthMeGetResponses = {
 
 export type CurrentUserAuthMeGetResponse = CurrentUserAuthMeGetResponses[keyof CurrentUserAuthMeGetResponses];
 
+export type BeginUploadFoodstuffImageUploadsPostData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/foodstuff-image-uploads';
+};
+
+export type BeginUploadFoodstuffImageUploadsPostErrors = {
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type BeginUploadFoodstuffImageUploadsPostError = BeginUploadFoodstuffImageUploadsPostErrors[keyof BeginUploadFoodstuffImageUploadsPostErrors];
+
+export type BeginUploadFoodstuffImageUploadsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: FoodstuffImageUploadOut;
+};
+
+export type BeginUploadFoodstuffImageUploadsPostResponse = BeginUploadFoodstuffImageUploadsPostResponses[keyof BeginUploadFoodstuffImageUploadsPostResponses];
+
+export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostData = {
+    body?: never;
+    path: {
+        /**
+         * Upload Id
+         */
+        upload_id: string;
+    };
+    query?: never;
+    url: '/foodstuff-image-uploads/{upload_id}/complete';
+};
+
+export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
+    /**
+     * Bad Request
+     */
+    400: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostError = CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors[keyof CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors];
+
+export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: FoodstuffImageOut;
+};
+
+export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponse = CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses];
+
+export type DownloadImageFoodstuffImagesImageIdDownloadGetData = {
+    body?: never;
+    path: {
+        /**
+         * Image Id
+         */
+        image_id: string;
+    };
+    query?: never;
+    url: '/foodstuff-images/{image_id}/download';
+};
+
+export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Service Unavailable
+     */
+    503: ErrorResponse;
+};
+
+export type DownloadImageFoodstuffImagesImageIdDownloadGetError = DownloadImageFoodstuffImagesImageIdDownloadGetErrors[keyof DownloadImageFoodstuffImagesImageIdDownloadGetErrors];
+
+export type DownloadImageFoodstuffImagesImageIdDownloadGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: FoodstuffImageDownloadOut;
+};
+
+export type DownloadImageFoodstuffImagesImageIdDownloadGetResponse = DownloadImageFoodstuffImagesImageIdDownloadGetResponses[keyof DownloadImageFoodstuffImagesImageIdDownloadGetResponses];
+
 export type GetFoodstuffsFoodstuffsGetData = {
     body?: never;
     path?: never;
@@ -794,6 +987,10 @@ export type PostFoodstuffFoodstuffsPostData = {
 };
 
 export type PostFoodstuffFoodstuffsPostErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
     /**
      * Conflict
      */

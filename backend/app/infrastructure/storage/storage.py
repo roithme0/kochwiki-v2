@@ -37,8 +37,14 @@ class StoredObject:
 
 
 class Storage:
-    def __init__(self, config: StorageConfig) -> None:
-        self._bucket = config.bucket_recipe_images
+    def __init__(self, config: StorageConfig, *, bucket: str) -> None:
+        if (
+            not bucket
+            or bucket != bucket.strip()
+            or any(character in bucket for character in "/\\?#")
+        ):
+            raise ValueError("Invalid storage bucket")
+        self._bucket = bucket
         sdk_config = Config(
             signature_version="s3v4",
             s3={"addressing_style": "path"},
@@ -129,7 +135,11 @@ class Storage:
 
     def read(self, key: str, *, max_bytes: int) -> bytes | None:
         self._validate_key(key)
-        if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes < 1:
+        if (
+            isinstance(max_bytes, bool)
+            or not isinstance(max_bytes, int)
+            or max_bytes < 1
+        ):
             raise ValueError("Storage read limit must be positive")
         try:
             response = self._internal.get_object(Bucket=self._bucket, Key=key)
@@ -156,7 +166,10 @@ class Storage:
         self._validate_key(key)
         try:
             self._internal.put_object(
-                Bucket=self._bucket, Key=key, Body=data, ContentType=content_type,
+                Bucket=self._bucket,
+                Key=key,
+                Body=data,
+                ContentType=content_type,
             )
         except (BotoCoreError, ClientError):
             raise StorageUnavailable("Storage object write failed") from None

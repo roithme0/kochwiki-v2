@@ -4,7 +4,8 @@
       ? 'Entwurf bearbeiten'
       : 'Rezept bearbeiten'
   "
-  [showCloseButon]="!isSubmitting()"
+  [showCloseButon]="true"
+  [closeDisabled]="busy()"
 />
 
 <mat-dialog-content class="mat-dialog-content">
@@ -17,6 +18,7 @@
     "
     [mode]="data.recipeVersion.state === 'draft' ? 'draft' : 'active'"
     [submitting]="isSubmitting()"
+    (uploadingChanged)="onUploadingChange($event)"
     (submitted)="onSubmit($event)"
   />
 </mat-dialog-content>

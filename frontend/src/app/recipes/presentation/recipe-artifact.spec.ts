@@ -9,6 +9,7 @@ import {
 } from './recipe-artifact';
 
 const foodstuff = {
+  imageId: null,
   name: 'Tomaten',
   unitVerbose: 'g',
   kcal: 18,
@@ -28,10 +29,50 @@ const payload = {
 };
 
 describe('Recipe artifact contract', () => {
+  it.each([null, '00000000-0000-4000-8000-000000000002'])(
+    'accepts and relays a supplied image reference: %s',
+    (imageId) => {
+      const recipe = {
+        ...payload,
+        ingredients: [
+          { ...payload.ingredients[0], foodstuff: { ...foodstuff, imageId } },
+        ],
+      };
+      expect(isRecipePresentation(recipe)).toBe(true);
+      const artifact = mapConversationArtifact({
+        ...conversationProposal(),
+        content: { title: 'Recipe', payload: recipe },
+      });
+      expect(artifact.type).toBe('kochwiki-recipe');
+      expect(artifact.payload).toEqual(recipe);
+    },
+  );
+
+  it.each([undefined, 'invalid', 42, '/storage/image.png'])(
+    'rejects a missing or malformed image reference: %j',
+    (imageId) => {
+      const recipe = {
+        ...payload,
+        ingredients: [
+          { ...payload.ingredients[0], foodstuff: { ...foodstuff, imageId } },
+        ],
+      };
+      expect(isRecipePresentation(recipe)).toBe(false);
+      expect(
+        mapConversationArtifact({
+          ...conversationProposal(),
+          content: {
+            title: 'Recipe',
+            payload: recipe,
+          } as unknown as ReturnType<typeof conversationProposal>['content'],
+        }).type,
+      ).toBe('kochwiki-unsupported');
+    },
+  );
   it('retains proposal identity only in metadata', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
-      payload: {
+      content: {
         title: 'Tomatensalat',
         payload,
         metadata: { proposalId },
@@ -47,11 +88,11 @@ describe('Recipe artifact contract', () => {
       expect(
         mapConversationArtifact({
           ...conversationProposal(),
-          payload: {
+          content: {
             title: 'Tomatensalat',
             payload,
             metadata,
-          },
+          } as unknown as ReturnType<typeof conversationProposal>['content'],
         }).type,
       ).toBe('kochwiki-unsupported');
     },
@@ -60,7 +101,7 @@ describe('Recipe artifact contract', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: 'kochwiki-recipe',
-      payload: { title: 'Tomatensalat', payload },
+      content: { title: 'Tomatensalat', payload },
     });
     expect(artifact).toEqual({
       kind: 'artifact',
@@ -92,7 +133,7 @@ describe('Recipe artifact contract', () => {
     expect(isRecipePresentation(partial)).toBe(true);
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
-      payload: { title: 'Partial recipe', payload: partial },
+      content: { title: 'Partial recipe', payload: partial },
     });
     expect(artifact.type).toBe('kochwiki-recipe');
     expect(artifact.payload).toEqual(partial);
@@ -128,12 +169,25 @@ describe('Recipe artifact contract', () => {
       mapConversationArtifact({
         ...conversationProposal(),
         type: 'kochwiki-recipe',
-        payload: { title: 'Recipe', payload: value },
+        content: { title: 'Recipe', payload: value },
       }).type,
     ).toBe('kochwiki-unsupported');
   });
 
   it('advertises a strict presentation schema and recipe name header guidance', () => {
+    expect(RECIPE_ARTIFACT_CAPABILITY.payloadSchema).toMatchObject({
+      properties: {
+        ingredients: {
+          items: {
+            properties: {
+              foodstuff: {
+                required: expect.arrayContaining(['imageId']) as unknown,
+              },
+            },
+          },
+        },
+      },
+    });
     expect(
       RECIPE_ARTIFACT_CAPABILITY.payloadSchema['additionalProperties'],
     ).toBe(false);

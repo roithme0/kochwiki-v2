@@ -15,6 +15,7 @@ const foodstuff: FoodstuffOut = {
   name: 'Oats',
   brand: null,
   unit: FoodstuffUnit.Gram,
+  imageId: '00000000-0000-4000-8000-000000000002',
   unitVerbose: 'Gramm',
   kcal: 370.5,
   carbs: 60,
@@ -58,6 +59,13 @@ const operations: {
 ];
 
 const malformedResponses = [
+  { reason: 'invalid image UUID', body: { ...foodstuff, imageId: 'invalid' } },
+  {
+    reason: 'missing image identity',
+    body: Object.fromEntries(
+      Object.entries(foodstuff).filter(([key]) => key !== 'imageId'),
+    ),
+  },
   {
     reason: 'missing nullable field',
     body: Object.fromEntries(
@@ -91,6 +99,21 @@ describe('FoodstuffBackendService', () => {
   afterEach(() => {
     httpTesting.verify();
   });
+
+  it.each<FoodstuffUpdate>([
+    {},
+    { imageId: null },
+    { imageId: foodstuff.imageId },
+  ])(
+    'preserves omitted, cleared, and replaced image fields in update requests: %j',
+    async (updates) => {
+      const response = service.patchFoodstuff(7, updates);
+      const request = httpTesting.expectOne(backendUrl + '/foodstuffs/7');
+      expect(request.request.body).toEqual(updates);
+      request.flush(foodstuff);
+      await expect(response).resolves.toEqual(foodstuff);
+    },
+  );
 
   describe.each(operations)('$method $path', (operation) => {
     it('accepts numeric nutrition, nulls, and recipe UUIDs', async () => {
@@ -179,6 +202,7 @@ describe('FoodstuffBackendService', () => {
       name: 'Updated foodstuff',
       brand: null,
       unit: FoodstuffUnit.Gram,
+      imageId: null,
       unitVerbose: 'Gramm',
       kcal: null,
       carbs: null,

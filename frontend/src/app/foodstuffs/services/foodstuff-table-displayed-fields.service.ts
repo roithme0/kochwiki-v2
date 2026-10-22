@@ -1,7 +1,7 @@
 import { Injectable, computed, Signal } from '@angular/core';
 import type { FoodstuffField } from '../models/foodstuff-labels';
 
-type DisplayedField = FoodstuffField | 'chart' | 'edit' | 'delete';
+type DisplayedField = FoodstuffField | 'image' | 'edit' | 'delete';
 
 @Injectable({
   providedIn: 'root',
@@ -10,7 +10,7 @@ export class FoodstuffTableDisplayedFieldsService {
   getDisplayedFields(width: Signal<number>): Signal<DisplayedField[]> {
     return computed((): DisplayedField[] => {
       const elementWidth = width();
-      const displayedFields: DisplayedField[] = ['chart', 'name'];
+      const displayedFields: DisplayedField[] = ['image', 'name'];
       if (elementWidth > 500) {
         displayedFields.push('brand');
       }

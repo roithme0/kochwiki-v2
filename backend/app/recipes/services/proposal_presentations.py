@@ -75,5 +75,5 @@ def _resolve_proposal_foodstuff(
         })
     definition = foodstuff.definition
     return ResolvedTemporaryProposalFoodstuff.model_validate({
-        **definition.model_dump(), "kind": "temporary", "unitVerbose": definition.unit.verbose_name,
+        **definition.model_dump(), "kind": "temporary", "imageId": None, "unitVerbose": definition.unit.verbose_name,
     })

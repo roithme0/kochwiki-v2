@@ -7,10 +7,9 @@
   <mat-card-content>
     <div class="grid">
       @for (ingredient of ingredientsSorted(); track ingredient.index) {
-        <app-macro-chart
-          class="macro-chart"
-          [nutrition]="ingredient.foodstuff | nutritionSummary"
-          [showKcal]="false"
+        <app-foodstuff-image
+          class="foodstuff-image"
+          [imageId]="ingredient.foodstuff.imageId"
         />
         <span>{{ ingredient.foodstuff.name }}</span>
         <span class="amount"

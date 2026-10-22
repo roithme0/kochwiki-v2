@@ -337,6 +337,46 @@ def test_invalid_configuration(values: dict[str, str]) -> None:
     assert SECRET not in str(error.value)
 
 
+@pytest.mark.parametrize("field", ["oidc_issuer", "oidc_callback_url", "oidc_backchannel_url"])
+@pytest.mark.parametrize("allow_http", [False, True])
+def test_nonlocal_http_requires_opt_in(field: str, allow_http: bool) -> None:
+    urls = {
+        "oidc_issuer": "https://idp.example/realms/services",
+        "oidc_callback_url": "https://wiki.example/api/auth/callback",
+        "oidc_backchannel_url": "https://internal-idp.example/realms/services",
+    }
+    urls[field] = urls[field].replace("https://", "http://", 1)
+    if not allow_http:
+        with pytest.raises(ValidationError, match="OIDC URLs require HTTPS"):
+            Settings(_env_file=None, oidc_client_secret=SECRET, **urls)
+        return
+    configured = Settings(
+        _env_file=None, oidc_client_secret=SECRET, oidc_allow_insecure_http=True, **urls
+    )
+    service = oidc.OIDCLogin(configured)
+    assert service.issuer == urls["oidc_issuer"]
+    assert service.backchannel == urls["oidc_backchannel_url"]
+    assert service.secure_cookie == (field != "oidc_callback_url")
+
+
+@pytest.mark.parametrize("issuer", [
+    "ftp://idp.example/realms/services",
+    "http:///realms/services",
+    "http://user:password@idp.example/realms/services",
+    "http://idp.example/realms/services?query=value",
+    "http://idp.example/realms/services#fragment",
+    "http://*.example/realms/services",
+    "http://idp.example:0/realms/services",
+    "http://idp.example/realms/services/",
+])
+def test_http_opt_in_preserves_url_validation(issuer: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None, oidc_issuer=issuer, oidc_client_secret=SECRET,
+            oidc_callback_url=CALLBACK, oidc_allow_insecure_http=True,
+        )
+
+
 def test_backchannel_never_changes_identity(settings: Settings) -> None:
     service = oidc.OIDCLogin(settings.model_copy(update={"oidc_backchannel_url": "http://host.docker.internal:8006/realms/services"}))
     assert service.transport_url(ISSUER + "/protocol/openid-connect/token") == "http://host.docker.internal:8006/realms/services/protocol/openid-connect/token"

@@ -8,6 +8,7 @@ from app.recipes.schemas.recipe import IngredientWrite, RecipeVersionOut, Recipe
 from app.recipes.schemas.proposal import ExistingProposalFoodstuff, ProposalRecipe
 from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import create_foodstuff
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import create_recipe_draft, get_recipe_version_by_id, recipe_version_out
 
@@ -45,7 +46,7 @@ def _materialize_recipe(session: Session, recipe: ProposalRecipe) -> RecipeVersi
         foodstuff_id = (
             foodstuff.foodstuffId
             if isinstance(foodstuff, ExistingProposalFoodstuff)
-            else create_foodstuff(session, foodstuff.definition).id
+            else create_foodstuff(session, FoodstuffCreate.model_validate(foodstuff.definition.model_dump())).id
         )
         ingredients.append(IngredientWrite(
             index=ingredient.index, amount=ingredient.amount, foodstuffId=foodstuff_id

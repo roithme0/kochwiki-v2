@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import get_db, get_write_db
 from app.core.schemas.errors import (
-    CONFLICT_RESPONSE,
     NOT_FOUND_AND_CONFLICT_RESPONSES,
     NOT_FOUND_RESPONSE,
 )
@@ -42,7 +41,7 @@ def get_foodstuff(
     "/foodstuffs",
     response_model=FoodstuffOut,
     status_code=status.HTTP_201_CREATED,
-    responses=CONFLICT_RESPONSE,
+    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
 )
 def post_foodstuff(
     payload: FoodstuffCreate, session: Session = Depends(get_write_db, scope="function")

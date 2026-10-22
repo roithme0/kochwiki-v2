@@ -1,5 +1,5 @@
 import type { RecipeVersionOut } from '../../core/api/generated';
-import { ArtifactResponse } from '@roithme0/chat-ui/conversation';
+import type { RecipeSessionArtifact } from './recipe-conversation-contract';
 import type { FoodstuffOut } from '../../core/api/generated';
 import { recipeArtifact } from './recipe-conversation-contract';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
@@ -10,6 +10,7 @@ export function conversationFoodstuff(): FoodstuffOut {
     name: 'Linsen',
     brand: null,
     unit: FoodstuffUnit.Gram,
+    imageId: null,
     unitVerbose: 'g',
     kcal: 120,
     carbs: 20,
@@ -57,18 +58,17 @@ export function conversationRecipe(): RecipeVersionOut {
 
 export const proposalId = '00000000-0000-4000-8000-000000000003';
 
-export function conversationProposal(): ArtifactResponse {
+export function conversationProposal(): RecipeSessionArtifact {
   return {
     artifact_id: 'proposal-1',
     type: 'kochwiki-recipe',
     created_at: '2026-09-27T00:00:00Z',
-    order: 1,
-    turn_id: 'turn-1',
-    payload: {
+    run_id: 'turn-1',
+    content: {
       title: 'Neue Linsensuppe',
       metadata: { proposalId },
       payload: recipeArtifact('presentation', 'Recipe', conversationRecipe())
-        .payload,
+        .payload as RecipeSessionArtifact['content']['payload'],
     },
   };
 }

@@ -9,11 +9,13 @@ from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, Food
 from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
 from app.infrastructure.database.integrity import flush_for_unique_conflict
+from app.images.models import ImageAsset, ImageKind
 
 
 def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:
     return FoodstuffSummaryOut(
         id=foodstuff.id,
+        imageId=foodstuff.image_id,
         name=foodstuff.name,
         brand=foodstuff.brand,
         unit=foodstuff.unit,
@@ -29,6 +31,7 @@ def foodstuff_out(foodstuff: Foodstuff) -> FoodstuffOut:
     summary = foodstuff_summary_out(foodstuff)
     return FoodstuffOut(
         id=summary.id,
+        imageId=summary.imageId,
         name=summary.name,
         brand=summary.brand,
         unit=summary.unit,
@@ -59,7 +62,8 @@ def get_foodstuff(session: Session, foodstuff_id: int) -> Foodstuff:
 
 
 def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
-    foodstuff = Foodstuff(**payload.model_dump())
+    _validate_image(session, payload)
+    foodstuff = Foodstuff(**payload.model_dump(exclude={"imageId"}), image_id=payload.imageId)
     session.add(foodstuff)
     flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
     mark_foodstuff_refresh(session, foodstuff.id)
@@ -68,13 +72,23 @@ def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
 
 def update_foodstuff(session: Session, foodstuff_id: int, payload: FoodstuffUpdate) -> Foodstuff:
     foodstuff = get_foodstuff(session, foodstuff_id)
+    _validate_image(session, payload)
     previous_input = (foodstuff.name, foodstuff.brand or "")
-    for field_name, value in payload.model_dump(exclude_unset=True).items():
+    for field_name, value in payload.model_dump(exclude_unset=True, exclude={"imageId"}).items():
         setattr(foodstuff, field_name, value)
+    if "imageId" in payload.model_fields_set:
+        foodstuff.image_id = payload.imageId
     flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
     if previous_input != (foodstuff.name, foodstuff.brand or ""):
         mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
+
+
+def _validate_image(session: Session, payload: FoodstuffCreate | FoodstuffUpdate) -> None:
+    if payload.imageId is not None:
+        image = session.get(ImageAsset, payload.imageId)
+        if image is None or image.kind != ImageKind.FOODSTUFF:
+            raise NotFoundError(f"Foodstuff image with id {payload.imageId} not found")
 
 
 def delete_foodstuff(session: Session, foodstuff_id: int) -> None:

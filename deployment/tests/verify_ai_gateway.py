@@ -107,8 +107,8 @@ def verify(port: int, delayed: bool) -> None:
     assert request(port, "/aide")[0] == 200, "Ordinary frontend prefix route blocked"
     for agent in ("kochwiki", "demo", "renamed-agent_2"):
         for method, suffix in (("POST", ""), ("GET", "/session-1"),
-                               ("POST", "/session-1/messages"), ("POST", "/session-1/turns"),
-                               ("GET", "/session-1/turns/turn-1/events")):
+                               ("POST", "/session-1/turns"),
+                               ("GET", "/session-1/events")):
             path = BASE.replace("/kochwiki/", f"/{agent}/") + suffix + "?sample=a%20b&sample=c"
             body = b'{"text":"hello","nested":{"value":1}}' if method == "POST" else b""
             before = len(REQUESTS)
@@ -127,7 +127,8 @@ def verify(port: int, delayed: bool) -> None:
     before = len(REQUESTS)
     for path in ("/ai", "/ai/", "/ai/api/v1/agents/demo/configuration", "/ai/health",
                  "/ai/api/v1/agents//sessions", "/ai/api/v1/agents/demo%2Fother/sessions",
-                 BASE + "-lookalike", BASE + "/session-1/other", BASE + "/session-1/turns/extra",
+                 BASE + "-lookalike", BASE + "/session-1/other", BASE + "/session-1/messages",
+                 BASE + "/session-1/turns/turn-1/events", BASE + "/session-1/events/extra", BASE + "/session-1/turns/extra",
                  BASE + "/session%2Fturns", BASE + "/session-1%2Fturns",
                  BASE + "/session-1/turns/turn-1", BASE + "/session-1/turns//events",
                  BASE + "/session-1/turns/turn-1/events/extra",
@@ -150,7 +151,7 @@ def verify(port: int, delayed: bool) -> None:
 
 
 def verify_stream(port: int) -> None:
-    path = BASE + "/session-1/turns/turn-1/events?stream=1&sample=a%20b"
+    path = BASE + "/session-1/events?stream=1&sample=a%20b"
     RELEASE_STREAM.clear()
     before = len(REQUESTS)
     connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)

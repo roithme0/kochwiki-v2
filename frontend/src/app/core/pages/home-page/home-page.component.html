@@ -12,7 +12,7 @@
       ariaCurrentWhenActive="page"
       class="navigation-link"
     >
-      <img src="assets/images/recipes.png" alt="" class="image" />
+      <img src="images/recipes.png" alt="" class="image" />
       <span class="navigation-label">Rezepte</span>
     </a>
     <a
@@ -20,16 +20,8 @@
       ariaCurrentWhenActive="page"
       class="navigation-link"
     >
-      <img src="assets/images/foodstuffs.png" alt="" class="image" />
+      <img src="images/foodstuffs.png" alt="" class="image" />
       <span class="navigation-label">Zutaten</span>
     </a>
   </nav>
-  <div class="versions-wrapper">
-    <span class="version">Frontend {{ frontendVersion }}</span>
-    @if (backendMetaService.backendVersion()) {
-      <span class="version"
-        >Backend {{ backendMetaService.backendVersion() }}</span
-      >
-    }
-  </div>
 </main>
