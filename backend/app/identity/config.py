@@ -32,8 +32,10 @@ def validate_oidc_settings(settings: "Settings") -> None:
         local_hosts = {"localhost", "127.0.0.1", "::1"}
         if value == settings.oidc_backchannel_url:
             local_hosts.add("host.docker.internal")
-        local_http = url.scheme == "http" and url.hostname in local_hosts
-        if (url.scheme != "https" and not local_http) or not url.hostname:
+        allowed_http = url.scheme == "http" and (
+            url.hostname in local_hosts or settings.oidc_allow_insecure_http
+        )
+        if (url.scheme != "https" and not allowed_http) or not url.hostname:
             raise ValueError("OIDC URLs require HTTPS, except local development addresses")
         if url.username or url.password or url.query or url.fragment or "*" in value:
             raise ValueError("OIDC URLs must not contain credentials, queries, fragments or wildcards")

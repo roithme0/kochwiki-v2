@@ -40,6 +40,16 @@ when running FastAPI on the host:
 | `OIDC_CLIENT_SECRET` | The identity provider's `KOCHWIKI_CLIENT_SECRET` |
 | `OIDC_CALLBACK_URL` | `http://localhost:8000/api/auth/callback` |
 | `OIDC_BACKCHANNEL_URL` | Docker only: `http://host.docker.internal:8006/realms/services` |
+| `OIDC_ALLOW_INSECURE_HTTP` | Defaults to `false` in the backend; staging Compose temporarily defaults to `true` until TLS is configured. |
+
+The temporary HTTP override permits non-local HTTP issuer, callback and backchannel
+URLs while retaining all other URL validation. Staging Compose reads the override
+from `deployment/.env`; local and production Compose do not enable it. HTTP exposes
+login traffic and session cookies to interception. Once staging TLS is ready, set
+`OIDC_ALLOW_INSECURE_HTTP=false` in `deployment/.env`, switch the public issuer and
+callback URLs to HTTPS, and register the HTTPS callback with the provider. Set any
+backchannel override to HTTPS or remove it. HTTP callbacks produce cookies without
+the Secure flag; HTTPS callbacks produce Secure cookies.
 
 Issuer, secret and callback must be configured together. Leave them blank to
 disable verification; login and session endpoints then return 503. Partial or unsafe
