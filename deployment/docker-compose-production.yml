@@ -86,7 +86,7 @@ services:
       AI_GATEWAY_URL: ${AI_GATEWAY_URL:-}
     entrypoint: ["/bin/sh", "-c", "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
     ports:
-      - "${GATEWAY_PORT:-8000}:80"
+      - "${GATEWAY_PORT:-8003}:80"
     volumes:
       - ./gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
       - ./gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
