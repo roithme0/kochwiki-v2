@@ -27,7 +27,7 @@ describe('Nutrition artifact contract', () => {
       const artifact = mapConversationArtifact({
         ...conversationProposal(),
         type: NUTRITION_ARTIFACT_CAPABILITY.type,
-        payload: { title: 'Linsen', subtitle: 'Marke', payload },
+        content: { title: 'Linsen', subtitle: 'Marke', payload },
       });
       expect(artifact).toEqual({
         kind: 'artifact',
@@ -76,7 +76,9 @@ describe('Nutrition artifact contract', () => {
       mapConversationArtifact({
         ...conversationProposal(),
         type: 'kochwiki-nutrition',
-        payload: { title: 'Linsen', payload },
+        content: { title: 'Linsen', payload } as unknown as ReturnType<
+          typeof conversationProposal
+        >['content'],
       }).type,
     ).toBe('kochwiki-unsupported');
   });
@@ -98,7 +100,7 @@ describe('Nutrition artifact contract', () => {
       mapConversationArtifact({
         ...conversationProposal(),
         type: 'kochwiki-nutrition',
-        payload: { title: 'Linsen', payload },
+        content: { title: 'Linsen', payload },
       }).type,
     ).toBe('kochwiki-unsupported');
   });

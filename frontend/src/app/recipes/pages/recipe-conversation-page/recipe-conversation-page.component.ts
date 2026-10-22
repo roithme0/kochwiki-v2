@@ -11,10 +11,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import {
-  AgentConfiguration,
-  ConversationController,
-  ConversationViewState,
-  HttpConversationTransport,
+  SessionController,
+  SessionViewState,
+  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
 import {
   ChatArtifact,
@@ -89,7 +88,7 @@ export class RecipeConversationPageComponent {
   readonly savePending = signal(false);
   readonly recipeProposalId = recipeProposalId;
 
-  private controller: ConversationController | null = null;
+  private controller: SessionController | null = null;
   private generation = 0;
   private conversationUserId: number | null = null;
   private submitted = false;
@@ -107,7 +106,10 @@ export class RecipeConversationPageComponent {
   >('loading');
   readonly back = signal('/recipes');
   readonly original = signal<ChatArtifact | null>(null);
-  readonly view = signal<ConversationViewState>({
+  readonly view = signal<SessionViewState>({
+    snapshot: null,
+    admission: 'idle',
+    observation: 'connecting',
     turns: [],
     composerDisabled: true,
     composerEditingDisabled: true,
@@ -119,8 +121,7 @@ export class RecipeConversationPageComponent {
     return original
       ? [
           {
-            id: original.id,
-            userMessageId: original.id,
+            runKey: null,
             status: 'completed',
             content: [original],
           },
@@ -172,6 +173,9 @@ export class RecipeConversationPageComponent {
     this.setSubmitted(false);
     this.original.set(null);
     this.view.set({
+      snapshot: null,
+      admission: 'idle',
+      observation: 'connecting',
       turns: [],
       composerDisabled: true,
       composerEditingDisabled: true,
@@ -208,13 +212,12 @@ export class RecipeConversationPageComponent {
           source,
         ),
       );
-      const transport = new HttpConversationTransport(
+      const transport = new HttpSessionTransport(
         '/ai/api/v1',
-        AgentConfiguration.kochwiki,
+        'kochwiki',
         `kochwiki:${userId}`,
-        mapSessionInput(source),
       );
-      const controller = new ConversationController(
+      const controller = new SessionController(
         transport,
         (state) => {
           if (this.isCurrent(generation, userId)) this.view.set(state);
@@ -224,7 +227,7 @@ export class RecipeConversationPageComponent {
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');
-      await controller.start();
+      await controller.start(mapSessionInput(source));
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;
       this.phase.set(
@@ -276,7 +279,7 @@ export class RecipeConversationPageComponent {
     this.actionPending = true;
     await controller.performAction(action);
     if (!this.isCurrent(generation, userId)) return;
-    if (action === 'new-session' && controller.state.status === null) {
+    if (action === 'new-session' && controller.state.observation !== 'lost') {
       this.invalidateSaveFeedback();
       this.setSubmitted(false);
     }

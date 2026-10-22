@@ -41,7 +41,7 @@ describe('Recipe artifact contract', () => {
       expect(isRecipePresentation(recipe)).toBe(true);
       const artifact = mapConversationArtifact({
         ...conversationProposal(),
-        payload: { title: 'Recipe', payload: recipe },
+        content: { title: 'Recipe', payload: recipe },
       });
       expect(artifact.type).toBe('kochwiki-recipe');
       expect(artifact.payload).toEqual(recipe);
@@ -61,7 +61,10 @@ describe('Recipe artifact contract', () => {
       expect(
         mapConversationArtifact({
           ...conversationProposal(),
-          payload: { title: 'Recipe', payload: recipe },
+          content: {
+            title: 'Recipe',
+            payload: recipe,
+          } as unknown as ReturnType<typeof conversationProposal>['content'],
         }).type,
       ).toBe('kochwiki-unsupported');
     },
@@ -69,7 +72,7 @@ describe('Recipe artifact contract', () => {
   it('retains proposal identity only in metadata', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
-      payload: {
+      content: {
         title: 'Tomatensalat',
         payload,
         metadata: { proposalId },
@@ -85,11 +88,11 @@ describe('Recipe artifact contract', () => {
       expect(
         mapConversationArtifact({
           ...conversationProposal(),
-          payload: {
+          content: {
             title: 'Tomatensalat',
             payload,
             metadata,
-          },
+          } as unknown as ReturnType<typeof conversationProposal>['content'],
         }).type,
       ).toBe('kochwiki-unsupported');
     },
@@ -98,7 +101,7 @@ describe('Recipe artifact contract', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: 'kochwiki-recipe',
-      payload: { title: 'Tomatensalat', payload },
+      content: { title: 'Tomatensalat', payload },
     });
     expect(artifact).toEqual({
       kind: 'artifact',
@@ -130,7 +133,7 @@ describe('Recipe artifact contract', () => {
     expect(isRecipePresentation(partial)).toBe(true);
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
-      payload: { title: 'Partial recipe', payload: partial },
+      content: { title: 'Partial recipe', payload: partial },
     });
     expect(artifact.type).toBe('kochwiki-recipe');
     expect(artifact.payload).toEqual(partial);
@@ -166,7 +169,7 @@ describe('Recipe artifact contract', () => {
       mapConversationArtifact({
         ...conversationProposal(),
         type: 'kochwiki-recipe',
-        payload: { title: 'Recipe', payload: value },
+        content: { title: 'Recipe', payload: value },
       }).type,
     ).toBe('kochwiki-unsupported');
   });

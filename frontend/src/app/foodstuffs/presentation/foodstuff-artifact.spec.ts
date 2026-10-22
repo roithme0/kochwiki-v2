@@ -14,7 +14,7 @@ describe('Foodstuff artifact contract', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: FOODSTUFF_ARTIFACT_CAPABILITY.type,
-      payload: { title: 'Linsen', subtitle: 'Marke', payload },
+      content: { title: 'Linsen', subtitle: 'Marke', payload },
     });
     expect(artifact).toEqual({
       kind: 'artifact',
@@ -37,7 +37,7 @@ describe('Foodstuff artifact contract', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: 'kochwiki-foodstuff',
-      payload: { title: 'Ei', payload: nutrition },
+      content: { title: 'Ei', payload: nutrition },
     });
     expect(artifact.subtitle).toBeUndefined();
     expect(artifact.payload).toEqual(nutrition);
@@ -61,7 +61,7 @@ describe('Foodstuff artifact contract', () => {
       mapConversationArtifact({
         ...conversationProposal(),
         type: 'kochwiki-foodstuff',
-        payload: { title: 'Linsen', payload: { ...payload, unit: 'KG' } },
+        content: { title: 'Linsen', payload: { ...payload, unit: 'KG' } },
       }).type,
     ).toBe('kochwiki-unsupported');
   });

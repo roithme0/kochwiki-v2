@@ -1,7 +1,8 @@
 # AI Service gateway connection
 
 Kochwiki relays only `/ai/api/v1/agents/{agent_name}/sessions`, an individual
-session, its `/messages` and `/turns` resources, and `/turns/{turn_id}/events`.
+session, its `/turns` resource, and its `/events` stream. The previous
+`/messages` and `/turns/{turn_id}/events` routes return 404.
 It removes `/ai` and preserves `/api`, methods, query strings, JSON bodies,
 upstream errors, and server-sent event streams. Nginx response buffering is disabled.
 Other `/ai` requests return 404. This is routing, not authorization: both
@@ -80,7 +81,7 @@ resolution timeout. Angular uses its default upstream connection behavior,
 without a separate five-second connection deadline. A silently unreachable
 address can therefore take longer to fail in development than in deployment.
 Both have a **600-second read/inactivity timeout** for
-session requests and turn event streams (and 600 seconds for sending/request socket inactivity
+session requests and session event streams (and 600 seconds for sending/request socket inactivity
 in Kochwiki). These are proxy inactivity limits, not an absolute end-to-end
 deadline. DNS and connection waits may occur sequentially in Nginx.
 
@@ -94,9 +95,10 @@ any additional ingress, load balancer, or client timeout covers the complete
 chain. Controlled Kochwiki checks do not prove external deployment readiness.
 
 Neither Kochwiki relay retries failed mutations. A timeout or disconnect
-does not cancel AI work and may happen after a session/message/turn was
-accepted. Do not automatically resubmit it; use the conversation contract's
-history/recovery behavior in the later chat integration.
+does not cancel AI work and may happen after a session or prompt was
+accepted. Do not automatically resubmit it; use the session controller's
+observation recovery. Complete snapshots determine history and execution status;
+uncertain prompt admission remains blocked without automatic reconciliation.
 
 ## Reverse resolver connection
 
@@ -121,7 +123,7 @@ It starts an isolated `kochwiki-ai-relay-check` Compose project, a controlled
 upstream on port 18991, Nginx on 18992, and actual Angular development servers
 on 18993. A minimal Angular fixture consumes the same proxy configuration
 and installed Angular tooling, independently of the demo package. Ordinary
-Angular API checks use the existing Kochwiki API. It checks the five request forms,
+Angular API checks use the existing Kochwiki API. It checks the four request forms,
 bodies/queries, event delivery before upstream completion, representative
 upstream errors, excluded paths, 65-second responses, and exactly one upstream
 mutation after a disconnect. Unset, unresolved, and unreachable configurations
@@ -131,12 +133,13 @@ available for focused repeat checks, but full delivery validation must include
 the delayed responses. Angular diagnostics are written to an ignored log.
 
 Live verification is separate: create/read a Kochwiki session through the
-exposed AI gateway via each relay and acknowledge a message without invoking
-a paid turn. From the AI backend container, post a valid resolver request to
-its configured `KOCHWIKI_BASE_URL`. Record whether the agent is configured
+exposed AI gateway via each relay and observe its initial snapshot without
+submitting a prompt. Prompt submission starts agent execution. From the AI
+backend container, post a valid resolver request to its configured
+`KOCHWIKI_BASE_URL`. Record whether the agent is configured
 and whether the resolver accepts it. A live 503 or unresolved reverse base
 is an external integration gap, even if controlled tests pass. Productive
-recipe generation and rendering belong to later slices.
+recipe generation still requires separate live-agent verification.
 
 Delivery validation on 2026-09-26 passed the full controlled suite through
 Nginx 1.25.5 and the actual Angular dev-server, including 65-second turns,
@@ -148,3 +151,10 @@ Angular fixture verified the shared proxy independently. Live AI gateway
 configuration inspection failed because its mounted configuration file was
 unavailable, so the external long-turn timeout and productive recipe
 generation remain unverified.
+
+Validation on 2026-10-22 for chat UI `0.7.1-alpha` passed controlled Nginx and
+Angular session routes, session SSE delivery, obsolete-route rejection, upstream
+failures, no mutation retries, and 65-second responses. The standard harness
+stopped at its ordinary Angular API check because no Kochwiki API was listening
+on localhost:8002; the AI relay checks were then run independently and passed.
+Live-agent generation was not verified.

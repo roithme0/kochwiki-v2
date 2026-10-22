@@ -8,9 +8,8 @@ import {
   type ChatTurn,
 } from '@roithme0/chat-ui/ui';
 import {
-  AgentConfiguration,
-  ConversationController,
-  HttpConversationTransport,
+  SessionController,
+  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
 
 @Component({
@@ -44,8 +43,7 @@ class RendererTestHost {
     return this.artifact
       ? [
           {
-            id: 'host-turn',
-            userMessageId: 'host-user',
+            runKey: 'host-turn',
             status: 'completed',
             content: [this.artifact],
           },
@@ -105,13 +103,13 @@ describe('Packaged chat UI integration', () => {
 
 describe('Packaged conversation entry point', () => {
   it('exposes a controller compatible with the Kochwiki HTTP transport', () => {
-    const transport = new HttpConversationTransport(
+    const transport = new HttpSessionTransport(
       '/ai/api/v1',
-      AgentConfiguration.kochwiki,
+      'kochwiki',
       'kochwiki:1',
     );
-    const controller = new ConversationController(transport, () => {});
+    const controller = new SessionController(transport, () => {});
 
-    expect(controller).toBeInstanceOf(ConversationController);
+    expect(controller).toBeInstanceOf(SessionController);
   });
 });

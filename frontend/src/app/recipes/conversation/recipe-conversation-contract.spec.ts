@@ -15,36 +15,50 @@ import {
   conversationRecipe,
 } from './recipe-conversation.fixtures';
 
+const validPayload = conversationProposal().content.payload;
+if (
+  validPayload === null ||
+  typeof validPayload !== 'object' ||
+  Array.isArray(validPayload)
+)
+  throw new Error('Expected recipe object');
+
 describe('Recipe conversation contract', () => {
   it('captures the enriched recipe with inline foodstuffs as detached generic context', () => {
     const source = conversationRecipe();
     const input = mapSessionInput(source);
     expect(input).toEqual({
-      context: { source },
-      artifactCapabilities: [
+      initial_context: { source },
+      artifact_capabilities: [
         JSON_ARTIFACT_CAPABILITY,
         FOODSTUFF_ARTIFACT_CAPABILITY,
         RECIPE_ARTIFACT_CAPABILITY,
         NUTRITION_ARTIFACT_CAPABILITY,
       ],
     });
-    expect(input.context.source).not.toBe(source);
-    expect(input.context.source.ingredients[0].foodstuff).not.toBe(
+    expect(input.initial_context.source).not.toBe(source);
+    expect(input.initial_context.source.ingredients[0].foodstuff).not.toBe(
       source.ingredients[0].foodstuff,
     );
-    expect(input.context.source.recipeVersionId).toBe(source.recipeVersionId);
-    expect(input.context.source.ingredients[0].foodstuff.id).toBe(1);
+    expect(input.initial_context.source.recipeVersionId).toBe(
+      source.recipeVersionId,
+    );
+    expect(input.initial_context.source.ingredients[0].foodstuff.id).toBe(1);
     source.steps[0].description = 'Changed';
     source.ingredients[0].foodstuff.name = 'Changed';
-    expect(input.context.source.steps[0].description).toBe('Linsen kochen.');
-    expect(input.context.source.ingredients[0].foodstuff.name).toBe('Linsen');
+    expect(input.initial_context.source.steps[0].description).toBe(
+      'Linsen kochen.',
+    );
+    expect(input.initial_context.source.ingredients[0].foodstuff.name).toBe(
+      'Linsen',
+    );
   });
 
   it('preserves explicit JSON presentation instead of treating it as a recipe proposal', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: 'json',
-      payload: {
+      content: {
         title: 'Foodstuff',
         payload: { value: { name: 'Linsen', unit: 'G' } },
       },
@@ -85,16 +99,18 @@ describe('Recipe conversation contract', () => {
   it.each([
     null,
     {},
-    { title: 'Bad', payload: {} },
-    { title: 'Bad', payload: { ...conversationRecipe(), servings: 0 } },
-    { title: 'Bad', payload: { ...conversationRecipe(), kcal: Infinity } },
-    { title: 'Bad', payload: { ...conversationRecipe(), ingredients: [null] } },
-    { title: 'Bad', payload: { ...conversationRecipe(), steps: [{}] } },
+    { ...validPayload, servings: 0 },
+    { ...validPayload, kcal: Infinity },
+    { ...validPayload, ingredients: [null] },
+    { ...validPayload, steps: [{}] },
   ])('contains malformed artifacts locally: %j', (payload) => {
     expect(
       mapConversationArtifact({
         ...conversationProposal(),
-        payload: payload as ReturnType<typeof conversationProposal>['payload'],
+        content: {
+          title: 'Bad',
+          payload,
+        },
       }).type,
     ).toBe('kochwiki-unsupported');
   });

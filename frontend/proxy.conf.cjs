@@ -62,7 +62,7 @@ module.exports = {
     timeout: 60_000,
     proxyTimeout: 60_000,
   },
-  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:messages|turns(?:/[A-Za-z0-9_-]+/events)?))?)?(?:\\?.*)?$':
+  '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:turns|events))?)?(?:\\?.*)?$':
     ai,
   '^/ai(?:/|\\?|$)': unsupported,
 };

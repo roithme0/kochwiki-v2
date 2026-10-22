@@ -13,24 +13,21 @@ import {
 } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { By } from '@angular/platform-browser';
-import {
-  ChatUiComponent,
-  JSON_ARTIFACT_CAPABILITY,
-} from '@roithme0/chat-ui/ui';
+import { ChatUiComponent } from '@roithme0/chat-ui/ui';
 import type {
-  ArtifactResponse,
-  SessionSnapshotResponse,
-  StreamEvent,
+  PresentedSession,
+  SessionEvent,
 } from '@roithme0/chat-ui/conversation';
-import { FOODSTUFF_ARTIFACT_CAPABILITY } from '../../../foodstuffs/presentation/foodstuff-artifact';
-import { RECIPE_ARTIFACT_CAPABILITY } from '../../presentation/recipe-artifact';
-import { NUTRITION_ARTIFACT_CAPABILITY } from '../../../core/presentation/nutrition-artifact';
 import { FoodstuffPresentationComponent } from '../../../foodstuffs/components/foodstuff-presentation/foodstuff-presentation.component';
 import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { mapConversationArtifact } from '../../conversation/recipe-conversation-contract';
+import {
+  mapConversationArtifact,
+  mapSessionInput,
+  type RecipeSessionArtifact,
+} from '../../conversation/recipe-conversation-contract';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -40,6 +37,14 @@ import {
   proposalId,
 } from '../../conversation/recipe-conversation.fixtures';
 import { RecipeConversationPageComponent } from './recipe-conversation-page.component';
+
+function requestUrl(input: Parameters<typeof fetch>[0]): string {
+  return typeof input === 'string'
+    ? input
+    : input instanceof URL
+      ? input.href
+      : input.url;
+}
 
 function response(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
@@ -59,7 +64,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 @Component({ template: '' })
 class EmptyPage {}
 
-describe('Recipe conversation page through published controller and HTTP transport', () => {
+describe('Recipe conversation page through published session controller and HTTP transport', () => {
   let fixture: ComponentFixture<RecipeConversationPageComponent>;
   let source: ReturnType<typeof conversationRecipe>;
   const save = vi.fn<RecipeBackendService['saveRecipeProposal']>();
@@ -73,11 +78,38 @@ describe('Recipe conversation page through published controller and HTTP transpo
     display_name: 'Test',
   });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
-  let turns: SessionSnapshotResponse['turns'];
+  let history: PresentedSession['history'];
+  let streams: {
+    controller: ReadableStreamDefaultController<Uint8Array>;
+    signal: AbortSignal | null | undefined;
+  }[];
+  const sessionUrl = '/ai/api/v1/agents/kochwiki/sessions';
+
+  function snapshot(): PresentedSession {
+    return {
+      session_id: 'session-1',
+      expires_at: '2026-10-23T00:00:00Z',
+      error: null,
+      history: structuredClone(history),
+    };
+  }
+
+  function emit(event: SessionEvent): void {
+    const stream = streams.at(-1);
+    if (!stream) throw new Error('No session observer');
+    stream.controller.enqueue(
+      new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`),
+    );
+  }
+
+  function publish(): void {
+    emit({ kind: 'snapshot', snapshot: snapshot() });
+  }
 
   beforeEach(() => {
     vi.resetAllMocks();
-    turns = [];
+    history = [];
+    streams = [];
     snackbar.mockReturnValue({ dismiss });
     save.mockResolvedValue({
       ...conversationRecipe(),
@@ -93,11 +125,45 @@ describe('Recipe conversation page through published controller and HTTP transpo
       }),
     );
     getRecipe.mockResolvedValue(source);
-    fetchMock.mockImplementation(() =>
-      Promise.resolve(
-        response({ session_id: 'session-1', expires_at: 'later' }),
-      ),
-    );
+    fetchMock.mockImplementation((url, options) => {
+      const address = requestUrl(url);
+      if (address.endsWith('/events')) {
+        let closed = false;
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            streams.push({ controller, signal: options?.signal });
+            publish();
+            options?.signal?.addEventListener(
+              'abort',
+              () => {
+                if (!closed) {
+                  closed = true;
+                  controller.close();
+                }
+              },
+              { once: true },
+            );
+          },
+          cancel() {
+            closed = true;
+          },
+        });
+        return Promise.resolve(
+          new Response(body, {
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+        );
+      }
+      if (address.endsWith('/turns'))
+        return Promise.resolve(response({ kind: 'accepted' }, 202));
+      history = [];
+      return Promise.resolve(
+        response(
+          { session_id: 'session-1', expires_at: '2026-10-23T00:00:00Z' },
+          201,
+        ),
+      );
+    });
     vi.stubGlobal('fetch', fetchMock);
     TestBed.configureTestingModule({
       imports: [RecipeConversationPageComponent],
@@ -136,167 +202,73 @@ describe('Recipe conversation page through published controller and HTTP transpo
     return fixture.componentInstance;
   }
 
-  function turn(): Response {
-    const turnId = `turn-${turns.length + 1}`;
-    return completedTurn({
-      turn_id: turnId,
-      message: { role: 'assistant', text: 'Ein Vorschlag', turn_id: turnId },
-      artifacts: [
-        { ...conversationProposal(), artifact_id: `proposal-${turnId}` },
-        {
-          ...conversationProposal(),
-          artifact_id: `bad-${turnId}`,
-          payload: {},
+  function complete(
+    artifacts: RecipeSessionArtifact[],
+    text = 'Mehr Gem?se',
+    status: 'running' | 'completed' | 'failed' = 'completed',
+  ): void {
+    const runId = `run-${history.length + 1}`;
+    history.push(
+      { part_kind: 'user-prompt', content: text },
+      {
+        part_kind: 'turn',
+        lifecycle: {
+          run_id: runId,
+          status,
+          started_at: '2026-10-21T00:00:00Z',
+          finished_at: status === 'running' ? null : '2026-10-21T00:01:00Z',
         },
-      ],
-    });
-  }
-
-  function accepted(turnId = `turn-${turns.length + 1}`): Response {
-    return response({ kind: 'accepted', turn_id: turnId }, 202);
-  }
-
-  function completedTurn(
-    payload: {
-      turn_id: string;
-      message: { role: 'assistant'; text: string; turn_id: string };
-      artifacts: ArtifactResponse[];
-    },
-    userText = 'Mehr Gemüse',
-  ): Response {
-    const turnId = payload.turn_id;
-    const index = turns.length * 10;
-    const presented = payload.artifacts.map((artifact) => ({
-      ...artifact,
-      turn_id: turnId,
-    }));
-    const userMessageId = `user-${index}`;
-    const initialTurn: SessionSnapshotResponse['turns'][number] = {
-      turn_id: turnId,
-      user_message_id: userMessageId,
-      status: 'in_progress',
-      timeline: [
-        {
-          kind: 'message',
-          id: userMessageId,
-          role: 'user',
-          text: userText,
-          turn_id: turnId,
-          is_final: false,
-        },
-      ],
-    };
-    const assistant: Extract<StreamEvent, { kind: 'upsert' }>['item'] = {
-      kind: 'message',
-      id: `assistant-${index}`,
-      ...payload.message,
-      is_final: true,
-    };
-    const events: StreamEvent[] = [
-      {
-        kind: 'snapshot',
-        turn_id: turnId,
-        snapshot: {
-          session_id: 'session-1',
-          expires_at: 'later',
-          sequence: index,
-          turns: [...turns, initialTurn],
-        },
-      },
-      {
-        kind: 'upsert',
-        turn_id: turnId,
-        sequence: index + 1,
-        order: 1,
-        identity: `assistant-${index}`,
-        item: assistant,
-      },
-      ...presented.map((artifact, order): StreamEvent => ({
-        kind: 'upsert',
-        turn_id: turnId,
-        sequence: index + order + 2,
-        order: order + 2,
-        identity: artifact.artifact_id,
-        item: { kind: 'artifact', artifact, turn_id: turnId },
-      })),
-      {
-        kind: 'closing',
-        turn_id: turnId,
-        sequence: index + presented.length + 2,
-      },
-      {
-        kind: 'terminal',
-        turn_id: turnId,
-        sequence: index + presented.length + 3,
-        outcome: 'completed',
-      },
-    ];
-    turns = [
-      ...turns,
-      {
-        ...initialTurn,
-        status: 'completed',
-        timeline: [
-          ...initialTurn.timeline,
-          assistant,
-          ...presented.map((artifact) => ({
-            kind: 'artifact' as const,
-            artifact,
-            turn_id: turnId,
+        parts: [
+          {
+            part_kind: 'text',
+            content: 'Ein Vorschlag',
+            phase: 'final_answer',
+          },
+          ...artifacts.map((artifact) => ({
+            part_kind: 'artifact' as const,
+            artifact: { ...artifact, run_id: runId },
           })),
         ],
       },
-    ];
-    return new Response(
-      events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''),
-      { headers: { 'Content-Type': 'text/event-stream' } },
     );
+    publish();
   }
 
-  it('renders explicitly presented MCP foodstuff data with name/brand headers and no writes or enrichment fetches', async () => {
-    const page = await open();
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Zeige die Linsen',
-          turn_id: 'foodstuff-turn',
-        }),
-      )
-      .mockResolvedValueOnce(accepted('foodstuff-turn'))
-      .mockResolvedValueOnce(
-        completedTurn(
-          {
-            turn_id: 'foodstuff-turn',
-            message: {
-              role: 'assistant',
-              text: 'Die gefundenen Linsen',
-              turn_id: 'foodstuff-turn',
-            },
-            artifacts: [
-              {
-                ...conversationProposal(),
-                artifact_id: 'foodstuff',
-                type: 'kochwiki-foodstuff',
-                payload: {
-                  title: 'Linsen',
-                  subtitle: 'Meine Marke',
-                  payload: {
-                    unit: 'G',
-                    kcal: 200,
-                    carbs: 12,
-                    protein: 8,
-                    fat: 4,
-                  },
-                },
-              },
-            ],
-          },
-          'Zeige die Linsen',
-        ),
-      );
-    await page.submit({ text: 'Zeige die Linsen', acknowledge: vi.fn() });
+  async function submitArtifacts(
+    page: RecipeConversationPageComponent,
+    artifacts: RecipeSessionArtifact[],
+    text = 'Mehr Gem?se',
+  ): Promise<void> {
+    await page.submit({ text, acknowledge: vi.fn() });
+    complete(artifacts, text);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     fixture.detectChanges();
+  }
+
+  async function submit(page: RecipeConversationPageComponent): Promise<void> {
+    await submitArtifacts(page, [
+      { ...conversationProposal(), artifact_id: `proposal-${history.length}` },
+      {
+        ...conversationProposal(),
+        artifact_id: `bad-${history.length}`,
+        content: { title: 'Bad', payload: {} },
+      },
+    ]);
+  }
+
+  it('renders explicitly presented foodstuff name, brand and nutrition without writes or enrichment fetches', async () => {
+    const page = await open();
+    await submitArtifacts(page, [
+      {
+        ...conversationProposal(),
+        type: 'kochwiki-foodstuff',
+        content: {
+          title: 'Linsen',
+          subtitle: 'Meine Marke',
+          payload: { unit: 'G', kcal: 200, carbs: 12, protein: 8, fat: 4 },
+        },
+      },
+    ]);
     expect(
       fixture.debugElement.queryAll(
         By.directive(FoodstuffPresentationComponent),
@@ -314,115 +286,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
       ),
     ).toContain('pro 100 g');
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(save).not.toHaveBeenCalled();
-  });
-
-  async function submit(page: RecipeConversationPageComponent): Promise<void> {
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Mehr Gemüse',
-          turn_id: `turn-${turns.length + 1}`,
-        }),
-      )
-      .mockResolvedValueOnce(accepted())
-      .mockResolvedValueOnce(turn());
-    await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
-  }
-
-  it('renders streamed proposals before completion and blocks overlapping submissions', async () => {
-    const page = await open();
-    const acceptance = accepted();
-    const frames = (await turn().text()).split('\n\n').filter(Boolean);
-    let stream!: ReadableStreamDefaultController<Uint8Array>;
-    const encoder = new TextEncoder();
-    const body = new ReadableStream<Uint8Array>({
-      start(controller) {
-        stream = controller;
-        frames
-          .slice(0, -2)
-          .forEach((frame) =>
-            controller.enqueue(encoder.encode(`${frame}\n\n`)),
-          );
-      },
-    });
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Mehr Gemüse',
-          turn_id: 'turn-1',
-        }),
-      )
-      .mockResolvedValueOnce(acceptance)
-      .mockResolvedValueOnce(
-        new Response(body, {
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      );
-    const operation = page.submit({
-      text: 'Mehr Gemüse',
-      acknowledge: vi.fn(),
-    });
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(
-        (fixture.nativeElement as HTMLElement).querySelector(
-          'button.proposal-save',
-        ),
-      ).not.toBeNull();
-    });
-    expect(page.view().composerDisabled).toBe(true);
-    expect(page.view().composerEditingDisabled).toBe(false);
-    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
-      .componentInstance as ChatUiComponent;
-    expect(chat.composerEditingDisabled()).toBe(false);
-    expect(save).not.toHaveBeenCalled();
-    await page.submit({ text: 'Too soon', acknowledge: vi.fn() });
-    expect(fetchMock).toHaveBeenCalledTimes(4);
-    expect(fetchMock.mock.calls[3][1]?.headers).toEqual({
-      Accept: 'text/event-stream',
-      'X-Application-User': 'kochwiki:1',
-    });
-    frames
-      .slice(-2)
-      .forEach((frame) => stream.enqueue(encoder.encode(`${frame}\n\n`)));
-    stream.close();
-    await operation;
-    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
-    expect(page.view().status).toBeNull();
-  });
-
-  it('keeps streamed artifacts after a disconnect without retrying the turn', async () => {
-    const page = await open();
-    const acceptance = accepted();
-    const frames = (await turn().text()).split('\n\n').filter(Boolean);
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Mehr Gemüse',
-          turn_id: 'turn-1',
-        }),
-      )
-      .mockResolvedValueOnce(acceptance)
-      .mockResolvedValueOnce(
-        new Response(`${frames.slice(0, -1).join('\n\n')}\n\n`, {
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      );
-    await page.submit({ text: 'Mehr Gemüse', acknowledge: vi.fn() });
-    fixture.detectChanges();
-    expect(
-      (fixture.nativeElement as HTMLElement).querySelector(
-        'button.proposal-save',
-      ),
-    ).not.toBeNull();
-    expect(page.view().status?.kind).toBe('error');
-    expect(page.view().status?.message).toContain('Ausgang ist unbekannt');
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(save).not.toHaveBeenCalled();
   });
 
@@ -436,7 +300,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     { title: 'Linsensuppe', basis: 'per-serving', label: 'pro Portion' },
     { title: 'Linsensuppe', basis: 'whole-recipe', label: 'gesamtes Rezept' },
   ])(
-    'renders dedicated nutrition for $title with $basis without full item or save actions',
+    'renders dedicated nutrition for $title with $basis without save actions',
     async (item) => {
       const page = await open();
       const payload = {
@@ -446,41 +310,13 @@ describe('Recipe conversation page through published controller and HTTP transpo
         protein: { status: 'exact', value: 8 },
         fat: { status: 'minimum', value: 0 },
       };
-      fetchMock
-        .mockResolvedValueOnce(
-          response({
-            role: 'user',
-            text: 'Nährwerte?',
-            turn_id: 'nutrition-turn',
-          }),
-        )
-        .mockResolvedValueOnce(accepted('nutrition-turn'))
-        .mockResolvedValueOnce(
-          completedTurn(
-            {
-              turn_id: 'nutrition-turn',
-              message: {
-                role: 'assistant',
-                text: 'Hier sind die Nährwerte.',
-                turn_id: 'nutrition-turn',
-              },
-              artifacts: [
-                {
-                  ...conversationProposal(),
-                  type: 'kochwiki-nutrition',
-                  payload: {
-                    title: item.title,
-                    subtitle: item.subtitle,
-                    payload,
-                  },
-                },
-              ],
-            },
-            'Nährwerte?',
-          ),
-        );
-      await page.submit({ text: 'Nährwerte?', acknowledge: vi.fn() });
-      fixture.detectChanges();
+      await submitArtifacts(page, [
+        {
+          ...conversationProposal(),
+          type: 'kochwiki-nutrition',
+          content: { title: item.title, subtitle: item.subtitle, payload },
+        },
+      ]);
       const cards = fixture.debugElement.queryAll(
         By.directive(NutritionCardComponent),
       );
@@ -488,13 +324,6 @@ describe('Recipe conversation page through published controller and HTTP transpo
       const card = cards[1].componentInstance as NutritionCardComponent;
       expect(card.basis()).toBe(item.label);
       expect(card.nutrition()).toEqual(payload);
-      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-        item.title,
-      );
-      if (item.subtitle)
-        expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-          item.subtitle,
-        );
       expect(
         fixture.debugElement.queryAll(
           By.directive(FoodstuffPresentationComponent),
@@ -505,11 +334,20 @@ describe('Recipe conversation page through published controller and HTTP transpo
           By.directive(RecipePresentationComponent),
         ),
       ).toHaveLength(1);
-      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
-        'Als Entwurf speichern',
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        item.title,
       );
+      if (item.subtitle)
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+          item.subtitle,
+        );
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'button.proposal-save',
+        ),
+      ).toBeNull();
       expect(getRecipe).toHaveBeenCalledTimes(1);
-      expect(fetchMock).toHaveBeenCalledTimes(4);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
       expect(save).not.toHaveBeenCalled();
     },
   );
@@ -540,38 +378,12 @@ describe('Recipe conversation page through published controller and HTTP transpo
       ],
       steps: [{ index: 1, description: 'Neue Zutat schneiden.' }],
     };
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Zeige das Rezept',
-          turn_id: 'recipe-turn',
-        }),
-      )
-      .mockResolvedValueOnce(accepted('recipe-turn'))
-      .mockResolvedValueOnce(
-        completedTurn(
-          {
-            turn_id: 'recipe-turn',
-            message: {
-              role: 'assistant',
-              text: 'Hier ist das Rezept.',
-              turn_id: 'recipe-turn',
-            },
-            artifacts: [
-              {
-                ...conversationProposal(),
-                artifact_id: 'recipe',
-                type: 'kochwiki-recipe',
-                payload: { title: 'Neues Rezept', payload },
-              },
-            ],
-          },
-          'Zeige das Rezept',
-        ),
-      );
-    await page.submit({ text: 'Zeige das Rezept', acknowledge: vi.fn() });
-    fixture.detectChanges();
+    await submitArtifacts(page, [
+      {
+        ...conversationProposal(),
+        content: { title: 'Neues Rezept', payload },
+      },
+    ]);
     const recipes = fixture.debugElement.queryAll(
       By.directive(RecipePresentationComponent),
     );
@@ -588,60 +400,133 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Neues Rezept',
     );
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
-      'Als Entwurf speichern',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button.proposal-save',
+      ),
+    ).toBeNull();
     expect(getRecipe).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('renders an explicitly selected JSON artifact without recipe save actions', async () => {
+  it('renders an explicit JSON artifact without recipe save actions', async () => {
     const page = await open();
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Show the foodstuff',
-          turn_id: 'turn-json',
-        }),
-      )
-      .mockResolvedValueOnce(accepted('turn-json'))
-      .mockResolvedValueOnce(
-        completedTurn(
-          {
-            turn_id: 'turn-json',
-            message: {
-              role: 'assistant',
-              text: 'Here is the foodstuff.',
-              turn_id: 'turn-json',
-            },
-            artifacts: [
-              {
-                ...conversationProposal(),
-                type: 'json',
-                turn_id: 'turn-json',
-                payload: {
-                  title: 'Foodstuff',
-                  payload: { value: { name: 'Linsen', unit: 'G' } },
-                },
-              },
-            ],
-          },
-          'Show the foodstuff',
-        ),
-      );
-    await page.submit({ text: 'Show the foodstuff', acknowledge: vi.fn() });
-    fixture.detectChanges();
+    await submitArtifacts(page, [
+      {
+        ...conversationProposal(),
+        type: 'json',
+        content: {
+          title: 'Foodstuff',
+          payload: { value: { name: 'Linsen', unit: 'G' } },
+        },
+      },
+    ]);
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('pre')?.textContent,
     ).toContain('"name": "Linsen"');
-    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
-      'Als Entwurf speichern',
-    );
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button.proposal-save',
+      ),
+    ).toBeNull();
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('renders proposals while execution is running, permits draft edits and blocks overlapping submissions until terminal snapshot', async () => {
+    const page = await open();
+    const acknowledge = vi.fn();
+    await page.submit({ text: 'Mehr Gem?se', acknowledge });
+    expect(acknowledge).toHaveBeenCalledTimes(1);
+    expect(page.view().turns).toEqual([]);
+    complete([conversationProposal()], 'Mehr Gem?se', 'running');
+    await vi.waitFor(() => expect(page.view().turns).toHaveLength(2));
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button.proposal-save',
+      ),
+    ).not.toBeNull();
+    expect(page.view().composerDisabled).toBe(true);
+    expect(page.view().composerEditingDisabled).toBe(false);
+    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
+      .componentInstance as ChatUiComponent;
+    expect(chat.composerEditingDisabled()).toBe(false);
+    await page.submit({ text: 'Too soon', acknowledge: vi.fn() });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const run = history.at(-1);
+    if (run?.part_kind !== 'turn') throw new Error('Expected run');
+    run.lifecycle.status = 'completed';
+    run.lifecycle.finished_at = '2026-10-21T00:01:00Z';
+    publish();
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    expect(page.view().status).toBeNull();
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('retains artifacts after observation loss, reconnects without resubmitting and trusts terminal snapshots', async () => {
+    const page = await open();
+    await page.submit({ text: 'Mehr Gem?se', acknowledge: vi.fn() });
+    complete([conversationProposal()], 'Mehr Gem?se', 'running');
+    await vi.waitFor(() => expect(page.view().turns).toHaveLength(2));
+    emit({ kind: 'error', reason: 'observation_overflow' });
+    await vi.waitFor(() => expect(page.view().observation).toBe('lost'));
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button.proposal-save',
+      ),
+    ).not.toBeNull();
+    expect(page.view().composerDisabled).toBe(true);
+    const run = history.at(-1);
+    if (run?.part_kind !== 'turn') throw new Error('Expected run');
+    run.lifecycle.status = 'completed';
+    run.lifecycle.finished_at = '2026-10-21T00:01:00Z';
+    await vi.waitFor(() => expect(page.view().observation).toBe('connected'), {
+      timeout: 2500,
+    });
+    expect(page.view().composerDisabled).toBe(false);
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        requestUrl(url).endsWith('/turns'),
+      ),
+    ).toHaveLength(1);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unconfirmed draft and disables resubmission after admission uncertainty', async () => {
+    const page = await open();
+    fetchMock.mockRejectedValueOnce(new TypeError('Network failed'));
+    const acknowledge = vi.fn();
+    await page.submit({ text: 'Mehr Gem?se', acknowledge });
+    expect(acknowledge).not.toHaveBeenCalled();
+    expect(page.view().admission).toBe('uncertain');
+    expect(page.view().composerDisabled).toBe(true);
+    complete([conversationProposal()]);
+    await vi.waitFor(() => expect(page.view().turns).toHaveLength(2));
+    await page.submit({ text: 'Retry?', acknowledge });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(acknowledge).not.toHaveBeenCalled();
+  });
+
+  it('shows conversation exhaustion without losing presented artifacts or offering a retry', async () => {
+    const page = await open();
+    await submit(page);
+    emit({
+      kind: 'snapshot',
+      snapshot: { ...snapshot(), error: 'conversation_limit_reached' },
+    });
+    await vi.waitFor(() =>
+      expect(page.view().status?.message).toBe('Conversation limit reached'),
+    );
+    expect(page.view().composerDisabled).toBe(true);
+    expect(page.view().status?.action).toBeUndefined();
+    expect(
+      page
+        .view()
+        .turns.flatMap((turn) => turn.content)
+        .some((item) => item.kind === 'artifact'),
+    ).toBe(true);
+  });
   it.each(['active', 'draft'] as const)(
     'saves a stored proposal from %s with no overlapping requests',
     async (state) => {
@@ -810,9 +695,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
-    fetchMock.mockResolvedValueOnce(
-      response({ kind: 'expired', detail: 'Session expired' }, 410),
-    );
+    fetchMock.mockResolvedValueOnce(response({ kind: 'unknown' }, 404));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     await page.performAction('new-session');
@@ -833,9 +716,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     save.mockReturnValueOnce(pending.promise);
     const operation = page.saveProposal(payload);
-    fetchMock.mockResolvedValueOnce(
-      response({ kind: 'expired', detail: 'Session expired' }, 410),
-    );
+    fetchMock.mockResolvedValueOnce(response({ kind: 'unknown' }, 404));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fetchMock.mockResolvedValueOnce(
@@ -860,9 +741,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     await page.saveProposal(
       mapConversationArtifact(conversationProposal()).metadata,
     );
-    fetchMock.mockResolvedValueOnce(
-      response({ kind: 'expired', detail: 'Session expired' }, 410),
-    );
+    fetchMock.mockResolvedValueOnce(response({ kind: 'unknown' }, 404));
     await page.submit({ text: 'More', acknowledge: vi.fn() });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     fetchMock.mockResolvedValueOnce(
@@ -877,42 +756,19 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(dismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('initializes only, then submits and refines in the same session without recipe writes', async () => {
+  it('captures context and capabilities once, then refines through the same observed session without writes', async () => {
     const page = await open();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      sessionUrl,
+      `${sessionUrl}/session-1/events`,
+    ]);
+    const body = fetchMock.mock.calls[0][1]?.body;
+    if (typeof body !== 'string') throw new Error('Expected JSON request body');
+    expect(JSON.parse(body) as unknown).toEqual(mapSessionInput(source));
     expect(getRecipe).toHaveBeenCalledWith(
       source.recipeLineageId,
       source.recipeVersionId,
     );
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      '/ai/api/v1/agents/kochwiki/sessions',
-    );
-    const body = fetchMock.mock.calls[0][1]?.body;
-    if (typeof body !== 'string')
-      throw new Error('Expected a JSON request body');
-    const request = JSON.parse(body) as {
-      input: {
-        artifactCapabilities: string[];
-        context: { source: ReturnType<typeof conversationRecipe> };
-      };
-    };
-    expect(Object.keys(request.input)).toEqual([
-      'context',
-      'artifactCapabilities',
-    ]);
-    expect(request.input.artifactCapabilities).toEqual([
-      JSON_ARTIFACT_CAPABILITY,
-      FOODSTUFF_ARTIFACT_CAPABILITY,
-      RECIPE_ARTIFACT_CAPABILITY,
-      NUTRITION_ARTIFACT_CAPABILITY,
-    ]);
-    expect(request.input.context.source.recipeVersionId).toBe(
-      source.recipeVersionId,
-    );
-    expect(request.input.context.source.ingredients[0].foodstuff).toEqual(
-      source.ingredients[0].foodstuff,
-    );
-    expect(request.input.context).not.toHaveProperty('foodstuffs');
     const header = TestBed.inject(PageHeaderService);
     expect(header.headline()).toBe(source.name);
     expect(header.subheader()).toBe('Rezept verbessern');
@@ -922,16 +778,13 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const original = page.original();
     await submit(page);
     await submit(page);
-    fixture.detectChanges();
     expect(page.original()).toBe(original);
-    expect(page.view().status).toBeNull();
-    expect(page.view().turns.map((turn) => turn.id)).toEqual([
-      'turn-1',
-      'turn-2',
+    expect(page.view().turns.map((turn) => turn.status)).toEqual([
+      'prompt',
+      'completed',
+      'prompt',
+      'completed',
     ]);
-    expect(page.view().turns.every((turn) => turn.status === 'completed')).toBe(
-      true,
-    );
     expect(page.turns()[0].content).toEqual([original]);
     expect(page.turns().slice(1)).toEqual(page.view().turns);
     expect(
@@ -946,31 +799,35 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Inhalt nicht darstellbar',
     );
-    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
-      '/ai/api/v1/agents/kochwiki/sessions',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/messages',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns/turn-1/events',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/messages',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns',
-      '/ai/api/v1/agents/kochwiki/sessions/session-1/turns/turn-2/events',
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      sessionUrl,
+      `${sessionUrl}/session-1/events`,
+      `${sessionUrl}/session-1/turns`,
+      `${sessionUrl}/session-1/turns`,
     ]);
+    expect(fetchMock.mock.calls[2][1]?.body).toBe(
+      JSON.stringify({ prompt: 'Mehr Gem?se' }),
+    );
+    expect(save).not.toHaveBeenCalled();
   });
 
-  it('sends the stable selected identity on initialization, submissions, turn starts and SSE', async () => {
+  it('sends the stable selected identity on session creation, observation and prompt admission', async () => {
     const page = await open();
     user.set({ id: 1, display_name: 'Renamed' });
     fixture.detectChanges();
     await submit(page);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     for (const [, request] of fetchMock.mock.calls) {
       expect(new Headers(request?.headers).get('X-Application-User')).toBe(
         'kochwiki:1',
       );
     }
+    expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Accept')).toBe(
+      'text/event-stream',
+    );
   });
 
-  it('waits for a selected user before loading context or creating a conversation', async () => {
+  it('waits for authentication before loading context or creating a session', async () => {
     user.set(null);
     const page = await open();
     expect(getRecipe).not.toHaveBeenCalled();
@@ -982,8 +839,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(page.original()).toBeNull();
     user.set({ id: 2, display_name: 'Restored' });
     fixture.detectChanges();
-    await fixture.whenStable();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(
       new Headers(fetchMock.mock.calls[0][1]?.headers).get(
         'X-Application-User',
@@ -991,7 +848,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     ).toBe('kochwiki:2');
   });
 
-  it('blocks old-owner actions immediately and clears chat before starting for another selected user', async () => {
+  it('blocks old-owner actions immediately and ignores late admission before user effects flush', async () => {
     const page = await open();
     await submit(page);
     const pending = deferred<Response>();
@@ -1009,19 +866,12 @@ describe('Recipe conversation page through published controller and HTTP transpo
     );
     expect(fetchMock).toHaveBeenCalledTimes(requests);
     expect(save).not.toHaveBeenCalled();
-    pending.resolve(
-      response({
-        role: 'user',
-        text: 'Old owner',
-        turn_id: `turn-${turns.length + 1}`,
-      }),
-    );
+    pending.resolve(response({ kind: 'accepted' }, 202));
     await operation;
     expect(acknowledge).not.toHaveBeenCalled();
     fixture.detectChanges();
-    await fixture.whenStable();
-    expect(page.view().turns).toEqual([]);
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    expect(page.view().turns).toEqual([]);
     expect(
       new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
         'X-Application-User',
@@ -1030,7 +880,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
   });
 
   it.each(['success', 'failure'] as const)(
-    'keeps a new selected user fresh after late old session creation %s',
+    'ignores late old session creation %s after identity changes',
     async (outcome) => {
       const pending = deferred<Response>();
       fetchMock.mockReturnValueOnce(pending.promise);
@@ -1040,36 +890,35 @@ describe('Recipe conversation page through published controller and HTTP transpo
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       user.set({ id: 2, display_name: 'Next' });
       fixture.detectChanges();
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
       await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
       const view = page.view();
       pending.resolve(
         outcome === 'success'
-          ? response({ session_id: 'old-session', expires_at: 'later' })
-          : response({ kind: 'agent_unavailable', detail: 'Unavailable' }, 503),
+          ? response(
+              { session_id: 'old-session', expires_at: '2026-10-23T00:00:00Z' },
+              201,
+            )
+          : response({ kind: 'agent_unavailable' }, 503),
       );
       await fixture.whenStable();
       expect(page.view()).toBe(view);
       expect(page.view().turns).toEqual([]);
       expect(page.view().status).toBeNull();
-      expect(
-        new Headers(fetchMock.mock.calls[1][1]?.headers).get(
-          'X-Application-User',
-        ),
-      ).toBe('kochwiki:2');
       await submit(page);
-      expect(fetchMock.mock.calls[2][0]).toBe(
-        '/ai/api/v1/agents/kochwiki/sessions/session-1/messages',
-      );
       expect(
-        new Headers(fetchMock.mock.calls[2][1]?.headers).get(
+        new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
           'X-Application-User',
         ),
       ).toBe('kochwiki:2');
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          requestUrl(url).includes('old-session'),
+        ),
+      ).toBe(false);
     },
   );
 
-  it('ignores a context read completing after user selection changed before effects flush', async () => {
+  it('ignores a context read completing after logout before effects flush', async () => {
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     getRecipe.mockReturnValueOnce(pending.promise);
     fixture = TestBed.createComponent(RecipeConversationPageComponent);
@@ -1085,9 +934,9 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(page.view().composerDisabled).toBe(true);
   });
 
-  it('reuses detached snapshots on initial session retry', async () => {
+  it('reuses detached recipe context and capabilities on initial session retry', async () => {
     fetchMock.mockResolvedValueOnce(
-      response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503),
+      response({ kind: 'agent_unavailable' }, 503),
     );
     const page = await open();
     const initialBody = fetchMock.mock.calls[0][1]?.body;
@@ -1101,29 +950,27 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(page.original()?.headline).toBe('Original: Linsensuppe');
   });
 
-  it('confirms leave and replacement, preserving protection after failure and clearing it after success', async () => {
+  it('confirms leave and replacement, preserving protection on failure and clearing it after successful creation', async () => {
     const add = vi.spyOn(window, 'addEventListener');
     const remove = vi.spyOn(window, 'removeEventListener');
     const page = await open();
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     expect(page.canLeave()).toBe(true);
-    expect(add.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(
+    expect(add.mock.calls.some(([name]) => name === 'beforeunload')).toBe(
       false,
     );
-    fetchMock.mockResolvedValueOnce(
-      response({ kind: 'expired', detail: 'Session expired' }, 410),
-    );
+    fetchMock.mockResolvedValueOnce(response({ kind: 'unknown' }, 404));
     await page.submit({ text: 'Verbessern', acknowledge: vi.fn() });
     expect(page.canLeave()).toBe(false);
     const event = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
+    const requests = fetchMock.mock.calls.length;
     await page.performAction('new-session');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(requests);
     confirm.mockReturnValue(true);
-    expect(page.canLeave()).toBe(true);
     fetchMock.mockResolvedValueOnce(
-      response({ kind: 'agent_unavailable', detail: 'Agent unavailable' }, 503),
+      response({ kind: 'agent_unavailable' }, 503),
     );
     await page.performAction('new-session');
     confirm.mockReturnValue(false);
@@ -1133,18 +980,18 @@ describe('Recipe conversation page through published controller and HTTP transpo
     confirm.mockClear();
     expect(page.canLeave()).toBe(true);
     expect(confirm).not.toHaveBeenCalled();
-    expect(remove.mock.calls.some((call) => call[0] === 'beforeunload')).toBe(
+    expect(remove.mock.calls.some(([name]) => name === 'beforeunload')).toBe(
       true,
     );
-    expect(fetchMock.mock.calls[2][1]?.body).toBe(
-      fetchMock.mock.calls[0][1]?.body,
+    const creations = fetchMock.mock.calls.filter(
+      ([url]) => url === sessionUrl,
     );
-    expect(fetchMock.mock.calls[3][1]?.body).toBe(
-      fetchMock.mock.calls[0][1]?.body,
-    );
+    expect(creations).toHaveLength(3);
+    for (const [, request] of creations)
+      expect(request?.body).toBe(creations[0][1]?.body);
   });
 
-  it('allows user switching to discard a started chat without confirmation', async () => {
+  it('allows logout to discard a started chat without confirmation', async () => {
     const page = await open();
     await submit(page);
     user.set(null);
@@ -1153,10 +1000,15 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it.each(['historical', 'missing'] as const)(
+  it.each(['historical', 'missing', 'mismatched'] as const)(
     'does not initialize an unavailable %s recipe',
     async (mode) => {
       if (mode === 'historical') source.state = 'historical';
+      else if (mode === 'mismatched')
+        getRecipe.mockResolvedValue({
+          ...source,
+          recipeVersionId: 'another-version',
+        });
       else getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
       const page = await open();
       expect(page.phase()).toBe('unavailable');
@@ -1167,18 +1019,7 @@ describe('Recipe conversation page through published controller and HTTP transpo
     },
   );
 
-  it('retries the recipe read after a failure without starting a partial session', async () => {
-    getRecipe.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
-    const page = await open();
-    expect(page.phase()).toBe('error');
-    expect(fetchMock).not.toHaveBeenCalled();
-    await page.load();
-    expect(page.phase()).toBe('ready');
-    expect(getRecipe).toHaveBeenCalledTimes(2);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows a retry for non-missing source failures', async () => {
+  it('offers a retry for source failures and starts no partial session', async () => {
     getRecipe.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
     const page = await open();
     expect(page.phase()).toBe('error');
@@ -1186,117 +1027,48 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
       'Erneut versuchen',
     );
+    await page.load();
+    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
+    expect(page.phase()).toBe('ready');
+    expect(getRecipe).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps historical sources unavailable', async () => {
-    source.state = 'historical';
-    const page = await open();
-    expect(page.phase()).toBe('unavailable');
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(
-      fixture.debugElement.query(By.directive(ChatUiComponent)),
-    ).toBeNull();
-  });
-
-  it('blocks submission while data or session creation is pending', async () => {
+  it('blocks submission while context, session creation or initial observation is pending', async () => {
     const pending = deferred<Response>();
     fetchMock.mockReturnValueOnce(pending.promise);
     fixture = TestBed.createComponent(RecipeConversationPageComponent);
     const page = fixture.componentInstance;
-    await page.submit({ text: 'Zu früh', acknowledge: vi.fn() });
+    await page.submit({ text: 'Zu fr?h', acknowledge: vi.fn() });
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    await page.submit({ text: 'Noch zu früh', acknowledge: vi.fn() });
+    await page.submit({ text: 'Noch zu fr?h', acknowledge: vi.fn() });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    pending.resolve(response({ session_id: 'session-1', expires_at: 'later' }));
-    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
-  });
-
-  it('ignores an old controller after the routed source changes', async () => {
-    const page = await open();
-    const pending = deferred<Response>();
-    fetchMock.mockReturnValueOnce(pending.promise);
-    const acknowledge = vi.fn();
-    const operation = page.submit({ text: 'Alt', acknowledge });
-    const next = {
-      ...conversationRecipe(),
-      recipeVersionId: '00000000-0000-4000-8000-000000000003',
-      name: 'Neue Version',
-    };
-    getRecipe.mockResolvedValueOnce(next);
-    params.next(
-      convertToParamMap({
-        lineageId: next.recipeLineageId,
-        recipeVersionId: next.recipeVersionId,
-      }),
-    );
-    await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
-    fetchMock.mockResolvedValueOnce(turn());
+    const observation = deferred<Response>();
+    fetchMock.mockReturnValueOnce(observation.promise);
     pending.resolve(
-      response({
-        role: 'user',
-        text: 'Alt',
-        turn_id: `turn-${turns.length + 1}`,
-      }),
-    );
-    await operation;
-    expect(acknowledge).not.toHaveBeenCalled();
-    expect(page.view().turns).toEqual([]);
-    expect(page.original()?.headline).toBe('Original: Neue Version');
-  });
-
-  it('suppresses late turn results after leaving', async () => {
-    const page = await open();
-    const pending = deferred<Response>();
-    fetchMock
-      .mockResolvedValueOnce(
-        response({
-          role: 'user',
-          text: 'Verbessern',
-          turn_id: `turn-${turns.length + 1}`,
-        }),
-      )
-      .mockResolvedValueOnce(accepted())
-      .mockReturnValueOnce(pending.promise);
-    const acknowledge = vi.fn();
-    const operation = page.submit({ text: 'Verbessern', acknowledge });
-    await vi.waitFor(() => expect(acknowledge).toHaveBeenCalledTimes(1));
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-    fixture.destroy();
-    expect(fetchMock.mock.calls[3][1]?.signal?.aborted).toBe(true);
-    const oldView = page.view();
-    const fresh = await open();
-    pending.resolve(turn());
-    await operation;
-    expect(page.view()).toBe(oldView);
-    expect(fresh.view().turns).toEqual([]);
-    expect(
-      fetchMock.mock.calls.filter(
-        (call) => call[0] === '/ai/api/v1/agents/kochwiki/sessions',
+      response(
+        { session_id: 'session-1', expires_at: '2026-10-23T00:00:00Z' },
+        201,
       ),
-    ).toHaveLength(2);
+    );
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await page.submit({ text: 'No snapshot yet', acknowledge: vi.fn() });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(page.view().composerDisabled).toBe(true);
   });
 
-  it.each(['route', 'user'] as const)(
-    'closes the active stream after a %s change',
+  it.each(['route', 'user', 'destroy'] as const)(
+    'aborts observation and suppresses late admission after %s',
     async (boundary) => {
       const page = await open();
+      await submit(page);
       const pending = deferred<Response>();
-      fetchMock
-        .mockResolvedValueOnce(
-          response({
-            role: 'user',
-            text: 'Verbessern',
-            turn_id: `turn-${turns.length + 1}`,
-          }),
-        )
-        .mockResolvedValueOnce(accepted())
-        .mockReturnValueOnce(pending.promise);
-      const operation = page.submit({
-        text: 'Verbessern',
-        acknowledge: vi.fn(),
-      });
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
-      if (boundary === 'user') user.set(null);
+      fetchMock.mockReturnValueOnce(pending.promise);
+      const acknowledge = vi.fn();
+      const operation = page.submit({ text: 'Alt', acknowledge });
+      const oldStream = streams[0];
+      if (boundary === 'destroy') fixture.destroy();
+      else if (boundary === 'user') user.set(null);
       else {
         const next = {
           ...conversationRecipe(),
@@ -1311,10 +1083,8 @@ describe('Recipe conversation page through published controller and HTTP transpo
           }),
         );
       }
-      fixture.detectChanges();
-      await vi.waitFor(() =>
-        expect(fetchMock.mock.calls[3][1]?.signal?.aborted).toBe(true),
-      );
+      if (boundary !== 'destroy') fixture.detectChanges();
+      await vi.waitFor(() => expect(oldStream.signal?.aborted).toBe(true));
       if (boundary === 'route') {
         await vi.waitFor(() =>
           expect(page.view().composerDisabled).toBe(false),
@@ -1322,16 +1092,45 @@ describe('Recipe conversation page through published controller and HTTP transpo
         expect(page.original()?.headline).toBe('Original: Neue Version');
       }
       const view = page.view();
-      if (boundary === 'user') {
-        expect(page.original()).toBeNull();
-        expect(view.turns).toEqual([]);
-        expect(view.composerDisabled).toBe(true);
-      }
-      pending.resolve(turn());
+      pending.resolve(response({ kind: 'accepted' }, 202));
       await operation;
+      expect(acknowledge).not.toHaveBeenCalled();
       expect(page.view()).toBe(view);
+      if (boundary !== 'destroy') expect(page.view().turns).toEqual([]);
+      if (boundary === 'user') expect(page.original()).toBeNull();
     },
   );
+
+  it('suppresses late observation responses after leaving and starts a fresh session on revisit', async () => {
+    const pending = deferred<Response>();
+    fetchMock
+      .mockResolvedValueOnce(
+        response(
+          { session_id: 'session-1', expires_at: '2026-10-23T00:00:00Z' },
+          201,
+        ),
+      )
+      .mockReturnValueOnce(pending.promise);
+    fixture = TestBed.createComponent(RecipeConversationPageComponent);
+    const page = fixture.componentInstance;
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    fixture.destroy();
+    expect(fetchMock.mock.calls[1][1]?.signal?.aborted).toBe(true);
+    const view = page.view();
+    const fresh = await open();
+    pending.resolve(
+      new Response(
+        `data: ${JSON.stringify({ kind: 'snapshot', snapshot: snapshot() })}\n\n`,
+        { headers: { 'Content-Type': 'text/event-stream' } },
+      ),
+    );
+    await fixture.whenStable();
+    expect(page.view()).toBe(view);
+    expect(fresh.view().turns).toEqual([]);
+    expect(
+      fetchMock.mock.calls.filter(([url]) => url === sessionUrl),
+    ).toHaveLength(2);
+  });
 
   it('suppresses late session creation after leaving', async () => {
     const pending = deferred<Response>();
@@ -1343,15 +1142,22 @@ describe('Recipe conversation page through published controller and HTTP transpo
     const oldView = page.view();
     const fresh = await open();
     pending.resolve(
-      response({ session_id: 'old-session', expires_at: 'later' }),
+      response(
+        { session_id: 'old-session', expires_at: '2026-10-23T00:00:00Z' },
+        201,
+      ),
     );
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     await fixture.whenStable();
     expect(page.view()).toBe(oldView);
     expect(fresh.view().turns).toEqual([]);
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        requestUrl(url).includes('old-session'),
+      ),
+    ).toBe(false);
   });
 
-  it('suppresses late loads and starts with fresh data on revisiting', async () => {
+  it('suppresses late context loads and refreshes the recipe on revisit', async () => {
     const pending = deferred<ReturnType<typeof conversationRecipe>>();
     getRecipe.mockReturnValueOnce(pending.promise);
     fixture = TestBed.createComponent(RecipeConversationPageComponent);
@@ -1364,32 +1170,6 @@ describe('Recipe conversation page through published controller and HTTP transpo
     expect(old.original()).toBeNull();
     expect(page.original()?.headline).toBe('Original: Fresh recipe');
     expect(TestBed.inject(PageHeaderService).headline()).toBe('Fresh recipe');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it('suppresses delayed acknowledgement, state publication, and focus after destruction', async () => {
-    const page = await open();
-    const pending = deferred<Response>();
-    fetchMock
-      .mockReturnValueOnce(pending.promise)
-      .mockResolvedValueOnce(turn());
-    const acknowledge = vi.fn();
-    const operation = page.submit({ text: 'Verbessern', acknowledge });
-    const oldView = page.view();
-    fixture.destroy();
-    const header = TestBed.inject(PageHeaderService);
-    expect(header.subheader()).toBe('');
-    header.updateHeader(true, 'Andere Seite', '/recipes');
-    pending.resolve(
-      response({
-        role: 'user',
-        text: 'Verbessern',
-        turn_id: `turn-${turns.length + 1}`,
-      }),
-    );
-    await operation;
-    expect(acknowledge).not.toHaveBeenCalled();
-    expect(page.view()).toBe(oldView);
-    expect(header.headline()).toBe('Andere Seite');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
