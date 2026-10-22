@@ -151,6 +151,8 @@ For interactive development, run `npm run link:chat-ui` in `frontend` to link th
 
 Use workflow skills only when explicitly invoked by the user.
 
+Implementation-specific concepts, plans, and specs live in `.agents/concepts/`, `.agents/plans/`, and `.agents/specs/`. These temporary files are gitignored and remain available through final review; cleanup is manual. Permanent documentation must never reference or depend on them.
+
 - `$prepare-spec`: pressure-test a scoped change and create or refine its lightweight spec.
 - `$deliver-spec`: plan and implement an approved spec continuously, pausing only for material exceptions.
 - `$review-delivery`: perform the final spec-conformance, validation, and broader codebase review.
