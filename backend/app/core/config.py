@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     oidc_client_secret: SecretStr | None = None
     oidc_callback_url: str | None = None
     oidc_backchannel_url: str | None = None
+    oidc_allow_insecure_http: bool = False
     storage_endpoint_url: str | None = None
     storage_public_origin: str | None = None
     storage_region: str | None = None
