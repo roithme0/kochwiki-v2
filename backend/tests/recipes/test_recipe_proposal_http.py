@@ -8,8 +8,9 @@ from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.recipes import create_recipe, discard_recipe_draft
+from app.recipes.services.recipes import discard_recipe_draft
 from app.foodstuffs.services.foodstuffs import list_foodstuffs
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def prepare(client: TestClient) -> RecipeProposalOut:

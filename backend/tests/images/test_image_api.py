@@ -48,6 +48,7 @@ def storage(client: TestClient, kind: ImageKind) -> Iterator[Mock]:
         client.app.dependency_overrides.pop(adapter_dependency)
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_start_and_complete_persist_only_validated_metadata(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     started = client.post(f"/{kind.value}-image-uploads")
     assert started.status_code == 200

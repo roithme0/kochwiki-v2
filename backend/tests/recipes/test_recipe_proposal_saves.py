@@ -23,10 +23,15 @@ from app.recipes.services.proposal_saves import save_recipe_proposal
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.recipes import (
-    create_recipe, create_recipe_draft, delete_recipe_lineage, discard_recipe_draft,
-    get_recipe_version_by_id, publish_active_recipe_edit, publish_recipe_draft,
+    create_recipe_draft,
+    delete_recipe_lineage,
+    discard_recipe_draft,
+    get_recipe_version_by_id,
+    publish_active_recipe_edit,
+    publish_recipe_draft,
     update_recipe_draft,
 )
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def prepare() -> tuple[RecipeProposalStore, RecipeProposalOut, UUID, int]:

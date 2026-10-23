@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 from typing import Annotated
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Request, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, Security
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.security import APIKeyCookie
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.identity.config import (
@@ -15,7 +16,8 @@ from app.identity.config import (
     SESSION_COOKIE_PATH,
     SESSION_LIFETIME_SECONDS,
 )
-from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal, get_write_db
+from app.identity.models.user import User
 from app.identity.schemas.user import UserOut
 from app.identity.services.oidc import (
     LoginRejected,
@@ -158,6 +160,28 @@ def unauthenticated(secure: bool) -> JSONResponse:
         SESSION_COOKIE, path=SESSION_COOKIE_PATH, secure=secure, httponly=True, samesite="lax"
     )
     return response
+
+
+def require_current_user(
+    response: Response,
+    secret: Annotated[str | None, Security(session_cookie)],
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
+) -> User:
+    service = login_service()
+    if service is None:
+        raise HTTPException(status_code=503, detail="Login is not configured.", headers=HEADERS)
+    authenticated = authenticated_user(session, secret)
+    if authenticated is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required.",
+            headers={**HEADERS, "Set-Cookie": unauthenticated(service.secure_cookie).headers["set-cookie"]},
+        )
+    user, expires = authenticated
+    assert secret is not None
+    response.headers.update(HEADERS)
+    set_session_cookie(response, secret, expires, service.secure_cookie)
+    return user
 
 
 @router.get(

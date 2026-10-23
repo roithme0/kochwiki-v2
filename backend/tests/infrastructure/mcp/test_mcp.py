@@ -23,7 +23,8 @@ from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff, foodstuff_summary_out
-from app.recipes.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
+from app.recipes.services.recipes import create_recipe_draft, recipe_version_out
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.mark.parametrize("mode", ["auto", "legacy"])

@@ -14,7 +14,7 @@ from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff
-from app.recipes.services.recipes import create_recipe
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.mark.parametrize("module,description", [

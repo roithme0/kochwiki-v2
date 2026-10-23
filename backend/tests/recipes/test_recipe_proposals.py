@@ -26,12 +26,12 @@ from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuf
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.recipes import (
-    create_recipe,
     create_recipe_draft,
     delete_recipe_lineage,
     publish_active_recipe_edit,
     update_recipe_draft,
 )
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def recipe(**overrides: object) -> dict[str, object]:

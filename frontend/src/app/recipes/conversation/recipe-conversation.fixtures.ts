@@ -24,6 +24,7 @@ export function conversationRecipe(): RecipeVersionOut {
   return {
     imageId: null,
     imageDimensions: null,
+    ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002',
     state: 'active',

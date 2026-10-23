@@ -81,15 +81,16 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
     return RecipeLineageOut(
         recipeLineageId=versions[0].lineage_id,
+        ownerId=versions[0].lineage.owner_id,
         versions=[recipe_version_out(version) for version in versions],
     )
 
 
-def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersion:
+def create_recipe(session: Session, payload: RecipeVersionWrite, *, owner_id: int) -> RecipeVersion:
     image_id = _resolve_image_id(session, payload)
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     now = _now()
-    lineage = RecipeLineage(created_at=now)
+    lineage = RecipeLineage(created_at=now, owner_id=owner_id)
     version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id)
     session.add(lineage)
     session.flush()
@@ -181,6 +182,7 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
+        ownerId=version.lineage.owner_id,
         imageId=version.image_id,
         imageDimensions=(
             RecipeImageDimensionsOut(width=version.image.width, height=version.image.height)
@@ -263,6 +265,7 @@ def list_steps(session: Session) -> Sequence[Step]:
 
 def _recipe_version_statement() -> Select[tuple[RecipeVersion]]:
     return select(RecipeVersion).execution_options(populate_existing=True).options(
+        selectinload(RecipeVersion.lineage),
         selectinload(RecipeVersion.image),
         selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
         selectinload(RecipeVersion.steps),

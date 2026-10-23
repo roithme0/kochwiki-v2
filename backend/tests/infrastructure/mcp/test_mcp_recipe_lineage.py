@@ -19,6 +19,7 @@ from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
 from app.recipes.services import recipes
 from app.foodstuffs.services.foodstuffs import create_foodstuff
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings() -> None:
@@ -29,10 +30,10 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
             "ingredients": [{"index": 1, "foodstuffId": foodstuff.id, "amount": 100}],
             "steps": [{"index": 1, "description": "Cook"}],
         })
-        historical = recipes.create_recipe(session, write)
+        historical = create_recipe(session, write)
         active = recipes.publish_active_recipe_edit(session, historical.lineage_id, write)
         drafts = [recipes.create_recipe_draft(session, active.lineage_id, write) for _ in range(22)]
-        unrelated = recipes.create_recipe(session, write)
+        unrelated = create_recipe(session, write)
         deleted = recipes.create_recipe_draft(session, active.lineage_id, write)
         deleted_id = deleted.version_id
         recipes.discard_recipe_draft(session, active.lineage_id, deleted_id)
@@ -42,6 +43,7 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
         session.flush()
         expected = RecipeLineageOut(
             recipeLineageId=active.lineage_id,
+            ownerId=active.lineage.owner_id,
             versions=[recipes.recipe_version_out(version) for version in
                 sorted(versions, key=lambda version: version.version_id, reverse=True)],
         )

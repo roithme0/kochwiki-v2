@@ -5,11 +5,13 @@ from threading import Event
 from uuid import UUID
 
 import pytest
+from fastapi.testclient import TestClient
 from app.foodstuffs.models.unit import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
+from app.identity.schemas.user import UserOut
 from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.embedding import RecipeEmbedding
@@ -22,9 +24,14 @@ from app.recipes.services.embeddings import RecipeEmbeddingService, recipe_refre
 from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
 from app.recipes.services.search import RecipeSemanticSearch
 from app.recipes.services.recipes import (
-    create_recipe, create_recipe_draft, delete_recipe_lineage, discard_recipe_draft,
-    publish_active_recipe_edit, publish_recipe_draft, update_recipe_draft,
+    create_recipe_draft,
+    delete_recipe_lineage,
+    discard_recipe_draft,
+    publish_active_recipe_edit,
+    publish_recipe_draft,
+    update_recipe_draft,
 )
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def vector(axis: int = 0) -> list[float]:
@@ -275,8 +282,9 @@ def test_historical_sweep_cleanup_without_embedding_credentials() -> None:
         assert session.get(RecipeEmbedding, active_id) is not None
 
 
-def test_lifespan_refresh_failure_does_not_fail_write(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fastapi.testclient import TestClient
+def test_lifespan_refresh_failure_does_not_fail_write(
+    monkeypatch: pytest.MonkeyPatch, sign_in: Callable[[TestClient], UserOut],
+) -> None:
     from app.main import create_app
     provider = Provider()
     provider.failures.add("Bad")
@@ -292,6 +300,7 @@ def test_lifespan_refresh_failure_does_not_fail_write(monkeypatch: pytest.Monkey
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: embeddings)
     monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.RecipeEmbeddingService", lambda sessions, client: refresh)
     with TestClient(create_app()) as client:
+        sign_in(client)
         assert client.post("/recipes", json={"name": "Bad", "servings": 2}).status_code == 201
         assert attempted.wait(2)
         assert client.get("/recipes").status_code == 200

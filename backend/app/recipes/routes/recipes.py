@@ -5,6 +5,8 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import get_db, get_write_db
+from app.identity.models.user import User
+from app.identity.routes.auth import require_current_user
 from app.core.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
 from app.recipes.schemas.recipe import (
     IngredientOut,
@@ -84,13 +86,18 @@ def list_historical_recipe_versions(
     "/recipes",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_RESPONSE,
+    responses={
+        **NOT_FOUND_RESPONSE,
+        401: {"description": "Invalid or expired session"},
+        503: {"description": "Login not configured"},
+    },
 )
 def create_recipe(
     payload: RecipeVersionWrite,
+    user: User = Depends(require_current_user, scope="function"),
     session: Session = Depends(get_write_db, scope="function"),
 ) -> RecipeVersionOut:
-    return recipes.recipe_version_out(recipes.create_recipe(session, payload))
+    return recipes.recipe_version_out(recipes.create_recipe(session, payload, owner_id=user.id))
 
 
 @router.post(

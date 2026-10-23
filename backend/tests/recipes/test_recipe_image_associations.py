@@ -14,9 +14,8 @@ from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalCreate
 from app.recipes.services.proposal_saves import save_recipe_proposal
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.recipes import (
-    create_recipe, create_recipe_draft, publish_active_recipe_edit, update_recipe_draft,
-)
+from app.recipes.services.recipes import create_recipe_draft, publish_active_recipe_edit, update_recipe_draft
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.fixture
@@ -38,6 +37,7 @@ def create(client: TestClient, image_id: UUID | None) -> RecipeVersionOut:
     return RecipeVersionOut.model_validate(response.json())
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_new_recipe_without_image(client: TestClient) -> None:
     response = client.post("/recipes", json={"name": "No image", "servings": 2})
     assert response.status_code == 201
@@ -68,6 +68,7 @@ def test_dimensions_follow_version_image_and_refresh_after_replacement(images: t
         assert recipe_version_out(removed).imageDimensions is None
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_draft_replacement_removal_and_publication_are_independent(client: TestClient, images: tuple[UUID, UUID]) -> None:
     original = create(client, images[0])
     path = f"/recipes/{original.recipeLineageId}"
@@ -109,6 +110,7 @@ def test_draft_replacement_removal_and_publication_are_independent(client: TestC
 
 @pytest.mark.parametrize("choice", ["omit", "replace", "remove"])
 @pytest.mark.parametrize("operation", ["publish", "drafts"])
+@pytest.mark.usefixtures("recipe_session")
 def test_new_version_image_choices(
     client: TestClient, images: tuple[UUID, UUID], choice: str, operation: str,
 ) -> None:
@@ -129,6 +131,7 @@ def test_new_version_image_choices(
 
 @pytest.mark.parametrize("operation", ["create", "publish", "draft", "update"])
 @pytest.mark.parametrize("wrong_kind", [False, True])
+@pytest.mark.usefixtures("recipe_session")
 def test_unknown_image_rejects_entire_save(
     client: TestClient, images: tuple[UUID, UUID], operation: str, wrong_kind: bool,
 ) -> None:
@@ -185,6 +188,7 @@ def test_failed_commit_preserves_image_reference(images: tuple[UUID, UUID], oper
         assert set(session.scalars(select(ImageAsset.id))) == set(images)
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: TestClient, images: tuple[UUID, UUID]) -> None:
     original = create(client, images[0])
     path = f"/recipes/{original.recipeLineageId}"

@@ -167,6 +167,7 @@ class RecipeVersionOut(BaseModel):
 
     recipeLineageId: UUID
     recipeVersionId: UUID
+    ownerId: int = Field(gt=0)
     imageId: UUID | None
     imageDimensions: RecipeImageDimensionsOut | None
     state: RecipeVersionState
@@ -187,4 +188,5 @@ class RecipeLineageOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     recipeLineageId: UUID
+    ownerId: int = Field(gt=0)
     versions: list[RecipeVersionOut]

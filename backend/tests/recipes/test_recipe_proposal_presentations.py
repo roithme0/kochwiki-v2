@@ -20,7 +20,8 @@ from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 from app.recipes.services.proposal_presentations import resolve_recipe_proposal_presentation
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.recipes import create_recipe, delete_recipe_lineage
+from app.recipes.services.recipes import delete_recipe_lineage
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.mark.parametrize("unit,amount,expected", [

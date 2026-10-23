@@ -612,6 +612,10 @@ export type RecipeVersionOut = {
      */
     name: string;
     /**
+     * Ownerid
+     */
+    ownerId: number;
+    /**
      * Preptime
      */
     preptime: number | null;
@@ -1355,6 +1359,10 @@ export type CreateRecipeRecipesPostData = {
 
 export type CreateRecipeRecipesPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: unknown;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1362,6 +1370,10 @@ export type CreateRecipeRecipesPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: unknown;
 };
 
 export type CreateRecipeRecipesPostError = CreateRecipeRecipesPostErrors[keyof CreateRecipeRecipesPostErrors];

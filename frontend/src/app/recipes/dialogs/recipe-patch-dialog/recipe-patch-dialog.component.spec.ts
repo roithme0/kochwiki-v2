@@ -231,6 +231,7 @@ function createRecipeVersion(
     imageId: null,
     imageDimensions: null,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
+    ownerId: 1,
     recipeVersionId,
     state,
     createdAt: '2026-09-10T10:00:00Z',

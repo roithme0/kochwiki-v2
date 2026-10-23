@@ -1196,6 +1196,11 @@
             "title": "Name",
             "type": "string"
           },
+          "ownerId": {
+            "exclusiveMinimum": 0.0,
+            "title": "Ownerid",
+            "type": "integer"
+          },
           "preptime": {
             "anyOf": [
               {
@@ -1257,6 +1262,7 @@
         "required": [
           "recipeLineageId",
           "recipeVersionId",
+          "ownerId",
           "imageId",
           "imageDimensions",
           "state",
@@ -2337,6 +2343,9 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "description": "Invalid or expired session"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2356,8 +2365,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "503": {
+            "description": "Login not configured"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Create Recipe"
       }
     },

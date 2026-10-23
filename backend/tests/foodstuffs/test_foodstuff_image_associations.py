@@ -110,6 +110,7 @@ def test_failure_after_flush_rolls_back_image_and_other_fields(
     assert client.get(f"/foodstuffs/{original['id']}").json() == original
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_replacement_updates_historical_ingredients_and_search_without_embedding_refresh(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
@@ -135,6 +136,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
     assert search_service(provider).search("Carrot", 5)[0].foodstuff.imageId == images[1]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_foodstuffs(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:

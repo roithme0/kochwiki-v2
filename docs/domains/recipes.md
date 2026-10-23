@@ -6,7 +6,7 @@ A recipe has a stable identity across versions. Each version contains ingredient
 
 | Term | Meaning |
 | --- | --- |
-| Recipe lineage (`RecipeLineage`) | The stable identity grouping all versions of one recipe. |
+| Recipe lineage (`RecipeLineage`) | The stable identity grouping all versions of one recipe, owned by its creator. Ownership applies to every version. |
 | Recipe version (`RecipeVersion`, Rezeptversion) | A persisted recipe with its own content, identity, and state: `active`, `draft`, or `historical`. |
 | Active version (`active`) | The currently published version of a lineage. |
 | Draft (`draft`, Entwurf) | A persisted alternative within a lineage. It can be edited, published, or discarded. Multiple drafts may coexist. |
@@ -20,7 +20,7 @@ A recipe has a stable identity across versions. Each version contains ingredient
 
 ## Version lifecycle
 
-- Creating a recipe creates a lineage and its active version.
+- Creating a recipe requires a valid local session and creates a lineage owned by that user, with its active version. The server assigns ownership; recipe content cannot select an owner.
 - Publishing an edit to the active version creates a new active version; the previous one becomes historical.
 - Publishing a draft makes that same version active; the previous active version becomes historical. Other drafts remain drafts.
 - Saving a proposal creates a draft in the source version's lineage and creates any temporary foodstuffs in the catalogue. Saving does not publish it.

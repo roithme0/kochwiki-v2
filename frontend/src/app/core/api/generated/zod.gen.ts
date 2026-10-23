@@ -355,6 +355,7 @@ export const zRecipeVersionOut = z.strictObject({
     ]),
     lastModified: z.iso.datetime(),
     name: z.string(),
+    ownerId: z.int().check(z.gt(0)),
     preptime: z.nullable(z.int()),
     protein: z.discriminatedUnion('status', [
         zExactNutrition,

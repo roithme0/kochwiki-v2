@@ -24,6 +24,7 @@ class RecipeLineage(Base):
     __tablename__ = "recipe_lineage"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("custom_user.id", ondelete="RESTRICT"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     versions: Mapped[list[RecipeVersion]] = relationship(
         back_populates="lineage", cascade="all, delete-orphan"

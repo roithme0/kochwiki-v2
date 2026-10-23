@@ -18,7 +18,8 @@ from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalDetailsOut, RecipeProposalOut
 from app.recipes.services import proposal_saves
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
-from app.recipes.services.recipes import create_recipe, discard_recipe_draft
+from app.recipes.services.recipes import discard_recipe_draft
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def proposal_payload() -> RecipeProposalCreate:
