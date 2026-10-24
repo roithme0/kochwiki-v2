@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import get_db, get_write_db
 from app.core.schemas.errors import (
+    AUTHENTICATION_RESPONSES,
     NOT_FOUND_AND_CONFLICT_RESPONSES,
     NOT_FOUND_RESPONSE,
 )
@@ -14,8 +15,12 @@ from app.foodstuffs.schemas.foodstuff import (
     FoodstuffUpdate,
 )
 from app.foodstuffs.services import foodstuffs
+from app.identity.dependencies import require_current_user
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses=AUTHENTICATION_RESPONSES,
+)
 
 
 @router.get("/foodstuffs", response_model=list[FoodstuffOut])
@@ -71,6 +76,5 @@ def patch_foodstuff(
 )
 def delete_foodstuff(
     foodstuff_id: int, session: Session = Depends(get_write_db, scope="function")
-) -> Response:
+) -> None:
     foodstuffs.delete_foodstuff(session, foodstuff_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

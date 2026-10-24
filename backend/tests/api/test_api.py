@@ -460,6 +460,7 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_domain_error_responses_match_openapi(client: TestClient) -> None:
     missing = client.get("/users/999")
     assert missing.status_code == 404
@@ -581,6 +582,7 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
     for name in ("FoodstuffOut", "FoodstuffSummaryOut"):

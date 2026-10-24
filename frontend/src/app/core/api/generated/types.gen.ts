@@ -972,6 +972,19 @@ export type GetFoodstuffsFoodstuffsGetData = {
     url: '/foodstuffs';
 };
 
+export type GetFoodstuffsFoodstuffsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type GetFoodstuffsFoodstuffsGetError = GetFoodstuffsFoodstuffsGetErrors[keyof GetFoodstuffsFoodstuffsGetErrors];
+
 export type GetFoodstuffsFoodstuffsGetResponses = {
     /**
      * Response Get Foodstuffs Foodstuffs Get
@@ -992,6 +1005,10 @@ export type PostFoodstuffFoodstuffsPostData = {
 
 export type PostFoodstuffFoodstuffsPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1003,6 +1020,10 @@ export type PostFoodstuffFoodstuffsPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PostFoodstuffFoodstuffsPostError = PostFoodstuffFoodstuffsPostErrors[keyof PostFoodstuffFoodstuffsPostErrors];
@@ -1030,6 +1051,10 @@ export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteData = {
 
 export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1041,6 +1066,10 @@ export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteError = DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors[keyof DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors];
@@ -1068,6 +1097,10 @@ export type GetFoodstuffFoodstuffsFoodstuffIdGetData = {
 
 export type GetFoodstuffFoodstuffsFoodstuffIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1075,6 +1108,10 @@ export type GetFoodstuffFoodstuffsFoodstuffIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetFoodstuffFoodstuffsFoodstuffIdGetError = GetFoodstuffFoodstuffsFoodstuffIdGetErrors[keyof GetFoodstuffFoodstuffsFoodstuffIdGetErrors];
@@ -1102,6 +1139,10 @@ export type PatchFoodstuffFoodstuffsFoodstuffIdPatchData = {
 
 export type PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1113,6 +1154,10 @@ export type PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PatchFoodstuffFoodstuffsFoodstuffIdPatchError = PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors[keyof PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors];

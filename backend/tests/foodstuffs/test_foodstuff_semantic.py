@@ -4,6 +4,8 @@ from decimal import Decimal
 from threading import Event
 
 import pytest
+from fastapi.testclient import TestClient
+from app.identity.schemas.user import UserOut
 from app.foodstuffs.models.unit import Unit
 from pydantic import SecretStr
 from sqlalchemy import select
@@ -323,8 +325,9 @@ def test_stop_during_sweep_finishes_current_call_and_skips_remaining() -> None:
     assert len(provider.calls) == 1
 
 
-def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(monkeypatch: pytest.MonkeyPatch) -> None:
-    from fastapi.testclient import TestClient
+def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(
+    monkeypatch: pytest.MonkeyPatch, sign_in: Callable[[TestClient], UserOut],
+) -> None:
     from app.main import create_app
     provider = FakeProvider()
     provider.failures.add("bad")
@@ -339,6 +342,7 @@ def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(monkeypatc
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: search.embeddings)
     monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.FoodstuffEmbeddingService", lambda sessions, embeddings: search)
     with TestClient(create_app()) as client:
+        sign_in(client)
         response = client.post("/foodstuffs", json={"name": "bad", "unit": "G"})
         assert response.status_code == 201
         assert attempted.wait(2)

@@ -38,6 +38,7 @@ def images() -> tuple[UUID, UUID, UUID]:
 
 
 @pytest.mark.parametrize("choice", ["omit", "null", "image"])
+@pytest.mark.usefixtures("recipe_session")
 def test_create_and_read_image(client: TestClient, images: tuple[UUID, UUID, UUID], choice: str) -> None:
     payload: dict[str, object] = {"name": "Carrot", "unit": "G"}
     expected = str(images[0]) if choice == "image" else None
@@ -51,6 +52,7 @@ def test_create_and_read_image(client: TestClient, images: tuple[UUID, UUID, UUI
     assert client.get("/foodstuffs").json() == [saved]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_update_preserves_replaces_removes_and_retains_metadata(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
@@ -80,6 +82,7 @@ def test_update_preserves_replaces_removes_and_retains_metadata(
 
 
 @pytest.mark.parametrize("invalid", ["missing", "recipe", "malformed"])
+@pytest.mark.usefixtures("recipe_session")
 def test_invalid_image_rejects_entire_create_and_update(
     client: TestClient, images: tuple[UUID, UUID, UUID], invalid: str,
 ) -> None:
@@ -94,6 +97,7 @@ def test_invalid_image_rejects_entire_create_and_update(
     assert client.get("/foodstuffs").json() == [original]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_failure_after_flush_rolls_back_image_and_other_fields(
     client: TestClient, images: tuple[UUID, UUID, UUID], monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -160,6 +164,7 @@ def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_fo
         assert 'imageId' not in definitions['FoodstuffFields']['properties']
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foreign_key_protects_referenced_metadata(client: TestClient, images: tuple[UUID, UUID, UUID]) -> None:
     client.post("/foodstuffs", json={"name": "Carrot", "unit": "G", "imageId": str(images[0])})
     with SessionLocal.begin() as session:
