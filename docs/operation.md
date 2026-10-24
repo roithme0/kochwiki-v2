@@ -17,7 +17,7 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 - Create `deployment/.env` from [.env.example](../deployment/.env.example). Replace placeholders; the [development setup](development.md#run-locally) describes credential formats and integration settings.
 - Set `STORAGE_PUBLIC_ORIGIN` to the public application origin and `OIDC_CALLBACK_URL` to that origin plus `/api/auth/callback`. Configure the identity provider and any container-specific backchannel address.
 - Put HTTPS termination in front of the HTTP gateway. Staging currently defaults `OIDC_ALLOW_INSECURE_HTTP` to `true`; set it to `false` when HTTPS is configured.
-- Set `AI_GATEWAY_URL` to the external AI service origin reachable from the backend and gateway. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
+- Set `AI_GATEWAY_URL` to the external AI service origin reachable from the gateway. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
 
 ## Deploy or update
 

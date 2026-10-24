@@ -1,90 +1,6 @@
 {
   "components": {
     "schemas": {
-      "ArtifactCapability": {
-        "additionalProperties": false,
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "metadataSchema": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/JsonValue"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metadataschema"
-          },
-          "payloadSchema": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/JsonValue"
-            },
-            "title": "Payloadschema",
-            "type": "object"
-          },
-          "subtitleDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subtitledescription"
-          },
-          "titleDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Titledescription"
-          },
-          "type": {
-            "title": "Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "description",
-          "payloadSchema"
-        ],
-        "title": "ArtifactCapability",
-        "type": "object"
-      },
-      "ConversationCreated": {
-        "additionalProperties": false,
-        "properties": {
-          "expires_at": {
-            "format": "date-time",
-            "title": "Expires At",
-            "type": "string"
-          },
-          "session_id": {
-            "minLength": 1,
-            "title": "Session Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "session_id",
-          "expires_at"
-        ],
-        "title": "ConversationCreated",
-        "type": "object"
-      },
       "ErrorResponse": {
         "additionalProperties": false,
         "properties": {
@@ -744,7 +660,6 @@
         "title": "IngredientWrite",
         "type": "object"
       },
-      "JsonValue": {},
       "MinimumNutrition": {
         "additionalProperties": false,
         "properties": {
@@ -764,28 +679,6 @@
           "value"
         ],
         "title": "MinimumNutrition",
-        "type": "object"
-      },
-      "RecipeConversationCreate": {
-        "additionalProperties": false,
-        "properties": {
-          "artifact_capabilities": {
-            "items": {
-              "$ref": "#/components/schemas/ArtifactCapability"
-            },
-            "title": "Artifact Capabilities",
-            "type": "array"
-          },
-          "sourceRecipeVersionId": {
-            "format": "uuid",
-            "title": "Sourcerecipeversionid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "sourceRecipeVersionId"
-        ],
-        "title": "RecipeConversationCreate",
         "type": "object"
       },
       "RecipeImageDimensionsOut": {
@@ -2383,109 +2276,6 @@
           }
         },
         "summary": "Get Version"
-      }
-    },
-    "/recipe-conversations": {
-      "post": {
-        "operationId": "create_conversation_recipe_conversations_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RecipeConversationCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConversationCreated"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Invalid or expired session"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Untrusted request origin or insufficient permissions"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "502": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Bad Gateway"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Login or AI service unavailable"
-          },
-          "504": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "Gateway Timeout"
-          }
-        },
-        "security": [
-          {
-            "APIKeyCookie": []
-          }
-        ],
-        "summary": "Create Conversation"
       }
     },
     "/recipe-image-uploads": {

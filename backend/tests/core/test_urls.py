@@ -35,7 +35,7 @@ def test_origins_reject_paths_and_even_empty_query_or_fragment_delimiters(value:
         validate_http_origin(value, allow_trailing_slash=True)
 
 
-def test_storage_and_ai_keep_distinct_trailing_slash_policies() -> None:
+def test_storage_normalizes_trailing_slash() -> None:
     origin = "https://example.com/"
     storage = StorageConfig(
         endpoint_url=origin, public_origin=origin, region="garage",
@@ -43,9 +43,6 @@ def test_storage_and_ai_keep_distinct_trailing_slash_policies() -> None:
         access_key_id="test-key", secret_access_key="test-secret",
     )
     assert storage.endpoint_url == storage.public_origin == origin.rstrip("/")
-    assert Settings(_env_file=None, ai_gateway_url=origin.rstrip("/")).ai_gateway_url == origin.rstrip("/")
-    with pytest.raises(ValidationError):
-        Settings(_env_file=None, ai_gateway_url=origin)
 
 
 def test_oidc_preserves_exact_issuer_spelling_and_its_path() -> None:

@@ -14,8 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
 import {
   SessionController,
   SessionViewState,
+  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
-import { RecipeSessionTransport } from '../../conversation/recipe-session-transport';
 import {
   ChatArtifact,
   ChatSubmission,
@@ -219,8 +219,11 @@ export class RecipeConversationPageComponent {
           source,
         ),
       );
-      // TODO: Switch back to HttpSessionTransport once ChatUI in the AI service repo supports KochWiki's authenticated conversation creation endpoint.
-      const transport = new RecipeSessionTransport(this.versionId, userId);
+      const transport = new HttpSessionTransport(
+        '/ai/api/v1',
+        'kochwiki',
+        `kochwiki:${userId}`,
+      );
       const controller = new SessionController(
         transport,
         (state) => {
@@ -232,7 +235,7 @@ export class RecipeConversationPageComponent {
       this.view.set(controller.state);
       this.phase.set('ready');
       await this.zone.runOutsideAngular(() =>
-        controller.start(mapSessionInput()),
+        controller.start(mapSessionInput(source)),
       );
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;

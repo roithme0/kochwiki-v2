@@ -1,4 +1,5 @@
 import * as z from 'zod/mini';
+import type { RecipeVersionOut } from '../../core/api/generated';
 import {
   presentSessionArtifact,
   SessionArtifactMapper,
@@ -25,6 +26,7 @@ import {
 } from '../../core/presentation/nutrition-artifact';
 
 export interface RecipeSessionInput {
+  readonly initial_context: RecipeContext;
   readonly artifact_capabilities: NonNullable<
     SessionCreationRequest['artifact_capabilities']
   >;
@@ -32,8 +34,13 @@ export interface RecipeSessionInput {
 
 export type RecipeSessionArtifact = Parameters<SessionArtifactMapper>[0];
 
-export function mapSessionInput(): RecipeSessionInput {
+export type RecipeContext = {
+  readonly source: RecipeVersionOut;
+};
+
+export function mapSessionInput(source: RecipeVersionOut): RecipeSessionInput {
   return {
+    initial_context: { source: structuredClone(source) },
     artifact_capabilities: [
       JSON_ARTIFACT_CAPABILITY,
       FOODSTUFF_ARTIFACT_CAPABILITY,
