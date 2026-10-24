@@ -7,7 +7,8 @@ from app.images.config import IMAGE_CONTENT_TYPE
 from app.images.dependencies import image_storage
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageKind
-from app.core.schemas.errors import ErrorResponse
+from app.core.schemas.errors import AUTHENTICATION_RESPONSES, ErrorResponse
+from app.identity.dependencies import require_current_user
 from app.recipes.schemas.image import (
     RecipeImageDownloadOut,
     RecipeImageOut,
@@ -37,7 +38,12 @@ def get_recipe_image_transfers(
 @router.get(
     "/recipe-images/{image_id}/download",
     response_model=RecipeImageDownloadOut,
-    responses={status: {"model": ErrorResponse} for status in (404, 503)},
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses={
+        **AUTHENTICATION_RESPONSES,
+        404: {"model": ErrorResponse},
+        503: {"model": ErrorResponse, "description": "Login not configured or image transfer unavailable"},
+    },
 )
 def download_image(
     image_id: UUID,

@@ -210,12 +210,14 @@ FOODSTUFF_IMAGE_OPERATIONS: list[tuple[str, str]] = [
     ("POST", "/foodstuff-image-uploads/{id}/complete"),
     ("GET", "/foodstuff-images/{id}/download"),
 ]
+AUTHENTICATED_IMAGE_OPERATIONS: list[tuple[ImageKind, str, str]] = [
+    (ImageKind.FOODSTUFF, method, path) for method, path in FOODSTUFF_IMAGE_OPERATIONS
+] + [(ImageKind.RECIPE, "GET", "/recipe-images/{id}/download")]
 
 
-@pytest.mark.parametrize("kind", [ImageKind.FOODSTUFF])
-@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
+@pytest.mark.parametrize(("kind", "method", "path"), AUTHENTICATED_IMAGE_OPERATIONS)
 @pytest.mark.parametrize("credential", ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"])
-def test_foodstuff_images_reject_invalid_sessions_before_storage_access(
+def test_image_operations_reject_invalid_sessions_before_storage_access(
     client: TestClient, storage: Mock, sign_in: Callable[[TestClient], UserOut],
     method: str, path: str, credential: str,
 ) -> None:
@@ -248,21 +250,24 @@ def test_foodstuff_images_reject_invalid_sessions_before_storage_access(
         assert session.scalar(select(func.count()).select_from(ImageAsset)) == 0
 
 
-@pytest.mark.parametrize("kind", [ImageKind.FOODSTUFF])
-@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
-def test_foodstuff_image_transfers_are_shared_and_renew_sessions(
+@pytest.mark.parametrize(("kind", "method", "path"), AUTHENTICATED_IMAGE_OPERATIONS)
+def test_image_operations_are_shared_and_renew_sessions(
     client: TestClient, storage: Mock, sign_in: Callable[[TestClient], UserOut],
-    method: str, path: str,
+    kind: ImageKind, method: str, path: str,
 ) -> None:
     creator = sign_in(client)
-    started = client.post("/foodstuff-image-uploads")
+    started = client.post(f"/{kind.value}-image-uploads")
     assert started.status_code == 200
     resource_id = UUID(started.json()["uploadId"])
     storage.read.return_value = png()
     if method == "GET":
-        completed = client.post(f"/foodstuff-image-uploads/{resource_id}/complete")
+        completed = client.post(f"/{kind.value}-image-uploads/{resource_id}/complete")
         assert completed.status_code == 200
         resource_id = UUID(completed.json()["id"])
+        if kind == ImageKind.RECIPE:
+            recipe = client.post("/recipes", json={"name": "Shared image", "servings": 1, "imageId": str(resource_id)})
+            assert recipe.status_code == 201
+            assert recipe.json()["ownerId"] == creator.id
     caller = sign_in(client)
     assert caller.id != creator.id
     secret = client.cookies.get(SESSION_COOKIE, path="/")
@@ -301,8 +306,8 @@ def test_foodstuff_image_transfers_are_shared_and_renew_sessions(
     assert renewed_activity is not None and renewed_activity > previous_activity
 
 
-@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
-def test_foodstuff_image_transfers_require_configured_login(
+@pytest.mark.parametrize(("method", "path"), [(method, path) for _, method, path in AUTHENTICATED_IMAGE_OPERATIONS])
+def test_image_operations_require_configured_login(
     client: TestClient, method: str, path: str,
 ) -> None:
     response = client.request(method, path.format(id=uuid4()))
@@ -310,8 +315,8 @@ def test_foodstuff_image_transfers_require_configured_login(
     assert response.json() == {"detail": "Login is not configured."}
 
 
-@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
-def test_foodstuff_image_contract_declares_authentication(
+@pytest.mark.parametrize(("method", "path"), [(method, path) for _, method, path in AUTHENTICATED_IMAGE_OPERATIONS])
+def test_image_operation_contract_declares_authentication(
     client: TestClient, method: str, path: str,
 ) -> None:
     path = path.replace("{id}", "{image_id}" if method == "GET" else "{upload_id}")

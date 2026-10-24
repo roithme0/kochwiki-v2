@@ -1311,6 +1311,10 @@ export type DownloadImageRecipeImagesImageIdDownloadGetData = {
 
 export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1319,7 +1323,7 @@ export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
