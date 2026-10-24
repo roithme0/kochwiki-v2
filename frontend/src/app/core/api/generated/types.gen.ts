@@ -5,6 +5,54 @@ export type ClientOptions = {
 };
 
 /**
+ * ArtifactCapability
+ */
+export type ArtifactCapability = {
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Metadataschema
+     */
+    metadataSchema?: {
+        [key: string]: JsonValue;
+    } | null;
+    /**
+     * Payloadschema
+     */
+    payloadSchema: {
+        [key: string]: JsonValue;
+    };
+    /**
+     * Subtitledescription
+     */
+    subtitleDescription?: string | null;
+    /**
+     * Titledescription
+     */
+    titleDescription?: string | null;
+    /**
+     * Type
+     */
+    type: string;
+};
+
+/**
+ * ConversationCreated
+ */
+export type ConversationCreated = {
+    /**
+     * Expires At
+     */
+    expires_at: string;
+    /**
+     * Session Id
+     */
+    session_id: string;
+};
+
+/**
  * ErrorResponse
  */
 export type ErrorResponse = {
@@ -311,6 +359,8 @@ export type IngredientWrite = {
     index: number;
 };
 
+export type JsonValue = unknown;
+
 /**
  * MinimumNutrition
  */
@@ -323,6 +373,20 @@ export type MinimumNutrition = {
      * Value
      */
     value: number;
+};
+
+/**
+ * RecipeConversationCreate
+ */
+export type RecipeConversationCreate = {
+    /**
+     * Artifact Capabilities
+     */
+    artifact_capabilities?: Array<ArtifactCapability>;
+    /**
+     * Sourcerecipeversionid
+     */
+    sourceRecipeVersionId: string;
 };
 
 /**
@@ -1257,6 +1321,55 @@ export type GetVersionMetaVersionGetResponses = {
 };
 
 export type GetVersionMetaVersionGetResponse = GetVersionMetaVersionGetResponses[keyof GetVersionMetaVersionGetResponses];
+
+export type CreateConversationRecipeConversationsPostData = {
+    body: RecipeConversationCreate;
+    path?: never;
+    query?: never;
+    url: '/recipe-conversations';
+};
+
+export type CreateConversationRecipeConversationsPostErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+    /**
+     * Bad Gateway
+     */
+    502: ErrorResponse;
+    /**
+     * Login or AI service unavailable
+     */
+    503: ErrorResponse;
+    /**
+     * Gateway Timeout
+     */
+    504: ErrorResponse;
+};
+
+export type CreateConversationRecipeConversationsPostError = CreateConversationRecipeConversationsPostErrors[keyof CreateConversationRecipeConversationsPostErrors];
+
+export type CreateConversationRecipeConversationsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ConversationCreated;
+};
+
+export type CreateConversationRecipeConversationsPostResponse = CreateConversationRecipeConversationsPostResponses[keyof CreateConversationRecipeConversationsPostResponses];
 
 export type BeginUploadRecipeImageUploadsPostData = {
     body?: never;

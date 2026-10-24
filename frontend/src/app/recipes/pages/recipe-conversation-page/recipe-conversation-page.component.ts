@@ -14,7 +14,6 @@ import { MatButtonModule } from '@angular/material/button';
 import {
   SessionController,
   SessionViewState,
-  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
 import {
   ChatArtifact,
@@ -24,6 +23,7 @@ import {
   artifactRenderer,
 } from '@roithme0/chat-ui/ui';
 import { ActiveUserService } from '../../../core/services/active-user.service';
+import { RecipeSessionTransport } from '../../conversation/recipe-session-transport';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
@@ -220,9 +220,8 @@ export class RecipeConversationPageComponent {
           source,
         ),
       );
-      const transport = new HttpSessionTransport(
-        '/ai/api/v1',
-        'kochwiki',
+      const transport = new RecipeSessionTransport(
+        source.recipeVersionId,
         `${encodeURIComponent(user.issuer)}:${encodeURIComponent(user.subject)}`,
       );
       const controller = new SessionController(
@@ -236,7 +235,7 @@ export class RecipeConversationPageComponent {
       this.view.set(controller.state);
       this.phase.set('ready');
       await this.zone.runOutsideAngular(() =>
-        controller.start(mapSessionInput(source)),
+        controller.start(mapSessionInput()),
       );
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;

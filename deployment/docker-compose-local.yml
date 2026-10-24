@@ -60,6 +60,7 @@ services:
       db:
         condition: service_healthy
     environment:
+      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-}
       STORAGE_ENDPOINT_URL: http://file-storage:3900
       STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:-http://localhost:${GATEWAY_PORT:-8000}}
       STORAGE_REGION: garage

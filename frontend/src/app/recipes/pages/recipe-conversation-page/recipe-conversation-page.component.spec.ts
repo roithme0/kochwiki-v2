@@ -86,6 +86,7 @@ describe('Recipe conversation page through published session controller and HTTP
     controller: ReadableStreamDefaultController<Uint8Array>;
     signal: AbortSignal | null | undefined;
   }[];
+  const createUrl = `${backendUrl}/recipe-conversations`;
   const sessionUrl = '/ai/api/v1/agents/kochwiki/sessions';
 
   function snapshot(): PresentedSession {
@@ -769,12 +770,15 @@ describe('Recipe conversation page through published session controller and HTTP
   it('captures context and capabilities once, then refines through the same observed session without writes', async () => {
     const page = await open();
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      sessionUrl,
+      createUrl,
       `${sessionUrl}/session-1/events`,
     ]);
     const body = fetchMock.mock.calls[0][1]?.body;
     if (typeof body !== 'string') throw new Error('Expected JSON request body');
-    expect(JSON.parse(body) as unknown).toEqual(mapSessionInput(source));
+    expect(JSON.parse(body) as unknown).toEqual({
+      sourceRecipeVersionId: source.recipeVersionId,
+      artifact_capabilities: mapSessionInput().artifact_capabilities,
+    });
     expect(getRecipe).toHaveBeenCalledWith(
       source.recipeLineageId,
       source.recipeVersionId,
@@ -810,7 +814,7 @@ describe('Recipe conversation page through published session controller and HTTP
       'Inhalt nicht darstellbar',
     );
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      sessionUrl,
+      createUrl,
       `${sessionUrl}/session-1/events`,
       `${sessionUrl}/session-1/turns`,
       `${sessionUrl}/session-1/turns`,
@@ -843,14 +847,14 @@ describe('Recipe conversation page through published session controller and HTTP
       user.set({ id: 1, display_name: 'Test', issuer, subject });
       await open();
       expect(
-        new Headers(fetchMock.mock.calls[0][1]?.headers).get(
+        new Headers(fetchMock.mock.calls[1][1]?.headers).get(
           'X-Application-User',
         ),
       ).toBe(identity);
     },
   );
 
-  it('sends the stable selected identity on session creation, observation and prompt admission', async () => {
+  it('uses the authenticated creation relay and stable identity for direct observation and prompt admission', async () => {
     const page = await open();
     user.set({
       id: 1,
@@ -861,7 +865,12 @@ describe('Recipe conversation page through published session controller and HTTP
     fixture.detectChanges();
     await submit(page);
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    for (const [, request] of fetchMock.mock.calls) {
+    expect(
+      new Headers(fetchMock.mock.calls[0][1]?.headers).has(
+        'X-Application-User',
+      ),
+    ).toBe(false);
+    for (const [, request] of fetchMock.mock.calls.slice(1)) {
       expect(new Headers(request?.headers).get('X-Application-User')).toBe(
         'https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-1',
       );
@@ -892,7 +901,7 @@ describe('Recipe conversation page through published session controller and HTTP
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(
-      new Headers(fetchMock.mock.calls[0][1]?.headers).get(
+      new Headers(fetchMock.mock.calls[1][1]?.headers).get(
         'X-Application-User',
       ),
     ).toBe('https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-2');
@@ -1045,9 +1054,7 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(remove.mock.calls.some(([name]) => name === 'beforeunload')).toBe(
       true,
     );
-    const creations = fetchMock.mock.calls.filter(
-      ([url]) => url === sessionUrl,
-    );
+    const creations = fetchMock.mock.calls.filter(([url]) => url === createUrl);
     expect(creations).toHaveLength(3);
     for (const [, request] of creations)
       expect(request?.body).toBe(creations[0][1]?.body);
@@ -1192,7 +1199,7 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(page.view()).toBe(view);
     expect(fresh.view().turns).toEqual([]);
     expect(
-      fetchMock.mock.calls.filter(([url]) => url === sessionUrl),
+      fetchMock.mock.calls.filter(([url]) => url === createUrl),
     ).toHaveLength(2);
   });
 
