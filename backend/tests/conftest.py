@@ -59,8 +59,13 @@ def provider_user() -> Callable[[str], UserOut]:
 
 
 @pytest.fixture
-def mcp_headers(provider_user: Callable[[str], UserOut]) -> dict[str, str]:
-    user = provider_user("MCP caller")
+def mcp_user(provider_user: Callable[[str], UserOut]) -> UserOut:
+    return provider_user("MCP caller")
+
+
+@pytest.fixture
+def mcp_headers(mcp_user: UserOut) -> dict[str, str]:
+    user = mcp_user
     with SessionLocal.begin() as session:
         secret, _ = establish_session(session, user.id, None)
         session.flush()

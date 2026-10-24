@@ -27,7 +27,7 @@ def prepare(client: TestClient) -> RecipeProposalOut:
                 {"index": 1, "amount": 100, "foodstuff": {"kind": "temporary",
                     "definition": {"name": "Beans", "unit": "G", "protein": 10}}},
             ], "steps": [{"index": 1, "description": "Cook"}]},
-        }))
+        }), user_id=source.ownerId)
 
 
 def test_save_creates_ingredients_and_repeated_save_returns_same_draft(client: TestClient) -> None:

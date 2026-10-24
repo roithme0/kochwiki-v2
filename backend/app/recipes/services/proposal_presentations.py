@@ -21,9 +21,9 @@ from app.recipes.services.proposal_store import RecipeProposalStore
 
 
 def resolve_recipe_proposal_presentation(
-    session: Session, store: RecipeProposalStore, proposal_id: UUID
+    session: Session, store: RecipeProposalStore, proposal_id: UUID, *, user_id: int
 ) -> RecipeProposalPresentationOut:
-    recipe = store.get(proposal_id).recipe
+    recipe = store.get(proposal_id, user_id=user_id).recipe
     foodstuff_ids = {
         ingredient.foodstuff.foodstuffId
         for ingredient in recipe.ingredients

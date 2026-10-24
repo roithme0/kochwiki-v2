@@ -31,7 +31,7 @@ from app.recipes.services.recipes import (
     publish_active_recipe_edit,
     update_recipe_draft,
 )
-from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import create_owned_recipe as create_recipe, recipe_owner_id
 
 
 def recipe(**overrides: object) -> dict[str, object]:
@@ -82,7 +82,7 @@ def test_retention_is_detached_and_creates_no_records_or_refresh_work() -> None:
         before = datetime.now(timezone.utc)
         with SessionLocal.begin() as session:
             original_counts = counts(session)
-            proposal = store.create(session, submitted)
+            proposal = store.create(session, submitted, user_id=recipe_owner_id(session))
             assert counts(session) == original_counts
             assert not session.new and not session.dirty and not session.deleted
         assert refreshed_foodstuffs == [] and refreshed_recipes == []
@@ -105,10 +105,10 @@ def test_retention_is_detached_and_creates_no_records_or_refresh_work() -> None:
     definition.definition.name = "Changed definition"
     proposal.recipe.ingredients.clear()
     proposal.sourceRecipeVersionId = uuid4()
-    retrieved = store.get(retained.proposalId)
+    retrieved = store.get(retained.proposalId, user_id=recipe_owner_id())
     assert retrieved == retained
     retrieved.recipe.steps.clear()
-    assert store.get(retained.proposalId) == retained
+    assert store.get(retained.proposalId, user_id=recipe_owner_id()) == retained
 
 
 def test_application_instance_retention_and_shutdown_cleanup() -> None:
@@ -118,17 +118,17 @@ def test_application_instance_retention_and_shutdown_cleanup() -> None:
     with TestClient(application) as client:
         assert client.get("/").status_code == 200
         with SessionLocal() as session:
-            proposal = store.create(session, payload(source))
+            proposal = store.create(session, payload(source), user_id=recipe_owner_id(session))
         assert client.get("/").status_code == 200
-        assert store.get(proposal.proposalId) == proposal
+        assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
         other = cast(RecipeProposalStore, create_app().state.recipe_proposals)
         with pytest.raises(NotFoundError):
-            other.get(proposal.proposalId)
+            other.get(proposal.proposalId, user_id=recipe_owner_id())
         assert {path for path in client.get("/api/openapi.json").json()["paths"] if "proposal" in path} == {
             "/recipe-proposals/{proposal_id}/save",
         }
     with pytest.raises(NotFoundError):
-        store.get(proposal.proposalId)
+        store.get(proposal.proposalId, user_id=recipe_owner_id())
 
 
 def test_reference_validation_does_not_autoflush_pending_records() -> None:
@@ -137,28 +137,28 @@ def test_reference_validation_does_not_autoflush_pending_records() -> None:
     with SessionLocal() as session:
         pending = Foodstuff(name="Pending", unit=Unit.G)
         session.add(pending)
-        proposal = store.create(session, payload(source))
+        proposal = store.create(session, payload(source), user_id=recipe_owner_id(session))
         assert pending.id is None and pending in session.new
-        assert store.get(proposal.proposalId) == proposal
+        assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
 
 
 def test_refinement_is_complete_separate_and_keeps_original_source() -> None:
     _, source, _ = references()
     store = RecipeProposalStore()
     with SessionLocal() as session:
-        base = store.create(session, payload(source, ingredients=[temporary()]))
+        base = store.create(session, payload(source, ingredients=[temporary()]), user_id=recipe_owner_id(session))
         refinement_input = RecipeProposalCreate(
             sourceRecipeVersionId=source, baseProposalId=base.proposalId,
             recipe=payload(source, name="Refined", ingredients=[], steps=[]).recipe,
         )
-        refinement = store.create(session, refinement_input)
+        refinement = store.create(session, refinement_input, user_id=recipe_owner_id(session))
         assert refinement.proposalId != base.proposalId
         assert refinement.baseProposalId == base.proposalId and refinement.sourceRecipeVersionId == source
         assert refinement.recipe.name == "Refined" and refinement.recipe.ingredients == [] and refinement.recipe.steps == []
-        assert store.get(base.proposalId) == base
+        assert store.get(base.proposalId, user_id=recipe_owner_id()) == base
         refinement_input.sourceRecipeVersionId = uuid4()
         with pytest.raises(ConflictError, match="original source"):
-            store.create(session, refinement_input)
+            store.create(session, refinement_input, user_id=recipe_owner_id(session))
 
 
 def test_all_source_states_and_later_dependency_changes_and_deletion() -> None:
@@ -168,23 +168,24 @@ def test_all_source_states_and_later_dependency_changes_and_deletion() -> None:
         current = publish_active_recipe_edit(session, lineage, RecipeVersionWrite(name="Current", servings=2)).version_id
     store = RecipeProposalStore()
     with SessionLocal() as session:
-        proposals = [store.create(session, payload(source, ingredients=[existing(foodstuff_id=foodstuff_id)]))
+        proposals = [store.create(session, payload(source, ingredients=[existing(foodstuff_id=foodstuff_id)]), user_id=recipe_owner_id(session))
                      for source in (active, draft, current)]
     with SessionLocal.begin() as session:
         update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="Renamed", kcal=Decimal(1)))
         update_recipe_draft(session, lineage, draft, RecipeVersionWrite(name="Changed draft", servings=3))
     for proposal in proposals:
-        assert store.get(proposal.proposalId) == proposal
+        assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
     with SessionLocal.begin() as session:
         delete_recipe_lineage(session, lineage)
         delete_foodstuff(session, foodstuff_id)
     for proposal in proposals:
-        assert store.get(proposal.proposalId) == proposal
+        assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
 
 
 @pytest.mark.parametrize("missing", ["source", "base", "foodstuff", "database"])
 def test_creation_failures_leave_no_entry(missing: str, monkeypatch: pytest.MonkeyPatch) -> None:
     _, source, _ = references()
+    user_id = recipe_owner_id()
     issued_id = uuid4()
     monkeypatch.setattr("app.recipes.services.proposal_store.uuid4", lambda: issued_id)
     submitted = payload(source)
@@ -203,9 +204,9 @@ def test_creation_failures_leave_no_entry(missing: str, monkeypatch: pytest.Monk
     store = RecipeProposalStore()
     with SessionLocal() as session:
         with pytest.raises(expected):
-            store.create(session, submitted)
+            store.create(session, submitted, user_id=user_id)
     with pytest.raises(NotFoundError):
-        store.get(issued_id)
+        store.get(issued_id, user_id=user_id)
 
 
 def test_mutated_invalid_payload_is_revalidated_before_retention() -> None:
@@ -214,7 +215,7 @@ def test_mutated_invalid_payload_is_revalidated_before_retention() -> None:
     submitted = payload(source)
     submitted.recipe.servings = 0
     with SessionLocal() as session, pytest.raises(ValidationError):
-        store.create(session, submitted)
+        store.create(session, submitted, user_id=recipe_owner_id(session))
 
 
 @pytest.mark.parametrize("fields", [

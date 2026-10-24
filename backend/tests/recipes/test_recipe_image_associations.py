@@ -278,8 +278,8 @@ def test_ai_draft_inherits_specific_source_image(
         proposal = store.create(session, RecipeProposalCreate.model_validate({
             "sourceRecipeVersionId": source.version_id,
             "recipe": {"name": "Improved", "servings": 2, "ingredients": [], "steps": []},
-        }))
-    result = save_recipe_proposal(SessionLocal, store, proposal.proposalId)
+        }), user_id=recipe_session.id)
+    result = save_recipe_proposal(SessionLocal, store, proposal.proposalId, user_id=recipe_session.id)
     assert result.imageId == source_image
-    assert save_recipe_proposal(SessionLocal, store, proposal.proposalId).imageId == source_image
-    assert "imageId" not in store.get(proposal.proposalId).recipe.model_dump()
+    assert save_recipe_proposal(SessionLocal, store, proposal.proposalId, user_id=recipe_session.id).imageId == source_image
+    assert "imageId" not in store.get(proposal.proposalId, user_id=recipe_session.id).recipe.model_dump()

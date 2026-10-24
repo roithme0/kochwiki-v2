@@ -24,6 +24,7 @@ A recipe has a stable identity across versions. Each version contains ingredient
 - Publishing an edit to the active version creates a new active version; the previous one becomes historical.
 - Publishing a draft makes that same version active; the previous active version becomes historical. Other drafts remain drafts.
 - Saving a proposal creates a draft in the source version's lineage and creates any temporary foodstuffs in the catalogue. Saving does not publish it.
+- Proposals are private to their creator. Creating, refining, and saving them requires ownership of the source recipe lineage.
 - Proposals are held in memory and do not survive a backend restart. Persisted drafts do.
 
 ## Nutrition per serving

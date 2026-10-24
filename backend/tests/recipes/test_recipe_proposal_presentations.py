@@ -21,7 +21,7 @@ from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuf
 from app.recipes.services.proposal_presentations import resolve_recipe_proposal_presentation
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import delete_recipe_lineage
-from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import create_owned_recipe as create_recipe, recipe_owner_id
 
 
 @pytest.mark.parametrize("unit,amount,expected", [
@@ -52,13 +52,13 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
                 ],
                 "steps": [{"index": 2, "description": "Serve"}, {"index": 1, "description": "Mix"}],
             },
-        }))
+        }), user_id=recipe_owner_id(session))
     with SessionLocal.begin() as session:
         models = (Foodstuff, RecipeVersion, Ingredient, Step)
         before = [session.scalar(select(func.count()).select_from(model)) for model in models]
         pending = Foodstuff(name="Pending", unit=Unit.G)
         session.add(pending)
-        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe_owner_id(session))
         assert pending.id is None and list(session.new) == [pending]
         assert not session.dirty and not session.deleted
         session.expunge(pending)
@@ -79,9 +79,9 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
     assert RecipeProposalPresentationOut.model_validate_json(presentation.model_dump_json()) == presentation
     temporary.name = "Changed presentation"
     presentation.steps.clear()
-    assert store.get(proposal.proposalId) == proposal
+    assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
     with SessionLocal() as session:
-        again = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        again = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe_owner_id(session))
     assert again.ingredients[1].foodstuff != temporary and len(again.steps) == 2
 
 
@@ -97,8 +97,8 @@ def test_empty_and_partial_nutrition(ingredients: list[dict[str, object]]) -> No
         proposal = store.create(session, RecipeProposalCreate.model_validate({
             "sourceRecipeVersionId": source.version_id,
             "recipe": {"name": "Proposal", "servings": 1, "ingredients": ingredients, "steps": []},
-        }))
-        result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        }), user_id=recipe_owner_id(session))
+        result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe_owner_id(session))
     assert result.kcal.value == (Decimal(0) if ingredients else None)
     assert all(value.status == "unknown" and value.value is None for value in (result.carbs, result.protein, result.fat))
     assert result.steps == []
@@ -115,12 +115,12 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
             "recipe": {"name": "Proposal", "servings": 2, "steps": [], "ingredients": [{
                 "index": 1, "amount": 200, "foodstuff": {"kind": "existing", "foodstuffId": foodstuff_id},
             }]},
-        }))
+        }), user_id=recipe_owner_id(session))
     with SessionLocal.begin() as session:
         update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="Renamed", kcal=Decimal(250)))
         delete_recipe_lineage(session, lineage_id)
     with SessionLocal() as session:
-        result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        result = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe_owner_id(session))
     assert result.kcal.value == 250
     resolved = result.ingredients[0].foodstuff
     assert isinstance(resolved, ResolvedExistingProposalFoodstuff) and resolved.name == "Renamed"
@@ -128,10 +128,10 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
         delete_foodstuff(session, foodstuff_id)
     with SessionLocal() as session:
         with pytest.raises(NotFoundError, match=f"Foodstuff with id {foodstuff_id} not found"):
-            resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
-    assert store.get(proposal.proposalId) == proposal
+            resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe_owner_id(session))
+    assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
 
 
 def test_unknown_proposal() -> None:
     with SessionLocal() as session, pytest.raises(NotFoundError, match="Recipe proposal"):
-        resolve_recipe_proposal_presentation(session, RecipeProposalStore(), uuid4())
+        resolve_recipe_proposal_presentation(session, RecipeProposalStore(), uuid4(), user_id=999999)

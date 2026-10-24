@@ -154,8 +154,8 @@ def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_fo
                 {"index": 1, "amount": 100, "foodstuff": {"kind": "existing", "foodstuffId": saved['id']}},
                 {"index": 2, "amount": 100, "foodstuff": {"kind": "temporary", "definition": {"name": "New", "unit": "G"}}},
             ]},
-        }))
-        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        }), user_id=recipe['ownerId'])
+        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe['ownerId'])
         assert presentation.ingredients[0].foodstuff.imageId == images[0]
         assert presentation.ingredients[1].foodstuff.imageId is None
         body = presentation.model_dump(mode="json")

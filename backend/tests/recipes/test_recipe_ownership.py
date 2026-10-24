@@ -199,7 +199,7 @@ def test_other_user_can_read_all_lineage_states(
 def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
     client: TestClient, sign_in: Callable[[TestClient], UserOut], saved: bool, caller: str,
 ) -> None:
-    sign_in(client)
+    owner = sign_in(client)
     secret = client.cookies.get(SESSION_COOKIE)
     source = client.post("/recipes", json=PAYLOAD).json()
     store = cast(RecipeProposalStore, client.app.state.recipe_proposals)
@@ -213,7 +213,7 @@ def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
                     },
                 }],
             },
-        }))
+        }), user_id=owner.id)
     path = f"/recipe-proposals/{proposal.proposalId}/save"
     if saved:
         assert client.post(path).status_code == 200
@@ -227,7 +227,7 @@ def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
     else:
         with SessionLocal.begin() as session:
             assert invalidate_session(session, secret)
-    assert client.post(path).status_code == (403 if caller == "other" else 401)
+    assert client.post(path).status_code == (404 if caller == "other" else 401)
     with SessionLocal() as session:
         assert counts(session) == before
-    assert (store.saved_version_id(proposal.proposalId) is not None) == saved
+    assert (store.saved_version_id(proposal.proposalId, user_id=owner.id) is not None) == saved

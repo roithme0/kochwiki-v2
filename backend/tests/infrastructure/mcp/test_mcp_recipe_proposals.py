@@ -1,4 +1,6 @@
 import asyncio
+from collections.abc import Callable
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 import httpx2
@@ -14,6 +16,7 @@ from app.main import create_app
 from app.identity.config import SESSION_COOKIE
 from app.identity.schemas.user import UserOut
 from app.identity.services.sessions import establish_session
+from app.identity.services.delegation import issue_delegation_token
 from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
@@ -22,12 +25,12 @@ from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalDet
 from app.recipes.services import proposal_saves
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, list_foodstuffs
 from app.recipes.services.recipes import discard_recipe_draft
-from tests.recipes.helpers import create_owned_recipe as create_recipe
+from app.recipes.services.recipes import create_recipe
 
 
-def proposal_payload() -> RecipeProposalCreate:
+def proposal_payload(owner_id: int) -> RecipeProposalCreate:
     with SessionLocal.begin() as session:
-        source = create_recipe(session, RecipeVersionWrite(name="Original", servings=1))
+        source = create_recipe(session, RecipeVersionWrite(name="Original", servings=1), owner_id=owner_id)
         foodstuff = create_foodstuff(session, FoodstuffCreate(name="Oats", unit=Unit.G))
         return RecipeProposalCreate.model_validate({
             "sourceRecipeVersionId": source.version_id,
@@ -44,8 +47,8 @@ def proposal_payload() -> RecipeProposalCreate:
         })
 
 
-def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_session: UserOut, mcp_headers: dict[str, str]) -> None:
-    payload = proposal_payload()
+def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_session: UserOut, mcp_headers: dict[str, str], mcp_user: UserOut) -> None:
+    payload = proposal_payload(mcp_user.id)
     with SessionLocal.begin() as session:
         source = session.get(RecipeVersion, payload.sourceRecipeVersionId)
         assert source is not None
@@ -119,8 +122,8 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
     asyncio.run(exercise())
 
 
-def test_proposal_mcp_validation_and_missing_dependencies(mcp_headers: dict[str, str]) -> None:
-    payload = proposal_payload()
+def test_proposal_mcp_validation_and_missing_dependencies(mcp_headers: dict[str, str], mcp_user: UserOut) -> None:
+    payload = proposal_payload(mcp_user.id)
 
     async def exercise() -> None:
         app = create_app()
@@ -157,8 +160,8 @@ def test_proposal_mcp_validation_and_missing_dependencies(mcp_headers: dict[str,
     asyncio.run(exercise())
 
 
-def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str]) -> None:
-    payload = proposal_payload()
+def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str], mcp_user: UserOut) -> None:
+    payload = proposal_payload(mcp_user.id)
     original = proposal_saves.create_recipe_draft
 
     def fail(session: Session, lineage_id: UUID, recipe: RecipeVersionWrite) -> RecipeVersion:
@@ -185,5 +188,56 @@ def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: 
                         assert session.query(RecipeVersion).count() == 1
                     monkeypatch.setattr(proposal_saves, "create_recipe_draft", original)
                     assert not (await client.call_tool("save_recipe_proposal", args)).is_error
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("saved", [False, True])
+def test_mcp_proposal_authorization_and_shared_recipe_reads(
+    mcp_user: UserOut, mcp_headers: dict[str, str],
+    provider_user: Callable[[str], UserOut], saved: bool,
+) -> None:
+    payload = proposal_payload(mcp_user.id)
+    other = provider_user("Other caller")
+    with SessionLocal.begin() as session:
+        secret, _ = establish_session(session, other.id, None)
+        session.flush()
+        token = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
+        assert token is not None
+        other_headers = {"Authorization": f"Bearer {token.secret}", "X-Application-User": str(mcp_user.id)}
+
+    async def exercise() -> None:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            async with httpx2.AsyncClient(
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost",
+            ) as owner_http, httpx2.AsyncClient(
+                headers=other_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost",
+            ) as other_http:
+                async with Client(streamable_http_client("http://localhost/mcp/", http_client=owner_http)) as owner_client, Client(
+                    streamable_http_client("http://localhost/mcp/", http_client=other_http)
+                ) as other_client:
+                    created = await owner_client.call_tool("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")})
+                    assert not created.is_error
+                    proposal = RecipeProposalOut.model_validate(created.structured_content)
+                    args = {"proposal_id": str(proposal.proposalId)}
+                    if saved:
+                        assert not (await owner_client.call_tool("save_recipe_proposal", args)).is_error
+                    with SessionLocal() as session:
+                        before = (session.query(RecipeVersion).count(), len(list_foodstuffs(session)))
+                    read = await other_client.call_tool("get_recipe_lineage", {"recipe_version_id": str(payload.sourceRecipeVersionId)})
+                    assert not read.is_error
+                    denied = await other_client.call_tool("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")})
+                    assert denied.is_error and "Only the recipe owner" in str(denied)
+                    refinement = payload.model_copy(update={"baseProposalId": proposal.proposalId})
+                    denied = await other_client.call_tool("create_recipe_proposal", {"proposal": refinement.model_dump(mode="json")})
+                    assert denied.is_error and "not found" in str(denied)
+                    for tool in ("get_recipe_proposal", "save_recipe_proposal"):
+                        denied = await other_client.call_tool(tool, args)
+                        assert denied.is_error and "not found" in str(denied)
+                    with SessionLocal() as session:
+                        assert (session.query(RecipeVersion).count(), len(list_foodstuffs(session))) == before
+                    assert not (await owner_client.call_tool("get_recipe_proposal", args)).is_error
+                    assert not (await owner_client.call_tool("save_recipe_proposal", args)).is_error
 
     asyncio.run(exercise())
