@@ -1445,11 +1445,21 @@
           "id": {
             "title": "Id",
             "type": "integer"
+          },
+          "issuer": {
+            "title": "Issuer",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "issuer",
+          "subject"
         ],
         "title": "UserOut",
         "type": "object"

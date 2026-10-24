@@ -22,7 +22,7 @@ from app.identity.services.sessions import (
     authenticated_user,
     cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )
-from tests.identity.test_oidc_login import Provider, begin, browser, finish, provider, settings
+from tests.identity.test_oidc_login import ISSUER, Provider, begin, browser, finish, provider, settings
 
 
 def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: Provider) -> None:
@@ -44,7 +44,10 @@ def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: 
         }
         user_id = stored.user_id
     current = browser.get("/api/auth/me")
-    assert current.json() == {"id": user_id, "display_name": "Kitchen Friend"}
+    assert current.json() == {
+        "id": user_id, "display_name": "Kitchen Friend",
+        "issuer": ISSUER, "subject": "provider-user",
+    }
     assert current.headers["cache-control"] == "no-store"
 
 

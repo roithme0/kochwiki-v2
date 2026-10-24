@@ -170,7 +170,8 @@ export class RecipeConversationPageComponent {
 
   async load(): Promise<void> {
     const generation = ++this.generation;
-    const userId = this.activeUser.activeUser()?.id ?? null;
+    const user = this.activeUser.activeUser();
+    const userId = user?.id ?? null;
     this.conversationUserId = userId;
     this.invalidateSaveFeedback();
     this.controller?.dispose();
@@ -189,7 +190,7 @@ export class RecipeConversationPageComponent {
     });
     this.phase.set('loading');
     this.header.updateHeader(true, '', this.back(), true, 'Rezept verbessern');
-    if (userId === null) {
+    if (user === null) {
       this.phase.set('waiting-for-user');
       return;
     }
@@ -222,7 +223,7 @@ export class RecipeConversationPageComponent {
       const transport = new HttpSessionTransport(
         '/ai/api/v1',
         'kochwiki',
-        `kochwiki:${userId}`,
+        `${encodeURIComponent(user.issuer)}:${encodeURIComponent(user.subject)}`,
       );
       const controller = new SessionController(
         transport,

@@ -6,3 +6,5 @@ class UserOut(BaseModel):
 
     id: int
     display_name: str
+    issuer: str
+    subject: str

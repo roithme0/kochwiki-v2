@@ -6,7 +6,12 @@ import {
 } from '@angular/common/http/testing';
 import { ActiveUserService } from './active-user.service';
 
-const USER = { id: 7, display_name: 'Authenticated cook' };
+const USER = {
+  id: 7,
+  display_name: 'Authenticated cook',
+  issuer: 'https://idp.example/realms/test',
+  subject: 'user-7',
+};
 
 describe('Authenticated current user', () => {
   let http: HttpTestingController;

@@ -752,6 +752,14 @@ export type UserOut = {
      * Id
      */
     id: number;
+    /**
+     * Issuer
+     */
+    issuer: string;
+    /**
+     * Subject
+     */
+    subject: string;
 };
 
 /**
