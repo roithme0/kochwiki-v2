@@ -1,24 +1,28 @@
 from typing import cast
 from uuid import uuid4
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe import RecipeVersionOut
 from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import discard_recipe_draft
 from app.foodstuffs.services.foodstuffs import list_foodstuffs
-from tests.recipes.helpers import create_owned_recipe as create_recipe
 
+
+pytestmark = pytest.mark.usefixtures("recipe_session")
 
 def prepare(client: TestClient) -> RecipeProposalOut:
     store = cast(RecipeProposalStore, client.app.state.recipe_proposals)
+    response = client.post("/recipes", json={"name": "Original", "servings": 1})
+    assert response.status_code == 201
+    source = RecipeVersionOut.model_validate(response.json())
     with SessionLocal.begin() as session:
-        source = create_recipe(session, RecipeVersionWrite(name="Original", servings=1))
         return store.create(session, RecipeProposalCreate.model_validate({
-            "sourceRecipeVersionId": source.version_id,
+            "sourceRecipeVersionId": source.recipeVersionId,
             "recipe": {"name": "Improved", "servings": 2, "ingredients": [
                 {"index": 1, "amount": 100, "foodstuff": {"kind": "temporary",
                     "definition": {"name": "Beans", "unit": "G", "protein": 10}}},

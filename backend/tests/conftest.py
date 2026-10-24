@@ -23,7 +23,7 @@ from app.identity.schemas.user import UserOut
 from app.identity.schemas.oidc import Identity
 from app.identity.services.users import map_identity
 from app.identity.config import SESSION_COOKIE
-from app.identity.routes import auth
+from app.identity import dependencies
 from app.identity.services.sessions import establish_session
 from app.core.config import Settings
 
@@ -71,12 +71,13 @@ def sign_in(
         oidc_client_secret="test-client-secret-value-at-least-32-characters",
         oidc_callback_url="http://localhost:8000/api/auth/callback",
     )
-    monkeypatch.setattr(auth, "get_settings", lambda: settings)
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
 
     def authenticate(test_client: TestClient) -> UserOut:
         user = provider_user("Recipe creator")
         with SessionLocal.begin() as session:
             secret, _ = establish_session(session, user.id, None)
+        test_client.cookies.clear()
         test_client.cookies.set(SESSION_COOKIE, secret)
         return user
 

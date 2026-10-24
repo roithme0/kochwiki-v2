@@ -12,3 +12,7 @@ class NotFoundError(DomainError):
 
 class ConflictError(DomainError):
     status_code = 409
+
+
+class ForbiddenError(DomainError):
+    status_code = 403

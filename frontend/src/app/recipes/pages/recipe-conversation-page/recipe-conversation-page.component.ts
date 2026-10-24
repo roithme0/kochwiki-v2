@@ -50,6 +50,10 @@ import {
 function proposalSaveErrorMessage(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
     switch (error.status) {
+      case 401:
+        return 'Bitte melde dich erneut an, um den Vorschlag zu speichern.';
+      case 403:
+        return 'Nur der Besitzer des Rezepts kann diesen Vorschlag speichern.';
       case 404:
         return 'Dieser Vorschlag oder ein benötigter Eintrag ist nicht mehr verfügbar. Bitte erstelle einen neuen Vorschlag.';
       case 409:
@@ -197,6 +201,7 @@ export class RecipeConversationPageComponent {
       );
       if (!this.isCurrent(generation, userId)) return;
       if (
+        source.ownerId !== userId ||
         source.state === 'historical' ||
         source.recipeVersionId !== this.versionId ||
         source.recipeLineageId !== this.lineageId

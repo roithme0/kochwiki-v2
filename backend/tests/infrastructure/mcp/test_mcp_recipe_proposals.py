@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
+from app.identity.config import SESSION_COOKIE
+from app.identity.schemas.user import UserOut
+from app.identity.services.sessions import establish_session
 from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
@@ -41,8 +44,12 @@ def proposal_payload() -> RecipeProposalCreate:
         })
 
 
-def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle() -> None:
+def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_session: UserOut) -> None:
     payload = proposal_payload()
+    with SessionLocal.begin() as session:
+        source = session.get(RecipeVersion, payload.sourceRecipeVersionId)
+        assert source is not None
+        secret, _ = establish_session(session, source.lineage.owner_id, None)
 
     async def exercise() -> None:
         app = create_app()
@@ -90,6 +97,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle() -> None:
                     assert draft.ingredients[1].foodstuff.name == "Beans"
                     repeated = await client.call_tool("save_recipe_proposal", args)
                     assert not repeated.is_error and repeated.structured_content == saved.structured_content
+                    http.cookies.set(SESSION_COOKIE, secret)
                     http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save")
                     assert http_saved.status_code == 200
                     assert http_saved.json() == draft.model_dump(mode="json")

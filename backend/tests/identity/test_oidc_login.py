@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from app.identity import dependencies
 from app.identity.routes import auth
 from app.identity.config import LOGIN_COOKIE, LOGIN_COOKIE_PATH
 from app.identity.logging import AuthQueryFilter
@@ -94,7 +95,7 @@ def provider(monkeypatch: pytest.MonkeyPatch) -> Provider:
 
 @pytest.fixture
 def browser(monkeypatch: pytest.MonkeyPatch, settings: Settings, provider: Provider) -> Iterator[TestClient]:
-    monkeypatch.setattr(auth, "get_settings", lambda: settings)
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
     application = FastAPI()
     application.include_router(auth.router, prefix="/api")
     with TestClient(application, base_url="http://localhost:8000") as client:

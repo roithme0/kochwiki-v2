@@ -23,7 +23,7 @@ from app.recipes.schemas.recipe import (
     StepOut,
     StepWrite,
 )
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 from app.recipes.services.embeddings import mark_recipe_refresh, remove_recipe_embedding
 from app.recipes.services.nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
@@ -84,6 +84,12 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
         ownerId=versions[0].lineage.owner_id,
         versions=[recipe_version_out(version) for version in versions],
     )
+
+
+def require_recipe_lineage_owner(session: Session, lineage_id: UUID, user_id: int) -> None:
+    lineage = _get_lineage(session, lineage_id)
+    if lineage.owner_id != user_id:
+        raise ForbiddenError("Only the recipe owner may modify this lineage")
 
 
 def create_recipe(session: Session, payload: RecipeVersionWrite, *, owner_id: int) -> RecipeVersion:

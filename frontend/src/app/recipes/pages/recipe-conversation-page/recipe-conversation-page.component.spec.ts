@@ -590,6 +590,8 @@ describe('Recipe conversation page through published session controller and HTTP
   });
 
   it.each([
+    [401, 'erneut an'],
+    [403, 'Besitzer'],
     [404, 'neuen Vorschlag'],
     [409, 'Konflikts'],
   ] as const)(
@@ -837,6 +839,7 @@ describe('Recipe conversation page through published session controller and HTTP
       'Anmelden',
     );
     expect(page.original()).toBeNull();
+    source.ownerId = 2;
     user.set({ id: 2, display_name: 'Restored' });
     fixture.detectChanges();
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
@@ -856,6 +859,7 @@ describe('Recipe conversation page through published session controller and HTTP
     const acknowledge = vi.fn();
     const operation = page.submit({ text: 'Old owner', acknowledge });
     const requests = fetchMock.mock.calls.length;
+    source.ownerId = 2;
     user.set({ id: 2, display_name: 'Next' });
     await page.submit({
       text: 'Must not use old session',
@@ -888,6 +892,7 @@ describe('Recipe conversation page through published session controller and HTTP
       const page = fixture.componentInstance;
       fixture.detectChanges();
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      source.ownerId = 2;
       user.set({ id: 2, display_name: 'Next' });
       fixture.detectChanges();
       await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
@@ -1000,16 +1005,18 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it.each(['historical', 'missing', 'mismatched'] as const)(
+  it.each(['historical', 'missing', 'mismatched', 'non-owner'] as const)(
     'does not initialize an unavailable %s recipe',
     async (mode) => {
       if (mode === 'historical') source.state = 'historical';
+      else if (mode === 'non-owner') source.ownerId = 2;
       else if (mode === 'mismatched')
         getRecipe.mockResolvedValue({
           ...source,
           recipeVersionId: 'another-version',
         });
-      else getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+      else if (mode === 'missing')
+        getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
       const page = await open();
       expect(page.phase()).toBe('unavailable');
       expect(fetchMock).not.toHaveBeenCalled();

@@ -1,3 +1,5 @@
+import { signal } from '@angular/core';
+import { ActiveUserService } from '../../../core/services/active-user.service';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from 'vitest';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -56,6 +58,7 @@ describe('RecipePageComponent', () => {
     Object.assign(component, {
       recipeLineageId: '00000000-0000-4000-8000-000000000007',
       recipeVersion: draftRecipeVersion,
+      activeUser: { activeUser: signal({ id: 1 }) },
       dialog: { open: openDialog } as unknown as MatDialog,
       recipeBackendService: {
         deleteRecipeLineage,
@@ -67,6 +70,20 @@ describe('RecipePageComponent', () => {
       snackBarService: { open: openSnackBar } as unknown as SnackBarService,
     });
   });
+
+  it.each([2, null])(
+    'blocks mutation dialogs for non-owners and signed-out users (%s)',
+    (id) => {
+      Object.assign(component, {
+        activeUser: { activeUser: signal(id === null ? null : { id }) },
+      });
+      component.openPatchRecipeDialog();
+      component.openDeleteRecipeDialog();
+      component.openPublishDraftDialog();
+      component.openDiscardDraftDialog();
+      expect(openDialog).not.toHaveBeenCalled();
+    },
+  );
 
   it('navigates and notifies after the recipe deletion succeeds', async () => {
     component.openDeleteRecipeDialog();
@@ -239,6 +256,10 @@ describe('RecipePageComponent presentation integration', () => {
       TestBed.configureTestingModule({
         imports: [RecipePageComponent],
         providers: [
+          {
+            provide: ActiveUserService,
+            useValue: { activeUser: signal({ id: 1 }) },
+          },
           provideHttpClient(),
           provideHttpClientTesting(),
           {
@@ -294,9 +315,16 @@ describe('RecipePageComponent presentation integration', () => {
     },
   );
 
-  it.each(['active', 'draft', 'historical'] as const)(
-    'displays the %s version image above the shared presentation',
-    async (state) => {
+  it.each([
+    ['active', 1],
+    ['draft', 1],
+    ['historical', 1],
+    ['active', 2],
+    ['draft', 2],
+    ['historical', 2],
+  ] as const)(
+    'displays the %s version for user %s with ownership-appropriate controls',
+    async (state, userId) => {
       const recipe = {
         ...draftRecipeVersion,
         state,
@@ -309,6 +337,10 @@ describe('RecipePageComponent presentation integration', () => {
       TestBed.configureTestingModule({
         imports: [RecipePageComponent],
         providers: [
+          {
+            provide: ActiveUserService,
+            useValue: { activeUser: signal({ id: userId }) },
+          },
           {
             provide: RecipeImageService,
             useValue: {
@@ -361,6 +393,11 @@ describe('RecipePageComponent presentation integration', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector(
+          '.buttons-wrapper',
+        ) !== null,
+      ).toBe(userId === recipe.ownerId && state !== 'historical');
       const presentation = fixture.debugElement.query(
         By.directive(RecipePresentationComponent),
       ).componentInstance as RecipePresentationComponent;

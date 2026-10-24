@@ -186,7 +186,7 @@ describe('RecipePatchDialogComponent', () => {
     },
   );
 
-  it.each([404, 409, 422])(
+  it.each([401, 403, 404, 409, 422])(
     'preserves definite draft rejection %s without announcing success',
     async (status) => {
       Object.assign(component, { data: { recipeVersion: draftRecipeVersion } });

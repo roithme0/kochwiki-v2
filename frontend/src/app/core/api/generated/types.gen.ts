@@ -1308,6 +1308,14 @@ export type SaveProposalRecipeProposalsProposalIdSavePostData = {
 
 export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1319,6 +1327,10 @@ export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type SaveProposalRecipeProposalsProposalIdSavePostError = SaveProposalRecipeProposalsProposalIdSavePostErrors[keyof SaveProposalRecipeProposalsProposalIdSavePostErrors];
@@ -1361,7 +1373,7 @@ export type CreateRecipeRecipesPostErrors = {
     /**
      * Invalid or expired session
      */
-    401: unknown;
+    401: ErrorResponse;
     /**
      * Not Found
      */
@@ -1373,7 +1385,7 @@ export type CreateRecipeRecipesPostErrors = {
     /**
      * Login not configured
      */
-    503: unknown;
+    503: ErrorResponse;
 };
 
 export type CreateRecipeRecipesPostError = CreateRecipeRecipesPostErrors[keyof CreateRecipeRecipesPostErrors];
@@ -1401,6 +1413,14 @@ export type DeleteRecipeLineageRecipesLineageIdDeleteData = {
 
 export type DeleteRecipeLineageRecipesLineageIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1408,6 +1428,10 @@ export type DeleteRecipeLineageRecipesLineageIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DeleteRecipeLineageRecipesLineageIdDeleteError = DeleteRecipeLineageRecipesLineageIdDeleteErrors[keyof DeleteRecipeLineageRecipesLineageIdDeleteErrors];
@@ -1469,6 +1493,14 @@ export type CreateRecipeDraftRecipesLineageIdDraftsPostData = {
 
 export type CreateRecipeDraftRecipesLineageIdDraftsPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1476,6 +1508,10 @@ export type CreateRecipeDraftRecipesLineageIdDraftsPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type CreateRecipeDraftRecipesLineageIdDraftsPostError = CreateRecipeDraftRecipesLineageIdDraftsPostErrors[keyof CreateRecipeDraftRecipesLineageIdDraftsPostErrors];
@@ -1507,6 +1543,14 @@ export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteData = {
 
 export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1518,6 +1562,10 @@ export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteError = DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors[keyof DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors];
@@ -1549,6 +1597,14 @@ export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutData = {
 
 export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1560,6 +1616,10 @@ export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutError = UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors[keyof UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors];
@@ -1591,6 +1651,14 @@ export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostData = {
 
 export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1602,6 +1670,10 @@ export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors =
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostError = PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors[keyof PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors];
@@ -1665,6 +1737,14 @@ export type PublishActiveRecipeEditRecipesLineageIdPublishPostData = {
 
 export type PublishActiveRecipeEditRecipesLineageIdPublishPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1672,6 +1752,10 @@ export type PublishActiveRecipeEditRecipesLineageIdPublishPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PublishActiveRecipeEditRecipesLineageIdPublishPostError = PublishActiveRecipeEditRecipesLineageIdPublishPostErrors[keyof PublishActiveRecipeEditRecipesLineageIdPublishPostErrors];
