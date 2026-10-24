@@ -462,9 +462,9 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
 
 @pytest.mark.usefixtures("recipe_session")
 def test_domain_error_responses_match_openapi(client: TestClient) -> None:
-    missing = client.get("/users/999")
+    missing = client.get("/foodstuffs/999")
     assert missing.status_code == 404
-    assert missing.json() == {"detail": "User with id 999 not found"}
+    assert missing.json() == {"detail": "Foodstuff with id 999 not found"}
     assert ErrorResponse.model_validate(missing.json()).detail == missing.json()["detail"]
 
     create_foodstuff(client, brand="Mill")
@@ -496,8 +496,6 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
         ("/foodstuffs", "post"): {409},
         ("/foodstuffs/{foodstuff_id}", "patch"): {404, 409},
         ("/foodstuffs/{foodstuff_id}", "delete"): {404, 409},
-        ("/users/{user_id}", "get"): {404},
-        ("/users/{user_id}", "delete"): {404},
     }
     for (path, method), statuses in expected_responses.items():
         responses = openapi["paths"][path][method]["responses"]
@@ -506,7 +504,7 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
 
 
 @pytest.mark.usefixtures("recipe_session")
-def test_success_response_media_types_and_bodies_match_openapi(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+def test_success_response_media_types_and_bodies_match_openapi(client: TestClient) -> None:
     paths = client.get("/api/openapi.json").json()["paths"]
 
     version = client.get("/meta/version")
@@ -518,7 +516,6 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
 
     delete_routes = (
         ("/foodstuffs/{foodstuff_id}", "delete"),
-        ("/users/{user_id}", "delete"),
         ("/recipes/{lineage_id}/drafts/{version_id}", "delete"),
         ("/recipes/{lineage_id}", "delete"),
     )
@@ -530,13 +527,11 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
     draft = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft"))
     assert draft.status_code == 201
     foodstuff = create_foodstuff(client)
-    user = provider_user("To delete")
 
     for response in (
         client.delete(f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"),
         client.delete(f"/recipes/{lineage_id}"),
         client.delete(f"/foodstuffs/{foodstuff['id']}"),
-        client.delete(f"/users/{user.id}"),
     ):
         assert response.status_code == 204
         assert response.content == b""
@@ -609,18 +604,19 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
-def test_user_success_responses_follow_closed_schema(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+def test_current_user_success_response_follows_closed_schema(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+) -> None:
     schema = client.get("/api/openapi.json").json()["components"]["schemas"]["UserOut"]
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == set(schema["properties"])
 
-    user = provider_user("Roi")
-    for body in (
-        client.get("/users").json()[0],
-        client.get(f"/users/{user.id}").json(),
-    ):
-        assert set(body) == set(schema["properties"])
-        UserOut.model_validate(body)
+    user = sign_in(client)
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    assert response.json() == user.model_dump()
+    assert set(response.json()) == set(schema["properties"])
+    UserOut.model_validate(response.json())
 
     with pytest.raises(ValidationError) as error:
         UserOut.model_validate({**user.model_dump(), "unexpected": True})
@@ -751,12 +747,12 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
     assert duplicate_step_position.status_code == 422
 
 
-def test_user_contract_has_no_shopping_list_side_effect(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
-    created = provider_user("Roi")
+def test_current_user_contract_has_no_shopping_list_side_effect(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+) -> None:
+    created = sign_in(client)
 
-    assert created.model_dump() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/1").json() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/999").status_code == 404
+    assert client.get("/auth/me").json() == created.model_dump()
     assert client.get("/shoppingLists/1").status_code == 404
 
 

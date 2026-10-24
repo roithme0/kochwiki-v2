@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
@@ -26,6 +26,9 @@ from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.models.user import User
+from app.identity.models.application_session import ApplicationSession
+from app.identity.schemas.user import UserOut
+from app.recipes.models.recipe import RecipeLineage
 from app.identity.schemas.oidc import Identity
 from app.identity.services import oidc
 from app.identity.services.users import map_identity
@@ -213,17 +216,33 @@ def test_concurrent_first_login_and_issuer_separation() -> None:
         assert session.scalar(select(func.count()).select_from(User)) == 2
 
 
-def test_user_creation_and_profile_edit_are_not_exposed(client: TestClient) -> None:
-    identity = Identity(iss=ISSUER, sub="provider-user", email="cook@example.invalid",
-                             email_verified=False, displayName="Shared Name", nonce="test")
-    with SessionLocal.begin() as session:
-        user_id = map_identity(session, identity).id
-    assert client.get(f"/users/{user_id}").json() == {"id": user_id, "display_name": "Shared Name"}
-    assert client.patch(f"/users/{user_id}", json={"display_name": "Local override"}).status_code == 405
-    assert client.post("/users", json={"display_name": "Shared Name", "issuer": ISSUER, "subject": "fake"}).status_code == 405
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_user_management_is_not_exposed(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut], authenticated: bool,
+) -> None:
+    user = sign_in(client)
+    recipe = client.post("/recipes", json={"name": "Retained recipe", "servings": 1})
+    assert recipe.status_code == 201
+    if not authenticated:
+        client.cookies.clear()
+    for method, path in (
+        ("GET", "/users"), ("GET", f"/users/{user.id}"),
+        ("DELETE", f"/users/{user.id}"), ("PATCH", f"/users/{user.id}"),
+        ("POST", "/users"),
+    ):
+        response = client.request(method, path, json={"display_name": "Local override"})
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Not Found"}
     paths = client.get("/api/openapi.json").json()["paths"]
-    assert "post" not in paths["/users"]
-    assert "patch" not in paths["/users/{user_id}"]
+    assert not any(path == "/users" or path.startswith("/users/") for path in paths)
+    with SessionLocal() as session:
+        retained = session.get(User, user.id)
+        assert retained is not None and UserOut.model_validate(retained) == user
+        assert session.scalar(select(func.count()).select_from(User)) == 1
+        assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 1
+        assert session.scalar(select(RecipeLineage.owner_id)) == user.id
+    if authenticated:
+        assert client.get("/auth/me").json() == user.model_dump()
 
 
 @pytest.mark.parametrize("issuer,subject", [(None, None), (ISSUER, None), (None, "provider-user")])
