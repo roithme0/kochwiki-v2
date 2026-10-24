@@ -19,6 +19,7 @@ from tests.infrastructure.storage.test_storage_adapter import configuration
 
 
 @pytest.mark.parametrize("kind", list(ImageKind))
+@pytest.mark.usefixtures("recipe_session")
 def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
     client: TestClient, kind: ImageKind,
 ) -> None:

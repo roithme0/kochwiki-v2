@@ -869,7 +869,11 @@ export type BeginUploadFoodstuffImageUploadsPostData = {
 
 export type BeginUploadFoodstuffImageUploadsPostErrors = {
     /**
-     * Service Unavailable
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -903,6 +907,10 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
      */
     400: ErrorResponse;
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -911,7 +919,7 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -941,6 +949,10 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetData = {
 
 export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -949,7 +961,7 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };

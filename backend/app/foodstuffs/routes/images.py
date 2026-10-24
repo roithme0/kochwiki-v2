@@ -7,7 +7,8 @@ from app.images.config import IMAGE_CONTENT_TYPE
 from app.images.dependencies import image_storage
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageKind
-from app.core.schemas.errors import ErrorResponse
+from app.core.schemas.errors import AUTHENTICATION_RESPONSES, ErrorResponse
+from app.identity.dependencies import require_current_user
 from app.foodstuffs.schemas.image import (
     FoodstuffImageDownloadOut,
     FoodstuffImageOut,
@@ -21,7 +22,13 @@ from app.images.transfers import (
 )
 from app.infrastructure.storage.storage import Storage, StorageUnavailable
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses={
+        **AUTHENTICATION_RESPONSES,
+        503: {"model": ErrorResponse, "description": "Login not configured or image transfer unavailable"},
+    },
+)
 
 
 def get_foodstuff_image_storage() -> Iterator[Storage]:
@@ -37,7 +44,7 @@ def get_foodstuff_image_transfers(
 @router.get(
     "/foodstuff-images/{image_id}/download",
     response_model=FoodstuffImageDownloadOut,
-    responses={status: {"model": ErrorResponse} for status in (404, 503)},
+    responses={404: {"model": ErrorResponse}},
 )
 def download_image(
     image_id: UUID,
@@ -60,7 +67,6 @@ def download_image(
 @router.post(
     "/foodstuff-image-uploads",
     response_model=FoodstuffImageUploadOut,
-    responses={503: {"model": ErrorResponse}},
 )
 def begin_upload(
     uploads: ImageTransfers = Depends(get_foodstuff_image_transfers),
@@ -81,7 +87,7 @@ def begin_upload(
 @router.post(
     "/foodstuff-image-uploads/{upload_id}/complete",
     response_model=FoodstuffImageOut,
-    responses={status: {"model": ErrorResponse} for status in (400, 404, 503)},
+    responses={status: {"model": ErrorResponse} for status in (400, 404)},
 )
 def complete_upload(
     upload_id: UUID,

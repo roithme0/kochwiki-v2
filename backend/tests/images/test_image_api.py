@@ -1,14 +1,21 @@
-from collections.abc import Iterator
+import secrets
+from collections.abc import Callable, Iterator
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select, update
 
 from app.foodstuffs.routes.images import get_foodstuff_image_storage, get_foodstuff_image_transfers
 from app.recipes.routes.images import get_recipe_image_storage, get_recipe_image_transfers
 from app.core.config import get_settings
+from app.identity.config import SESSION_COOKIE, SESSION_LIFETIME
+from app.identity.models.application_session import ApplicationSession
+from app.identity.schemas.user import UserOut
+from app.identity.services.sessions import invalidate_session, secret_hash
 from app.infrastructure.database.session import SessionLocal
+from app.images.config import MAX_IMAGE_BYTES
 from app.images.models import ImageAsset, ImageKind
 from app.images.transfers import ImagePersistenceFailed, ImageTransfers
 from app.infrastructure.storage.storage import PresignedTransfer, Storage, StorageUnavailable
@@ -81,6 +88,7 @@ def test_start_and_complete_persist_only_validated_metadata(client: TestClient, 
     (None, 404, "Upload has not been received"),
     (b"not a png", 400, "Image must be a valid PNG"),
 ])
+@pytest.mark.usefixtures("recipe_session")
 def test_rejected_completion(client: TestClient, kind: ImageKind, storage: Mock, data: bytes | None, status: int, detail: str) -> None:
     storage.read.return_value = data
     response = client.post(f"/{kind.value}-image-uploads/{uuid4()}/complete")
@@ -89,6 +97,7 @@ def test_rejected_completion(client: TestClient, kind: ImageKind, storage: Mock,
     storage.write.assert_not_called()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_storage_errors_are_sanitized(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     storage.presign_upload.side_effect = StorageUnavailable("credentials and signed URL")
     assert client.post(f"/{kind.value}-image-uploads").json() == {"detail": "Image storage is unavailable"}
@@ -98,6 +107,7 @@ def test_storage_errors_are_sanitized(client: TestClient, kind: ImageKind, stora
     assert response.json() == {"detail": "Image upload could not be completed"}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_persistence_errors_are_sanitized(client: TestClient, kind: ImageKind) -> None:
     uploads = Mock(spec=ImageTransfers)
     uploads.complete.side_effect = ImagePersistenceFailed(cleanup_pending=True)
@@ -115,6 +125,7 @@ def test_persistence_errors_are_sanitized(client: TestClient, kind: ImageKind) -
         client.app.dependency_overrides.pop(upload_dependency)
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_storage_not_configured(client: TestClient, kind: ImageKind, monkeypatch: pytest.MonkeyPatch) -> None:
     for name in (
         "storage_endpoint_url", "storage_public_origin", "storage_region",
@@ -128,11 +139,13 @@ def test_storage_not_configured(client: TestClient, kind: ImageKind, monkeypatch
     assert response.headers["cache-control"] == "no-store"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_malformed_upload_id(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     assert client.post(f"/{kind.value}-image-uploads/invalid/complete").status_code == 422
     storage.read.assert_not_called()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_download_uses_persisted_key_without_reading_object(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     storage.read.return_value = png()
     completed = client.post(f"/{kind.value}-image-uploads/{uuid4()}/complete")
@@ -155,6 +168,7 @@ def test_download_uses_persisted_key_without_reading_object(client: TestClient, 
     storage.inspect.assert_not_called()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_download_missing_image_and_invalid_id(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     response = client.get(f"/{kind.value}-images/{uuid4()}/download")
     assert response.status_code == 404
@@ -164,6 +178,7 @@ def test_download_missing_image_and_invalid_id(client: TestClient, kind: ImageKi
     storage.presign_download.assert_not_called()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_download_rejects_other_kind(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     storage.read.return_value = png()
     completed = client.post(f"/{kind.value}-image-uploads/{uuid4()}/complete")
@@ -179,6 +194,7 @@ def test_download_rejects_other_kind(client: TestClient, kind: ImageKind, storag
     storage.presign_download.assert_not_called()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_download_signing_failure_is_sanitized(client: TestClient, kind: ImageKind, storage: Mock) -> None:
     storage.read.return_value = png()
     completed = client.post(f"/{kind.value}-image-uploads/{uuid4()}/complete")
@@ -187,3 +203,122 @@ def test_download_signing_failure_is_sanitized(client: TestClient, kind: ImageKi
     assert response.status_code == 503
     assert response.json() == {"detail": "Image storage is unavailable"}
     assert response.headers["cache-control"] == "no-store"
+
+
+FOODSTUFF_IMAGE_OPERATIONS: list[tuple[str, str]] = [
+    ("POST", "/foodstuff-image-uploads"),
+    ("POST", "/foodstuff-image-uploads/{id}/complete"),
+    ("GET", "/foodstuff-images/{id}/download"),
+]
+
+
+@pytest.mark.parametrize("kind", [ImageKind.FOODSTUFF])
+@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
+@pytest.mark.parametrize("credential", ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"])
+def test_foodstuff_images_reject_invalid_sessions_before_storage_access(
+    client: TestClient, storage: Mock, sign_in: Callable[[TestClient], UserOut],
+    method: str, path: str, credential: str,
+) -> None:
+    user = sign_in(client)
+    secret = client.cookies.get(SESSION_COOKIE, path="/")
+    assert secret is not None
+    if credential == "expired":
+        with SessionLocal.begin() as session:
+            session.execute(update(ApplicationSession).values(
+                last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
+            ))
+    elif credential == "revoked":
+        with SessionLocal.begin() as session:
+            assert invalidate_session(session, secret)
+    supplied = {
+        "missing": None, "malformed": "invalid", "unknown": secrets.token_urlsafe(32),
+        "expired": secret, "revoked": secret, "stored-hash": secret_hash(secret),
+    }[credential]
+    client.cookies.clear()
+    if supplied is not None:
+        client.cookies.set(SESSION_COOKIE, supplied)
+    storage.read.return_value = png()
+    response = client.request(method, path.format(id=uuid4()), headers={"X-Application-User": f"kochwiki:{user.id}"})
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Authentication required."}
+    assert response.headers["cache-control"] == "no-store"
+    assert "Max-Age=0" in response.headers["set-cookie"]
+    assert storage.mock_calls == []
+    with SessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(ImageAsset)) == 0
+
+
+@pytest.mark.parametrize("kind", [ImageKind.FOODSTUFF])
+@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
+def test_foodstuff_image_transfers_are_shared_and_renew_sessions(
+    client: TestClient, storage: Mock, sign_in: Callable[[TestClient], UserOut],
+    method: str, path: str,
+) -> None:
+    creator = sign_in(client)
+    started = client.post("/foodstuff-image-uploads")
+    assert started.status_code == 200
+    resource_id = UUID(started.json()["uploadId"])
+    storage.read.return_value = png()
+    if method == "GET":
+        completed = client.post(f"/foodstuff-image-uploads/{resource_id}/complete")
+        assert completed.status_code == 200
+        resource_id = UUID(completed.json()["id"])
+    caller = sign_in(client)
+    assert caller.id != creator.id
+    secret = client.cookies.get(SESSION_COOKIE, path="/")
+    with SessionLocal.begin() as session:
+        previous_activity = session.scalar(update(ApplicationSession).where(
+            ApplicationSession.secret_hash == secret_hash(secret),
+        ).values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME / 2)
+            .returning(ApplicationSession.last_activity_at))
+    assert previous_activity is not None
+    storage.reset_mock()
+    response = client.request(method, path.format(id=resource_id))
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert "HttpOnly" in response.headers["set-cookie"]
+    assert "Max-Age=0" not in response.headers["set-cookie"]
+    with SessionLocal() as session:
+        renewed_activity = session.scalar(select(ApplicationSession.last_activity_at).where(
+            ApplicationSession.secret_hash == secret_hash(secret),
+        ))
+        if path.endswith("/complete"):
+            saved = session.get(ImageAsset, UUID(response.json()["id"]))
+            assert saved is not None and saved.kind == ImageKind.FOODSTUFF
+            assert saved.size == len(png())
+            storage.read.assert_called_once_with(f"foodstuff-image-uploads/{resource_id}", max_bytes=MAX_IMAGE_BYTES)
+        elif method == "GET":
+            saved = session.get(ImageAsset, resource_id)
+            assert saved is not None
+            storage.presign_download.assert_called_once_with(saved.object_key)
+            storage.read.assert_not_called()
+            assert response.json() == {
+                "url": "http://localhost/storage/private/key?signature=download", "expiresIn": 300,
+            }
+        else:
+            storage.presign_upload.assert_called_once_with(f"foodstuff-image-uploads/{response.json()['uploadId']}")
+            assert session.scalar(select(func.count()).select_from(ImageAsset)) == 0
+    assert renewed_activity is not None and renewed_activity > previous_activity
+
+
+@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
+def test_foodstuff_image_transfers_require_configured_login(
+    client: TestClient, method: str, path: str,
+) -> None:
+    response = client.request(method, path.format(id=uuid4()))
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Login is not configured."}
+
+
+@pytest.mark.parametrize(("method", "path"), FOODSTUFF_IMAGE_OPERATIONS)
+def test_foodstuff_image_contract_declares_authentication(
+    client: TestClient, method: str, path: str,
+) -> None:
+    path = path.replace("{id}", "{image_id}" if method == "GET" else "{upload_id}")
+    operation = client.get("/api/openapi.json").json()["paths"][path][method.lower()]
+    assert operation["security"] == [{"APIKeyCookie": []}]
+    for code in ("401", "503"):
+        assert operation["responses"][code]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/ErrorResponse",
+        }
+    assert operation["responses"]["503"]["description"] == "Login not configured or image transfer unavailable"

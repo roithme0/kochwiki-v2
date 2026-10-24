@@ -1605,6 +1605,16 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -1613,9 +1623,14 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Login not configured or image transfer unavailable"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Begin Upload"
       }
     },
@@ -1655,6 +1670,16 @@
             },
             "description": "Bad Request"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1683,9 +1708,14 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Login not configured or image transfer unavailable"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Complete Upload"
       }
     },
@@ -1715,6 +1745,16 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1743,9 +1783,14 @@
                 }
               }
             },
-            "description": "Service Unavailable"
+            "description": "Login not configured or image transfer unavailable"
           }
         },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
         "summary": "Download Image"
       }
     },
