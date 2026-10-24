@@ -95,7 +95,7 @@ def list_historical_recipe_versions(
     "/recipes",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
 )
 def create_recipe(
     payload: RecipeVersionWrite,

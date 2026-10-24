@@ -2688,6 +2688,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Insufficient permissions"
+          },
           "404": {
             "content": {
               "application/json": {

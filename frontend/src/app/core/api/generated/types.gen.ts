@@ -1482,6 +1482,10 @@ export type CreateRecipeRecipesPostErrors = {
      */
     401: ErrorResponse;
     /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
