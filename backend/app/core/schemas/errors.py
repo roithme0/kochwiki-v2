@@ -16,4 +16,9 @@ AUTHENTICATION_RESPONSES = {
     503: {"model": ErrorResponse, "description": "Login not configured"},
 }
 
-FORBIDDEN_RESPONSE = {403: {"model": ErrorResponse, "description": "Insufficient permissions"}}
+FORBIDDEN_RESPONSE = {
+    403: {
+        "model": ErrorResponse,
+        "description": "Untrusted request origin or insufficient permissions",
+    }
+}

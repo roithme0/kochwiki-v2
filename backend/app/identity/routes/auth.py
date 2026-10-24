@@ -1,5 +1,4 @@
 from typing import Annotated
-from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Request, Security
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -15,6 +14,7 @@ from app.infrastructure.database.session import SessionLocal
 from app.identity.dependencies import (
     HEADERS,
     login_service,
+    require_trusted_origin,
     session_cookie,
     set_session_cookie,
     unauthenticated,
@@ -150,19 +150,6 @@ def current_user(secret: Annotated[str | None, Security(session_cookie)]) -> Res
     return response
 
 
-def origin(url: str) -> tuple[str, str | None, int | None]:
-    parsed = urlsplit(url)
-    return (
-        parsed.scheme,
-        parsed.hostname,
-        (
-            parsed.port
-            if parsed.port is not None
-            else (443 if parsed.scheme == "https" else 80)
-        ),
-    )
-
-
 @router.post(
     "/logout",
     status_code=204,
@@ -181,26 +168,7 @@ def logout(
         return JSONResponse(
             {"detail": "Login is not configured."}, status_code=503, headers=HEADERS
         )
-    origins = request.headers.getlist("origin")
-    trusted = False
-    if len(origins) == 1:
-        try:
-            supplied = urlsplit(origins[0])
-            trusted = (
-                not any(ord(character) <= 32 for character in origins[0])
-                and not supplied.username
-                and not supplied.password
-                and not supplied.path
-                and not supplied.query
-                and not supplied.fragment
-                and origin(origins[0]) == origin(service.callback_url)
-            )
-        except ValueError:
-            pass
-    if not trusted:
-        return JSONResponse(
-            {"detail": "Untrusted request origin."}, status_code=403, headers=HEADERS
-        )
+    require_trusted_origin(request, service.callback_url)
     with SessionLocal.begin() as session:
         if not invalidate_session(session, secret):
             return unauthenticated(service.secure_cookie)

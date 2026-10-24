@@ -58,7 +58,7 @@ def provider_user() -> Callable[[str], UserOut]:
 
 @pytest.fixture
 def client() -> TestClient:
-    with TestClient(create_app()) as test_client:
+    with TestClient(create_app(), headers={"Origin": "http://localhost:8000"}) as test_client:
         yield test_client
 
 

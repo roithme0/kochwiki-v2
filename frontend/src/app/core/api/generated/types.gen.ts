@@ -873,6 +873,10 @@ export type BeginUploadFoodstuffImageUploadsPostErrors = {
      */
     401: ErrorResponse;
     /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
@@ -910,6 +914,10 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
      * Invalid or expired session
      */
     401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
     /**
      * Not Found
      */
@@ -1021,6 +1029,10 @@ export type PostFoodstuffFoodstuffsPostErrors = {
      */
     401: ErrorResponse;
     /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1066,6 +1078,10 @@ export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors = {
      * Invalid or expired session
      */
     401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
     /**
      * Not Found
      */
@@ -1155,6 +1171,10 @@ export type PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors = {
      */
     401: ErrorResponse;
     /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1243,6 +1263,10 @@ export type BeginUploadRecipeImageUploadsPostErrors = {
      */
     401: ErrorResponse;
     /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
@@ -1281,7 +1305,7 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1364,6 +1388,10 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostErrors = {
      */
     401: ErrorResponse;
     /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1406,7 +1434,7 @@ export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1482,7 +1510,7 @@ export type CreateRecipeRecipesPostErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1528,7 +1556,7 @@ export type DeleteRecipeLineageRecipesLineageIdDeleteErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1616,7 +1644,7 @@ export type CreateRecipeDraftRecipesLineageIdDraftsPostErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1666,7 +1694,7 @@ export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1720,7 +1748,7 @@ export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1774,7 +1802,7 @@ export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors =
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**
@@ -1868,7 +1896,7 @@ export type PublishActiveRecipeEditRecipesLineageIdPublishPostErrors = {
      */
     401: ErrorResponse;
     /**
-     * Insufficient permissions
+     * Untrusted request origin or insufficient permissions
      */
     403: ErrorResponse;
     /**

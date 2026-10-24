@@ -75,6 +75,7 @@ def download_image(
 @router.post(
     "/recipe-image-uploads",
     response_model=RecipeImageUploadOut,
+    responses=FORBIDDEN_RESPONSE,
 )
 def begin_upload(
     user: User = Depends(require_current_user, scope="function"),

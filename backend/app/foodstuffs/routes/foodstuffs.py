@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.infrastructure.database.session import get_db, get_write_db
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
+    FORBIDDEN_RESPONSE,
     NOT_FOUND_AND_CONFLICT_RESPONSES,
     NOT_FOUND_RESPONSE,
 )
@@ -46,7 +47,7 @@ def get_foodstuff(
     "/foodstuffs",
     response_model=FoodstuffOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def post_foodstuff(
     payload: FoodstuffCreate, session: Session = Depends(get_write_db, scope="function")
@@ -58,7 +59,7 @@ def post_foodstuff(
 @router.patch(
     "/foodstuffs/{foodstuff_id}",
     response_model=FoodstuffOut,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def patch_foodstuff(
     foodstuff_id: int,
@@ -72,7 +73,7 @@ def patch_foodstuff(
 @router.delete(
     "/foodstuffs/{foodstuff_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def delete_foodstuff(
     foodstuff_id: int, session: Session = Depends(get_write_db, scope="function")

@@ -1615,6 +1615,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -1679,6 +1689,16 @@
               }
             },
             "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -1873,6 +1893,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -1949,6 +1979,16 @@
               }
             },
             "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -2114,6 +2154,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2252,6 +2302,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -2325,7 +2385,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -2475,6 +2535,16 @@
             },
             "description": "Invalid or expired session"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Untrusted request origin or insufficient permissions"
+          },
           "404": {
             "content": {
               "application/json": {
@@ -2558,7 +2628,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -2696,7 +2766,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -2774,7 +2844,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -2942,7 +3012,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -3030,7 +3100,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -3143,7 +3213,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -3248,7 +3318,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {
@@ -3432,7 +3502,7 @@
                 }
               }
             },
-            "description": "Insufficient permissions"
+            "description": "Untrusted request origin or insufficient permissions"
           },
           "404": {
             "content": {

@@ -33,7 +33,7 @@ router = APIRouter(
 @router.post(
     "/recipe-presentations/resolve",
     response_model=RecipePresentationOut,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
 )
 def resolve_recipe_presentation(
     payload: RecipePresentationResolve, session: Session = Depends(get_db)

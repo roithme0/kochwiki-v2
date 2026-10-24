@@ -44,7 +44,7 @@ def main() -> None:
     session_secret = os.environ.get("STORAGE_VERIFY_SESSION")
     if secret_hash(session_secret) is None:
         raise RuntimeError("Set STORAGE_VERIFY_SESSION to a valid application-session secret")
-    api_headers = {"Cookie": f"{SESSION_COOKIE}={session_secret}"}
+    api_headers = {"Cookie": f"{SESSION_COOKIE}={session_secret}", "Origin": config.public_origin}
     status, _ = request(config.public_origin + "/api/auth/me", "GET", headers=api_headers)
     if status != 200:
         raise RuntimeError("Verification requires an active application session and configured login")

@@ -98,7 +98,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
                     repeated = await client.call_tool("save_recipe_proposal", args)
                     assert not repeated.is_error and repeated.structured_content == saved.structured_content
                     http.cookies.set(SESSION_COOKIE, secret)
-                    http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save")
+                    http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save", headers={"Origin": "http://localhost:8000"})
                     assert http_saved.status_code == 200
                     assert http_saved.json() == draft.model_dump(mode="json")
                     with SessionLocal.begin() as session:

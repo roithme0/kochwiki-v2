@@ -7,7 +7,7 @@ from app.images.config import IMAGE_CONTENT_TYPE
 from app.images.dependencies import image_storage
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageKind
-from app.core.schemas.errors import AUTHENTICATION_RESPONSES, ErrorResponse
+from app.core.schemas.errors import AUTHENTICATION_RESPONSES, FORBIDDEN_RESPONSE, ErrorResponse
 from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
 from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
@@ -75,6 +75,7 @@ def download_image(
 @router.post(
     "/foodstuff-image-uploads",
     response_model=FoodstuffImageUploadOut,
+    responses=FORBIDDEN_RESPONSE,
 )
 def begin_upload(
     user: User = Depends(require_current_user, scope="function"),
@@ -98,7 +99,7 @@ def begin_upload(
 @router.post(
     "/foodstuff-image-uploads/{upload_id}/complete",
     response_model=FoodstuffImageOut,
-    responses={status: {"model": ErrorResponse} for status in (400, 404)},
+    responses={**FORBIDDEN_RESPONSE, **{status: {"model": ErrorResponse} for status in (400, 404)}},
 )
 def complete_upload(
     upload_id: UUID,

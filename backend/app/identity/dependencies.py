@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from typing import Annotated
+from urllib.parse import urlsplit
 
-from fastapi import Depends, HTTPException, Response, Security
+from fastapi import Depends, HTTPException, Request, Response, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyCookie
 from sqlalchemy.orm import Session
@@ -61,7 +62,41 @@ def unauthenticated(secure: bool) -> JSONResponse:
     return response
 
 
+def _origin(url: str) -> tuple[str, str | None, int]:
+    parsed = urlsplit(url)
+    return (
+        parsed.scheme,
+        parsed.hostname,
+        parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80),
+    )
+
+
+def require_trusted_origin(request: Request, callback_url: str) -> None:
+    origins = request.headers.getlist("origin")
+    trusted = False
+    if len(origins) == 1:
+        try:
+            supplied = urlsplit(origins[0])
+            trusted = (
+                not any(ord(character) <= 32 for character in origins[0])
+                and supplied.scheme in ("http", "https")
+                and supplied.username is None
+                and supplied.password is None
+                and "?" not in origins[0]
+                and "#" not in origins[0]
+                and not supplied.path
+                and not supplied.query
+                and not supplied.fragment
+                and _origin(origins[0]) == _origin(callback_url)
+            )
+        except ValueError:
+            pass
+    if not trusted:
+        raise HTTPException(status_code=403, detail="Untrusted request origin.", headers=HEADERS)
+
+
 def require_current_user(
+    request: Request,
     response: Response,
     secret: Annotated[str | None, Security(session_cookie)],
     session: Annotated[Session, Depends(get_write_db, scope="function")],
@@ -84,6 +119,8 @@ def require_current_user(
             },
         )
     user, expires = authenticated
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        require_trusted_origin(request, service.callback_url)
     assert secret is not None
     response.headers.update(HEADERS)
     set_session_cookie(response, secret, expires, service.secure_cookie)

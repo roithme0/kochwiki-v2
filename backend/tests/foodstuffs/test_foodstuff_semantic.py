@@ -341,7 +341,7 @@ def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(
     monkeypatch.setattr(search, "refresh_one", refresh)
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: search.embeddings)
     monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.FoodstuffEmbeddingService", lambda sessions, embeddings: search)
-    with TestClient(create_app()) as client:
+    with TestClient(create_app(), headers={"Origin": "http://localhost:8000"}) as client:
         sign_in(client)
         response = client.post("/foodstuffs", json={"name": "bad", "unit": "G"})
         assert response.status_code == 201
