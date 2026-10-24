@@ -1,6 +1,6 @@
-from urllib.parse import urlsplit
-
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
+
+from app.core.urls import validate_http_origin
 
 
 class StorageConfig(BaseModel):
@@ -23,22 +23,7 @@ class StorageConfig(BaseModel):
     @field_validator("endpoint_url", "public_origin")
     @classmethod
     def validate_origin(cls, value: str) -> str:
-        parsed = urlsplit(value)
-        if (
-            parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or parsed.username is not None
-            or parsed.password is not None
-            or parsed.path not in {"", "/"}
-            or parsed.query
-            or parsed.fragment
-            or any(character.isspace() for character in value)
-        ):
-            raise ValueError("Storage addresses must be HTTP(S) origins without a path or credentials")
-        try:
-            parsed.port
-        except ValueError:
-            raise ValueError("Storage address has an invalid port") from None
+        validate_http_origin(value, allow_trailing_slash=True)
         return value.rstrip("/")
 
     @field_validator("access_key_id", "secret_access_key")

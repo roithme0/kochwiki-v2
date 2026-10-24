@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  NgZone,
   computed,
   effect,
   inject,
@@ -13,8 +14,8 @@ import { MatButtonModule } from '@angular/material/button';
 import {
   SessionController,
   SessionViewState,
-  HttpSessionTransport,
 } from '@roithme0/chat-ui/conversation';
+import { RecipeSessionTransport } from '../../conversation/recipe-session-transport';
 import {
   ChatArtifact,
   ChatSubmission,
@@ -80,6 +81,7 @@ function proposalSaveErrorMessage(error: unknown): string {
 })
 export class RecipeConversationPageComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly zone = inject(NgZone);
   private readonly route = inject(ActivatedRoute);
   private readonly header = inject(PageHeaderService);
   private readonly recipes = inject(RecipeBackendService);
@@ -217,11 +219,8 @@ export class RecipeConversationPageComponent {
           source,
         ),
       );
-      const transport = new HttpSessionTransport(
-        '/ai/api/v1',
-        'kochwiki',
-        `kochwiki:${userId}`,
-      );
+      // TODO: Switch back to HttpSessionTransport once ChatUI in the AI service repo supports KochWiki's authenticated conversation creation endpoint.
+      const transport = new RecipeSessionTransport(this.versionId, userId);
       const controller = new SessionController(
         transport,
         (state) => {
@@ -232,7 +231,9 @@ export class RecipeConversationPageComponent {
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');
-      await controller.start(mapSessionInput(source));
+      await this.zone.runOutsideAngular(() =>
+        controller.start(mapSessionInput()),
+      );
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;
       this.phase.set(
