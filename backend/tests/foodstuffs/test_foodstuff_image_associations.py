@@ -175,11 +175,11 @@ def test_foreign_key_protects_referenced_metadata(client: TestClient, images: tu
             session.flush()
 
 
-def test_mcp_image_association_rules(images: tuple[UUID, UUID, UUID]) -> None:
+def test_mcp_image_association_rules(images: tuple[UUID, UUID, UUID], mcp_headers: dict[str, str]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://localhost") as http:
+            async with httpx2.AsyncClient(headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost") as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool("create_foodstuff", {"foodstuff": {
                         "name": "Carrot", "unit": "G", "imageId": str(images[0]),

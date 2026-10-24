@@ -28,12 +28,12 @@ from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.mark.parametrize("mode", ["auto", "legacy"])
-def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "legacy"]) -> None:
+def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "legacy"], mcp_headers: dict[str, str]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 assert (await http.get("/")).json() == {"message": "Hello World"}
                 assert (await http.get("/api/openapi.json")).status_code == 200
@@ -48,19 +48,19 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                         assert initialization.instructions == KOCHWIKI_INSTRUCTIONS
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
-                        "hello_world", "search_foodstuffs", "create_foodstuff", "update_foodstuff",
+                        "search_foodstuffs", "create_foodstuff", "update_foodstuff",
                         "search_recipes", "get_recipe_lineage",
                         "create_recipe_proposal", "get_recipe_proposal", "save_recipe_proposal",
                     ]
-                    result = await client.call_tool("hello_world", {})
-                    assert not result.is_error
-                    assert result.structured_content == {"message": "Hello World"}
+                    result = await client.call_tool("get_recipe_lineage", {"recipe_version_id": "00000000-0000-0000-0000-000000000000"})
+                    assert result.is_error
+                    assert "not found" in str(result.content)
 
     asyncio.run(exercise())
     asyncio.run(exercise())
 
 
-def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
+def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh(mcp_headers: dict[str, str]) -> None:
     refreshed: list[int] = []
     subscriber = refreshed.append
 
@@ -68,7 +68,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     tool = next(tool for tool in (await client.list_tools()).tools if tool.name == "create_foodstuff")
@@ -122,7 +122,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
         foodstuff_refresh.unsubscribe(subscriber)
 
 
-def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str]) -> None:
     original_create = foodstuffs.create_foodstuff
     refreshed: list[int] = []
     subscriber = refreshed.append
@@ -137,7 +137,7 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: 
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool("create_foodstuff", {
@@ -158,6 +158,7 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(monkeypatch: 
 
 
 def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
+    mcp_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     with SessionLocal.begin() as session:
@@ -184,7 +185,7 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     tool = next(tool for tool in (await client.list_tools()).tools if tool.name == "update_foodstuff")
@@ -265,6 +266,7 @@ class QueryProvider:
 
 
 def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
+    mcp_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = QueryProvider()
@@ -283,7 +285,7 @@ def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     discovery = await client.list_tools()
@@ -322,6 +324,7 @@ def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
 
 
 def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
+    mcp_headers: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     provider = QueryProvider()
@@ -347,7 +350,7 @@ def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     discovery = await client.list_tools()
@@ -385,27 +388,27 @@ def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
 
 
 @pytest.mark.parametrize("tool_name", ["search_foodstuffs", "search_recipes"])
-def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
+def test_search_without_credentials_reports_tool_error(tool_name: str, mcp_headers: dict[str, str]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool(tool_name, {"query": "Moehre"})
                     assert result.is_error
                     assert any(isinstance(item, TextContent) and "Semantic search unavailable" in item.text for item in result.content)
-                    assert not (await client.call_tool("hello_world", {})).is_error
+                    assert len((await client.list_tools()).tools) == 8
 
     asyncio.run(exercise())
 
 
-def test_mcp_rejects_unconfigured_host() -> None:
+def test_mcp_rejects_unconfigured_host(mcp_headers: dict[str, str]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app)) as http:
+            async with httpx2.AsyncClient(headers=mcp_headers, transport=httpx2.ASGITransport(app=app)) as http:
                 response = await http.post(
                     "http://unconfigured.example/mcp/",
                     headers={"Accept": "application/json, text/event-stream"},

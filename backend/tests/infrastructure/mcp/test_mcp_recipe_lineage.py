@@ -22,7 +22,7 @@ from app.foodstuffs.services.foodstuffs import create_foodstuff
 from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
-def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings() -> None:
+def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings(mcp_headers: dict[str, str]) -> None:
     with SessionLocal.begin() as session:
         foodstuff = create_foodstuff(session, FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20)))
         write = RecipeVersionWrite.model_validate({
@@ -54,7 +54,7 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     tool = next(tool for tool in (await client.list_tools()).tools if tool.name == "get_recipe_lineage")
@@ -84,7 +84,7 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
     asyncio.run(exercise())
 
 
-def test_lineage_mcp_database_failure_is_sanitized(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_lineage_mcp_database_failure_is_sanitized(monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str]) -> None:
     def fail(session: Session, version_id: UUID) -> RecipeLineageOut:
         raise SQLAlchemyError("private database details")
 
@@ -94,7 +94,7 @@ def test_lineage_mcp_database_failure_is_sanitized(monkeypatch: pytest.MonkeyPat
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool("get_recipe_lineage", {"recipe_version_id": str(uuid4())})

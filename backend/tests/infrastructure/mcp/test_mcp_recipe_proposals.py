@@ -44,7 +44,7 @@ def proposal_payload() -> RecipeProposalCreate:
         })
 
 
-def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_session: UserOut) -> None:
+def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_session: UserOut, mcp_headers: dict[str, str]) -> None:
     payload = proposal_payload()
     with SessionLocal.begin() as session:
         source = session.get(RecipeVersion, payload.sourceRecipeVersionId)
@@ -55,7 +55,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     tools = {tool.name: tool for tool in (await client.list_tools()).tools}
@@ -111,7 +111,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
         fresh = create_app()
         async with fresh.router.lifespan_context(fresh):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=fresh), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=fresh), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     assert (await client.call_tool("get_recipe_proposal", args)).is_error
@@ -119,14 +119,14 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
     asyncio.run(exercise())
 
 
-def test_proposal_mcp_validation_and_missing_dependencies() -> None:
+def test_proposal_mcp_validation_and_missing_dependencies(mcp_headers: dict[str, str]) -> None:
     payload = proposal_payload()
 
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     for tool in ["get_recipe_proposal", "save_recipe_proposal"]:
@@ -157,7 +157,7 @@ def test_proposal_mcp_validation_and_missing_dependencies() -> None:
     asyncio.run(exercise())
 
 
-def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str]) -> None:
     payload = proposal_payload()
     original = proposal_saves.create_recipe_draft
 
@@ -169,7 +169,7 @@ def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(monkeypatch: 
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
             ) as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")})
