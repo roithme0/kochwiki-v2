@@ -9,6 +9,8 @@ from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageKind
 from app.core.schemas.errors import AUTHENTICATION_RESPONSES, ErrorResponse
 from app.identity.dependencies import require_current_user
+from app.identity.models.user import User
+from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.foodstuffs.schemas.image import (
     FoodstuffImageDownloadOut,
     FoodstuffImageOut,
@@ -41,6 +43,12 @@ def get_foodstuff_image_transfers(
     return ImageTransfers(storage, SessionLocal, kind=ImageKind.FOODSTUFF)
 
 
+def get_foodstuff_image_uploads(
+    transfers: ImageTransfers = Depends(get_foodstuff_image_transfers),
+) -> FoodstuffImageUploads:
+    return FoodstuffImageUploads(transfers, SessionLocal)
+
+
 @router.get(
     "/foodstuff-images/{image_id}/download",
     response_model=FoodstuffImageDownloadOut,
@@ -69,12 +77,15 @@ def download_image(
     response_model=FoodstuffImageUploadOut,
 )
 def begin_upload(
-    uploads: ImageTransfers = Depends(get_foodstuff_image_transfers),
+    user: User = Depends(require_current_user, scope="function"),
+    uploads: FoodstuffImageUploads = Depends(get_foodstuff_image_uploads),
 ) -> FoodstuffImageUploadOut:
     try:
-        upload = uploads.begin()
+        upload = uploads.begin(user.id)
     except StorageUnavailable:
         raise HTTPException(503, "Image storage is unavailable") from None
+    except ImagePersistenceFailed:
+        raise HTTPException(503, "Image upload could not be started") from None
     return FoodstuffImageUploadOut(
         uploadId=upload.id,
         url=upload.transfer.url,
@@ -91,10 +102,11 @@ def begin_upload(
 )
 def complete_upload(
     upload_id: UUID,
-    uploads: ImageTransfers = Depends(get_foodstuff_image_transfers),
+    user: User = Depends(require_current_user, scope="function"),
+    uploads: FoodstuffImageUploads = Depends(get_foodstuff_image_uploads),
 ) -> FoodstuffImageOut:
     try:
-        image = uploads.complete(upload_id)
+        image = uploads.complete(upload_id, user.id)
     except ImageUploadNotFound:
         raise HTTPException(404, "Upload has not been received") from None
     except InvalidImage as error:

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, String, UniqueConstraint, Uuid
+from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.images.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
@@ -26,6 +26,7 @@ class ImageAsset(Base):
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    uploader_id: Mapped[int | None] = mapped_column(ForeignKey("user.id", ondelete="RESTRICT"), nullable=True, index=True)
     kind: Mapped[ImageKind] = mapped_column(
         Enum(
             ImageKind, native_enum=False, create_constraint=True,

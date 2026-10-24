@@ -13,7 +13,7 @@ def map_identity(session: Session, identity: Identity) -> User:
         display_name=identity.display_name,
     )
     statement = statement.on_conflict_do_update(
-        constraint="uq_custom_user_identity",
+        constraint="uq_user_identity",
         set_={
             "email": statement.excluded.email,
             "display_name": statement.excluded.display_name,

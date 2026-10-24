@@ -1239,7 +1239,11 @@ export type BeginUploadRecipeImageUploadsPostData = {
 
 export type BeginUploadRecipeImageUploadsPostErrors = {
     /**
-     * Service Unavailable
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -1273,6 +1277,14 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
      */
     400: ErrorResponse;
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1281,7 +1293,7 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
