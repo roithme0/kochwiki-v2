@@ -85,6 +85,7 @@ def recipe_presentation_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_presentation(
     client: TestClient,
 ) -> None:
@@ -143,6 +144,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert updated.json()["kcal"] == {"status": "exact", "value": 100}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
 
@@ -160,6 +162,7 @@ def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(cli
     assert response.json()["fat"] == {"status": "exact", "value": 3.5}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, unit="PIECE", kcal=9999, carbs=0, protein=None, fat=0)
     response = client.post(
@@ -180,6 +183,7 @@ def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestCli
     assert body["preptime"] is None
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     unknown = client.post(
@@ -221,6 +225,7 @@ def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(c
     ).status_code == 422
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_requires_all_fields(client: TestClient) -> None:
     for field in ("servings", "preptime", "ingredients", "steps"):
         payload = recipe_presentation_payload()
@@ -246,6 +251,7 @@ def test_resolver_and_recipe_writes_reject_non_numeric_amounts(
 
 
 @pytest.mark.parametrize("field,value", [("servings", "2"), ("servings", True), ("preptime", "10")])
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_rejects_coerced_integer_fields(
     client: TestClient, field: str, value: object
 ) -> None:
@@ -256,6 +262,7 @@ def test_resolver_rejects_coerced_integer_fields(
     assert response.json()["detail"][0]["loc"] == ["body", field]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(client: TestClient) -> None:
     assert client.post(
         "/recipe-presentations/resolve", json=recipe_presentation_payload(servings=0)
@@ -534,6 +541,7 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
         assert response.content == b""
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_numeric_success_schema_matches_json_responses(client: TestClient) -> None:
     openapi = client.get("/api/openapi.json").json()
     schemas = openapi["components"]["schemas"]

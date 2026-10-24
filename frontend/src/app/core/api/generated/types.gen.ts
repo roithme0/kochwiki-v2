@@ -1133,6 +1133,19 @@ export type ListIngredientsIngredientsGetData = {
     url: '/ingredients';
 };
 
+export type ListIngredientsIngredientsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListIngredientsIngredientsGetError = ListIngredientsIngredientsGetErrors[keyof ListIngredientsIngredientsGetErrors];
+
 export type ListIngredientsIngredientsGetResponses = {
     /**
      * Response List Ingredients Ingredients Get
@@ -1274,6 +1287,10 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1281,6 +1298,10 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostError = ResolveRecipePresentationRecipePresentationsResolvePostErrors[keyof ResolveRecipePresentationRecipePresentationsResolvePostErrors];
@@ -1350,6 +1371,19 @@ export type ListRecipeVersionsRecipesGetData = {
     query?: never;
     url: '/recipes';
 };
+
+export type ListRecipeVersionsRecipesGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListRecipeVersionsRecipesGetError = ListRecipeVersionsRecipesGetErrors[keyof ListRecipeVersionsRecipesGetErrors];
 
 export type ListRecipeVersionsRecipesGetResponses = {
     /**
@@ -1459,6 +1493,10 @@ export type GetActiveRecipeVersionRecipesLineageIdGetData = {
 
 export type GetActiveRecipeVersionRecipesLineageIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1466,6 +1504,10 @@ export type GetActiveRecipeVersionRecipesLineageIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetActiveRecipeVersionRecipesLineageIdGetError = GetActiveRecipeVersionRecipesLineageIdGetErrors[keyof GetActiveRecipeVersionRecipesLineageIdGetErrors];
@@ -1701,6 +1743,10 @@ export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetData = {
 
 export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1708,6 +1754,10 @@ export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetError = ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors[keyof ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors];
@@ -1787,6 +1837,10 @@ export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetData = {
 
 export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1794,6 +1848,10 @@ export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetError = GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors[keyof GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors];
@@ -1813,6 +1871,19 @@ export type ListStepsStepsGetData = {
     query?: never;
     url: '/steps';
 };
+
+export type ListStepsStepsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListStepsStepsGetError = ListStepsStepsGetErrors[keyof ListStepsStepsGetErrors];
 
 export type ListStepsStepsGetResponses = {
     /**

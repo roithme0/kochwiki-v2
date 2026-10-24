@@ -155,6 +155,7 @@ def test_mutations_require_live_owner_without_side_effects(
         headers={"X-Application-User": f"kochwiki:{owner.id}"},
     )
     assert response.status_code == (403 if caller == "other" else 401)
+    sign_in(client)
     assert client.get("/recipes").json() == before
     assert client.get(f"{path}/history").json() == []
 

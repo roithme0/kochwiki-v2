@@ -24,7 +24,10 @@ from app.recipes.schemas.recipe import (
 )
 from app.recipes.services import recipes
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses=AUTHENTICATION_RESPONSES,
+)
 
 
 @router.post(
@@ -92,10 +95,7 @@ def list_historical_recipe_versions(
     "/recipes",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses={
-        **NOT_FOUND_RESPONSE,
-        **AUTHENTICATION_RESPONSES,
-    },
+    responses=NOT_FOUND_RESPONSE,
 )
 def create_recipe(
     payload: RecipeVersionWrite,
@@ -108,7 +108,7 @@ def create_recipe(
 @router.post(
     "/recipes/{lineage_id}/publish",
     response_model=RecipeVersionOut,
-    responses={**NOT_FOUND_RESPONSE, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def publish_active_recipe_edit(
@@ -125,7 +125,7 @@ def publish_active_recipe_edit(
     "/recipes/{lineage_id}/drafts",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses={**NOT_FOUND_RESPONSE, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def create_recipe_draft(
@@ -141,7 +141,7 @@ def create_recipe_draft(
 @router.put(
     "/recipes/{lineage_id}/drafts/{version_id}",
     response_model=RecipeVersionOut,
-    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def update_recipe_draft(
@@ -158,7 +158,7 @@ def update_recipe_draft(
 @router.post(
     "/recipes/{lineage_id}/drafts/{version_id}/publish",
     response_model=RecipeVersionOut,
-    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def publish_recipe_draft(
@@ -174,7 +174,7 @@ def publish_recipe_draft(
 @router.delete(
     "/recipes/{lineage_id}/drafts/{version_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def discard_recipe_draft(
@@ -188,7 +188,7 @@ def discard_recipe_draft(
 @router.delete(
     "/recipes/{lineage_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**NOT_FOUND_RESPONSE, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
     dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def delete_recipe_lineage(
