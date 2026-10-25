@@ -17,8 +17,12 @@ class Migration(Protocol):
     def downgrade(self) -> None: ...
 
 
-def test_ownership_migration_clears_only_unowned_recipe_data_and_requires_valid_owner() -> None:
-    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision("20261023_15")
+def test_ownership_migration_clears_only_unowned_recipe_data_and_requires_valid_owner() -> (
+    None
+):
+    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision(
+        "20261023_15"
+    )
     assert revision is not None
     migration = cast(Migration, revision.module)
     lineage_id = uuid4()
@@ -39,25 +43,52 @@ def test_ownership_migration_clears_only_unowned_recipe_data_and_requires_valid_
             "INSERT INTO image_asset VALUES (1)",
         ):
             connection.execute(text(statement))
-        connection.execute(text("INSERT INTO recipe_lineage VALUES (:id)"), {"id": lineage_id})
+        connection.execute(
+            text("INSERT INTO recipe_lineage VALUES (:id)"), {"id": lineage_id}
+        )
         for index, state in enumerate(("active", "draft", "historical"), start=1):
             version_id = uuid4()
-            connection.execute(text("INSERT INTO recipe_version VALUES (:id, :lineage, :state, 1)"), {
-                "id": version_id, "lineage": lineage_id, "state": state,
-            })
-            connection.execute(text("INSERT INTO ingredient VALUES (:index, :version, 1)"), {"index": index, "version": version_id})
-            connection.execute(text("INSERT INTO step VALUES (:index, :version)"), {"index": index, "version": version_id})
-            connection.execute(text("INSERT INTO recipe_embedding VALUES (:version)"), {"version": version_id})
+            connection.execute(
+                text("INSERT INTO recipe_version VALUES (:id, :lineage, :state, 1)"),
+                {
+                    "id": version_id,
+                    "lineage": lineage_id,
+                    "state": state,
+                },
+            )
+            connection.execute(
+                text("INSERT INTO ingredient VALUES (:index, :version, 1)"),
+                {"index": index, "version": version_id},
+            )
+            connection.execute(
+                text("INSERT INTO step VALUES (:index, :version)"),
+                {"index": index, "version": version_id},
+            )
+            connection.execute(
+                text("INSERT INTO recipe_embedding VALUES (:version)"),
+                {"version": version_id},
+            )
         with Operations.context(MigrationContext.configure(connection)):
             migration.upgrade()
-        for table in ("recipe_lineage", "recipe_version", "ingredient", "step", "recipe_embedding"):
+        for table in (
+            "recipe_lineage",
+            "recipe_version",
+            "ingredient",
+            "step",
+            "recipe_embedding",
+        ):
             assert connection.scalar(text(f"SELECT count(*) FROM pg_temp.{table}")) == 0
         for table in ("custom_user", "application_session", "foodstuff", "image_asset"):
             assert connection.scalar(text(f"SELECT count(*) FROM pg_temp.{table}")) == 1
         for owner in (None, 999):
             with pytest.raises(IntegrityError), connection.begin_nested():
-                connection.execute(text("INSERT INTO recipe_lineage VALUES (:id, :owner)"), {"id": uuid4(), "owner": owner})
-        connection.execute(text("INSERT INTO recipe_lineage VALUES (:id, 1)"), {"id": lineage_id})
+                connection.execute(
+                    text("INSERT INTO recipe_lineage VALUES (:id, :owner)"),
+                    {"id": uuid4(), "owner": owner},
+                )
+        connection.execute(
+            text("INSERT INTO recipe_lineage VALUES (:id, 1)"), {"id": lineage_id}
+        )
         connection.execute(text("DELETE FROM application_session"))
         with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(text("DELETE FROM custom_user WHERE id = 1"))

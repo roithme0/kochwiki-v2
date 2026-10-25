@@ -54,8 +54,12 @@ class ProposalRecipe(RecipeVersionFields):
 
     @field_validator("ingredients")
     @classmethod
-    def validate_unique_ingredients(cls, value: list[ProposalIngredient]) -> list[ProposalIngredient]:
-        _validate_unique_indexes([ingredient.index for ingredient in value], "ingredient")
+    def validate_unique_ingredients(
+        cls, value: list[ProposalIngredient]
+    ) -> list[ProposalIngredient]:
+        _validate_unique_indexes(
+            [ingredient.index for ingredient in value], "ingredient"
+        )
         existing_ids: set[int] = set()
         temporary_names: set[tuple[str, str | None]] = set()
         for ingredient in value:
@@ -67,7 +71,9 @@ class ProposalRecipe(RecipeVersionFields):
             else:
                 identity = (foodstuff.definition.name, foodstuff.definition.brand)
                 if identity in temporary_names:
-                    raise ValueError("temporary foodstuff names and brands must be unique per recipe")
+                    raise ValueError(
+                        "temporary foodstuff names and brands must be unique per recipe"
+                    )
                 temporary_names.add(identity)
         return value
 

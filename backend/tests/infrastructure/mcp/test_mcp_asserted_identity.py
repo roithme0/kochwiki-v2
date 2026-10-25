@@ -28,25 +28,49 @@ from tests.infrastructure.mcp.test_mcp_recipe_proposals import proposal_payload
 
 
 def test_assertion_resolves_the_existing_issuer_subject_pair(
-    mcp_user: UserOut, provider_user: Callable[[str], UserOut],
+    mcp_user: UserOut,
+    provider_user: Callable[[str], UserOut],
 ) -> None:
     other = provider_user("Same subject, other issuer")
     subject = "cook:ä !'()*%"
     encoded_subject = quote(subject, safe="~!*'()")
     issuer = "https://idp.example/realms/cooks"
     with SessionLocal.begin() as session:
-        session.execute(update(User).where(User.id == mcp_user.id).values(issuer=issuer, subject=subject))
-        session.execute(update(User).where(User.id == other.id).values(issuer=f"{issuer}-other", subject=subject))
+        session.execute(
+            update(User)
+            .where(User.id == mcp_user.id)
+            .values(issuer=issuer, subject=subject)
+        )
+        session.execute(
+            update(User)
+            .where(User.id == other.id)
+            .values(issuer=f"{issuer}-other", subject=subject)
+        )
     payload = proposal_payload(mcp_user.id)
 
     async def exercise() -> None:
         app = main.create_app()
-        async with app.router.lifespan_context(app), httpx2.AsyncClient(
-            transport=httpx2.ASGITransport(app=app), base_url="http://localhost",
-        ) as http, Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
-            for asserted_issuer, allowed in [(issuer, True), (f"{issuer}-other", False)]:
-                http.headers["X-Application-User"] = f"{quote(asserted_issuer, safe='')}:{encoded_subject}"
-                result = await client.call_tool("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")})
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http)
+            ) as client,
+        ):
+            for asserted_issuer, allowed in [
+                (issuer, True),
+                (f"{issuer}-other", False),
+            ]:
+                http.headers["X-Application-User"] = (
+                    f"{quote(asserted_issuer, safe='')}:{encoded_subject}"
+                )
+                result = await client.call_tool(
+                    "create_recipe_proposal",
+                    {"proposal": payload.model_dump(mode="json")},
+                )
                 assert bool(result.is_error) is not allowed
             with SessionLocal() as session:
                 assert session.query(User).count() == 2
@@ -54,29 +78,63 @@ def test_assertion_resolves_the_existing_issuer_subject_pair(
     asyncio.run(exercise())
 
 
-@pytest.mark.parametrize("assertions", [
-    [], [""], ["kochwiki:1"], ["1"], ["a:b:c"], ["%ZZ:b"], ["%FF:b"],
-    [":b"], ["a:"], ["unknown:unknown"], ["a:b", "a:b"], ["a:b, a:b"],
-])
+@pytest.mark.parametrize(
+    "assertions",
+    [
+        [],
+        [""],
+        ["kochwiki:1"],
+        ["1"],
+        ["a:b:c"],
+        ["%ZZ:b"],
+        ["%FF:b"],
+        [":b"],
+        ["a:"],
+        ["unknown:unknown"],
+        ["a:b", "a:b"],
+        ["a:b, a:b"],
+    ],
+)
 def test_invalid_assertions_cannot_access_or_write_proposals(
-    assertions: list[str], mcp_user: UserOut, mcp_headers: dict[str, str],
+    assertions: list[str],
+    mcp_user: UserOut,
+    mcp_headers: dict[str, str],
 ) -> None:
     payload = proposal_payload(mcp_user.id)
 
     async def exercise() -> None:
         app = main.create_app()
-        async with app.router.lifespan_context(app), httpx2.AsyncClient(
-            headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost",
-        ) as owner_http, Client(streamable_http_client("http://localhost/mcp/", http_client=owner_http)) as owner:
-            created = await owner.call_tool("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")})
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
+                headers=mcp_headers,
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
+            ) as owner_http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=owner_http)
+            ) as owner,
+        ):
+            created = await owner.call_tool(
+                "create_recipe_proposal", {"proposal": payload.model_dump(mode="json")}
+            )
             proposal = RecipeProposalOut.model_validate(created.structured_content)
-            async with httpx2.AsyncClient(
-                headers=[("X-Application-User", value) for value in assertions],
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost",
-            ) as http, Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+            async with (
+                httpx2.AsyncClient(
+                    headers=[("X-Application-User", value) for value in assertions],
+                    transport=httpx2.ASGITransport(app=app),
+                    base_url="http://localhost",
+                ) as http,
+                Client(
+                    streamable_http_client("http://localhost/mcp/", http_client=http)
+                ) as client,
+            ):
                 assert len((await client.list_tools()).tools) == 8
                 calls = [
-                    ("create_recipe_proposal", {"proposal": payload.model_dump(mode="json")}),
+                    (
+                        "create_recipe_proposal",
+                        {"proposal": payload.model_dump(mode="json")},
+                    ),
                     ("get_recipe_proposal", {"proposal_id": str(proposal.proposalId)}),
                     ("save_recipe_proposal", {"proposal_id": str(proposal.proposalId)}),
                 ]
@@ -91,7 +149,9 @@ def test_invalid_assertions_cannot_access_or_write_proposals(
 
 
 def test_concurrent_assertions_are_isolated_and_reset_after_failures(
-    mcp_user: UserOut, mcp_headers: dict[str, str], provider_user: Callable[[str], UserOut],
+    mcp_user: UserOut,
+    mcp_headers: dict[str, str],
+    provider_user: Callable[[str], UserOut],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     other = provider_user("Other caller")
@@ -128,13 +188,23 @@ def test_concurrent_assertions_are_isolated_and_reset_after_failures(
         app = main.create_app()
 
         async def run(headers: dict[str, str], user_id: int) -> None:
-            async with httpx2.AsyncClient(headers=headers, transport=httpx2.ASGITransport(app=app)) as http, Client(
-                streamable_http_client("http://localhost/mcp/", http_client=http),
-            ) as client:
+            async with (
+                httpx2.AsyncClient(
+                    headers=headers, transport=httpx2.ASGITransport(app=app)
+                ) as http,
+                Client(
+                    streamable_http_client("http://localhost/mcp/", http_client=http),
+                ) as client,
+            ):
                 result = await client.call_tool("caller_probe", {})
-                assert result.structured_content == {"before": user_id, "after": user_id}
+                assert result.structured_content == {
+                    "before": user_id,
+                    "after": user_id,
+                }
                 assert (await client.call_tool("failing_caller", {})).is_error
-                assert (await client.call_tool("sync_caller", {})).structured_content == {"result": user_id}
+                assert (
+                    await client.call_tool("sync_caller", {})
+                ).structured_content == {"result": user_id}
                 http.headers.pop("X-Application-User")
                 with pytest.raises(MCPError, match="Caller identity required"):
                     await client.call_tool("sync_caller", {})
@@ -142,15 +212,22 @@ def test_concurrent_assertions_are_isolated_and_reset_after_failures(
                 current_caller()
 
         async with app.router.lifespan_context(app):
-            await asyncio.gather(run(mcp_headers, mcp_user.id), run(
-                {"X-Application-User": f"{quote(other.issuer, safe='')}:{quote(other.subject, safe='')}"}, other.id,
-            ))
+            await asyncio.gather(
+                run(mcp_headers, mcp_user.id),
+                run(
+                    {
+                        "X-Application-User": f"{quote(other.issuer, safe='')}:{quote(other.subject, safe='')}"
+                    },
+                    other.id,
+                ),
+            )
 
     asyncio.run(exercise())
 
 
 def test_identity_lookup_database_failure_is_closed_and_sanitized(
-    monkeypatch: pytest.MonkeyPatch, mcp_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    mcp_headers: dict[str, str],
 ) -> None:
     def unavailable() -> None:
         raise SQLAlchemyError("private database details")
@@ -159,12 +236,23 @@ def test_identity_lookup_database_failure_is_closed_and_sanitized(
 
     async def exercise() -> None:
         app = main.create_app()
-        async with app.router.lifespan_context(app), httpx2.AsyncClient(
-            headers=mcp_headers, transport=httpx2.ASGITransport(app=app),
-        ) as http, Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
+                headers=mcp_headers,
+                transport=httpx2.ASGITransport(app=app),
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http)
+            ) as client,
+        ):
             assert len((await client.list_tools()).tools) == 8
-            with pytest.raises(MCPError, match="Caller identity service unavailable") as error:
-                await client.call_tool("get_recipe_proposal", {"proposal_id": str(uuid4())})
+            with pytest.raises(
+                MCPError, match="Caller identity service unavailable"
+            ) as error:
+                await client.call_tool(
+                    "get_recipe_proposal", {"proposal_id": str(uuid4())}
+                )
             assert "private database details" not in str(error.value)
 
     asyncio.run(exercise())

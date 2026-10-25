@@ -31,10 +31,18 @@ def upgrade() -> None:
         sa.Column("carbs", sa.Numeric(precision=12, scale=4), nullable=True),
         sa.Column("protein", sa.Numeric(precision=12, scale=4), nullable=True),
         sa.Column("fat", sa.Numeric(precision=12, scale=4), nullable=True),
-        sa.CheckConstraint("kcal IS NULL OR kcal >= 0", name="ck_foodstuff_kcal_nonnegative"),
-        sa.CheckConstraint("carbs IS NULL OR carbs >= 0", name="ck_foodstuff_carbs_nonnegative"),
-        sa.CheckConstraint("protein IS NULL OR protein >= 0", name="ck_foodstuff_protein_nonnegative"),
-        sa.CheckConstraint("fat IS NULL OR fat >= 0", name="ck_foodstuff_fat_nonnegative"),
+        sa.CheckConstraint(
+            "kcal IS NULL OR kcal >= 0", name="ck_foodstuff_kcal_nonnegative"
+        ),
+        sa.CheckConstraint(
+            "carbs IS NULL OR carbs >= 0", name="ck_foodstuff_carbs_nonnegative"
+        ),
+        sa.CheckConstraint(
+            "protein IS NULL OR protein >= 0", name="ck_foodstuff_protein_nonnegative"
+        ),
+        sa.CheckConstraint(
+            "fat IS NULL OR fat >= 0", name="ck_foodstuff_fat_nonnegative"
+        ),
         sa.UniqueConstraint("name", "brand", name="uq_foodstuff_name_brand"),
     )
     op.create_table(
@@ -63,9 +71,13 @@ def upgrade() -> None:
         sa.Column("recipe_id", sa.Integer(), nullable=False),
         sa.CheckConstraint('"index" >= 1', name="ck_ingredient_index_positive"),
         sa.CheckConstraint("amount > 0", name="ck_ingredient_amount_positive"),
-        sa.ForeignKeyConstraint(["foodstuff_id"], ["foodstuff.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["foodstuff_id"], ["foodstuff.id"], ondelete="RESTRICT"
+        ),
         sa.ForeignKeyConstraint(["recipe_id"], ["recipe.id"], ondelete="CASCADE"),
-        sa.UniqueConstraint("foodstuff_id", "recipe_id", name="uq_ingredient_foodstuff_recipe"),
+        sa.UniqueConstraint(
+            "foodstuff_id", "recipe_id", name="uq_ingredient_foodstuff_recipe"
+        ),
     )
     op.create_table(
         "step",

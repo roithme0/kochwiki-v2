@@ -7,7 +7,11 @@ from app.images.config import IMAGE_CONTENT_TYPE
 from app.images.dependencies import image_storage
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageKind
-from app.core.schemas.errors import AUTHENTICATION_RESPONSES, FORBIDDEN_RESPONSE, ErrorResponse
+from app.core.schemas.errors import (
+    AUTHENTICATION_RESPONSES,
+    FORBIDDEN_RESPONSE,
+    ErrorResponse,
+)
 from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
 from app.recipes.services.image_uploads import RecipeImageUploads
@@ -28,7 +32,10 @@ router = APIRouter(
     dependencies=[Depends(require_current_user, scope="function")],
     responses={
         **AUTHENTICATION_RESPONSES,
-        503: {"model": ErrorResponse, "description": "Login not configured or image transfer unavailable"},
+        503: {
+            "model": ErrorResponse,
+            "description": "Login not configured or image transfer unavailable",
+        },
     },
 )
 
@@ -99,7 +106,10 @@ def begin_upload(
 @router.post(
     "/recipe-image-uploads/{upload_id}/complete",
     response_model=RecipeImageOut,
-    responses={**FORBIDDEN_RESPONSE, **{status: {"model": ErrorResponse} for status in (400, 404)}},
+    responses={
+        **FORBIDDEN_RESPONSE,
+        **{status: {"model": ErrorResponse} for status in (400, 404)},
+    },
 )
 def complete_upload(
     upload_id: UUID,

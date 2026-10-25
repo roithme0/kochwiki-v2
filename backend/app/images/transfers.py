@@ -39,7 +39,11 @@ class InvalidImage(Exception):
 
 class ImageTransfers:
     def __init__(
-        self, storage: Storage, sessions: sessionmaker[Session], *, kind: ImageKind,
+        self,
+        storage: Storage,
+        sessions: sessionmaker[Session],
+        *,
+        kind: ImageKind,
     ) -> None:
         self._storage = storage
         self._sessions = sessions
@@ -57,7 +61,9 @@ class ImageTransfers:
         transfer = self._storage.presign_upload(self._temporary_key(upload_id))
         return ImageUpload(id=upload_id, transfer=transfer)
 
-    def complete(self, session: Session, upload_id: UUID, *, uploader_id: int | None = None) -> ValidatedImage:
+    def complete(
+        self, session: Session, upload_id: UUID, *, uploader_id: int | None = None
+    ) -> ValidatedImage:
         temporary_key = self._temporary_key(upload_id)
         try:
             data = self._storage.read(temporary_key, max_bytes=MAX_IMAGE_BYTES)

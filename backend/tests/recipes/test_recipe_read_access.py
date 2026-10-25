@@ -13,7 +13,6 @@ from app.identity.services.sessions import invalidate_session, secret_hash
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.schemas.recipe import RecipeVersionOut
 
-
 READS = [
     ("GET", "/recipes"),
     ("GET", "/recipes/{lineage}"),
@@ -32,8 +31,11 @@ def readable_recipe(authenticated_client: TestClient) -> RecipeVersionOut:
     foodstuff = client.post("/foodstuffs", json={"name": "Oats", "unit": "G"})
     assert foodstuff.status_code == 201
     payload = {
-        "name": "Shared recipe", "servings": 2,
-        "ingredients": [{"index": 1, "amount": 100, "foodstuffId": foodstuff.json()["id"]}],
+        "name": "Shared recipe",
+        "servings": 2,
+        "ingredients": [
+            {"index": 1, "amount": 100, "foodstuffId": foodstuff.json()["id"]}
+        ],
         "steps": [{"index": 1, "description": "Mix"}],
     }
     source = client.post("/recipes", json=payload)
@@ -46,30 +48,46 @@ def readable_recipe(authenticated_client: TestClient) -> RecipeVersionOut:
 
 
 @pytest.mark.parametrize(("method", "path"), READS)
-@pytest.mark.parametrize("credential", ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"])
+@pytest.mark.parametrize(
+    "credential",
+    ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"],
+)
 def test_reads_reject_invalid_sessions_and_spoofed_identity(
-    client: TestClient, readable_recipe: RecipeVersionOut,
-    method: str, path: str, credential: str,
+    client: TestClient,
+    readable_recipe: RecipeVersionOut,
+    method: str,
+    path: str,
+    credential: str,
 ) -> None:
     secret = client.cookies.get(SESSION_COOKIE, path="/")
     assert secret is not None
     if credential == "expired":
         with SessionLocal.begin() as session:
-            session.execute(update(ApplicationSession).values(
-                last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-            ))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
+                )
+            )
     elif credential == "revoked":
         with SessionLocal.begin() as session:
             assert invalidate_session(session, secret)
     supplied = {
-        "missing": None, "malformed": "invalid", "unknown": secrets.token_urlsafe(32),
-        "expired": secret, "revoked": secret, "stored-hash": secret_hash(secret),
+        "missing": None,
+        "malformed": "invalid",
+        "unknown": secrets.token_urlsafe(32),
+        "expired": secret,
+        "revoked": secret,
+        "stored-hash": secret_hash(secret),
     }[credential]
     client.cookies.clear()
     if supplied is not None:
         client.cookies.set(SESSION_COOKIE, supplied)
     response = client.request(
-        method, path.format(lineage=readable_recipe.recipeLineageId, version=readable_recipe.recipeVersionId),
+        method,
+        path.format(
+            lineage=readable_recipe.recipeLineageId,
+            version=readable_recipe.recipeVersionId,
+        ),
         json=PRESENTATION if method == "POST" else None,
         headers={"X-Application-User": f"kochwiki:{readable_recipe.ownerId}"},
     )
@@ -81,16 +99,27 @@ def test_reads_reject_invalid_sessions_and_spoofed_identity(
 
 @pytest.mark.parametrize(("method", "path"), READS)
 def test_other_users_can_read_and_renew_their_session(
-    client: TestClient, readable_recipe: RecipeVersionOut,
-    sign_in: Callable[[TestClient], UserOut], method: str, path: str,
+    client: TestClient,
+    readable_recipe: RecipeVersionOut,
+    sign_in: Callable[[TestClient], UserOut],
+    method: str,
+    path: str,
 ) -> None:
-    path = path.format(lineage=readable_recipe.recipeLineageId, version=readable_recipe.recipeVersionId)
+    path = path.format(
+        lineage=readable_recipe.recipeLineageId, version=readable_recipe.recipeVersionId
+    )
     payload = PRESENTATION if method == "POST" else None
     if method == "POST":
         payload = {
             **PRESENTATION,
-            "ingredients": [{"index": ingredient.index, "amount": float(ingredient.amount),
-                             "foodstuffId": ingredient.foodstuff.id} for ingredient in readable_recipe.ingredients],
+            "ingredients": [
+                {
+                    "index": ingredient.index,
+                    "amount": float(ingredient.amount),
+                    "foodstuffId": ingredient.foodstuff.id,
+                }
+                for ingredient in readable_recipe.ingredients
+            ],
         }
     expected = client.request(method, path, json=payload)
     assert expected.status_code == 200
@@ -98,10 +127,14 @@ def test_other_users_can_read_and_renew_their_session(
     assert reader.id != readable_recipe.ownerId
     secret = client.cookies.get(SESSION_COOKIE, path="/")
     with SessionLocal.begin() as session:
-        previous_activity = session.scalar(update(ApplicationSession).where(
-            ApplicationSession.secret_hash == secret_hash(secret),
-        ).values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME / 2)
-            .returning(ApplicationSession.last_activity_at))
+        previous_activity = session.scalar(
+            update(ApplicationSession)
+            .where(
+                ApplicationSession.secret_hash == secret_hash(secret),
+            )
+            .values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME / 2)
+            .returning(ApplicationSession.last_activity_at)
+        )
     assert previous_activity is not None
     response = client.request(method, path, json=payload)
     assert response.status_code == 200
@@ -110,27 +143,38 @@ def test_other_users_can_read_and_renew_their_session(
     assert "HttpOnly" in response.headers["set-cookie"]
     assert "Max-Age=0" not in response.headers["set-cookie"]
     with SessionLocal() as session:
-        renewed_activity = session.scalar(select(ApplicationSession.last_activity_at).where(
-            ApplicationSession.secret_hash == secret_hash(secret),
-        ))
+        renewed_activity = session.scalar(
+            select(ApplicationSession.last_activity_at).where(
+                ApplicationSession.secret_hash == secret_hash(secret),
+            )
+        )
     assert renewed_activity is not None and renewed_activity > previous_activity
 
 
 @pytest.mark.parametrize(("method", "path"), READS)
-def test_reads_require_configured_login(client: TestClient, method: str, path: str) -> None:
+def test_reads_require_configured_login(
+    client: TestClient, method: str, path: str
+) -> None:
     response = client.request(
-        method, path.format(lineage=uuid4(), version=uuid4()),
+        method,
+        path.format(lineage=uuid4(), version=uuid4()),
         json=PRESENTATION if method == "POST" else None,
     )
     assert response.status_code == 503
 
 
 @pytest.mark.parametrize(("method", "path"), READS)
-def test_read_contract_declares_authentication(client: TestClient, method: str, path: str) -> None:
-    path = path.replace("{lineage}", "{lineage_id}").replace("{version}", "{version_id}")
+def test_read_contract_declares_authentication(
+    client: TestClient, method: str, path: str
+) -> None:
+    path = path.replace("{lineage}", "{lineage_id}").replace(
+        "{version}", "{version_id}"
+    )
     operation = client.get("/api/openapi.json").json()["paths"][path][method.lower()]
     assert operation["security"] == [{"APIKeyCookie": []}]
     for status in ("401", "503"):
-        assert operation["responses"][status]["content"]["application/json"]["schema"] == {
+        assert operation["responses"][status]["content"]["application/json"][
+            "schema"
+        ] == {
             "$ref": "#/components/schemas/ErrorResponse",
         }

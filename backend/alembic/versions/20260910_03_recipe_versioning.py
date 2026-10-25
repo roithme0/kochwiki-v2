@@ -49,7 +49,9 @@ def upgrade() -> None:
         sa.Column("origin_name", sa.String(length=200), nullable=True),
         sa.Column("origin_url", sa.String(length=200), nullable=True),
         sa.CheckConstraint("servings >= 1", name="ck_recipe_version_servings_positive"),
-        sa.ForeignKeyConstraint(["lineage_id"], ["recipe_lineage.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["lineage_id"], ["recipe_lineage.id"], ondelete="CASCADE"
+        ),
     )
     op.create_index(
         "uq_recipe_version_active",
@@ -60,7 +62,9 @@ def upgrade() -> None:
     )
 
     legacy_recipes = connection.execute(
-        sa.text("SELECT id, name, servings, preptime, origin_name, origin_url FROM recipe_legacy ORDER BY id")
+        sa.text(
+            "SELECT id, name, servings, preptime, origin_name, origin_url FROM recipe_legacy ORDER BY id"
+        )
     ).mappings()
     version_ids_by_legacy_id: dict[int, UUID] = {}
     for legacy_recipe in legacy_recipes:
@@ -68,7 +72,9 @@ def upgrade() -> None:
         version_id = uuid4()
         version_ids_by_legacy_id[legacy_recipe["id"]] = version_id
         connection.execute(
-            sa.text("INSERT INTO recipe_lineage (id, created_at) VALUES (:id, :created_at)"),
+            sa.text(
+                "INSERT INTO recipe_lineage (id, created_at) VALUES (:id, :created_at)"
+            ),
             {"id": lineage_id, "created_at": migration_time},
         )
         connection.execute(
@@ -90,15 +96,21 @@ def upgrade() -> None:
             },
         )
 
-    op.add_column("ingredient", sa.Column("recipe_version_uuid", uuid_type, nullable=True))
+    op.add_column(
+        "ingredient", sa.Column("recipe_version_uuid", uuid_type, nullable=True)
+    )
     op.add_column("step", sa.Column("recipe_version_uuid", uuid_type, nullable=True))
     for legacy_recipe_id, version_id in version_ids_by_legacy_id.items():
         connection.execute(
-            sa.text("UPDATE ingredient SET recipe_version_uuid = :version_id WHERE recipe_id = :recipe_id"),
+            sa.text(
+                "UPDATE ingredient SET recipe_version_uuid = :version_id WHERE recipe_id = :recipe_id"
+            ),
             {"version_id": version_id, "recipe_id": legacy_recipe_id},
         )
         connection.execute(
-            sa.text("UPDATE step SET recipe_version_uuid = :version_id WHERE recipe_id = :recipe_id"),
+            sa.text(
+                "UPDATE step SET recipe_version_uuid = :version_id WHERE recipe_id = :recipe_id"
+            ),
             {"version_id": version_id, "recipe_id": legacy_recipe_id},
         )
 
@@ -109,19 +121,49 @@ def upgrade() -> None:
     op.drop_constraint("uq_step_recipe_index", "step", type_="unique")
     op.drop_column("ingredient", "recipe_id")
     op.drop_column("step", "recipe_id")
-    op.alter_column("ingredient", "recipe_version_uuid", new_column_name="recipe_version_id", nullable=False)
-    op.alter_column("step", "recipe_version_uuid", new_column_name="recipe_version_id", nullable=False)
-    op.create_foreign_key(
-        "ingredient_recipe_version_id_fkey", "ingredient", "recipe_version", ["recipe_version_id"], ["version_id"], ondelete="CASCADE"
+    op.alter_column(
+        "ingredient",
+        "recipe_version_uuid",
+        new_column_name="recipe_version_id",
+        nullable=False,
+    )
+    op.alter_column(
+        "step",
+        "recipe_version_uuid",
+        new_column_name="recipe_version_id",
+        nullable=False,
     )
     op.create_foreign_key(
-        "step_recipe_version_id_fkey", "step", "recipe_version", ["recipe_version_id"], ["version_id"], ondelete="CASCADE"
+        "ingredient_recipe_version_id_fkey",
+        "ingredient",
+        "recipe_version",
+        ["recipe_version_id"],
+        ["version_id"],
+        ondelete="CASCADE",
     )
-    op.create_unique_constraint("uq_ingredient_foodstuff_recipe", "ingredient", ["foodstuff_id", "recipe_version_id"])
-    op.create_unique_constraint("uq_ingredient_recipe_index", "ingredient", ["recipe_version_id", "index"])
-    op.create_unique_constraint("uq_step_recipe_index", "step", ["recipe_version_id", "index"])
+    op.create_foreign_key(
+        "step_recipe_version_id_fkey",
+        "step",
+        "recipe_version",
+        ["recipe_version_id"],
+        ["version_id"],
+        ondelete="CASCADE",
+    )
+    op.create_unique_constraint(
+        "uq_ingredient_foodstuff_recipe",
+        "ingredient",
+        ["foodstuff_id", "recipe_version_id"],
+    )
+    op.create_unique_constraint(
+        "uq_ingredient_recipe_index", "ingredient", ["recipe_version_id", "index"]
+    )
+    op.create_unique_constraint(
+        "uq_step_recipe_index", "step", ["recipe_version_id", "index"]
+    )
     op.drop_table("recipe_legacy")
 
 
 def downgrade() -> None:
-    raise NotImplementedError("Recipe versioning cannot be downgraded without losing versions and drafts")
+    raise NotImplementedError(
+        "Recipe versioning cannot be downgraded without losing versions and drafts"
+    )

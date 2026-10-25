@@ -20,16 +20,24 @@ def main() -> None:
     if config is None:
         raise RuntimeError("Configure STORAGE_* settings before verification")
     with SessionLocal.begin() as session:
-        authenticated = authenticated_user(session, os.environ.get("STORAGE_VERIFY_SESSION"))
+        authenticated = authenticated_user(
+            session, os.environ.get("STORAGE_VERIFY_SESSION")
+        )
         if authenticated is None:
-            raise RuntimeError("Set STORAGE_VERIFY_SESSION to an active application-session secret")
+            raise RuntimeError(
+                "Set STORAGE_VERIFY_SESSION to an active application-session secret"
+            )
         user_id = authenticated[0].id
     storage = Storage(config, bucket=config.bucket_recipe_images)
-    uploads = RecipeImageUploads(ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE), SessionLocal)
+    uploads = RecipeImageUploads(
+        ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE), SessionLocal
+    )
     keys: list[str] = []
     image_ids: list[UUID] = []
     upload_ids: list[UUID] = []
-    png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==")
+    png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=="
+    )
     try:
         upload = uploads.begin(user_id)
         upload_ids.append(upload.id)
@@ -43,7 +51,10 @@ def main() -> None:
         with SessionLocal() as session:
             saved = session.get(ImageAsset, result.id)
             assert saved is not None
-            assert (saved.object_key, saved.sha256) == (result.object_key, result.sha256)
+            assert (saved.object_key, saved.sha256) == (
+                result.object_key,
+                result.sha256,
+            )
         assert (result.width, result.height, result.size) == (1, 1, len(png))
         assert not result.cleanup_pending
         assert storage.inspect(temporary) is None
@@ -58,7 +69,9 @@ def main() -> None:
         else:
             raise AssertionError("Consumed upload was accepted")
         status, downloaded = transfer(storage.presign_download(result.object_key))
-        assert status == 200 and downloaded == png, "Temporary upload changed permanent bytes"
+        assert (
+            status == 200 and downloaded == png
+        ), "Temporary upload changed permanent bytes"
     finally:
         try:
             with SessionLocal.begin() as session:
@@ -74,7 +87,9 @@ def main() -> None:
                 storage.delete(key)
         finally:
             storage.close()
-    print("Recipe image upload verified: validation, permanent bytes/metadata, immediate cleanup and consumed-upload replay rejection.")
+    print(
+        "Recipe image upload verified: validation, permanent bytes/metadata, immediate cleanup and consumed-upload replay rejection."
+    )
 
 
 if __name__ == "__main__":

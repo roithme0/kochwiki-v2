@@ -12,8 +12,9 @@ from app.identity.models.user import User
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.mcp.authentication import MCPCaller
 
-
-_assertions: ContextVar[tuple[str, ...]] = ContextVar("mcp_identity_assertions", default=())
+_assertions: ContextVar[tuple[str, ...]] = ContextVar(
+    "mcp_identity_assertions", default=()
+)
 _encoded_component = re.compile(r"(?:[A-Za-z0-9_.!~*'()-]|%[0-9A-Fa-f]{2})+")
 
 
@@ -30,7 +31,9 @@ def current_caller() -> MCPCaller:
         raise MCPError(-32001, "Caller identity required.") from None
     try:
         with SessionLocal() as session:
-            user_id = session.scalar(select(User.id).where(User.issuer == issuer, User.subject == subject))
+            user_id = session.scalar(
+                select(User.id).where(User.issuer == issuer, User.subject == subject)
+            )
     except SQLAlchemyError:
         raise MCPError(-32603, "Caller identity service unavailable.") from None
     if user_id is None:
@@ -39,9 +42,14 @@ def current_caller() -> MCPCaller:
 
 
 async def capture_identity(
-    ctx: ServerRequestContext[object, object], call_next: CallNext,
+    ctx: ServerRequestContext[object, object],
+    call_next: CallNext,
 ) -> HandlerResult:
-    assertions = tuple(ctx.request.headers.getlist("x-application-user")) if isinstance(ctx.request, Request) else ()
+    assertions = (
+        tuple(ctx.request.headers.getlist("x-application-user"))
+        if isinstance(ctx.request, Request)
+        else ()
+    )
     token = _assertions.set(assertions)
     try:
         return await call_next(ctx)

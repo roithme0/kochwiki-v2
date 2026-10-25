@@ -15,7 +15,9 @@ class Migration(Protocol):
 
 
 def test_profile_migration_preserves_vectors_and_roundtrips_legacy_models() -> None:
-    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision("20261025_20")
+    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision(
+        "20261025_20"
+    )
     assert revision is not None
     migration = cast(Migration, revision.module)
     tables = ("foodstuff_embedding", "recipe_embedding")
@@ -30,33 +32,54 @@ def test_profile_migration_preserves_vectors_and_roundtrips_legacy_models() -> N
                 ) ON COMMIT DROP
             """))
             for index, model in enumerate(models):
-                connection.execute(text(f"""
+                connection.execute(
+                    text(f"""
                     INSERT INTO pg_temp.{table} VALUES (:id, :model, :source, CAST(:vector AS vector))
-                """), {"id": index, "model": model, "source": f"Source {index}", "vector": vector})
+                """),
+                    {
+                        "id": index,
+                        "model": model,
+                        "source": f"Source {index}",
+                        "vector": vector,
+                    },
+                )
 
         with Operations.context(MigrationContext.configure(connection)):
             migration.upgrade()
 
         for table in tables:
-            rows = connection.execute(text(
-                f"SELECT profile, source_text, vector::text FROM pg_temp.{table} ORDER BY id"
-            )).all()
+            rows = connection.execute(
+                text(
+                    f"SELECT profile, source_text, vector::text FROM pg_temp.{table} ORDER BY id"
+                )
+            ).all()
             assert [row.profile for row in rows] == ["semantic-text-v1"] + [
                 "legacy-model:" + model for model in models[1:]
             ]
-            assert [row.source_text for row in rows] == [f"Source {index}" for index in range(len(models))]
+            assert [row.source_text for row in rows] == [
+                f"Source {index}" for index in range(len(models))
+            ]
             assert all(row.vector == vector for row in rows)
-            assert connection.scalar(text(
-                f"SELECT count(*) FROM pg_temp.{table} WHERE profile = 'semantic-text-v1'"
-            )) == 1
+            assert (
+                connection.scalar(
+                    text(
+                        f"SELECT count(*) FROM pg_temp.{table} WHERE profile = 'semantic-text-v1'"
+                    )
+                )
+                == 1
+            )
 
         with Operations.context(MigrationContext.configure(connection)):
             migration.downgrade()
 
         for table in tables:
-            rows = connection.execute(text(
-                f"SELECT model, source_text, vector::text FROM pg_temp.{table} ORDER BY id"
-            )).all()
+            rows = connection.execute(
+                text(
+                    f"SELECT model, source_text, vector::text FROM pg_temp.{table} ORDER BY id"
+                )
+            ).all()
             assert [row.model for row in rows] == list(models)
-            assert [row.source_text for row in rows] == [f"Source {index}" for index in range(len(models))]
+            assert [row.source_text for row in rows] == [
+                f"Source {index}" for index in range(len(models))
+            ]
             assert all(row.vector == vector for row in rows)

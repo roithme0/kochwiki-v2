@@ -9,9 +9,17 @@ from app.identity.config import SESSION_LIFETIME
 from app.identity.models.application_session import ApplicationSession
 from app.identity.models.delegation_token import DelegationToken
 from app.identity.schemas.user import UserOut
-from app.identity.services.delegation import MCP_AUDIENCE, delegated_user, issue_delegation_token
+from app.identity.services.delegation import (
+    MCP_AUDIENCE,
+    delegated_user,
+    issue_delegation_token,
+)
 from app.identity.services.sessions import (
-    authenticated_user, cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
+    authenticated_user,
+    cleanup_expired_sessions,
+    establish_session,
+    invalidate_session,
+    secret_hash,
 )
 from app.infrastructure.database.session import SessionLocal
 
@@ -36,11 +44,18 @@ def test_tokens_are_distinct_hash_only_and_bound_to_the_originating_session(
         assert len(first.secret) == 43 and first.secret != second.secret != secret
         assert first.secret not in repr(first)
         with SessionLocal() as observer:
-            assert observer.scalar(select(func.count()).select_from(DelegationToken)) == 0
+            assert (
+                observer.scalar(select(func.count()).select_from(DelegationToken)) == 0
+            )
     with SessionLocal() as session:
         parent = session.scalars(select(ApplicationSession)).one()
-        tokens = session.scalars(select(DelegationToken).order_by(DelegationToken.id)).all()
-        assert [token.secret_hash for token in tokens] == [secret_hash(first.secret), secret_hash(second.secret)]
+        tokens = session.scalars(
+            select(DelegationToken).order_by(DelegationToken.id)
+        ).all()
+        assert [token.secret_hash for token in tokens] == [
+            secret_hash(first.secret),
+            secret_hash(second.secret),
+        ]
         for token, issued in zip(tokens, (first, second), strict=True):
             assert token.secret_hash != issued.secret
             assert token.session_id == parent.id
@@ -50,32 +65,62 @@ def test_tokens_are_distinct_hash_only_and_bound_to_the_originating_session(
             assert principal is not None and principal.id == user.id
 
 
-@pytest.mark.parametrize("credential", [None, "malformed", "x" * 44, "!" * 43, "a" * 64, "unknown", "browser-secret"])
+@pytest.mark.parametrize(
+    "credential",
+    [None, "malformed", "x" * 44, "!" * 43, "a" * 64, "unknown", "browser-secret"],
+)
 def test_validation_rejects_invalid_or_browser_credentials(
-    browser_session: tuple[str, UserOut], credential: str | None,
+    browser_session: tuple[str, UserOut],
+    credential: str | None,
 ) -> None:
     browser_secret, _ = browser_session
-    supplied = browser_secret if credential == "browser-secret" else secrets.token_urlsafe(32) if credential == "unknown" else credential
+    supplied = (
+        browser_secret
+        if credential == "browser-secret"
+        else secrets.token_urlsafe(32) if credential == "unknown" else credential
+    )
     with SessionLocal.begin() as session:
-        assert issue_delegation_token(session, browser_secret, lifetime=timedelta(minutes=5)) is not None
+        assert (
+            issue_delegation_token(
+                session, browser_secret, lifetime=timedelta(minutes=5)
+            )
+            is not None
+        )
         assert delegated_user(session, supplied, audience=MCP_AUDIENCE) is None
 
 
-def test_audience_and_credential_boundaries(browser_session: tuple[str, UserOut]) -> None:
+def test_audience_and_credential_boundaries(
+    browser_session: tuple[str, UserOut],
+) -> None:
     browser_secret, _ = browser_session
     with SessionLocal.begin() as session:
-        issued = issue_delegation_token(session, browser_secret, lifetime=timedelta(minutes=5))
+        issued = issue_delegation_token(
+            session, browser_secret, lifetime=timedelta(minutes=5)
+        )
         assert issued is not None
-        assert delegated_user(session, issued.secret, audience="another-resource") is None
-        assert delegated_user(session, secret_hash(issued.secret), audience=MCP_AUDIENCE) is None
+        assert (
+            delegated_user(session, issued.secret, audience="another-resource") is None
+        )
+        assert (
+            delegated_user(session, secret_hash(issued.secret), audience=MCP_AUDIENCE)
+            is None
+        )
         assert authenticated_user(session, issued.secret) is None
-        assert issue_delegation_token(session, issued.secret, lifetime=timedelta(minutes=5)) is None
+        assert (
+            issue_delegation_token(
+                session, issued.secret, lifetime=timedelta(minutes=5)
+            )
+            is None
+        )
         assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is not None
 
 
-@pytest.mark.parametrize("credential", [None, "malformed", "unknown", "stored-hash", "expired", "deleted"])
+@pytest.mark.parametrize(
+    "credential", [None, "malformed", "unknown", "stored-hash", "expired", "deleted"]
+)
 def test_issuance_requires_an_active_original_session(
-    browser_session: tuple[str, UserOut], credential: str | None,
+    browser_session: tuple[str, UserOut],
+    credential: str | None,
 ) -> None:
     browser_secret, _ = browser_session
     with SessionLocal.begin() as session:
@@ -85,17 +130,26 @@ def test_issuance_requires_an_active_original_session(
         elif credential == "stored-hash":
             supplied = secret_hash(browser_secret)
         elif credential == "expired":
-            session.execute(update(ApplicationSession).values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME
+                )
+            )
             supplied = browser_secret
         elif credential == "deleted":
             assert invalidate_session(session, browser_secret)
             supplied = browser_secret
-        assert issue_delegation_token(session, supplied, lifetime=timedelta(minutes=5)) is None
+        assert (
+            issue_delegation_token(session, supplied, lifetime=timedelta(minutes=5))
+            is None
+        )
         assert session.scalar(select(func.count()).select_from(DelegationToken)) == 0
 
 
 @pytest.mark.parametrize("lifetime", [timedelta(0), timedelta(seconds=-1)])
-def test_issuance_rejects_nonpositive_lifetimes(browser_session: tuple[str, UserOut], lifetime: timedelta) -> None:
+def test_issuance_rejects_nonpositive_lifetimes(
+    browser_session: tuple[str, UserOut], lifetime: timedelta
+) -> None:
     secret, _ = browser_session
     with SessionLocal.begin() as session:
         with pytest.raises(ValueError, match="must be positive"):
@@ -103,17 +157,26 @@ def test_issuance_rejects_nonpositive_lifetimes(browser_session: tuple[str, User
         assert session.scalar(select(func.count()).select_from(DelegationToken)) == 0
 
 
-def test_issuance_and_validation_never_renew_session_or_token(browser_session: tuple[str, UserOut]) -> None:
+def test_issuance_and_validation_never_renew_session_or_token(
+    browser_session: tuple[str, UserOut],
+) -> None:
     secret, _ = browser_session
     with SessionLocal.begin() as session:
-        previous = session.scalar(update(ApplicationSession).values(
-            last_activity_at=func.statement_timestamp() - timedelta(days=29),
-        ).returning(ApplicationSession.last_activity_at))
+        previous = session.scalar(
+            update(ApplicationSession)
+            .values(
+                last_activity_at=func.statement_timestamp() - timedelta(days=29),
+            )
+            .returning(ApplicationSession.last_activity_at)
+        )
         assert isinstance(previous, datetime)
         issued = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
         assert issued is not None
         for _ in range(2):
-            assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is not None
+            assert (
+                delegated_user(session, issued.secret, audience=MCP_AUDIENCE)
+                is not None
+            )
         assert session.scalar(select(ApplicationSession.last_activity_at)) == previous
         assert session.scalar(select(DelegationToken.expires_at)) == issued.expires_at
     with SessionLocal.begin() as session:
@@ -124,7 +187,8 @@ def test_issuance_and_validation_never_renew_session_or_token(browser_session: t
 
 @pytest.mark.parametrize("expiry", ["token", "session"])
 def test_validation_checks_live_token_and_session_expiry(
-    browser_session: tuple[str, UserOut], expiry: str,
+    browser_session: tuple[str, UserOut],
+    expiry: str,
 ) -> None:
     secret, _ = browser_session
     with SessionLocal.begin() as session:
@@ -132,18 +196,25 @@ def test_validation_checks_live_token_and_session_expiry(
         assert issued is not None
         assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is not None
         if expiry == "token":
-            session.execute(update(DelegationToken).values(
-                created_at=func.statement_timestamp() - timedelta(minutes=5),
-                expires_at=func.statement_timestamp(),
-            ))
+            session.execute(
+                update(DelegationToken).values(
+                    created_at=func.statement_timestamp() - timedelta(minutes=5),
+                    expires_at=func.statement_timestamp(),
+                )
+            )
         else:
-            session.execute(update(ApplicationSession).values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME
+                )
+            )
         assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is None
         assert session.scalar(select(func.count()).select_from(DelegationToken)) == 1
 
 
 def test_logout_removes_all_its_tokens_and_preserves_independent_sessions(
-    browser_session: tuple[str, UserOut], provider_user: Callable[[str], UserOut],
+    browser_session: tuple[str, UserOut],
+    provider_user: Callable[[str], UserOut],
 ) -> None:
     secret, user = browser_session
     other_user = provider_user("Another user")
@@ -151,8 +222,10 @@ def test_logout_removes_all_its_tokens_and_preserves_independent_sessions(
         same_user_secret, _ = establish_session(session, user.id, None)
         other_user_secret, _ = establish_session(session, other_user.id, None)
         session.flush()
-        issued = [issue_delegation_token(session, parent, lifetime=timedelta(minutes=5))
-            for parent in (secret, secret, same_user_secret, other_user_secret)]
+        issued = [
+            issue_delegation_token(session, parent, lifetime=timedelta(minutes=5))
+            for parent in (secret, secret, same_user_secret, other_user_secret)
+        ]
         assert all(token is not None for token in issued)
     with SessionLocal.begin() as session:
         assert invalidate_session(session, secret)
@@ -170,7 +243,8 @@ def test_logout_removes_all_its_tokens_and_preserves_independent_sessions(
 
 @pytest.mark.parametrize("invalidate", ["rotation", "expired-session-cleanup"])
 def test_session_replacement_or_cleanup_cascades_to_delegations(
-    browser_session: tuple[str, UserOut], invalidate: str,
+    browser_session: tuple[str, UserOut],
+    invalidate: str,
 ) -> None:
     secret, user = browser_session
     with SessionLocal.begin() as session:
@@ -180,17 +254,25 @@ def test_session_replacement_or_cleanup_cascades_to_delegations(
             establish_session(session, user.id, secret)
             session.flush()
         else:
-            session.execute(update(ApplicationSession).values(last_activity_at=func.statement_timestamp() - SESSION_LIFETIME))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME
+                )
+            )
             cleanup_expired_sessions(session)
         assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is None
         assert session.scalar(select(func.count()).select_from(DelegationToken)) == 0
 
 
-def test_issuance_uses_the_callers_transaction(browser_session: tuple[str, UserOut]) -> None:
+def test_issuance_uses_the_callers_transaction(
+    browser_session: tuple[str, UserOut],
+) -> None:
     secret, _ = browser_session
     with pytest.raises(RuntimeError, match="roll back issuance"):
         with SessionLocal.begin() as session:
-            issued = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
+            issued = issue_delegation_token(
+                session, secret, lifetime=timedelta(minutes=5)
+            )
             assert issued is not None
             raise RuntimeError("roll back issuance")
     with SessionLocal() as session:

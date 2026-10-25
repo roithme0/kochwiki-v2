@@ -26,7 +26,11 @@ def get_recipe_proposals(request: Request) -> RecipeProposalStore:
 @router.post(
     "/recipe-proposals/{proposal_id}/save",
     response_model=RecipeVersionOut,
-    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **AUTHENTICATION_RESPONSES, **FORBIDDEN_RESPONSE},
+    responses={
+        **NOT_FOUND_AND_CONFLICT_RESPONSES,
+        **AUTHENTICATION_RESPONSES,
+        **FORBIDDEN_RESPONSE,
+    },
 )
 def save_proposal(
     proposal_id: UUID,

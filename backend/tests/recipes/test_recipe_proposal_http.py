@@ -12,8 +12,8 @@ from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import discard_recipe_draft
 from app.foodstuffs.services.foodstuffs import list_foodstuffs
 
-
 pytestmark = pytest.mark.usefixtures("recipe_session")
+
 
 def prepare(client: TestClient) -> RecipeProposalOut:
     store = cast(RecipeProposalStore, client.app.state.recipe_proposals)
@@ -21,16 +21,39 @@ def prepare(client: TestClient) -> RecipeProposalOut:
     assert response.status_code == 201
     source = RecipeVersionOut.model_validate(response.json())
     with SessionLocal.begin() as session:
-        return store.create(session, RecipeProposalCreate.model_validate({
-            "sourceRecipeVersionId": source.recipeVersionId,
-            "recipe": {"name": "Improved", "servings": 2, "ingredients": [
-                {"index": 1, "amount": 100, "foodstuff": {"kind": "temporary",
-                    "definition": {"name": "Beans", "unit": "G", "protein": 10}}},
-            ], "steps": [{"index": 1, "description": "Cook"}]},
-        }), user_id=source.ownerId)
+        return store.create(
+            session,
+            RecipeProposalCreate.model_validate(
+                {
+                    "sourceRecipeVersionId": source.recipeVersionId,
+                    "recipe": {
+                        "name": "Improved",
+                        "servings": 2,
+                        "ingredients": [
+                            {
+                                "index": 1,
+                                "amount": 100,
+                                "foodstuff": {
+                                    "kind": "temporary",
+                                    "definition": {
+                                        "name": "Beans",
+                                        "unit": "G",
+                                        "protein": 10,
+                                    },
+                                },
+                            },
+                        ],
+                        "steps": [{"index": 1, "description": "Cook"}],
+                    },
+                }
+            ),
+            user_id=source.ownerId,
+        )
 
 
-def test_save_creates_ingredients_and_repeated_save_returns_same_draft(client: TestClient) -> None:
+def test_save_creates_ingredients_and_repeated_save_returns_same_draft(
+    client: TestClient,
+) -> None:
     proposal = prepare(client)
     url = f"/recipe-proposals/{proposal.proposalId}/save"
     response = client.post(url)
@@ -51,13 +74,17 @@ def test_unknown_proposal_does_not_create_data(client: TestClient) -> None:
     assert client.post("/recipe-proposals/not-a-uuid/save").status_code == 422
 
 
-def test_missing_source_fails_without_creating_temporary_foodstuffs(client: TestClient) -> None:
+def test_missing_source_fails_without_creating_temporary_foodstuffs(
+    client: TestClient,
+) -> None:
     proposal = prepare(client)
     with SessionLocal() as session:
         source = session.get(RecipeVersion, proposal.sourceRecipeVersionId)
         assert source is not None
         lineage_id = source.lineage_id
     assert client.delete(f"/recipes/{lineage_id}").status_code == 204
-    assert client.post(f"/recipe-proposals/{proposal.proposalId}/save").status_code == 404
+    assert (
+        client.post(f"/recipe-proposals/{proposal.proposalId}/save").status_code == 404
+    )
     with SessionLocal() as session:
         assert list_foodstuffs(session) == []

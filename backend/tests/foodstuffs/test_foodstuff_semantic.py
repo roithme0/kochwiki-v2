@@ -16,10 +16,24 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker, next_nightly
-from app.foodstuffs.services.embeddings import FoodstuffEmbeddingService, foodstuff_refresh, source_text
+from app.foodstuffs.services.embeddings import (
+    FoodstuffEmbeddingService,
+    foodstuff_refresh,
+    source_text,
+)
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
-from app.infrastructure.embeddings.embeddings import STORAGE_DIMENSIONS, PROFILE, EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
-from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
+from app.infrastructure.embeddings.embeddings import (
+    STORAGE_DIMENSIONS,
+    PROFILE,
+    EmbeddingClient,
+    QueryEmbeddingError,
+    SemanticSearchUnavailable,
+)
+from app.foodstuffs.services.foodstuffs import (
+    create_foodstuff,
+    delete_foodstuff,
+    update_foodstuff,
+)
 
 
 def vector(axis: int = 0) -> list[float]:
@@ -50,7 +64,9 @@ class FakeProvider:
 
 def create(name: str = "Karotte", brand: str | None = None) -> int:
     with SessionLocal.begin() as session:
-        return create_foodstuff(session, FoodstuffCreate(name=name, brand=brand, unit=Unit.G)).id
+        return create_foodstuff(
+            session, FoodstuffCreate(name=name, brand=brand, unit=Unit.G)
+        ).id
 
 
 def service(provider: FakeProvider) -> FoodstuffEmbeddingService:
@@ -77,17 +93,25 @@ def test_refresh_metadata_freshness_and_nutrition() -> None:
         update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(20)))
     assert search.refresh_one(foodstuff_id) == "skipped"
     with SessionLocal.begin() as session:
-        update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="Moehre", brand="New"))
+        update_foodstuff(
+            session, foodstuff_id, FoodstuffUpdate(name="Moehre", brand="New")
+        )
     assert search.refresh_one(foodstuff_id) == "refreshed"
     with SessionLocal.begin() as session:
         stored = session.get(FoodstuffEmbedding, foodstuff_id)
         assert stored is not None
         stored.profile = "old-profile"
     assert search.refresh_one(foodstuff_id) == "refreshed"
-    assert provider.calls == [("Karotte\nBrand: Farm", PROFILE), ("Moehre\nBrand: New", PROFILE), ("Moehre\nBrand: New", PROFILE)]
+    assert provider.calls == [
+        ("Karotte\nBrand: Farm", PROFILE),
+        ("Moehre\nBrand: New", PROFILE),
+        ("Moehre\nBrand: New", PROFILE),
+    ]
 
 
-def test_sweep_failure_skips_and_next_sweep_can_retry(caplog: pytest.LogCaptureFixture) -> None:
+def test_sweep_failure_skips_and_next_sweep_can_retry(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     failed_id = create("bad")
     good_id = create("good")
     provider = FakeProvider()
@@ -112,6 +136,7 @@ def test_obsolete_generation_is_discarded(change: str) -> None:
     foodstuff_id = create()
     provider = FakeProvider()
     search = service(provider)
+
     def mutate() -> None:
         if change == "profile":
             search.profile = "changed-profile"
@@ -123,6 +148,7 @@ def test_obsolete_generation_is_discarded(change: str) -> None:
                 update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="new"))
             else:
                 update_foodstuff(session, foodstuff_id, FoodstuffUpdate(brand="new"))
+
     provider.before_return = mutate
     assert search.refresh_one(foodstuff_id) == "skipped"
     with SessionLocal() as session:
@@ -139,16 +165,27 @@ def test_delete_cascades_embedding() -> None:
         assert session.get(FoodstuffEmbedding, foodstuff_id) is None
 
 
-def test_exact_search_filters_before_limit_and_returns_authoritative_summaries() -> None:
+def test_exact_search_filters_before_limit_and_returns_authoritative_summaries() -> (
+    None
+):
     provider = FakeProvider()
     search = search_service(provider)
-    ids = [create(name) for name in ["stale", "wrong-profile", "current", "tied", "far", "missing"]]
+    ids = [
+        create(name)
+        for name in ["stale", "wrong-profile", "current", "tied", "far", "missing"]
+    ]
     with SessionLocal.begin() as session:
         for foodstuff_id in ids[:-1]:
             foodstuff = session.get(Foodstuff, foodstuff_id)
             assert foodstuff
-            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff_id, profile=PROFILE,
-                source_text=source_text(foodstuff.name, foodstuff.brand), vector=vector(1 if foodstuff.name == "far" else 0)))
+            session.add(
+                FoodstuffEmbedding(
+                    foodstuff_id=foodstuff_id,
+                    profile=PROFILE,
+                    source_text=source_text(foodstuff.name, foodstuff.brand),
+                    vector=vector(1 if foodstuff.name == "far" else 0),
+                )
+            )
     with SessionLocal.begin() as session:
         update_foodstuff(session, ids[0], FoodstuffUpdate(name="changed"))
         stored = session.get(FoodstuffEmbedding, ids[1])
@@ -162,7 +199,9 @@ def test_exact_search_filters_before_limit_and_returns_authoritative_summaries()
     assert search.search("query", 20)[-1].cosine_distance == pytest.approx(1.0)
 
 
-@pytest.mark.parametrize("query,limit", [("", 5), (" ", 5), ("query", 0), ("query", 21), ("query", True)])
+@pytest.mark.parametrize(
+    "query,limit", [("", 5), (" ", 5), ("query", 0), ("query", 21), ("query", True)]
+)
 def test_invalid_queries_do_not_call_provider(query: str, limit: int) -> None:
     provider = FakeProvider()
     with pytest.raises(ValueError):
@@ -202,7 +241,9 @@ def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:
     foodstuff_refresh.subscribe(captured.append)
     try:
         with SessionLocal() as session:
-            foodstuff = create_foodstuff(session, FoodstuffCreate(name="created", unit=Unit.G))
+            foodstuff = create_foodstuff(
+                session, FoodstuffCreate(name="created", unit=Unit.G)
+            )
             foodstuff_id = foodstuff.id
             assert captured == []
             session.commit()
@@ -232,9 +273,13 @@ def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() 
     foodstuff_refresh.subscribe(captured.append)
     try:
         with SessionLocal() as session:
-            outer = create_foodstuff(session, FoodstuffCreate(name="outer", unit=Unit.G))
+            outer = create_foodstuff(
+                session, FoodstuffCreate(name="outer", unit=Unit.G)
+            )
             with session.begin_nested():
-                nested = create_foodstuff(session, FoodstuffCreate(name="nested", unit=Unit.G))
+                nested = create_foodstuff(
+                    session, FoodstuffCreate(name="nested", unit=Unit.G)
+                )
             assert captured == []
             savepoint = session.begin_nested()
             create_foodstuff(session, FoodstuffCreate(name="rolled back", unit=Unit.G))
@@ -244,18 +289,23 @@ def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() 
         captured.clear()
         with SessionLocal() as session:
             with session.begin_nested():
-                create_foodstuff(session, FoodstuffCreate(name="outer rolled back", unit=Unit.G))
+                create_foodstuff(
+                    session, FoodstuffCreate(name="outer rolled back", unit=Unit.G)
+                )
             session.rollback()
         assert captured == []
     finally:
         foodstuff_refresh.unsubscribe(captured.append)
 
 
-@pytest.mark.parametrize("now,expected", [
-    ("2026-03-28T03:00:00+01:00", "2026-03-29T01:00:00+00:00"),
-    ("2026-10-24T03:00:00+02:00", "2026-10-25T02:00:00+00:00"),
-    ("2026-10-01T00:00:00+00:00", "2026-10-01T01:00:00+00:00"),
-])
+@pytest.mark.parametrize(
+    "now,expected",
+    [
+        ("2026-03-28T03:00:00+01:00", "2026-03-29T01:00:00+00:00"),
+        ("2026-10-24T03:00:00+02:00", "2026-10-25T02:00:00+00:00"),
+        ("2026-10-01T00:00:00+00:00", "2026-10-01T01:00:00+00:00"),
+    ],
+)
 def test_berlin_nightly_dst(now: str, expected: str) -> None:
     assert next_nightly(datetime.fromisoformat(now)) == datetime.fromisoformat(expected)
 
@@ -265,13 +315,16 @@ def test_worker_controlled_clock_no_startup_sweep_and_shutdown() -> None:
     swept = Event()
     refreshed = Event()
     calls: list[str] = []
+
     def refresh(foodstuff_id: int) -> str:
         calls.append(str(foodstuff_id))
         refreshed.set()
         return "refreshed"
+
     def sweep() -> None:
         calls.append("sweep")
         swept.set()
+
     worker = EmbeddingRefreshWorker(refresh, sweep, lambda: now[0])
     worker.start()
     assert not swept.is_set()
@@ -292,21 +345,29 @@ def test_stop_during_sweep_finishes_current_call_and_skips_remaining() -> None:
     release = Event()
     stopped = Event()
     provider = FakeProvider()
+
     def block() -> None:
         entered.set()
         assert release.wait(2)
+
     provider.before_return = block
     search = service(provider)
     now = [datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)]
-    worker = EmbeddingRefreshWorker(search.refresh_one, lambda: search.refresh_all(worker.is_stopping), lambda: now[0])
+    worker = EmbeddingRefreshWorker(
+        search.refresh_one,
+        lambda: search.refresh_all(worker.is_stopping),
+        lambda: now[0],
+    )
     worker.start()
     now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=timezone.utc)
     worker.wake()
     assert entered.wait(2)
     from threading import Thread
+
     def stop() -> None:
         worker.stop()
         stopped.set()
+
     stopper = Thread(target=stop)
     stopper.start()
     with worker.condition:
@@ -319,22 +380,33 @@ def test_stop_during_sweep_finishes_current_call_and_skips_remaining() -> None:
 
 
 def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(
-    monkeypatch: pytest.MonkeyPatch, sign_in: Callable[[TestClient], UserOut],
+    monkeypatch: pytest.MonkeyPatch,
+    sign_in: Callable[[TestClient], UserOut],
 ) -> None:
     from app.main import create_app
+
     provider = FakeProvider()
     provider.failures.add("bad")
     search = service(provider)
     attempted = Event()
     original_refresh = search.refresh_one
+
     def refresh(foodstuff_id: int) -> str:
         outcome = original_refresh(foodstuff_id)
         attempted.set()
         return outcome
+
     monkeypatch.setattr(search, "refresh_one", refresh)
-    monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: search.embeddings)
-    monkeypatch.setattr("app.infrastructure.embeddings.lifecycle.FoodstuffEmbeddingService", lambda sessions, embeddings: search)
-    with TestClient(create_app(), headers={"Origin": "http://localhost:8000"}) as client:
+    monkeypatch.setattr(
+        EmbeddingClient, "from_settings", lambda settings: search.embeddings
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.embeddings.lifecycle.FoodstuffEmbeddingService",
+        lambda sessions, embeddings: search,
+    )
+    with TestClient(
+        create_app(), headers={"Origin": "http://localhost:8000"}
+    ) as client:
         sign_in(client)
         response = client.post("/foodstuffs", json={"name": "bad", "unit": "G"})
         assert response.status_code == 201
@@ -342,5 +414,7 @@ def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(
         assert client.get("/foodstuffs").status_code == 200
     assert provider.closed
     with SessionLocal() as session:
-        assert session.scalar(select(Foodstuff).where(Foodstuff.name == "bad")) is not None
+        assert (
+            session.scalar(select(Foodstuff).where(Foodstuff.name == "bad")) is not None
+        )
         assert session.scalar(select(FoodstuffEmbedding)) is None

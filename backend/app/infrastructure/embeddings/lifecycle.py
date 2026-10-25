@@ -20,11 +20,15 @@ from app.recipes.services.search import RecipeSemanticSearch
 
 
 @contextmanager
-def semantic_search_services(settings: Settings, services: MCPServices) -> Iterator[EmbeddingClient]:
+def semantic_search_services(
+    settings: Settings, services: MCPServices
+) -> Iterator[EmbeddingClient]:
     with ExitStack() as cleanup:
         embeddings = EmbeddingClient.from_settings(settings)
         cleanup.callback(embeddings.close)
-        services.bind_foodstuff_search(FoodstuffSemanticSearch(SessionLocal, embeddings))
+        services.bind_foodstuff_search(
+            FoodstuffSemanticSearch(SessionLocal, embeddings)
+        )
         cleanup.callback(services.bind_foodstuff_search, None)
         services.bind_recipe_search(RecipeSemanticSearch(SessionLocal, embeddings))
         cleanup.callback(services.bind_recipe_search, None)
@@ -35,10 +39,14 @@ def semantic_search_services(settings: Settings, services: MCPServices) -> Itera
 def embedding_refresh_workers(embeddings: EmbeddingClient) -> Iterator[None]:
     with ExitStack() as cleanup:
         if embeddings.available:
-            foodstuff_refresh_service = FoodstuffEmbeddingService(SessionLocal, embeddings)
+            foodstuff_refresh_service = FoodstuffEmbeddingService(
+                SessionLocal, embeddings
+            )
             foodstuff_worker: EmbeddingRefreshWorker[int] = EmbeddingRefreshWorker(
                 foodstuff_refresh_service.refresh_one,
-                lambda: foodstuff_refresh_service.refresh_all(foodstuff_worker.is_stopping),
+                lambda: foodstuff_refresh_service.refresh_all(
+                    foodstuff_worker.is_stopping
+                ),
                 coordinator=foodstuff_refresh_coordinator,
             )
             cleanup.callback(foodstuff_worker.stop)

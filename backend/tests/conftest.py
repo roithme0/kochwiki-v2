@@ -14,7 +14,12 @@ TEST_DATABASE_URL = os.getenv(
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["AI_SERVICE_URL"] = ""
-for variable in ("OIDC_ISSUER", "OIDC_CLIENT_SECRET", "OIDC_CALLBACK_URL", "OIDC_BACKCHANNEL_URL"):
+for variable in (
+    "OIDC_ISSUER",
+    "OIDC_CLIENT_SECRET",
+    "OIDC_CALLBACK_URL",
+    "OIDC_BACKCHANNEL_URL",
+):
     os.environ[variable] = ""
 os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 
@@ -38,7 +43,9 @@ def migrate_database() -> None:
 def clear_database() -> None:
     with engine.begin() as connection:
         connection.execute(
-            text('TRUNCATE TABLE image_asset, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, "user" RESTART IDENTITY CASCADE')
+            text(
+                'TRUNCATE TABLE image_asset, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, "user" RESTART IDENTITY CASCADE'
+            )
         )
 
 
@@ -47,9 +54,12 @@ def provider_user() -> Callable[[str], UserOut]:
     def create(display_name: str) -> UserOut:
         subject = str(uuid4())
         identity = Identity(
-            iss="http://localhost:8006/realms/services", sub=subject,
-            email=f"{subject}@example.invalid", email_verified=False,
-            displayName=display_name, nonce="test-fixture",
+            iss="http://localhost:8006/realms/services",
+            sub=subject,
+            email=f"{subject}@example.invalid",
+            email_verified=False,
+            displayName=display_name,
+            nonce="test-fixture",
         )
         with SessionLocal.begin() as session:
             return UserOut.model_validate(map_identity(session, identity))
@@ -64,21 +74,27 @@ def mcp_user(provider_user: Callable[[str], UserOut]) -> UserOut:
 
 @pytest.fixture
 def mcp_headers(mcp_user: UserOut) -> dict[str, str]:
-    return {"X-Application-User": f"{quote(mcp_user.issuer, safe="")}:{quote(mcp_user.subject, safe="")}"}
+    return {
+        "X-Application-User": f"{quote(mcp_user.issuer, safe="")}:{quote(mcp_user.subject, safe="")}"
+    }
 
 
 @pytest.fixture
 def client() -> TestClient:
-    with TestClient(create_app(), headers={"Origin": "http://localhost:8000"}) as test_client:
+    with TestClient(
+        create_app(), headers={"Origin": "http://localhost:8000"}
+    ) as test_client:
         yield test_client
 
 
 @pytest.fixture
 def sign_in(
-    monkeypatch: pytest.MonkeyPatch, provider_user: Callable[[str], UserOut],
+    monkeypatch: pytest.MonkeyPatch,
+    provider_user: Callable[[str], UserOut],
 ) -> Callable[[TestClient], UserOut]:
     settings = Settings(
-        _env_file=None, oidc_issuer="http://localhost:8006/realms/services",
+        _env_file=None,
+        oidc_issuer="http://localhost:8006/realms/services",
         oidc_client_secret="test-client-secret-value-at-least-32-characters",
         oidc_callback_url="http://localhost:8000/api/auth/callback",
     )
@@ -96,7 +112,9 @@ def sign_in(
 
 
 @pytest.fixture
-def recipe_session(client: TestClient, sign_in: Callable[[TestClient], UserOut]) -> UserOut:
+def recipe_session(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut]
+) -> UserOut:
     return sign_in(client)
 
 

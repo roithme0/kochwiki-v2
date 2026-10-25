@@ -14,12 +14,19 @@ depends_on: Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column("recipe_version", sa.Column("image_id", sa.Uuid(), nullable=True))
     op.create_foreign_key(
-        "fk_recipe_version_image_id", "recipe_version", "recipe_image", ["image_id"], ["id"], ondelete="RESTRICT"
+        "fk_recipe_version_image_id",
+        "recipe_version",
+        "recipe_image",
+        ["image_id"],
+        ["id"],
+        ondelete="RESTRICT",
     )
     op.create_index("ix_recipe_version_image_id", "recipe_version", ["image_id"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_recipe_version_image_id", table_name="recipe_version")
-    op.drop_constraint("fk_recipe_version_image_id", "recipe_version", type_="foreignkey")
+    op.drop_constraint(
+        "fk_recipe_version_image_id", "recipe_version", type_="foreignkey"
+    )
     op.drop_column("recipe_version", "image_id")

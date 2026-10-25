@@ -102,7 +102,9 @@ def create_recipe(
     user: User = Depends(require_current_user, scope="function"),
     session: Session = Depends(get_write_db, scope="function"),
 ) -> RecipeVersionOut:
-    return recipes.recipe_version_out(recipes.create_recipe(session, payload, owner_id=user.id))
+    return recipes.recipe_version_out(
+        recipes.create_recipe(session, payload, owner_id=user.id)
+    )
 
 
 @router.post(

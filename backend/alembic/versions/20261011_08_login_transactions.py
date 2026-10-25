@@ -20,7 +20,9 @@ def upgrade() -> None:
         sa.Column("verifier", sa.String(128), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
     )
-    op.create_index("ix_login_transaction_expires_at", "login_transaction", ["expires_at"])
+    op.create_index(
+        "ix_login_transaction_expires_at", "login_transaction", ["expires_at"]
+    )
 
 
 def downgrade() -> None:

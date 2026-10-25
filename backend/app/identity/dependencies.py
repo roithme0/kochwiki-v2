@@ -67,7 +67,11 @@ def _origin(url: str) -> tuple[str, str | None, int]:
     return (
         parsed.scheme,
         parsed.hostname,
-        parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80),
+        (
+            parsed.port
+            if parsed.port is not None
+            else (443 if parsed.scheme == "https" else 80)
+        ),
     )
 
 
@@ -88,12 +92,17 @@ def require_trusted_origin(request: Request, callback_url: str) -> None:
                 and not supplied.path
                 and not supplied.query
                 and not supplied.fragment
-                and any(_origin(origins[0]) == _origin(allowed) for allowed in allowed_origins)
+                and any(
+                    _origin(origins[0]) == _origin(allowed)
+                    for allowed in allowed_origins
+                )
             )
         except ValueError:
             pass
     if not trusted:
-        raise HTTPException(status_code=403, detail="Untrusted request origin.", headers=HEADERS)
+        raise HTTPException(
+            status_code=403, detail="Untrusted request origin.", headers=HEADERS
+        )
 
 
 def require_current_user(

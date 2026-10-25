@@ -25,7 +25,9 @@ def upgrade() -> None:
         sa.CheckConstraint("size BETWEEN 1 AND 10485760", name="ck_recipe_image_size"),
         sa.CheckConstraint("width BETWEEN 1 AND 4096", name="ck_recipe_image_width"),
         sa.CheckConstraint("height BETWEEN 1 AND 4096", name="ck_recipe_image_height"),
-        sa.CheckConstraint("content_type = 'image/png'", name="ck_recipe_image_content_type"),
+        sa.CheckConstraint(
+            "content_type = 'image/png'", name="ck_recipe_image_content_type"
+        ),
         sa.CheckConstraint("length(sha256) = 64", name="ck_recipe_image_sha256"),
     )
 
