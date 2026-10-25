@@ -8,7 +8,7 @@ from app.foodstuffs.models.unit import Unit
 
 from app.foodstuffs import semantic as foodstuff_semantic
 from app.recipes import semantic as recipe_semantic
-from app.infrastructure.embeddings.config import DIMENSIONS
+from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS
 from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeVersionWrite
@@ -46,11 +46,11 @@ class Provider:
         self.closed = False
         self.calls: list[str] = []
 
-    def embed(self, text: str, model: str) -> list[float]:
+    def embed(self, text: str, profile: str) -> list[float]:
         self.calls.append(text)
         if self.fail:
             raise RuntimeError("private diagnostic")
-        return [1.0] + [0.0] * (DIMENSIONS - 1)
+        return [1.0] + [0.0] * (STORAGE_DIMENSIONS - 1)
 
     def close(self) -> None:
         self.closed = True
@@ -98,7 +98,7 @@ def test_search_empty_validation_and_client_cleanup(main: Callable[[], int], arg
 
 
 @pytest.mark.parametrize("main", [foodstuff_semantic.main, recipe_semantic.main])
-def test_provider_failure_and_missing_credentials_exit_nonzero(main: Callable[[], int],
+def test_provider_failure_and_missing_service_url_exit_nonzero(main: Callable[[], int],
         monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     provider = Provider(fail=True)
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider))
@@ -110,4 +110,4 @@ def test_provider_failure_and_missing_credentials_exit_nonzero(main: Callable[[]
     monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(None))
     monkeypatch.setattr("sys.argv", ["semantic", "refresh"])
     assert main() == 1
-    assert "OPENAI_API_KEY is missing" in capsys.readouterr().out
+    assert "AI_SERVICE_URL is missing" in capsys.readouterr().out

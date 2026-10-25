@@ -22,7 +22,7 @@ class RecipeSemanticSearch(SemanticSearch[RecipeSearchCandidate]):
         distance = RecipeEmbedding.vector.cosine_distance(vector).label("distance")
         statement = (select(RecipeVersion, distance)
             .join(RecipeEmbedding, RecipeEmbedding.recipe_version_id == RecipeVersion.version_id)
-            .where(RecipeVersion.state.in_(SEARCHABLE_RECIPE_STATES), RecipeEmbedding.model == self.model,
+            .where(RecipeVersion.state.in_(SEARCHABLE_RECIPE_STATES), RecipeEmbedding.profile == self.profile,
                    RecipeEmbedding.source_text == RecipeVersion.name)
             .options(selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
                      selectinload(RecipeVersion.steps))

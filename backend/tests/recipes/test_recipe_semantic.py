@@ -17,7 +17,7 @@ from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.embedding import RecipeEmbedding
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
+from app.infrastructure.embeddings.embeddings import STORAGE_DIMENSIONS, PROFILE, EmbeddingClient
 from app.infrastructure.embeddings.embeddings import QueryEmbeddingError, SemanticSearchUnavailable
 from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
 from app.recipes.services.embeddings import RecipeEmbeddingService, recipe_refresh
@@ -35,7 +35,7 @@ from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 def vector(axis: int = 0) -> list[float]:
-    result = [0.0] * DIMENSIONS
+    result = [0.0] * STORAGE_DIMENSIONS
     result[axis] = 1.0
     return result
 
@@ -47,8 +47,8 @@ class Provider:
         self.before_return: Callable[[], None] | None = None
         self.closed = False
 
-    def embed(self, text: str, model: str) -> list[float]:
-        assert model == MODEL
+    def embed(self, text: str, profile: str) -> list[float]:
+        assert profile == PROFILE
         self.calls.append(text)
         if text in self.failures:
             raise RuntimeError("private diagnostic")
@@ -66,7 +66,7 @@ def create(name: str = "Pasta") -> tuple[UUID, UUID]:
         return version.lineage_id, version.version_id
 
 
-def test_name_freshness_model_and_non_name_edits() -> None:
+def test_name_freshness_profile_and_non_name_edits() -> None:
     lineage, active = create()
     with SessionLocal.begin() as session:
         draft = create_recipe_draft(session, lineage, RecipeVersionWrite(name="Noodles", servings=2)).version_id
@@ -82,8 +82,8 @@ def test_name_freshness_model_and_non_name_edits() -> None:
     assert refresh.refresh_one(draft) == "refreshed"
     with SessionLocal.begin() as session:
         stored = session.get(RecipeEmbedding, draft)
-        assert stored and stored.source_text == "Spaghetti" and stored.model == MODEL
-        stored.model = "old"
+        assert stored and stored.source_text == "Spaghetti" and stored.profile == PROFILE
+        stored.profile = "old"
     assert refresh.refresh_one(draft) == "refreshed"
     assert provider.calls == ["Pasta", "Noodles", "Spaghetti", "Spaghetti"]
 
@@ -115,7 +115,7 @@ def test_historical_cleanup_is_atomic(publish_draft: bool) -> None:
     assert refresh.refresh_one(active) == "skipped"
 
 
-@pytest.mark.parametrize("change", ["rename", "historical", "delete", "model"])
+@pytest.mark.parametrize("change", ["rename", "historical", "delete", "profile"])
 def test_inflight_obsolete_embeddings_are_discarded(change: str) -> None:
     lineage, active = create()
     provider = Provider()
@@ -124,8 +124,8 @@ def test_inflight_obsolete_embeddings_are_discarded(change: str) -> None:
         draft = create_recipe_draft(session, lineage, RecipeVersionWrite(name="Draft", servings=2)).version_id
     target = draft if change == "rename" else active
     def mutate() -> None:
-        if change == "model":
-            refresh.model = "obsolete"
+        if change == "profile":
+            refresh.profile = "obsolete"
             return
         with SessionLocal.begin() as session:
             if change == "rename":
@@ -141,21 +141,21 @@ def test_inflight_obsolete_embeddings_are_discarded(change: str) -> None:
 
 
 def test_search_filters_before_limit_and_returns_complete_current_recipe() -> None:
-    ids = [create(name)[1] for name in ["Historical", "Stale", "Wrong model", "Current", "Missing"]]
+    ids = [create(name)[1] for name in ["Historical", "Stale", "Wrong profile", "Current", "Missing"]]
     with SessionLocal.begin() as session:
         for version_id in ids[:-1]:
             version = session.get(RecipeVersion, version_id)
             assert version
-            session.add(RecipeEmbedding(recipe_version_id=version_id, model=MODEL, source_text=version.name,
+            session.add(RecipeEmbedding(recipe_version_id=version_id, profile=PROFILE, source_text=version.name,
                 vector=vector(1 if version_id == ids[3] else 0)))
         session.flush()
         historical = session.get(RecipeVersion, ids[0])
         stale = session.get(RecipeVersion, ids[1])
-        wrong_model = session.get(RecipeEmbedding, ids[2])
-        assert historical and stale and wrong_model
+        wrong_profile = session.get(RecipeEmbedding, ids[2])
+        assert historical and stale and wrong_profile
         historical.state = RecipeVersionState.HISTORICAL
         stale.name = "Renamed"
-        wrong_model.model = "old"
+        wrong_profile.profile = "old"
         foodstuff = create_foodstuff(session, FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20)))
         current = session.get(RecipeVersion, ids[3])
         assert current

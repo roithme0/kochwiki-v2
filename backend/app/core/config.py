@@ -3,13 +3,11 @@ from functools import lru_cache
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.infrastructure.embeddings.config import MODEL
 from app.infrastructure.storage.config import StorageConfig
 
 
 class Settings(BaseSettings):
-    openai_api_key: SecretStr | None = None
-    embedding_model: str = MODEL
+    ai_service_url: str | None = None
     app_version: str = "0.0.0"
     database_url: str = "postgresql+psycopg://user:password@localhost:5432/kochwiki"
     oidc_issuer: str | None = None
@@ -29,6 +27,19 @@ class Settings(BaseSettings):
     mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
+
+    @field_validator("ai_service_url", mode="before")
+    @classmethod
+    def validate_ai_service_url(cls, value: object) -> object:
+        from app.core.urls import validate_http_origin
+
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            validate_http_origin(value, allow_trailing_slash=True)
+            return value.rstrip("/")
+        return value
 
     @field_validator("csrf_trusted_origins")
     @classmethod

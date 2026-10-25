@@ -34,8 +34,8 @@ class RecipeEmbeddingService(EmbeddingService[UUID, RecipeEmbedding]):
     def _load_embedding(self, session: Session, record_id: UUID) -> RecipeEmbedding | None:
         return session.get(RecipeEmbedding, record_id)
 
-    def _new_embedding(self, record_id: UUID, model: str, text: str, vector: list[float]) -> RecipeEmbedding:
-        return RecipeEmbedding(recipe_version_id=record_id, model=model, source_text=text, vector=vector)
+    def _new_embedding(self, record_id: UUID, profile: str, text: str, vector: list[float]) -> RecipeEmbedding:
+        return RecipeEmbedding(recipe_version_id=record_id, profile=profile, source_text=text, vector=vector)
 
     def _refresh_ids(self, session: Session) -> list[UUID]:
         return list(session.scalars(select(RecipeVersion.version_id)
