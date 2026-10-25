@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from collections.abc import Callable
 from uuid import UUID, uuid4
 
 import pytest
@@ -8,24 +9,25 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import SessionLocal
+from app.core.exceptions import ForbiddenError
+from app.identity.schemas.user import UserOut
 from app.recipes.models.recipe import RecipeVersion
 from app.images.models import ImageAsset, ImageKind
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalCreate
 from app.recipes.services.proposal_saves import save_recipe_proposal
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.recipes import (
-    create_recipe, create_recipe_draft, publish_active_recipe_edit, update_recipe_draft,
-)
+from app.recipes.services.recipes import create_recipe, create_recipe_draft, publish_active_recipe_edit, update_recipe_draft
 
 
 @pytest.fixture
-def images() -> tuple[UUID, UUID]:
+def images(recipe_session: UserOut) -> tuple[UUID, UUID]:
     ids = (uuid4(), uuid4())
     with SessionLocal.begin() as session:
         for index, image_id in enumerate(ids):
             session.add(ImageAsset(
                 kind=ImageKind.RECIPE,
+                uploader_id=recipe_session.id,
                 id=image_id, object_key=f"recipe-images/{image_id}.png", content_type="image/png",
                 size=100, width=800 + index * 200, height=600, sha256="a" * 64, created_at=datetime.now(timezone.utc),
             ))
@@ -38,6 +40,7 @@ def create(client: TestClient, image_id: UUID | None) -> RecipeVersionOut:
     return RecipeVersionOut.model_validate(response.json())
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_new_recipe_without_image(client: TestClient) -> None:
     response = client.post("/recipes", json={"name": "No image", "servings": 2})
     assert response.status_code == 201
@@ -47,11 +50,11 @@ def test_new_recipe_without_image(client: TestClient) -> None:
     assert client.get(f"/recipes/{recipe.recipeLineageId}").json()["imageId"] is None
 
 
-def test_dimensions_follow_version_image_and_refresh_after_replacement(images: tuple[UUID, UUID]) -> None:
+def test_dimensions_follow_version_image_and_refresh_after_replacement(images: tuple[UUID, UUID], recipe_session: UserOut) -> None:
     from app.recipes.services.recipes import recipe_version_out
 
     with SessionLocal.begin() as session:
-        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]))
+        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]), owner_id=recipe_session.id)
         original = recipe_version_out(active)
         assert original.imageDimensions is not None
         assert original.imageDimensions.model_dump() == {"width": 800, "height": 600}
@@ -68,6 +71,7 @@ def test_dimensions_follow_version_image_and_refresh_after_replacement(images: t
         assert recipe_version_out(removed).imageDimensions is None
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_draft_replacement_removal_and_publication_are_independent(client: TestClient, images: tuple[UUID, UUID]) -> None:
     original = create(client, images[0])
     path = f"/recipes/{original.recipeLineageId}"
@@ -109,6 +113,7 @@ def test_draft_replacement_removal_and_publication_are_independent(client: TestC
 
 @pytest.mark.parametrize("choice", ["omit", "replace", "remove"])
 @pytest.mark.parametrize("operation", ["publish", "drafts"])
+@pytest.mark.usefixtures("recipe_session")
 def test_new_version_image_choices(
     client: TestClient, images: tuple[UUID, UUID], choice: str, operation: str,
 ) -> None:
@@ -129,6 +134,7 @@ def test_new_version_image_choices(
 
 @pytest.mark.parametrize("operation", ["create", "publish", "draft", "update"])
 @pytest.mark.parametrize("wrong_kind", [False, True])
+@pytest.mark.usefixtures("recipe_session")
 def test_unknown_image_rejects_entire_save(
     client: TestClient, images: tuple[UUID, UUID], operation: str, wrong_kind: bool,
 ) -> None:
@@ -157,10 +163,61 @@ def test_unknown_image_rejects_entire_save(
     assert client.post("/recipes", json={**payload, "imageId": "invalid"}).status_code == 422
 
 
-@pytest.mark.parametrize("operation", ["update", "publish"])
-def test_failed_commit_preserves_image_reference(images: tuple[UUID, UUID], operation: str) -> None:
+@pytest.mark.parametrize("operation", ["create", "publish", "draft", "update"])
+@pytest.mark.parametrize("ownership", ["other-user", "unowned"])
+def test_foreign_or_unowned_image_rejects_entire_save(
+    client: TestClient, images: tuple[UUID, UUID], operation: str, ownership: str,
+    provider_user: Callable[[str], UserOut],
+) -> None:
+    original = create(client, images[0])
+    path = f"/recipes/{original.recipeLineageId}"
+    draft = client.post(f"{path}/drafts", json={"name": "Draft", "servings": 2}).json()
+    before = client.get("/recipes").json()
+    uploader_id = provider_user("Another uploader").id if ownership == "other-user" else None
     with SessionLocal.begin() as session:
-        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]))
+        image = session.get(ImageAsset, images[1])
+        assert image is not None
+        image.uploader_id = uploader_id
+    payload = {"name": "Must not be saved", "servings": 3, "imageId": str(images[1])}
+    if operation == "update":
+        response = client.put(f"{path}/drafts/{draft['recipeVersionId']}", json=payload)
+    else:
+        endpoint = {"create": "/recipes", "publish": f"{path}/publish", "draft": f"{path}/drafts"}[operation]
+        response = client.post(endpoint, json=payload)
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Only images uploaded by the recipe owner may be attached"}
+    assert client.get("/recipes").json() == before
+    assert client.get(f"{path}/history").json() == []
+    with SessionLocal() as session:
+        assert set(session.scalars(select(RecipeVersion.version_id))) == {
+            original.recipeVersionId, UUID(draft["recipeVersionId"]),
+        }
+        assert set(session.scalars(select(ImageAsset.id))) == set(images)
+
+
+def test_image_is_matched_to_lineage_owner_in_shared_service(
+    images: tuple[UUID, UUID], provider_user: Callable[[str], UserOut],
+) -> None:
+    other_owner = provider_user("Different recipe owner")
+    with pytest.raises(ForbiddenError), SessionLocal.begin() as session:
+        create_recipe(session, RecipeVersionWrite(name="Other recipe", servings=2, imageId=images[0]), owner_id=other_owner.id)
+    with SessionLocal.begin() as session:
+        active = create_recipe(session, RecipeVersionWrite(name="Other recipe", servings=2), owner_id=other_owner.id)
+        lineage_id = active.lineage_id
+    with pytest.raises(ForbiddenError), SessionLocal.begin() as session:
+        create_recipe_draft(session, lineage_id, RecipeVersionWrite(name="Rejected", servings=2, imageId=images[0]))
+    with SessionLocal.begin() as session:
+        image = session.get(ImageAsset, images[0])
+        assert image is not None
+        image.uploader_id = other_owner.id
+        draft = create_recipe_draft(session, lineage_id, RecipeVersionWrite(name="Allowed", servings=2, imageId=images[0]))
+        assert draft.image_id == images[0]
+
+
+@pytest.mark.parametrize("operation", ["update", "publish"])
+def test_failed_commit_preserves_image_reference(images: tuple[UUID, UUID], operation: str, recipe_session: UserOut) -> None:
+    with SessionLocal.begin() as session:
+        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[0]), owner_id=recipe_session.id)
         draft = create_recipe_draft(session, active.lineage_id, RecipeVersionWrite(name="Draft", servings=2))
         lineage_id, active_id, draft_id = active.lineage_id, active.version_id, draft.version_id
 
@@ -185,6 +242,7 @@ def test_failed_commit_preserves_image_reference(images: tuple[UUID, UUID], oper
         assert set(session.scalars(select(ImageAsset.id))) == set(images)
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: TestClient, images: tuple[UUID, UUID]) -> None:
     original = create(client, images[0])
     path = f"/recipes/{original.recipeLineageId}"
@@ -204,12 +262,12 @@ def test_references_protect_metadata_and_recipe_deletion_keeps_images(client: Te
 @pytest.mark.parametrize("source_state", ["active", "draft", "historical"])
 @pytest.mark.parametrize("has_image", [True, False])
 def test_ai_draft_inherits_specific_source_image(
-    images: tuple[UUID, UUID], source_state: str, has_image: bool,
+    images: tuple[UUID, UUID], source_state: str, has_image: bool, recipe_session: UserOut,
 ) -> None:
     store = RecipeProposalStore()
     source_image = images[0] if has_image else None
     with SessionLocal.begin() as session:
-        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[1]))
+        active = create_recipe(session, RecipeVersionWrite(name="Original", servings=2, imageId=images[1]), owner_id=recipe_session.id)
         if source_state == "draft":
             source = create_recipe_draft(session, active.lineage_id, RecipeVersionWrite(name="Source", servings=2, imageId=source_image))
         else:
@@ -220,8 +278,8 @@ def test_ai_draft_inherits_specific_source_image(
         proposal = store.create(session, RecipeProposalCreate.model_validate({
             "sourceRecipeVersionId": source.version_id,
             "recipe": {"name": "Improved", "servings": 2, "ingredients": [], "steps": []},
-        }))
-    result = save_recipe_proposal(SessionLocal, store, proposal.proposalId)
+        }), user_id=recipe_session.id)
+    result = save_recipe_proposal(SessionLocal, store, proposal.proposalId, user_id=recipe_session.id)
     assert result.imageId == source_image
-    assert save_recipe_proposal(SessionLocal, store, proposal.proposalId).imageId == source_image
-    assert "imageId" not in store.get(proposal.proposalId).recipe.model_dump()
+    assert save_recipe_proposal(SessionLocal, store, proposal.proposalId, user_id=recipe_session.id).imageId == source_image
+    assert "imageId" not in store.get(proposal.proposalId, user_id=recipe_session.id).recipe.model_dump()

@@ -1,6 +1,7 @@
 import {
   Component,
   DestroyRef,
+  NgZone,
   computed,
   effect,
   inject,
@@ -50,6 +51,10 @@ import {
 function proposalSaveErrorMessage(error: unknown): string {
   if (error instanceof HttpErrorResponse) {
     switch (error.status) {
+      case 401:
+        return 'Bitte melde dich erneut an, um den Vorschlag zu speichern.';
+      case 403:
+        return 'Nur der Besitzer des Rezepts kann diesen Vorschlag speichern.';
       case 404:
         return 'Dieser Vorschlag oder ein benötigter Eintrag ist nicht mehr verfügbar. Bitte erstelle einen neuen Vorschlag.';
       case 409:
@@ -76,6 +81,7 @@ function proposalSaveErrorMessage(error: unknown): string {
 })
 export class RecipeConversationPageComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly zone = inject(NgZone);
   private readonly route = inject(ActivatedRoute);
   private readonly header = inject(PageHeaderService);
   private readonly recipes = inject(RecipeBackendService);
@@ -164,7 +170,8 @@ export class RecipeConversationPageComponent {
 
   async load(): Promise<void> {
     const generation = ++this.generation;
-    const userId = this.activeUser.activeUser()?.id ?? null;
+    const user = this.activeUser.activeUser();
+    const userId = user?.id ?? null;
     this.conversationUserId = userId;
     this.invalidateSaveFeedback();
     this.controller?.dispose();
@@ -183,7 +190,7 @@ export class RecipeConversationPageComponent {
     });
     this.phase.set('loading');
     this.header.updateHeader(true, '', this.back(), true, 'Rezept verbessern');
-    if (userId === null) {
+    if (user === null) {
       this.phase.set('waiting-for-user');
       return;
     }
@@ -197,6 +204,7 @@ export class RecipeConversationPageComponent {
       );
       if (!this.isCurrent(generation, userId)) return;
       if (
+        source.ownerId !== userId ||
         source.state === 'historical' ||
         source.recipeVersionId !== this.versionId ||
         source.recipeLineageId !== this.lineageId
@@ -215,7 +223,7 @@ export class RecipeConversationPageComponent {
       const transport = new HttpSessionTransport(
         '/ai/api/v1',
         'kochwiki',
-        `kochwiki:${userId}`,
+        `${encodeURIComponent(user.issuer)}:${encodeURIComponent(user.subject)}`,
       );
       const controller = new SessionController(
         transport,
@@ -227,7 +235,9 @@ export class RecipeConversationPageComponent {
       this.controller = controller;
       this.view.set(controller.state);
       this.phase.set('ready');
-      await controller.start(mapSessionInput(source));
+      await this.zone.runOutsideAngular(() =>
+        controller.start(mapSessionInput(source)),
+      );
     } catch (error: unknown) {
       if (!this.isCurrent(generation, userId)) return;
       this.phase.set(

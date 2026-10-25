@@ -2,6 +2,8 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
+from app.core.urls import validate_http_url
+
 if TYPE_CHECKING:
     from app.core.config import Settings
 
@@ -28,19 +30,17 @@ def validate_oidc_settings(settings: "Settings") -> None:
     for value in (settings.oidc_issuer, settings.oidc_callback_url, settings.oidc_backchannel_url):
         if value is None:
             continue
-        url = urlsplit(value)
+        url = validate_http_url(value)
         local_hosts = {"localhost", "127.0.0.1", "::1"}
         if value == settings.oidc_backchannel_url:
             local_hosts.add("host.docker.internal")
         allowed_http = url.scheme == "http" and (
             url.hostname in local_hosts or settings.oidc_allow_insecure_http
         )
-        if (url.scheme != "https" and not allowed_http) or not url.hostname:
+        if url.scheme != "https" and not allowed_http:
             raise ValueError("OIDC URLs require HTTPS, except local development addresses")
-        if url.username or url.password or url.query or url.fragment or "*" in value:
-            raise ValueError("OIDC URLs must not contain credentials, queries, fragments or wildcards")
-        if url.port is not None and not 1 <= url.port <= 65535:
-            raise ValueError("Invalid OIDC URL port")
+        if "?" in value or "#" in value or "*" in value:
+            raise ValueError("OIDC URLs must not contain queries, fragments or wildcards")
     if settings.oidc_issuer.endswith("/") or (settings.oidc_backchannel_url or "").endswith("/"):
         raise ValueError("OIDC issuer/backchannel URLs must not end with a slash")
     if urlsplit(settings.oidc_callback_url).path != "/api/auth/callback":

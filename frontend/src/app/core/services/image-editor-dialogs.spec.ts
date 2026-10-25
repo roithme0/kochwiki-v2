@@ -69,6 +69,7 @@ describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
     recipeVersionIds: [],
   };
   const recipe: RecipeVersionOut = {
+    ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002',
     name: 'Basilikum',

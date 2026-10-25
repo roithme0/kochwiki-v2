@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.images.config import MAX_IMAGE_BYTES
+from app.images.uploads import ImageUploads
 from app.images.models import ImageAsset, ImageKind
 
 from app.images.transfers import (
@@ -34,7 +35,7 @@ def chunk(kind: bytes, data: bytes) -> bytes:
     return len(data).to_bytes(4, "big") + payload + crc32(payload).to_bytes(4, "big")
 
 
-class RecipeImageTransferTests(unittest.TestCase):
+class ImageUploadTests(unittest.TestCase):
     kind: ImageKind = ImageKind.RECIPE
 
     def setUp(self) -> None:
@@ -43,13 +44,14 @@ class RecipeImageTransferTests(unittest.TestCase):
         ImageAsset.__table__.create(self.engine)
         self.addCleanup(self.engine.dispose)
         self.sessions = sessionmaker(self.engine)
-        self.service = ImageTransfers(self.storage, self.sessions, kind=self.kind)
+        self.transfers = ImageTransfers(self.storage, self.sessions, kind=self.kind)
+        self.service = ImageUploads(self.transfers, self.sessions)
         self.upload_id = uuid4()
         self.temporary_key = f"{self.kind.value}-image-uploads/{self.upload_id}"
 
     def test_begin_only_signs_a_temporary_key(self) -> None:
         self.storage.presign_upload.return_value = PresignedTransfer("secret-url", "PUT", 300)
-        upload = self.service.begin()
+        upload = self.service.begin(1)
         self.storage.presign_upload.assert_called_once_with(f"{self.kind.value}-image-uploads/{upload.id}")
         self.assertNotIn("secret-url", repr(upload))
         self.storage.write.assert_not_called()
@@ -57,7 +59,7 @@ class RecipeImageTransferTests(unittest.TestCase):
     def test_success_writes_exact_validated_bytes_and_cleans_temporary_object(self) -> None:
         data = png()
         self.storage.read.return_value = data
-        result = self.service.complete(self.upload_id)
+        result = self.service.complete(self.upload_id, 1)
         self.assertEqual((result.width, result.height, result.size), (2, 3, len(data)))
         self.assertEqual(result.sha256, sha256(data).hexdigest())
         self.assertEqual(result.object_key, f"{self.kind.value}-images/{result.id}.png")
@@ -95,25 +97,25 @@ class RecipeImageTransferTests(unittest.TestCase):
                 self.storage.reset_mock()
                 self.storage.read.return_value = data
                 with self.assertRaises(InvalidImage) as failure:
-                    self.service.complete(self.upload_id)
+                    self.service.complete(self.upload_id, 1)
                 self.assertFalse(failure.exception.cleanup_pending)
                 self.storage.write.assert_not_called()
                 self.storage.delete.assert_called_once_with(self.temporary_key)
 
     def test_maximum_dimensions_are_accepted(self) -> None:
         self.storage.read.return_value = png(4096, 4096)
-        result = self.service.complete(self.upload_id)
+        result = self.service.complete(self.upload_id, 1)
         self.assertEqual((result.width, result.height), (4096, 4096))
 
     def test_exact_byte_limit_is_accepted_and_overflow_is_rejected(self) -> None:
         data = png()
         padding = chunk(b"prIv", bytes(MAX_IMAGE_BYTES - len(data) - 12))
         self.storage.read.return_value = data[:-12] + padding + data[-12:]
-        self.assertEqual(self.service.complete(self.upload_id).size, MAX_IMAGE_BYTES)
+        self.assertEqual(self.service.complete(self.upload_id, 1).size, MAX_IMAGE_BYTES)
         self.storage.reset_mock()
         self.storage.read.return_value += b"x"
         with self.assertRaisesRegex(InvalidImage, "10 MiB"):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.write.assert_not_called()
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
@@ -124,47 +126,47 @@ class RecipeImageTransferTests(unittest.TestCase):
         broken = data[:idat] + chunk(b"IDAT", b"\x00" * length) + data[idat + length + 12:]
         self.storage.read.return_value = broken
         with self.assertRaises(InvalidImage):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.write.assert_not_called()
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
     def test_size_rejection_cleans_without_writing(self) -> None:
         self.storage.read.side_effect = StorageObjectTooLarge()
         with self.assertRaisesRegex(InvalidImage, "10 MiB"):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.delete.assert_called_once_with(self.temporary_key)
         self.storage.write.assert_not_called()
 
     def test_missing_upload_and_transport_failure_do_not_delete_retryable_upload(self) -> None:
         self.storage.read.return_value = None
         with self.assertRaises(ImageUploadNotFound):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.read.side_effect = StorageUnavailable()
         with self.assertRaises(StorageUnavailable):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.delete.assert_not_called()
 
     def test_failed_permanent_write_keeps_temporary_upload_for_retry(self) -> None:
         self.storage.read.return_value = png()
         self.storage.write.side_effect = StorageUnavailable()
         with self.assertRaises(StorageUnavailable):
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.storage.delete.assert_not_called()
 
     def test_cleanup_failure_preserves_result_or_validation_error(self) -> None:
         self.storage.delete.side_effect = StorageUnavailable()
         self.storage.read.return_value = png()
-        self.assertTrue(self.service.complete(self.upload_id).cleanup_pending)
+        self.assertTrue(self.service.complete(self.upload_id, 1).cleanup_pending)
         self.storage.read.return_value = b"invalid"
         with self.assertRaises(InvalidImage) as failure:
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.assertTrue(failure.exception.cleanup_pending)
 
     def test_replayed_upload_gets_a_distinct_permanent_identity(self) -> None:
         self.storage.read.return_value = png()
-        first = self.service.complete(self.upload_id)
+        first = self.service.complete(self.upload_id, 1)
         self.storage.read.return_value = png(3, 2)
-        second = self.service.complete(self.upload_id)
+        second = self.service.complete(self.upload_id, 1)
         self.assertNotEqual(first.id, second.id)
         self.assertNotEqual(first.object_key, second.object_key)
 
@@ -176,7 +178,7 @@ class RecipeImageTransferTests(unittest.TestCase):
 
         event.listen(self.sessions, "before_commit", fail_commit)
         with self.assertRaises(ImagePersistenceFailed) as failure:
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.assertFalse(failure.exception.cleanup_pending)
         self.assertNotIn("private", str(failure.exception))
         key = self.storage.write.call_args.args[0]
@@ -184,13 +186,13 @@ class RecipeImageTransferTests(unittest.TestCase):
         with self.sessions() as session:
             self.assertEqual(list(session.scalars(select(ImageAsset))), [])
         event.remove(self.sessions, "before_commit", fail_commit)
-        self.assertFalse(self.service.complete(self.upload_id).cleanup_pending)
+        self.assertFalse(self.service.complete(self.upload_id, 1).cleanup_pending)
 
     def test_unknown_database_outcome_retains_permanent_object(self) -> None:
         self.storage.read.return_value = png()
         ImageAsset.__table__.drop(self.engine)
         with self.assertRaises(ImagePersistenceFailed) as failure:
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.assertTrue(failure.exception.cleanup_pending)
         self.storage.delete.assert_not_called()
 
@@ -203,7 +205,7 @@ class RecipeImageTransferTests(unittest.TestCase):
 
         event.listen(self.sessions, "before_commit", fail_commit)
         with self.assertRaises(ImagePersistenceFailed) as failure:
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.assertTrue(failure.exception.cleanup_pending)
         self.storage.delete.assert_called_once_with(self.storage.write.call_args.args[0])
 
@@ -215,7 +217,7 @@ class RecipeImageTransferTests(unittest.TestCase):
 
         event.listen(self.sessions, "before_commit", lose_connection)
         with self.assertRaises(ImagePersistenceFailed) as failure:
-            self.service.complete(self.upload_id)
+            self.service.complete(self.upload_id, 1)
         self.assertTrue(failure.exception.cleanup_pending)
         self.storage.delete.assert_not_called()
 
@@ -226,13 +228,13 @@ class RecipeImageTransferTests(unittest.TestCase):
             raise OperationalError("commit acknowledgement", None, RuntimeError())
 
         event.listen(self.sessions, "after_commit", fail_acknowledgement)
-        result = self.service.complete(self.upload_id)
+        result = self.service.complete(self.upload_id, 1)
         with self.sessions() as session:
             self.assertIsNotNone(session.get(ImageAsset, result.id))
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
 
-class FoodstuffImageTransferTests(RecipeImageTransferTests):
+class FoodstuffImageUploadTests(ImageUploadTests):
     kind = ImageKind.FOODSTUFF
 
 

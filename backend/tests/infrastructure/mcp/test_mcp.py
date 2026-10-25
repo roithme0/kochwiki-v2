@@ -23,7 +23,8 @@ from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff, foodstuff_summary_out
-from app.recipes.services.recipes import create_recipe, create_recipe_draft, recipe_version_out
+from app.recipes.services.recipes import create_recipe_draft, recipe_version_out
+from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
 @pytest.mark.parametrize("mode", ["auto", "legacy"])
@@ -47,13 +48,13 @@ def test_mcp_http_discovery_invocation_and_lifecycle(mode: Literal["auto", "lega
                         assert initialization.instructions == KOCHWIKI_INSTRUCTIONS
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
-                        "hello_world", "search_foodstuffs", "create_foodstuff", "update_foodstuff",
+                        "search_foodstuffs", "create_foodstuff", "update_foodstuff",
                         "search_recipes", "get_recipe_lineage",
                         "create_recipe_proposal", "get_recipe_proposal", "save_recipe_proposal",
                     ]
-                    result = await client.call_tool("hello_world", {})
-                    assert not result.is_error
-                    assert result.structured_content == {"message": "Hello World"}
+                    result = await client.call_tool("get_recipe_lineage", {"recipe_version_id": "00000000-0000-0000-0000-000000000000"})
+                    assert result.is_error
+                    assert "not found" in str(result.content)
 
     asyncio.run(exercise())
     asyncio.run(exercise())
@@ -395,7 +396,7 @@ def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
                     result = await client.call_tool(tool_name, {"query": "Moehre"})
                     assert result.is_error
                     assert any(isinstance(item, TextContent) and "Semantic search unavailable" in item.text for item in result.content)
-                    assert not (await client.call_tool("hello_world", {})).is_error
+                    assert len((await client.list_tools()).tools) == 8
 
     asyncio.run(exercise())
 

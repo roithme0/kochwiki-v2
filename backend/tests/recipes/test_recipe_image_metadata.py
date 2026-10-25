@@ -16,7 +16,8 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
     storage = Mock()
     data = png()
     storage.read.return_value = data
-    result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(uuid4())
+    with SessionLocal.begin() as session:
+        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(session, uuid4())
     with SessionLocal() as session:
         saved = session.get(ImageAsset, result.id)
         assert saved is not None
@@ -26,6 +27,21 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
         assert saved.sha256 == result.sha256
         assert saved.content_type == "image/png"
         assert saved.created_at == result.created_at
+
+
+def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_storage() -> None:
+    storage = Mock()
+    storage.read.return_value = png()
+    with pytest.raises(RuntimeError, match="roll back completion"):
+        with SessionLocal.begin() as session:
+            result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(session, uuid4())
+            session.flush()
+            with SessionLocal() as observer:
+                assert observer.get(ImageAsset, result.id) is None
+            raise RuntimeError("roll back completion")
+    with SessionLocal() as observer:
+        assert observer.get(ImageAsset, result.id) is None
+    storage.delete.assert_not_called()
 
 
 @pytest.mark.parametrize("field,value", [

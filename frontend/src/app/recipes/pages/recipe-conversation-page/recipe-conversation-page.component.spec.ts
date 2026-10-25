@@ -1,3 +1,4 @@
+import type { UserOut } from '../../../core/api/generated';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -73,9 +74,11 @@ describe('Recipe conversation page through published session controller and HTTP
   const snackbar = vi.fn<SnackBarService['open']>();
   const getRecipe = vi.fn<RecipeBackendService['getRecipeVersion']>();
   const fetchMock = vi.fn<typeof fetch>();
-  const user = signal<{ id: number; display_name: string } | null>({
+  const user = signal<UserOut | null>({
     id: 1,
     display_name: 'Test',
+    issuer: 'https://idp.example/realms/test',
+    subject: 'user-1',
   });
   let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   let history: PresentedSession['history'];
@@ -83,6 +86,7 @@ describe('Recipe conversation page through published session controller and HTTP
     controller: ReadableStreamDefaultController<Uint8Array>;
     signal: AbortSignal | null | undefined;
   }[];
+  const createUrl = '/ai/api/v1/agents/kochwiki/sessions';
   const sessionUrl = '/ai/api/v1/agents/kochwiki/sessions';
 
   function snapshot(): PresentedSession {
@@ -116,7 +120,12 @@ describe('Recipe conversation page through published session controller and HTTP
       state: 'draft',
       recipeVersionId: 'saved',
     });
-    user.set({ id: 1, display_name: 'Test' });
+    user.set({
+      id: 1,
+      display_name: 'Test',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-1',
+    });
     source = conversationRecipe();
     params = new BehaviorSubject(
       convertToParamMap({
@@ -590,6 +599,8 @@ describe('Recipe conversation page through published session controller and HTTP
   });
 
   it.each([
+    [401, 'erneut an'],
+    [403, 'Besitzer'],
     [404, 'neuen Vorschlag'],
     [409, 'Konflikts'],
   ] as const)(
@@ -759,12 +770,14 @@ describe('Recipe conversation page through published session controller and HTTP
   it('captures context and capabilities once, then refines through the same observed session without writes', async () => {
     const page = await open();
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      sessionUrl,
+      createUrl,
       `${sessionUrl}/session-1/events`,
     ]);
     const body = fetchMock.mock.calls[0][1]?.body;
     if (typeof body !== 'string') throw new Error('Expected JSON request body');
-    expect(JSON.parse(body) as unknown).toEqual(mapSessionInput(source));
+    expect(JSON.parse(body) as unknown).toEqual({
+      ...mapSessionInput(source),
+    });
     expect(getRecipe).toHaveBeenCalledWith(
       source.recipeLineageId,
       source.recipeVersionId,
@@ -800,7 +813,7 @@ describe('Recipe conversation page through published session controller and HTTP
       'Inhalt nicht darstellbar',
     );
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      sessionUrl,
+      createUrl,
       `${sessionUrl}/session-1/events`,
       `${sessionUrl}/session-1/turns`,
       `${sessionUrl}/session-1/turns`,
@@ -811,15 +824,54 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(save).not.toHaveBeenCalled();
   });
 
-  it('sends the stable selected identity on session creation, observation and prompt admission', async () => {
+  it.each([
+    [
+      'https://idp.example/realms/a',
+      'cook',
+      'https%3A%2F%2Fidp.example%2Frealms%2Fa:cook',
+    ],
+    [
+      'https://idp.example/realms/b',
+      'cook',
+      'https%3A%2F%2Fidp.example%2Frealms%2Fb:cook',
+    ],
+    [
+      'https://idp.example/realms/a',
+      'other:cook',
+      'https%3A%2F%2Fidp.example%2Frealms%2Fa:other%3Acook',
+    ],
+  ])(
+    'uses issuer %s and subject %s for conversation ownership',
+    async (issuer, subject, identity) => {
+      user.set({ id: 1, display_name: 'Test', issuer, subject });
+      await open();
+      expect(
+        new Headers(fetchMock.mock.calls[1][1]?.headers).get(
+          'X-Application-User',
+        ),
+      ).toBe(identity);
+    },
+  );
+
+  it('uses direct creation and stable identity for observation and prompt admission', async () => {
     const page = await open();
-    user.set({ id: 1, display_name: 'Renamed' });
+    user.set({
+      id: 1,
+      display_name: 'Renamed',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-1',
+    });
     fixture.detectChanges();
     await submit(page);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(
+      new Headers(fetchMock.mock.calls[0][1]?.headers).has(
+        'X-Application-User',
+      ),
+    ).toBe(true);
     for (const [, request] of fetchMock.mock.calls) {
       expect(new Headers(request?.headers).get('X-Application-User')).toBe(
-        'kochwiki:1',
+        'https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-1',
       );
     }
     expect(new Headers(fetchMock.mock.calls[1][1]?.headers).get('Accept')).toBe(
@@ -837,15 +889,21 @@ describe('Recipe conversation page through published session controller and HTTP
       'Anmelden',
     );
     expect(page.original()).toBeNull();
-    user.set({ id: 2, display_name: 'Restored' });
+    source.ownerId = 2;
+    user.set({
+      id: 2,
+      display_name: 'Restored',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-2',
+    });
     fixture.detectChanges();
     await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(
-      new Headers(fetchMock.mock.calls[0][1]?.headers).get(
+      new Headers(fetchMock.mock.calls[1][1]?.headers).get(
         'X-Application-User',
       ),
-    ).toBe('kochwiki:2');
+    ).toBe('https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-2');
   });
 
   it('blocks old-owner actions immediately and ignores late admission before user effects flush', async () => {
@@ -856,7 +914,13 @@ describe('Recipe conversation page through published session controller and HTTP
     const acknowledge = vi.fn();
     const operation = page.submit({ text: 'Old owner', acknowledge });
     const requests = fetchMock.mock.calls.length;
-    user.set({ id: 2, display_name: 'Next' });
+    source.ownerId = 2;
+    user.set({
+      id: 2,
+      display_name: 'Next',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-2',
+    });
     await page.submit({
       text: 'Must not use old session',
       acknowledge: vi.fn(),
@@ -876,7 +940,7 @@ describe('Recipe conversation page through published session controller and HTTP
       new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
         'X-Application-User',
       ),
-    ).toBe('kochwiki:2');
+    ).toBe('https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-2');
   });
 
   it.each(['success', 'failure'] as const)(
@@ -888,7 +952,13 @@ describe('Recipe conversation page through published session controller and HTTP
       const page = fixture.componentInstance;
       fixture.detectChanges();
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-      user.set({ id: 2, display_name: 'Next' });
+      source.ownerId = 2;
+      user.set({
+        id: 2,
+        display_name: 'Next',
+        issuer: 'https://idp.example/realms/test',
+        subject: 'user-2',
+      });
       fixture.detectChanges();
       await vi.waitFor(() => expect(page.view().composerDisabled).toBe(false));
       const view = page.view();
@@ -909,7 +979,7 @@ describe('Recipe conversation page through published session controller and HTTP
         new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers).get(
           'X-Application-User',
         ),
-      ).toBe('kochwiki:2');
+      ).toBe('https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-2');
       expect(
         fetchMock.mock.calls.some(([url]) =>
           requestUrl(url).includes('old-session'),
@@ -983,9 +1053,7 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(remove.mock.calls.some(([name]) => name === 'beforeunload')).toBe(
       true,
     );
-    const creations = fetchMock.mock.calls.filter(
-      ([url]) => url === sessionUrl,
-    );
+    const creations = fetchMock.mock.calls.filter(([url]) => url === createUrl);
     expect(creations).toHaveLength(3);
     for (const [, request] of creations)
       expect(request?.body).toBe(creations[0][1]?.body);
@@ -1000,16 +1068,18 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(confirm).not.toHaveBeenCalled();
   });
 
-  it.each(['historical', 'missing', 'mismatched'] as const)(
+  it.each(['historical', 'missing', 'mismatched', 'non-owner'] as const)(
     'does not initialize an unavailable %s recipe',
     async (mode) => {
       if (mode === 'historical') source.state = 'historical';
+      else if (mode === 'non-owner') source.ownerId = 2;
       else if (mode === 'mismatched')
         getRecipe.mockResolvedValue({
           ...source,
           recipeVersionId: 'another-version',
         });
-      else getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+      else if (mode === 'missing')
+        getRecipe.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
       const page = await open();
       expect(page.phase()).toBe('unavailable');
       expect(fetchMock).not.toHaveBeenCalled();
@@ -1128,7 +1198,7 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(page.view()).toBe(view);
     expect(fresh.view().turns).toEqual([]);
     expect(
-      fetchMock.mock.calls.filter(([url]) => url === sessionUrl),
+      fetchMock.mock.calls.filter(([url]) => url === createUrl),
     ).toHaveLength(2);
   });
 

@@ -612,6 +612,10 @@ export type RecipeVersionOut = {
      */
     name: string;
     /**
+     * Ownerid
+     */
+    ownerId: number;
+    /**
      * Preptime
      */
     preptime: number | null;
@@ -748,6 +752,14 @@ export type UserOut = {
      * Id
      */
     id: number;
+    /**
+     * Issuer
+     */
+    issuer: string;
+    /**
+     * Subject
+     */
+    subject: string;
 };
 
 /**
@@ -865,7 +877,15 @@ export type BeginUploadFoodstuffImageUploadsPostData = {
 
 export type BeginUploadFoodstuffImageUploadsPostErrors = {
     /**
-     * Service Unavailable
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -899,6 +919,14 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
      */
     400: ErrorResponse;
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -907,7 +935,7 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -937,6 +965,10 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetData = {
 
 export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -945,7 +977,7 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -968,6 +1000,19 @@ export type GetFoodstuffsFoodstuffsGetData = {
     url: '/foodstuffs';
 };
 
+export type GetFoodstuffsFoodstuffsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type GetFoodstuffsFoodstuffsGetError = GetFoodstuffsFoodstuffsGetErrors[keyof GetFoodstuffsFoodstuffsGetErrors];
+
 export type GetFoodstuffsFoodstuffsGetResponses = {
     /**
      * Response Get Foodstuffs Foodstuffs Get
@@ -988,6 +1033,14 @@ export type PostFoodstuffFoodstuffsPostData = {
 
 export type PostFoodstuffFoodstuffsPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -999,6 +1052,10 @@ export type PostFoodstuffFoodstuffsPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PostFoodstuffFoodstuffsPostError = PostFoodstuffFoodstuffsPostErrors[keyof PostFoodstuffFoodstuffsPostErrors];
@@ -1026,6 +1083,14 @@ export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteData = {
 
 export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1037,6 +1102,10 @@ export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DeleteFoodstuffFoodstuffsFoodstuffIdDeleteError = DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors[keyof DeleteFoodstuffFoodstuffsFoodstuffIdDeleteErrors];
@@ -1064,6 +1133,10 @@ export type GetFoodstuffFoodstuffsFoodstuffIdGetData = {
 
 export type GetFoodstuffFoodstuffsFoodstuffIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1071,6 +1144,10 @@ export type GetFoodstuffFoodstuffsFoodstuffIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetFoodstuffFoodstuffsFoodstuffIdGetError = GetFoodstuffFoodstuffsFoodstuffIdGetErrors[keyof GetFoodstuffFoodstuffsFoodstuffIdGetErrors];
@@ -1098,6 +1175,14 @@ export type PatchFoodstuffFoodstuffsFoodstuffIdPatchData = {
 
 export type PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1109,6 +1194,10 @@ export type PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PatchFoodstuffFoodstuffsFoodstuffIdPatchError = PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors[keyof PatchFoodstuffFoodstuffsFoodstuffIdPatchErrors];
@@ -1128,6 +1217,19 @@ export type ListIngredientsIngredientsGetData = {
     query?: never;
     url: '/ingredients';
 };
+
+export type ListIngredientsIngredientsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListIngredientsIngredientsGetError = ListIngredientsIngredientsGetErrors[keyof ListIngredientsIngredientsGetErrors];
 
 export type ListIngredientsIngredientsGetResponses = {
     /**
@@ -1165,7 +1267,15 @@ export type BeginUploadRecipeImageUploadsPostData = {
 
 export type BeginUploadRecipeImageUploadsPostErrors = {
     /**
-     * Service Unavailable
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -1199,6 +1309,14 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
      */
     400: ErrorResponse;
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1207,7 +1325,7 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -1237,6 +1355,10 @@ export type DownloadImageRecipeImagesImageIdDownloadGetData = {
 
 export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1245,7 +1367,7 @@ export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
      */
     422: HttpValidationError;
     /**
-     * Service Unavailable
+     * Login not configured or image transfer unavailable
      */
     503: ErrorResponse;
 };
@@ -1270,6 +1392,14 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1277,6 +1407,10 @@ export type ResolveRecipePresentationRecipePresentationsResolvePostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostError = ResolveRecipePresentationRecipePresentationsResolvePostErrors[keyof ResolveRecipePresentationRecipePresentationsResolvePostErrors];
@@ -1304,6 +1438,14 @@ export type SaveProposalRecipeProposalsProposalIdSavePostData = {
 
 export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1315,6 +1457,10 @@ export type SaveProposalRecipeProposalsProposalIdSavePostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type SaveProposalRecipeProposalsProposalIdSavePostError = SaveProposalRecipeProposalsProposalIdSavePostErrors[keyof SaveProposalRecipeProposalsProposalIdSavePostErrors];
@@ -1334,6 +1480,19 @@ export type ListRecipeVersionsRecipesGetData = {
     query?: never;
     url: '/recipes';
 };
+
+export type ListRecipeVersionsRecipesGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListRecipeVersionsRecipesGetError = ListRecipeVersionsRecipesGetErrors[keyof ListRecipeVersionsRecipesGetErrors];
 
 export type ListRecipeVersionsRecipesGetResponses = {
     /**
@@ -1355,6 +1514,14 @@ export type CreateRecipeRecipesPostData = {
 
 export type CreateRecipeRecipesPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1362,6 +1529,10 @@ export type CreateRecipeRecipesPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type CreateRecipeRecipesPostError = CreateRecipeRecipesPostErrors[keyof CreateRecipeRecipesPostErrors];
@@ -1389,6 +1560,14 @@ export type DeleteRecipeLineageRecipesLineageIdDeleteData = {
 
 export type DeleteRecipeLineageRecipesLineageIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1396,6 +1575,10 @@ export type DeleteRecipeLineageRecipesLineageIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DeleteRecipeLineageRecipesLineageIdDeleteError = DeleteRecipeLineageRecipesLineageIdDeleteErrors[keyof DeleteRecipeLineageRecipesLineageIdDeleteErrors];
@@ -1423,6 +1606,10 @@ export type GetActiveRecipeVersionRecipesLineageIdGetData = {
 
 export type GetActiveRecipeVersionRecipesLineageIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1430,6 +1617,10 @@ export type GetActiveRecipeVersionRecipesLineageIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetActiveRecipeVersionRecipesLineageIdGetError = GetActiveRecipeVersionRecipesLineageIdGetErrors[keyof GetActiveRecipeVersionRecipesLineageIdGetErrors];
@@ -1457,6 +1648,14 @@ export type CreateRecipeDraftRecipesLineageIdDraftsPostData = {
 
 export type CreateRecipeDraftRecipesLineageIdDraftsPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1464,6 +1663,10 @@ export type CreateRecipeDraftRecipesLineageIdDraftsPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type CreateRecipeDraftRecipesLineageIdDraftsPostError = CreateRecipeDraftRecipesLineageIdDraftsPostErrors[keyof CreateRecipeDraftRecipesLineageIdDraftsPostErrors];
@@ -1495,6 +1698,14 @@ export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteData = {
 
 export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1506,6 +1717,10 @@ export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteError = DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors[keyof DiscardRecipeDraftRecipesLineageIdDraftsVersionIdDeleteErrors];
@@ -1537,6 +1752,14 @@ export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutData = {
 
 export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1548,6 +1771,10 @@ export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutError = UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors[keyof UpdateRecipeDraftRecipesLineageIdDraftsVersionIdPutErrors];
@@ -1579,6 +1806,14 @@ export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostData = {
 
 export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1590,6 +1825,10 @@ export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors =
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostError = PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors[keyof PublishRecipeDraftRecipesLineageIdDraftsVersionIdPublishPostErrors];
@@ -1617,6 +1856,10 @@ export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetData = {
 
 export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1624,6 +1867,10 @@ export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetError = ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors[keyof ListHistoricalRecipeVersionsRecipesLineageIdHistoryGetErrors];
@@ -1653,6 +1900,14 @@ export type PublishActiveRecipeEditRecipesLineageIdPublishPostData = {
 
 export type PublishActiveRecipeEditRecipesLineageIdPublishPostErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Untrusted request origin or insufficient permissions
+     */
+    403: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1660,6 +1915,10 @@ export type PublishActiveRecipeEditRecipesLineageIdPublishPostErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type PublishActiveRecipeEditRecipesLineageIdPublishPostError = PublishActiveRecipeEditRecipesLineageIdPublishPostErrors[keyof PublishActiveRecipeEditRecipesLineageIdPublishPostErrors];
@@ -1691,6 +1950,10 @@ export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetData = {
 
 export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors = {
     /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
      * Not Found
      */
     404: ErrorResponse;
@@ -1698,6 +1961,10 @@ export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors = {
      * Validation Error
      */
     422: HttpValidationError;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
 };
 
 export type GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetError = GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors[keyof GetRecipeVersionByIdRecipesLineageIdVersionsVersionIdGetErrors];
@@ -1718,6 +1985,19 @@ export type ListStepsStepsGetData = {
     url: '/steps';
 };
 
+export type ListStepsStepsGetErrors = {
+    /**
+     * Invalid or expired session
+     */
+    401: ErrorResponse;
+    /**
+     * Login not configured
+     */
+    503: ErrorResponse;
+};
+
+export type ListStepsStepsGetError = ListStepsStepsGetErrors[keyof ListStepsStepsGetErrors];
+
 export type ListStepsStepsGetResponses = {
     /**
      * Response List Steps Steps Get
@@ -1728,89 +2008,3 @@ export type ListStepsStepsGetResponses = {
 };
 
 export type ListStepsStepsGetResponse = ListStepsStepsGetResponses[keyof ListStepsStepsGetResponses];
-
-export type GetUsersUsersGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/users';
-};
-
-export type GetUsersUsersGetResponses = {
-    /**
-     * Response Get Users Users Get
-     *
-     * Successful Response
-     */
-    200: Array<UserOut>;
-};
-
-export type GetUsersUsersGetResponse = GetUsersUsersGetResponses[keyof GetUsersUsersGetResponses];
-
-export type DeleteUserUsersUserIdDeleteData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: number;
-    };
-    query?: never;
-    url: '/users/{user_id}';
-};
-
-export type DeleteUserUsersUserIdDeleteErrors = {
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteUserUsersUserIdDeleteError = DeleteUserUsersUserIdDeleteErrors[keyof DeleteUserUsersUserIdDeleteErrors];
-
-export type DeleteUserUsersUserIdDeleteResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DeleteUserUsersUserIdDeleteResponse = DeleteUserUsersUserIdDeleteResponses[keyof DeleteUserUsersUserIdDeleteResponses];
-
-export type GetUserUsersUserIdGetData = {
-    body?: never;
-    path: {
-        /**
-         * User Id
-         */
-        user_id: number;
-    };
-    query?: never;
-    url: '/users/{user_id}';
-};
-
-export type GetUserUsersUserIdGetErrors = {
-    /**
-     * Not Found
-     */
-    404: ErrorResponse;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetUserUsersUserIdGetError = GetUserUsersUserIdGetErrors[keyof GetUserUsersUserIdGetErrors];
-
-export type GetUserUsersUserIdGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: UserOut;
-};
-
-export type GetUserUsersUserIdGetResponse = GetUserUsersUserIdGetResponses[keyof GetUserUsersUserIdGetResponses];

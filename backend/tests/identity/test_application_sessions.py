@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, literal, select, text, update
 
-from app.identity.routes import auth
+from app.identity import dependencies
 from app.identity.config import (
     SESSION_COOKIE, SESSION_LIFETIME, SESSION_COOKIE_PATH, SESSION_LIFETIME_SECONDS,
 )
@@ -22,7 +22,7 @@ from app.identity.services.sessions import (
     authenticated_user,
     cleanup_expired_sessions, establish_session, invalidate_session, secret_hash,
 )
-from tests.identity.test_oidc_login import Provider, begin, browser, finish, provider, settings
+from tests.identity.test_oidc_login import ISSUER, Provider, begin, browser, finish, provider, settings
 
 
 def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: Provider) -> None:
@@ -44,7 +44,10 @@ def test_session_cookie_hash_and_current_profile(browser: TestClient, provider: 
         }
         user_id = stored.user_id
     current = browser.get("/api/auth/me")
-    assert current.json() == {"id": user_id, "display_name": "Kitchen Friend"}
+    assert current.json() == {
+        "id": user_id, "display_name": "Kitchen Friend",
+        "issuer": ISSUER, "subject": "provider-user",
+    }
     assert current.headers["cache-control"] == "no-store"
 
 
@@ -230,7 +233,7 @@ def test_login_rotates_only_after_successful_validation(browser: TestClient, pro
 
 
 def test_https_cookie_and_default_origin_port(browser: TestClient, provider: Provider, settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(auth, "get_settings", lambda: settings.model_copy(update={"oidc_callback_url": "https://cook.example/api/auth/callback"}))
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings.model_copy(update={"oidc_callback_url": "https://cook.example/api/auth/callback"}))
     with TestClient(browser.app, base_url="https://cook.example") as secure_browser:
         query = begin(secure_browser, provider)
         response = secure_browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code"}, follow_redirects=False)

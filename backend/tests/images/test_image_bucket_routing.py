@@ -19,6 +19,7 @@ from tests.infrastructure.storage.test_storage_adapter import configuration
 
 
 @pytest.mark.parametrize("kind", list(ImageKind))
+@pytest.mark.usefixtures("recipe_session")
 def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
     client: TestClient, kind: ImageKind,
 ) -> None:
@@ -45,13 +46,14 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
                 stack.enter_context(patch.object(adapter, "close"))
             source = stack.enter_context(Stubber(adapters[source_bucket]._internal))
             target = stack.enter_context(Stubber(adapters[other_bucket]._internal))
-            target.add_client_error(
-                "get_object", service_error_code="NoSuchKey", http_status_code=404,
-                expected_params={
-                    "Bucket": other_bucket,
-                    "Key": f"{other.value}-image-uploads/{upload_id}",
-                },
-            )
+            if other == ImageKind.FOODSTUFF:
+                target.add_client_error(
+                    "get_object", service_error_code="NoSuchKey", http_status_code=404,
+                    expected_params={
+                        "Bucket": other_bucket,
+                        "Key": f"{other.value}-image-uploads/{upload_id}",
+                    },
+                )
             source.add_response(
                 "get_object",
                 {"ContentLength": len(data), "Body": StreamingBody(BytesIO(data), len(data))},
@@ -64,10 +66,11 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
             source.add_response(
                 "delete_object", {}, {"Bucket": source_bucket, "Key": temporary_key},
             )
-            source.add_client_error(
-                "get_object", service_error_code="NoSuchKey", http_status_code=404,
-                expected_params={"Bucket": source_bucket, "Key": temporary_key},
-            )
+            if kind == ImageKind.FOODSTUFF:
+                source.add_client_error(
+                    "get_object", service_error_code="NoSuchKey", http_status_code=404,
+                    expected_params={"Bucket": source_bucket, "Key": temporary_key},
+                )
             settings = stack.enter_context(patch("app.images.dependencies.get_settings"))
             settings.return_value.storage_config = config
             stack.enter_context(patch("app.images.dependencies.Storage", side_effect=storage_for_bucket))

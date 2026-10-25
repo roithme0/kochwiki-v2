@@ -38,6 +38,7 @@ def images() -> tuple[UUID, UUID, UUID]:
 
 
 @pytest.mark.parametrize("choice", ["omit", "null", "image"])
+@pytest.mark.usefixtures("recipe_session")
 def test_create_and_read_image(client: TestClient, images: tuple[UUID, UUID, UUID], choice: str) -> None:
     payload: dict[str, object] = {"name": "Carrot", "unit": "G"}
     expected = str(images[0]) if choice == "image" else None
@@ -51,6 +52,7 @@ def test_create_and_read_image(client: TestClient, images: tuple[UUID, UUID, UUI
     assert client.get("/foodstuffs").json() == [saved]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_update_preserves_replaces_removes_and_retains_metadata(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
@@ -80,6 +82,7 @@ def test_update_preserves_replaces_removes_and_retains_metadata(
 
 
 @pytest.mark.parametrize("invalid", ["missing", "recipe", "malformed"])
+@pytest.mark.usefixtures("recipe_session")
 def test_invalid_image_rejects_entire_create_and_update(
     client: TestClient, images: tuple[UUID, UUID, UUID], invalid: str,
 ) -> None:
@@ -94,6 +97,7 @@ def test_invalid_image_rejects_entire_create_and_update(
     assert client.get("/foodstuffs").json() == [original]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_failure_after_flush_rolls_back_image_and_other_fields(
     client: TestClient, images: tuple[UUID, UUID, UUID], monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -110,6 +114,7 @@ def test_failure_after_flush_rolls_back_image_and_other_fields(
     assert client.get(f"/foodstuffs/{original['id']}").json() == original
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_replacement_updates_historical_ingredients_and_search_without_embedding_refresh(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
@@ -135,6 +140,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
     assert search_service(provider).search("Carrot", 5)[0].foodstuff.imageId == images[1]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_foodstuffs(
     client: TestClient, images: tuple[UUID, UUID, UUID],
 ) -> None:
@@ -148,8 +154,8 @@ def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_fo
                 {"index": 1, "amount": 100, "foodstuff": {"kind": "existing", "foodstuffId": saved['id']}},
                 {"index": 2, "amount": 100, "foodstuff": {"kind": "temporary", "definition": {"name": "New", "unit": "G"}}},
             ]},
-        }))
-        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId)
+        }), user_id=recipe['ownerId'])
+        presentation = resolve_recipe_proposal_presentation(session, store, proposal.proposalId, user_id=recipe['ownerId'])
         assert presentation.ingredients[0].foodstuff.imageId == images[0]
         assert presentation.ingredients[1].foodstuff.imageId is None
         body = presentation.model_dump(mode="json")
@@ -158,6 +164,7 @@ def test_proposal_presentation_relays_catalogue_images_and_null_for_temporary_fo
         assert 'imageId' not in definitions['FoodstuffFields']['properties']
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foreign_key_protects_referenced_metadata(client: TestClient, images: tuple[UUID, UUID, UUID]) -> None:
     client.post("/foodstuffs", json={"name": "Carrot", "unit": "G", "imageId": str(images[0])})
     with SessionLocal.begin() as session:
@@ -168,11 +175,11 @@ def test_foreign_key_protects_referenced_metadata(client: TestClient, images: tu
             session.flush()
 
 
-def test_mcp_image_association_rules(images: tuple[UUID, UUID, UUID]) -> None:
+def test_mcp_image_association_rules(images: tuple[UUID, UUID, UUID], mcp_headers: dict[str, str]) -> None:
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://localhost") as http:
+            async with httpx2.AsyncClient(headers=mcp_headers, transport=httpx2.ASGITransport(app=app), base_url="http://localhost") as http:
                 async with Client(streamable_http_client("http://localhost/mcp/", http_client=http)) as client:
                     result = await client.call_tool("create_foodstuff", {"foodstuff": {
                         "name": "Carrot", "unit": "G", "imageId": str(images[0]),

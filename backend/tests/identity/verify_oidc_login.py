@@ -89,21 +89,16 @@ class Browser:
             raise RuntimeError("The hosted login form was not returned.")
         return page
 
-    def users(self) -> list[tuple[int, str]]:
-        response = self.request(self.base_url + "/api/users")
+    def current_user(self) -> tuple[int, str]:
+        response = self.request(self.base_url + "/api/auth/me")
         if response.status != 200:
-            raise RuntimeError("The local users could not be inspected.")
+            raise RuntimeError("The current user could not be inspected.")
         payload: object = json.loads(response.body)
-        if not isinstance(payload, list):
-            raise RuntimeError("Unexpected user-list contract.")
-        users: list[tuple[int, str]] = []
-        for value in payload:
-            if not isinstance(value, dict) or set(value) != {"id", "display_name"}:
-                raise RuntimeError("The user contract exposes unexpected fields.")
-            if not isinstance(value["id"], int) or not isinstance(value["display_name"], str):
-                raise RuntimeError("Invalid user-list fields.")
-            users.append((value["id"], value["display_name"]))
-        return users
+        if not isinstance(payload, dict) or set(payload) != {"id", "display_name"}:
+            raise RuntimeError("The current-user contract exposes unexpected fields.")
+        if not isinstance(payload["id"], int) or not isinstance(payload["display_name"], str):
+            raise RuntimeError("Invalid current-user fields.")
+        return payload["id"], payload["display_name"]
 
 
 def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
@@ -114,8 +109,8 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     run = secrets.token_hex(6)
     email, password = f"kochwiki-login-{run}@example.invalid", f"kitchen family verification {run}"
     browser = Browser(base_url, provider_url)
-    if browser.users():
-        raise RuntimeError("Verification requires an empty disposable KochWiki database.")
+    if browser.request(base_url + "/api/auth/me").status != 401:
+        raise RuntimeError("A fresh browser unexpectedly has an application session.")
     page = browser.login_page()
     if not page.registration:
         raise RuntimeError("Registration link is missing.")
@@ -132,18 +127,20 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     if any(cookie.name == "kochwiki_login" for cookie in browser.cookies):
         raise RuntimeError("The temporary login cookie was not cleared.")
     print("PASS: registration through the gateway and validated backend callback")
-    users = browser.users()
-    if len(users) != 1 or users[0][1] != "KochWiki Verification":
+    user = browser.current_user()
+    if user[1] != "KochWiki Verification":
         raise RuntimeError("First login did not create the expected local profile.")
     if email in registered.body or "KochWiki Verification" in registered.body:
         raise RuntimeError("The callback exposed profile information.")
     print("PASS: first login creates a local user without exposing its provider identity")
-    if browser.request(base_url + "/api/users", {"display_name": "Manual user"}).status != 405:
-        raise RuntimeError("Manual user creation is still exposed.")
-    print("PASS: manual user creation is unavailable")
-    if browser.request(base_url + f"/api/users/{users[0][0]}", {"display_name": "Local edit"}, method="PATCH").status != 405:
-        raise RuntimeError("Local provider-profile editing is still exposed.")
-    print("PASS: local profile editing is unavailable")
+    for method, path in (
+        ("GET", "/api/users"), ("GET", f"/api/users/{user[0]}"),
+        ("POST", "/api/users"), ("PATCH", f"/api/users/{user[0]}"),
+        ("DELETE", f"/api/users/{user[0]}"),
+    ):
+        if browser.request(base_url + path, method=method).status != 404:
+            raise RuntimeError("Local user management is still exposed.")
+    print("PASS: local user management is unavailable")
 
     fresh_browser = Browser(base_url, provider_url)
     login = fresh_browser.login_page()
@@ -151,13 +148,13 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     if signed_in.status != 302 or signed_in.location != "/":
         raise RuntimeError("Existing-account login failed backend verification.")
     print("PASS: existing-account email/password login through a fresh browser")
-    if fresh_browser.users() != users:
+    if fresh_browser.current_user() != user:
         raise RuntimeError("Repeat login changed the local user mapping.")
     reused = browser.follow(base_url + "/api/auth/login")
     if reused.status != 302 or reused.location != "/":
         raise RuntimeError("An existing provider session failed verification.")
     print("PASS: an existing Keycloak browser session completes a new login transaction")
-    if browser.users() != users:
+    if browser.current_user() != user:
         raise RuntimeError("Provider-session login changed the local user mapping.")
     duplicate_browser = Browser(base_url, provider_url)
     duplicate_page = duplicate_browser.login_page()
@@ -166,16 +163,18 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         "email": f"kochwiki-second-{run}@example.invalid", "password": password,
         "password-confirm": password, display_field: "KochWiki Verification",
     })
-    duplicate_users = duplicate_browser.users()
-    if duplicate.status != 302 or duplicate.location != "/" or len(duplicate_users) != 2 or duplicate_users[0][0] == duplicate_users[1][0]:
+    if duplicate.status != 302 or duplicate.location != "/":
+        raise RuntimeError("Separate-account registration failed backend verification.")
+    duplicate_user = duplicate_browser.current_user()
+    if duplicate_user[0] == user[0]:
         raise RuntimeError("A separate provider account did not receive a separate local identity.")
-    if any(name != "KochWiki Verification" for _, name in duplicate_users):
+    if duplicate_user[1] != user[1]:
         raise RuntimeError("Duplicate display names were not preserved.")
     print("PASS: separate provider accounts can share a display name")
     if browser.request(base_url + "/api/auth/callback?state=unknown&code=unknown").status != 400:
         raise RuntimeError("An unbound callback was accepted.")
     current = browser.request(base_url + "/api/auth/me")
-    if current.status != 200 or json.loads(current.body) != {"id": users[0][0], "display_name": users[0][1]}:
+    if current.status != 200 or json.loads(current.body) != {"id": user[0], "display_name": user[1]}:
         raise RuntimeError("Authenticated-user lookup failed or an invalid callback lost the existing session.")
     session_cookie = next((cookie for cookie in browser.cookies if cookie.name == "kochwiki_session"), None)
     if session_cookie is None or session_cookie.path != "/api" or session_cookie.expires is None:

@@ -33,6 +33,7 @@ describe('RecipeEditorComponent', () => {
   const recipeVersion: RecipeVersionOut = {
     imageId: null,
     imageDimensions: null,
+    ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-0000-0000-000000000001',
     state: 'active',

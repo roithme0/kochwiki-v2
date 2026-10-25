@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     oidc_callback_url: str | None = None
     oidc_backchannel_url: str | None = None
     oidc_allow_insecure_http: bool = False
+    csrf_trusted_origins: str = ""
     storage_endpoint_url: str | None = None
     storage_public_origin: str | None = None
     storage_region: str | None = None
@@ -28,6 +29,23 @@ class Settings(BaseSettings):
     mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
+
+    @field_validator("csrf_trusted_origins")
+    @classmethod
+    def validate_csrf_trusted_origins(cls, value: str) -> str:
+        from app.core.urls import validate_http_origin
+
+        for origin in value.split(","):
+            if not origin.strip():
+                continue
+            validate_http_origin(origin.strip())
+            if "*" in origin:
+                raise ValueError("CSRF trusted origins must not contain wildcards")
+        return value
+
+    @property
+    def csrf_trusted_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.csrf_trusted_origins.split(",") if origin.strip()]
 
     @field_validator("oidc_issuer", "oidc_client_secret", "oidc_callback_url", "oidc_backchannel_url", mode="before")
     @classmethod

@@ -11,6 +11,7 @@ from app.infrastructure.embeddings.embeddings import (
     QueryEmbeddingError,
     SemanticSearchUnavailable,
 )
+from app.infrastructure.mcp.asserted_identity import current_caller
 from app.infrastructure.mcp.errors import tool_errors
 from app.infrastructure.mcp.services import MCPServices
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut
@@ -82,7 +83,7 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         )
     )
     def create_recipe_proposal(proposal: RecipeProposalCreate) -> RecipeProposalOut:
-        """Register a complete candidate recipe in memory.
+        """Register a private candidate for a recipe owned by the caller.
 
         Ingredients reference catalogue IDs or contain inline temporary definitions.
         baseProposalId references a stored proposal; sourceRecipeVersionId must
@@ -92,7 +93,9 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         restart. No database records are written.
         """
         with tool_errors("Recipe proposal", "creation"), SessionLocal() as session:
-            return services.recipe_proposals.create(session, proposal)
+            return services.recipe_proposals.create(
+                session, proposal, user_id=current_caller().user_id
+            )
 
     @server.tool(
         annotations=ToolAnnotations(
@@ -103,7 +106,7 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         )
     )
     def get_recipe_proposal(proposal_id: UUID) -> RecipeProposalDetailsOut:
-        """Retrieve a stored proposal and its resolved presentation by proposal ID.
+        """Retrieve the caller's stored proposal and its resolved presentation.
 
         The proposal contains the original input and stored identifiers.
         The presentation enriches existing foodstuffs from the current catalogue,
@@ -112,9 +115,14 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         """
         with tool_errors("Recipe proposal", "retrieval"), SessionLocal() as session:
             return RecipeProposalDetailsOut(
-                proposal=services.recipe_proposals.get(proposal_id),
+                proposal=services.recipe_proposals.get(
+                    proposal_id, user_id=current_caller().user_id
+                ),
                 presentation=resolve_recipe_proposal_presentation(
-                    session, services.recipe_proposals, proposal_id
+                    session,
+                    services.recipe_proposals,
+                    proposal_id,
+                    user_id=current_caller().user_id,
                 ),
             )
 
@@ -127,7 +135,7 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         )
     )
     def save_recipe_proposal(proposal_id: UUID) -> RecipeVersionOut:
-        """Save a stored proposal as a draft and create its temporary foodstuffs.
+        """Save the caller's proposal as a draft in their owned recipe lineage.
 
         All creations commit atomically or roll back together. The draft preserves
         the source recipe's lineage. Repeated saves return the same created
@@ -136,4 +144,9 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
         per-serving nutrition.
         """
         with tool_errors("Recipe proposal", "saving"):
-            return save_proposal(SessionLocal, services.recipe_proposals, proposal_id)
+            return save_proposal(
+                SessionLocal,
+                services.recipe_proposals,
+                proposal_id,
+                user_id=current_caller().user_id,
+            )

@@ -1,11 +1,19 @@
 from collections.abc import Sequence
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import get_db, get_write_db
-from app.core.schemas.errors import NOT_FOUND_AND_CONFLICT_RESPONSES, NOT_FOUND_RESPONSE
+from app.identity.models.user import User
+from app.identity.dependencies import require_current_user
+from app.core.schemas.errors import (
+    AUTHENTICATION_RESPONSES,
+    FORBIDDEN_RESPONSE,
+    NOT_FOUND_AND_CONFLICT_RESPONSES,
+    NOT_FOUND_RESPONSE,
+)
+from app.recipes.dependencies import require_lineage_owner
 from app.recipes.schemas.recipe import (
     IngredientOut,
     RecipePresentationOut,
@@ -16,13 +24,16 @@ from app.recipes.schemas.recipe import (
 )
 from app.recipes.services import recipes
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses=AUTHENTICATION_RESPONSES,
+)
 
 
 @router.post(
     "/recipe-presentations/resolve",
     response_model=RecipePresentationOut,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
 )
 def resolve_recipe_presentation(
     payload: RecipePresentationResolve, session: Session = Depends(get_db)
@@ -84,19 +95,21 @@ def list_historical_recipe_versions(
     "/recipes",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
 )
 def create_recipe(
     payload: RecipeVersionWrite,
+    user: User = Depends(require_current_user, scope="function"),
     session: Session = Depends(get_write_db, scope="function"),
 ) -> RecipeVersionOut:
-    return recipes.recipe_version_out(recipes.create_recipe(session, payload))
+    return recipes.recipe_version_out(recipes.create_recipe(session, payload, owner_id=user.id))
 
 
 @router.post(
     "/recipes/{lineage_id}/publish",
     response_model=RecipeVersionOut,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def publish_active_recipe_edit(
     lineage_id: UUID,
@@ -112,7 +125,8 @@ def publish_active_recipe_edit(
     "/recipes/{lineage_id}/drafts",
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def create_recipe_draft(
     lineage_id: UUID,
@@ -127,7 +141,8 @@ def create_recipe_draft(
 @router.put(
     "/recipes/{lineage_id}/drafts/{version_id}",
     response_model=RecipeVersionOut,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def update_recipe_draft(
     lineage_id: UUID,
@@ -143,7 +158,8 @@ def update_recipe_draft(
 @router.post(
     "/recipes/{lineage_id}/drafts/{version_id}/publish",
     response_model=RecipeVersionOut,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def publish_recipe_draft(
     lineage_id: UUID,
@@ -158,27 +174,27 @@ def publish_recipe_draft(
 @router.delete(
     "/recipes/{lineage_id}/drafts/{version_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def discard_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
     session: Session = Depends(get_write_db, scope="function"),
-) -> Response:
+) -> None:
     recipes.discard_recipe_draft(session, lineage_id, version_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete(
     "/recipes/{lineage_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=NOT_FOUND_RESPONSE,
+    responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
+    dependencies=[Depends(require_lineage_owner, scope="function")],
 )
 def delete_recipe_lineage(
     lineage_id: UUID, session: Session = Depends(get_write_db, scope="function")
-) -> Response:
+) -> None:
     recipes.delete_recipe_lineage(session, lineage_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/ingredients", response_model=list[IngredientOut])

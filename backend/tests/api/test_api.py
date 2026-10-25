@@ -47,6 +47,7 @@ def create_recipe(client: TestClient, name: str, foodstuff_id: object | None = N
     return response.json()
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(client: TestClient) -> None:
     known = create_foodstuff(client, protein=0, fat=None)
     partial = create_foodstuff(client, name="Partial", kcal=None, protein=None, fat=None)
@@ -84,6 +85,7 @@ def recipe_presentation_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_presentation(
     client: TestClient,
 ) -> None:
@@ -142,6 +144,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert updated.json()["kcal"] == {"status": "exact", "value": 100}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
 
@@ -159,6 +162,7 @@ def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(cli
     assert response.json()["fat"] == {"status": "exact", "value": 3.5}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, unit="PIECE", kcal=9999, carbs=0, protein=None, fat=0)
     response = client.post(
@@ -179,6 +183,7 @@ def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestCli
     assert body["preptime"] is None
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     unknown = client.post(
@@ -220,6 +225,7 @@ def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(c
     ).status_code == 422
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_requires_all_fields(client: TestClient) -> None:
     for field in ("servings", "preptime", "ingredients", "steps"):
         payload = recipe_presentation_payload()
@@ -228,6 +234,7 @@ def test_recipe_presentation_resolver_requires_all_fields(client: TestClient) ->
 
 
 @pytest.mark.parametrize("amount", ["12.5", True, None])
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_and_recipe_writes_reject_non_numeric_amounts(
     client: TestClient, amount: object
 ) -> None:
@@ -244,6 +251,7 @@ def test_resolver_and_recipe_writes_reject_non_numeric_amounts(
 
 
 @pytest.mark.parametrize("field,value", [("servings", "2"), ("servings", True), ("preptime", "10")])
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_rejects_coerced_integer_fields(
     client: TestClient, field: str, value: object
 ) -> None:
@@ -254,6 +262,7 @@ def test_resolver_rejects_coerced_integer_fields(
     assert response.json()["detail"][0]["loc"] == ["body", field]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(client: TestClient) -> None:
     assert client.post(
         "/recipe-presentations/resolve", json=recipe_presentation_payload(servings=0)
@@ -273,6 +282,7 @@ def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(client:
     ).status_code == 422
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: TestClient) -> None:
     oats = create_foodstuff(client)
     recipe_version = create_recipe(client, "Oat breakfast", oats["id"])
@@ -289,6 +299,7 @@ def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: Te
     assert client.get(f"/recipes/{recipe_version['recipeLineageId']}/history").json() == []
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_active_edits_create_history_and_drafts_are_separate(client: TestClient) -> None:
     active_version = create_recipe(client, "Original")
     lineage_id = active_version["recipeLineageId"]
@@ -317,6 +328,7 @@ def test_active_edits_create_history_and_drafts_are_separate(client: TestClient)
     assert client.get(f"/recipes/{lineage_id}/versions/{active_version['recipeVersionId']}").json()["state"] == "historical"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_drafts_update_in_place_and_publish_without_affecting_other_drafts(client: TestClient) -> None:
     active_version = create_recipe(client, "Active")
     lineage_id = active_version["recipeLineageId"]
@@ -345,6 +357,7 @@ def test_drafts_update_in_place_and_publish_without_affecting_other_drafts(clien
     assert client.delete(f"/recipes/{lineage_id}/drafts/{active_version['recipeVersionId']}").status_code == 409
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_duplicate_names_and_foodstuff_references_across_history_and_drafts(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     first_recipe_version = create_recipe(client, "Same name", foodstuff["id"])
@@ -369,6 +382,7 @@ def test_duplicate_names_and_foodstuff_references_across_history_and_drafts(clie
     assert client.delete(f"/foodstuffs/{foodstuff['id']}").status_code == 204
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_lists_all_referencing_recipe_versions(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     initial_recipe_version = create_recipe(client, "Initial", foodstuff["id"])
@@ -387,6 +401,7 @@ def test_foodstuff_lists_all_referencing_recipe_versions(client: TestClient) -> 
     )
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_validation_and_version_contracts(client: TestClient) -> None:
     invalid = client.post("/foodstuffs", json={"name": "Missing required values"})
     assert invalid.status_code == 422
@@ -445,10 +460,11 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_domain_error_responses_match_openapi(client: TestClient) -> None:
-    missing = client.get("/users/999")
+    missing = client.get("/foodstuffs/999")
     assert missing.status_code == 404
-    assert missing.json() == {"detail": "User with id 999 not found"}
+    assert missing.json() == {"detail": "Foodstuff with id 999 not found"}
     assert ErrorResponse.model_validate(missing.json()).detail == missing.json()["detail"]
 
     create_foodstuff(client, brand="Mill")
@@ -480,8 +496,6 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
         ("/foodstuffs", "post"): {409},
         ("/foodstuffs/{foodstuff_id}", "patch"): {404, 409},
         ("/foodstuffs/{foodstuff_id}", "delete"): {404, 409},
-        ("/users/{user_id}", "get"): {404},
-        ("/users/{user_id}", "delete"): {404},
     }
     for (path, method), statuses in expected_responses.items():
         responses = openapi["paths"][path][method]["responses"]
@@ -489,7 +503,8 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
             assert responses[str(status)]["content"]["application/json"]["schema"] == error_schema
 
 
-def test_success_response_media_types_and_bodies_match_openapi(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_success_response_media_types_and_bodies_match_openapi(client: TestClient) -> None:
     paths = client.get("/api/openapi.json").json()["paths"]
 
     version = client.get("/meta/version")
@@ -501,7 +516,6 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
 
     delete_routes = (
         ("/foodstuffs/{foodstuff_id}", "delete"),
-        ("/users/{user_id}", "delete"),
         ("/recipes/{lineage_id}/drafts/{version_id}", "delete"),
         ("/recipes/{lineage_id}", "delete"),
     )
@@ -513,18 +527,17 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
     draft = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft"))
     assert draft.status_code == 201
     foodstuff = create_foodstuff(client)
-    user = provider_user("To delete")
 
     for response in (
         client.delete(f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"),
         client.delete(f"/recipes/{lineage_id}"),
         client.delete(f"/foodstuffs/{foodstuff['id']}"),
-        client.delete(f"/users/{user.id}"),
     ):
         assert response.status_code == 204
         assert response.content == b""
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_numeric_success_schema_matches_json_responses(client: TestClient) -> None:
     openapi = client.get("/api/openapi.json").json()
     schemas = openapi["components"]["schemas"]
@@ -564,6 +577,7 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
     for name in ("FoodstuffOut", "FoodstuffSummaryOut"):
@@ -590,24 +604,26 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
-def test_user_success_responses_follow_closed_schema(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+def test_current_user_success_response_follows_closed_schema(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+) -> None:
     schema = client.get("/api/openapi.json").json()["components"]["schemas"]["UserOut"]
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == set(schema["properties"])
 
-    user = provider_user("Roi")
-    for body in (
-        client.get("/users").json()[0],
-        client.get(f"/users/{user.id}").json(),
-    ):
-        assert set(body) == set(schema["properties"])
-        UserOut.model_validate(body)
+    user = sign_in(client)
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    assert response.json() == user.model_dump()
+    assert set(response.json()) == set(schema["properties"])
+    UserOut.model_validate(response.json())
 
     with pytest.raises(ValidationError) as error:
         UserOut.model_validate({**user.model_dump(), "unexpected": True})
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
     for name in ("RecipeVersionOut", "IngredientOut", "StepOut", "FoodstuffSummaryOut"):
@@ -650,6 +666,7 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
     oats = create_foodstuff(client)
     egg = create_foodstuff(client, name="Egg", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5)
@@ -679,6 +696,7 @@ def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
     assert client.get("/steps").json()[0]["recipeVersionId"] == recipe_version["recipeVersionId"]
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(client: TestClient) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
     recipe_version = create_recipe(client, "Unknown calories", foodstuff["id"])
@@ -691,6 +709,7 @@ def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(client: Te
     assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()["kcal"] == {"status": "exact", "value": 200}
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestClient) -> None:
     oats = create_foodstuff(client)
     egg = create_foodstuff(client, name="Egg")
@@ -728,15 +747,16 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
     assert duplicate_step_position.status_code == 422
 
 
-def test_user_contract_has_no_shopping_list_side_effect(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
-    created = provider_user("Roi")
+def test_current_user_contract_has_no_shopping_list_side_effect(
+    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+) -> None:
+    created = sign_in(client)
 
-    assert created.model_dump() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/1").json() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/999").status_code == 404
+    assert client.get("/auth/me").json() == created.model_dump()
     assert client.get("/shoppingLists/1").status_code == 404
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_draft_can_publish_after_a_newer_active_version(client: TestClient) -> None:
     initial_recipe_version = create_recipe(client, "Initial")
     lineage_id = initial_recipe_version["recipeLineageId"]
@@ -755,6 +775,7 @@ def test_draft_can_publish_after_a_newer_active_version(client: TestClient) -> N
     }
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_failed_direct_publication_preserves_active_version(client: TestClient) -> None:
     active_recipe_version = create_recipe(client, "Original")
 
@@ -768,6 +789,7 @@ def test_failed_direct_publication_preserves_active_version(client: TestClient) 
     assert client.get(f"/recipes/{active_recipe_version['recipeLineageId']}/history").json() == []
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_historical_versions_reject_draft_mutation_endpoints(client: TestClient) -> None:
     initial_recipe_version = create_recipe(client, "Initial")
     lineage_id = initial_recipe_version["recipeLineageId"]
@@ -780,6 +802,7 @@ def test_historical_versions_reject_draft_mutation_endpoints(client: TestClient)
     assert client.get(f"/recipes/{lineage_id}/versions/{initial_recipe_version['recipeVersionId']}").json()["name"] == "Initial"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_deletion_is_blocked_by_historical_or_draft_only_references(client: TestClient) -> None:
     historical_foodstuff = create_foodstuff(client, name="Historical")
     replacement_foodstuff = create_foodstuff(client, name="Replacement")

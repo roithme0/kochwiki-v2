@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote
 from collections.abc import Callable
 from uuid import uuid4
 
@@ -22,6 +23,10 @@ from app.main import create_app
 from app.identity.schemas.user import UserOut
 from app.identity.schemas.oidc import Identity
 from app.identity.services.users import map_identity
+from app.identity.config import SESSION_COOKIE
+from app.identity import dependencies
+from app.identity.services.sessions import establish_session
+from app.core.config import Settings
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -33,7 +38,7 @@ def migrate_database() -> None:
 def clear_database() -> None:
     with engine.begin() as connection:
         connection.execute(
-            text('TRUNCATE TABLE image_asset, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, custom_user RESTART IDENTITY CASCADE')
+            text('TRUNCATE TABLE image_asset, login_transaction, ingredient, step, recipe_version, recipe_lineage, foodstuff, "user" RESTART IDENTITY CASCADE')
         )
 
 
@@ -53,6 +58,48 @@ def provider_user() -> Callable[[str], UserOut]:
 
 
 @pytest.fixture
+def mcp_user(provider_user: Callable[[str], UserOut]) -> UserOut:
+    return provider_user("MCP caller")
+
+
+@pytest.fixture
+def mcp_headers(mcp_user: UserOut) -> dict[str, str]:
+    return {"X-Application-User": f"{quote(mcp_user.issuer, safe="")}:{quote(mcp_user.subject, safe="")}"}
+
+
+@pytest.fixture
 def client() -> TestClient:
-    with TestClient(create_app()) as test_client:
+    with TestClient(create_app(), headers={"Origin": "http://localhost:8000"}) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def sign_in(
+    monkeypatch: pytest.MonkeyPatch, provider_user: Callable[[str], UserOut],
+) -> Callable[[TestClient], UserOut]:
+    settings = Settings(
+        _env_file=None, oidc_issuer="http://localhost:8006/realms/services",
+        oidc_client_secret="test-client-secret-value-at-least-32-characters",
+        oidc_callback_url="http://localhost:8000/api/auth/callback",
+    )
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+
+    def authenticate(test_client: TestClient) -> UserOut:
+        user = provider_user("Recipe creator")
+        with SessionLocal.begin() as session:
+            secret, _ = establish_session(session, user.id, None)
+        test_client.cookies.clear()
+        test_client.cookies.set(SESSION_COOKIE, secret)
+        return user
+
+    return authenticate
+
+
+@pytest.fixture
+def recipe_session(client: TestClient, sign_in: Callable[[TestClient], UserOut]) -> UserOut:
+    return sign_in(client)
+
+
+@pytest.fixture
+def authenticated_client(client: TestClient, recipe_session: UserOut) -> TestClient:
+    return client

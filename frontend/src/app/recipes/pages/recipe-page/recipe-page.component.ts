@@ -1,3 +1,4 @@
+import { ActiveUserService } from '../../../core/services/active-user.service';
 import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import {
@@ -48,6 +49,12 @@ export class RecipePageComponent implements OnInit {
   readonly recipeBackendService = inject(RecipeBackendService);
   readonly snackBarService = inject(SnackBarService);
   readonly dialog = inject(MatDialog);
+  readonly activeUser = inject(ActiveUserService);
+
+  ownsRecipe(): boolean {
+    const user = this.activeUser.activeUser();
+    return user !== null && user.id === this.recipeVersion?.ownerId;
+  }
 
   recipeLineageId: string | undefined;
   recipeVersionId: string | null;
@@ -102,6 +109,7 @@ export class RecipePageComponent implements OnInit {
 
   openPatchRecipeDialog(): void {
     if (
+      !this.ownsRecipe() ||
       this.recipeVersion === undefined ||
       this.recipeVersion.state === 'historical'
     )
@@ -119,6 +127,7 @@ export class RecipePageComponent implements OnInit {
   }
 
   openDeleteRecipeDialog(): void {
+    if (!this.ownsRecipe()) return;
     const recipeLineageId: string | undefined = this.recipeLineageId;
     if (recipeLineageId === undefined) {
       console.error('no recipe lineage id provided');
@@ -144,7 +153,12 @@ export class RecipePageComponent implements OnInit {
 
   openPublishDraftDialog(): void {
     const recipeVersion = this.recipeVersion;
-    if (recipeVersion === undefined || recipeVersion.state !== 'draft') return;
+    if (
+      !this.ownsRecipe() ||
+      recipeVersion === undefined ||
+      recipeVersion.state !== 'draft'
+    )
+      return;
     const data: ConfirmationDialogData = {
       title: 'Entwurf als aktive Version übernehmen?',
       description:
@@ -163,7 +177,12 @@ export class RecipePageComponent implements OnInit {
 
   openDiscardDraftDialog(): void {
     const recipeVersion = this.recipeVersion;
-    if (recipeVersion === undefined || recipeVersion.state !== 'draft') return;
+    if (
+      !this.ownsRecipe() ||
+      recipeVersion === undefined ||
+      recipeVersion.state !== 'draft'
+    )
+      return;
     const data: ConfirmationDialogData = {
       title: 'Entwurf verwerfen?',
       confirmLabel: 'Verwerfen',

@@ -10,7 +10,12 @@ import { PageHeaderService } from '../../services/page-header.service';
 import { BackendMetaService } from '../../services/backend-meta.service';
 import type { UserOut } from '../../api/generated';
 
-const USER: UserOut = { id: 7, display_name: 'Roi' };
+const USER: UserOut = {
+  id: 7,
+  display_name: 'Roi',
+  issuer: 'https://idp.example/realms/test',
+  subject: 'user-7',
+};
 
 describe('PageHeaderComponent', () => {
   const navigate = vi.fn<Router['navigate']>();
