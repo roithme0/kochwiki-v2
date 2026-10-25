@@ -3,4 +3,6 @@ build/
 dist/
 *.egg-info/
 .venv/
-.pytest_cache/
+.pytest_cache*/
+.codex-validation/
+tests/.pytest_tmp*/

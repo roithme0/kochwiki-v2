@@ -1,3 +1,4 @@
 -r requirements.in
 pytest
 boto3-stubs[s3]
+black==26.10.1
