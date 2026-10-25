@@ -116,7 +116,8 @@ class OIDCLogin:
                     browser_hash=digest(binding),
                     nonce=nonce,
                     verifier=verifier,
-                    expires_at=now + timedelta(seconds=LOGIN_TRANSACTION_LIFETIME_SECONDS),
+                    expires_at=now
+                    + timedelta(seconds=LOGIN_TRANSACTION_LIFETIME_SECONDS),
                 )
             )
         challenge = (

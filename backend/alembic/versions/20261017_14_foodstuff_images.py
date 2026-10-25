@@ -14,7 +14,12 @@ depends_on: Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column("foodstuff", sa.Column("image_id", sa.Uuid(), nullable=True))
     op.create_foreign_key(
-        "fk_foodstuff_image_id", "foodstuff", "image_asset", ["image_id"], ["id"], ondelete="RESTRICT"
+        "fk_foodstuff_image_id",
+        "foodstuff",
+        "image_asset",
+        ["image_id"],
+        ["id"],
+        ondelete="RESTRICT",
     )
     op.create_index("ix_foodstuff_image_id", "foodstuff", ["image_id"])
 

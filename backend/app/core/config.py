@@ -24,9 +24,13 @@ class Settings(BaseSettings):
     storage_bucket_foodstuff_images: str | None = None
     storage_access_key_id: SecretStr | None = None
     storage_secret_access_key: SecretStr | None = None
-    mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
+    mcp_allowed_hosts: str = (
+        "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
+    )
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
+    model_config = SettingsConfigDict(
+        env_file=".env", extra="ignore", hide_input_in_errors=True
+    )
 
     @field_validator("ai_service_url", mode="before")
     @classmethod
@@ -56,9 +60,19 @@ class Settings(BaseSettings):
 
     @property
     def csrf_trusted_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.csrf_trusted_origins.split(",") if origin.strip()]
+        return [
+            origin.strip()
+            for origin in self.csrf_trusted_origins.split(",")
+            if origin.strip()
+        ]
 
-    @field_validator("oidc_issuer", "oidc_client_secret", "oidc_callback_url", "oidc_backchannel_url", mode="before")
+    @field_validator(
+        "oidc_issuer",
+        "oidc_client_secret",
+        "oidc_callback_url",
+        "oidc_backchannel_url",
+        mode="before",
+    )
     @classmethod
     def empty_oidc_value(cls, value: object) -> object:
         return None if value == "" else value
@@ -89,12 +103,16 @@ class Settings(BaseSettings):
         if all(value is None for value in values.values()):
             return None
         if any(value is None for value in values.values()):
-            raise ValueError("Storage configuration requires all seven STORAGE_* settings, including both image buckets")
+            raise ValueError(
+                "Storage configuration requires all seven STORAGE_* settings, including both image buckets"
+            )
         return StorageConfig.model_validate(values)
 
     @property
     def mcp_allowed_host_list(self) -> list[str]:
-        return [host.strip() for host in self.mcp_allowed_hosts.split(",") if host.strip()]
+        return [
+            host.strip() for host in self.mcp_allowed_hosts.split(",") if host.strip()
+        ]
 
 
 @lru_cache

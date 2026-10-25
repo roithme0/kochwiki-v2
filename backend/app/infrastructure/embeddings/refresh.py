@@ -33,8 +33,13 @@ class RefreshCoordinator(Generic[RefreshId]):
     def mark(self, session: Session, record_id: RefreshId) -> None:
         transaction = session.get_nested_transaction() or session.get_transaction()
         if transaction is None:
-            raise RuntimeError(f"{self.label} refresh requires an active write transaction")
-        pending = cast(dict[SessionTransaction, set[RefreshId]], session.info.setdefault(self.transaction_key, {}))
+            raise RuntimeError(
+                f"{self.label} refresh requires an active write transaction"
+            )
+        pending = cast(
+            dict[SessionTransaction, set[RefreshId]],
+            session.info.setdefault(self.transaction_key, {}),
+        )
         pending.setdefault(transaction, set()).add(record_id)
 
     def subscribe(self, subscriber: Callable[[RefreshId], None]) -> None:
@@ -46,7 +51,10 @@ class RefreshCoordinator(Generic[RefreshId]):
             self._subscribers.discard(subscriber)
 
     def _after_commit(self, session: Session) -> None:
-        pending = cast(dict[SessionTransaction, set[RefreshId]], session.info.get(self.transaction_key, {}))
+        pending = cast(
+            dict[SessionTransaction, set[RefreshId]],
+            session.info.get(self.transaction_key, {}),
+        )
         transaction = session.get_nested_transaction() or session.get_transaction()
         ids = pending.pop(transaction, set()) if transaction else set()
         if transaction and transaction.nested and transaction.parent:
@@ -59,10 +67,19 @@ class RefreshCoordinator(Generic[RefreshId]):
                 try:
                     subscriber(record_id)
                 except Exception as error:
-                    logger.error("Committed %s refresh scheduling failed (%s)", self.label, type(error).__name__)
+                    logger.error(
+                        "Committed %s refresh scheduling failed (%s)",
+                        self.label,
+                        type(error).__name__,
+                    )
 
-    def _after_rollback(self, session: Session, previous_transaction: SessionTransaction) -> None:
-        pending = cast(dict[SessionTransaction, set[RefreshId]], session.info.get(self.transaction_key, {}))
+    def _after_rollback(
+        self, session: Session, previous_transaction: SessionTransaction
+    ) -> None:
+        pending = cast(
+            dict[SessionTransaction, set[RefreshId]],
+            session.info.get(self.transaction_key, {}),
+        )
         pending.pop(previous_transaction, None)
 
 
@@ -70,14 +87,21 @@ def next_nightly(now: datetime) -> datetime:
     local = now.astimezone(ZoneInfo("Europe/Berlin"))
     target = datetime.combine(local.date(), time(3), tzinfo=local.tzinfo)
     if target <= local:
-        target = datetime.combine(local.date() + timedelta(days=1), time(3), tzinfo=local.tzinfo)
+        target = datetime.combine(
+            local.date() + timedelta(days=1), time(3), tzinfo=local.tzinfo
+        )
     return target.astimezone(timezone.utc)
 
 
 class EmbeddingRefreshWorker(Generic[RefreshId]):
-    def __init__(self, refresh_one: Callable[[RefreshId], str], sweep: Callable[[], object],
-                 clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
-                 *, coordinator: RefreshCoordinator[RefreshId] | None = None) -> None:
+    def __init__(
+        self,
+        refresh_one: Callable[[RefreshId], str],
+        sweep: Callable[[], object],
+        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        *,
+        coordinator: RefreshCoordinator[RefreshId] | None = None,
+    ) -> None:
         self.refresh_one = refresh_one
         self.sweep = sweep
         self.clock = clock
@@ -92,7 +116,9 @@ class EmbeddingRefreshWorker(Generic[RefreshId]):
         if self.coordinator:
             self.coordinator.subscribe(self.enqueue)
         try:
-            self.thread = Thread(target=self._run, name="embedding-refresh", daemon=True)
+            self.thread = Thread(
+                target=self._run, name="embedding-refresh", daemon=True
+            )
             self.thread.start()
         except Exception:
             if self.coordinator:
@@ -136,7 +162,11 @@ class EmbeddingRefreshWorker(Generic[RefreshId]):
                 elif nightly:
                     self.next_run = next_nightly(now)
                 else:
-                    self.condition.wait(timeout=min(60.0, max(0.0, (self.next_run - now).total_seconds())))
+                    self.condition.wait(
+                        timeout=min(
+                            60.0, max(0.0, (self.next_run - now).total_seconds())
+                        )
+                    )
                     continue
             try:
                 if nightly:
@@ -144,4 +174,7 @@ class EmbeddingRefreshWorker(Generic[RefreshId]):
                 elif record_id is not None:
                     self.refresh_one(record_id)
             except Exception as error:
-                logger.error("Embedding background work failed (%s); skipped", type(error).__name__)
+                logger.error(
+                    "Embedding background work failed (%s); skipped",
+                    type(error).__name__,
+                )

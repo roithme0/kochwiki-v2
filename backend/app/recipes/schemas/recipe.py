@@ -54,7 +54,9 @@ class RecipePresentationResolve(BaseModel):
     def validate_unique_ingredients(
         cls, value: list[RecipePresentationIngredientResolve]
     ) -> list[RecipePresentationIngredientResolve]:
-        _validate_unique_indexes([ingredient.index for ingredient in value], "ingredient")
+        _validate_unique_indexes(
+            [ingredient.index for ingredient in value], "ingredient"
+        )
         if len({ingredient.foodstuffId for ingredient in value}) != len(value):
             raise ValueError("foodstuffs must be unique per recipe")
         return value

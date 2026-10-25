@@ -52,15 +52,20 @@ class MCPAuthenticationMiddleware:
             caller = await run_in_threadpool(_authenticate, Request(scope))
         except SQLAlchemyError:
             response = JSONResponse(
-                {"detail": "Authentication service unavailable."}, status_code=503,
+                {"detail": "Authentication service unavailable."},
+                status_code=503,
                 headers={"Cache-Control": "no-store"},
             )
             await response(scope, receive, send)
             return
         if caller is None:
             response = JSONResponse(
-                {"detail": "Authentication required."}, status_code=401,
-                headers={"Cache-Control": "no-store", "WWW-Authenticate": f'Bearer realm="{MCP_AUDIENCE}"'},
+                {"detail": "Authentication required."},
+                status_code=401,
+                headers={
+                    "Cache-Control": "no-store",
+                    "WWW-Authenticate": f'Bearer realm="{MCP_AUDIENCE}"',
+                },
             )
             await response(scope, receive, send)
             return
@@ -68,7 +73,8 @@ class MCPAuthenticationMiddleware:
 
 
 async def authenticate_message(
-    ctx: ServerRequestContext[object, object], call_next: CallNext,
+    ctx: ServerRequestContext[object, object],
+    call_next: CallNext,
 ) -> HandlerResult:
     if not isinstance(ctx.request, Request):
         raise MCPError(-32001, "Authentication required.")

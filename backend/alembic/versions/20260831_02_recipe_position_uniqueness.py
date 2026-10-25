@@ -16,7 +16,9 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint("uq_ingredient_recipe_index", "ingredient", ["recipe_id", "index"])
+    op.create_unique_constraint(
+        "uq_ingredient_recipe_index", "ingredient", ["recipe_id", "index"]
+    )
     op.create_unique_constraint("uq_step_recipe_index", "step", ["recipe_id", "index"])
 
 

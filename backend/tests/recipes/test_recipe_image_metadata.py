@@ -17,7 +17,9 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
     data = png()
     storage.read.return_value = data
     with SessionLocal.begin() as session:
-        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(session, uuid4())
+        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(
+            session, uuid4()
+        )
     with SessionLocal() as session:
         saved = session.get(ImageAsset, result.id)
         assert saved is not None
@@ -29,12 +31,16 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
         assert saved.created_at == result.created_at
 
 
-def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_storage() -> None:
+def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_storage() -> (
+    None
+):
     storage = Mock()
     storage.read.return_value = png()
     with pytest.raises(RuntimeError, match="roll back completion"):
         with SessionLocal.begin() as session:
-            result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(session, uuid4())
+            result = ImageTransfers(
+                storage, SessionLocal, kind=ImageKind.RECIPE
+            ).complete(session, uuid4())
             session.flush()
             with SessionLocal() as observer:
                 assert observer.get(ImageAsset, result.id) is None
@@ -44,16 +50,31 @@ def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_st
     storage.delete.assert_not_called()
 
 
-@pytest.mark.parametrize("field,value", [
-    ("size", 0), ("size", 10485761), ("width", 0), ("width", 4097),
-    ("height", 0), ("height", 4097), ("content_type", "image/jpeg"), ("sha256", "short"),
-    ("kind", "invalid"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("size", 0),
+        ("size", 10485761),
+        ("width", 0),
+        ("width", 4097),
+        ("height", 0),
+        ("height", 4097),
+        ("content_type", "image/jpeg"),
+        ("sha256", "short"),
+        ("kind", "invalid"),
+    ],
+)
 def test_database_rejects_invalid_image_metadata(field: str, value: int | str) -> None:
     record = ImageAsset(
         kind=ImageKind.RECIPE,
-        id=uuid4(), object_key=f"recipe-images/{uuid4()}.png", content_type="image/png",
-        size=100, width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
+        id=uuid4(),
+        object_key=f"recipe-images/{uuid4()}.png",
+        content_type="image/png",
+        size=100,
+        width=1,
+        height=1,
+        sha256="a" * 64,
+        created_at=datetime.now(timezone.utc),
     )
     setattr(record, field, value)
     with pytest.raises(IntegrityError):
@@ -68,8 +89,14 @@ def test_database_rejects_duplicate_object_keys() -> None:
     for attempt in range(2):
         record = ImageAsset(
             kind=ImageKind.RECIPE,
-            id=uuid4(), object_key=key, content_type="image/png", size=100,
-            width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
+            id=uuid4(),
+            object_key=key,
+            content_type="image/png",
+            size=100,
+            width=1,
+            height=1,
+            sha256="a" * 64,
+            created_at=datetime.now(timezone.utc),
         )
         if attempt == 0:
             with SessionLocal.begin() as session:
@@ -86,9 +113,18 @@ def test_separate_kinds_can_use_the_same_object_key() -> None:
     key = f"shared/{uuid4()}.png"
     with SessionLocal.begin() as session:
         for kind in ImageKind:
-            session.add(ImageAsset(
-                id=uuid4(), kind=kind, object_key=key, content_type="image/png", size=100,
-                width=1, height=1, sha256="a" * 64, created_at=datetime.now(timezone.utc),
-            ))
+            session.add(
+                ImageAsset(
+                    id=uuid4(),
+                    kind=kind,
+                    object_key=key,
+                    content_type="image/png",
+                    size=100,
+                    width=1,
+                    height=1,
+                    sha256="a" * 64,
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
     with SessionLocal() as session:
         assert set(session.scalars(select(ImageAsset.kind))) == set(ImageKind)

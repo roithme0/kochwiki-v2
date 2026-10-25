@@ -2,8 +2,13 @@ from urllib.parse import SplitResult, urlsplit
 
 
 def validate_http_url(value: str) -> SplitResult:
-    if any(character.isspace() or ord(character) < 32 or ord(character) == 127 for character in value):
-        raise ValueError("HTTP(S) URLs must not contain whitespace or control characters")
+    if any(
+        character.isspace() or ord(character) < 32 or ord(character) == 127
+        for character in value
+    ):
+        raise ValueError(
+            "HTTP(S) URLs must not contain whitespace or control characters"
+        )
     try:
         parsed = urlsplit(value)
         port = parsed.port
@@ -18,7 +23,9 @@ def validate_http_url(value: str) -> SplitResult:
     return parsed
 
 
-def validate_http_origin(value: str, *, allow_trailing_slash: bool = False) -> SplitResult:
+def validate_http_origin(
+    value: str, *, allow_trailing_slash: bool = False
+) -> SplitResult:
     parsed = validate_http_url(value)
     allowed_paths = {"", "/"} if allow_trailing_slash else {""}
     if parsed.path not in allowed_paths or "?" in value or "#" in value:

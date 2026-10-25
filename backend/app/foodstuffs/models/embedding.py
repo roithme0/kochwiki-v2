@@ -8,4 +8,6 @@ from app.infrastructure.embeddings.models import EmbeddingMixin
 class FoodstuffEmbedding(EmbeddingMixin, Base):
     __tablename__ = "foodstuff_embedding"
 
-    foodstuff_id: Mapped[int] = mapped_column(ForeignKey("foodstuff.id", ondelete="CASCADE"), primary_key=True)
+    foodstuff_id: Mapped[int] = mapped_column(
+        ForeignKey("foodstuff.id", ondelete="CASCADE"), primary_key=True
+    )

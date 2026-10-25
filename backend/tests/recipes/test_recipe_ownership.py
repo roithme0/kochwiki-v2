@@ -21,18 +21,26 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.embedding import RecipeEmbedding
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
 
-
 PAYLOAD = {"name": "Owned recipe", "servings": 2}
 
 
 def counts(session: Session) -> list[int | None]:
-    return [session.scalar(select(func.count()).select_from(model)) for model in (
-        Foodstuff, RecipeVersion, Ingredient, Step, FoodstuffEmbedding, RecipeEmbedding,
-    )]
+    return [
+        session.scalar(select(func.count()).select_from(model))
+        for model in (
+            Foodstuff,
+            RecipeVersion,
+            Ingredient,
+            Step,
+            FoodstuffEmbedding,
+            RecipeEmbedding,
+        )
+    ]
 
 
 def test_creation_assigns_authenticated_creator(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
 ) -> None:
     first = sign_in(client)
     original = client.post("/recipes", json=PAYLOAD)
@@ -50,25 +58,36 @@ def test_creation_assigns_authenticated_creator(
             assert lineage is not None and lineage.owner_id == body["ownerId"]
 
 
-@pytest.mark.parametrize("credential", ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"])
+@pytest.mark.parametrize(
+    "credential",
+    ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"],
+)
 def test_creation_rejects_invalid_sessions_without_creating_records(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut], credential: str,
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+    credential: str,
 ) -> None:
     sign_in(client)
     secret = client.cookies.get(SESSION_COOKIE)
     assert secret is not None
     if credential == "expired":
         with SessionLocal.begin() as session:
-            session.execute(update(ApplicationSession).values(
-                last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-            ))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
+                )
+            )
     elif credential == "revoked":
         with SessionLocal.begin() as session:
             assert invalidate_session(session, secret)
     client.cookies.clear()
     supplied = {
-        "missing": None, "malformed": "invalid", "unknown": secrets.token_urlsafe(32),
-        "expired": secret, "revoked": secret, "stored-hash": secret_hash(secret),
+        "missing": None,
+        "malformed": "invalid",
+        "unknown": secrets.token_urlsafe(32),
+        "expired": secret,
+        "revoked": secret,
+        "stored-hash": secret_hash(secret),
     }[credential]
     if supplied is not None:
         client.cookies.set(SESSION_COOKIE, supplied)
@@ -88,7 +107,9 @@ def test_creation_fails_when_login_is_not_configured(client: TestClient) -> None
 
 
 @pytest.mark.parametrize("field", ["ownerId", "owner_id"])
-def test_creator_cannot_be_supplied_in_recipe_content(authenticated_client: TestClient, field: str) -> None:
+def test_creator_cannot_be_supplied_in_recipe_content(
+    authenticated_client: TestClient, field: str
+) -> None:
     response = authenticated_client.post("/recipes", json={**PAYLOAD, field: 999})
     assert response.status_code == 422
     with SessionLocal() as session:
@@ -96,14 +117,16 @@ def test_creator_cannot_be_supplied_in_recipe_content(authenticated_client: Test
 
 
 def test_all_versions_retain_lineage_owner(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
 ) -> None:
     owner = sign_in(client)
     original = client.post("/recipes", json=PAYLOAD).json()
     path = f"/recipes/{original['recipeLineageId']}"
     draft = client.post(f"{path}/drafts", json={**PAYLOAD, "name": "Draft"}).json()
     edited = client.put(
-        f"{path}/drafts/{draft['recipeVersionId']}", json={**PAYLOAD, "name": "Edited"},
+        f"{path}/drafts/{draft['recipeVersionId']}",
+        json={**PAYLOAD, "name": "Edited"},
     ).json()
     published = client.post(f"{path}/drafts/{draft['recipeVersionId']}/publish").json()
     active_edit = client.post(f"{path}/publish", json=PAYLOAD).json()
@@ -119,17 +142,23 @@ def test_all_versions_retain_lineage_owner(
 
 
 MUTATIONS = [
-    ("POST", "/publish"), ("POST", "/drafts"),
-    ("PUT", "/drafts/{draft}"), ("POST", "/drafts/{draft}/publish"),
-    ("DELETE", "/drafts/{draft}"), ("DELETE", ""),
+    ("POST", "/publish"),
+    ("POST", "/drafts"),
+    ("PUT", "/drafts/{draft}"),
+    ("POST", "/drafts/{draft}/publish"),
+    ("DELETE", "/drafts/{draft}"),
+    ("DELETE", ""),
 ]
 
 
 @pytest.mark.parametrize(("method", "suffix"), MUTATIONS)
 @pytest.mark.parametrize("caller", ["other", "missing", "revoked", "expired"])
 def test_mutations_require_live_owner_without_side_effects(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut],
-    method: str, suffix: str, caller: str,
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+    method: str,
+    suffix: str,
+    caller: str,
 ) -> None:
     owner = sign_in(client)
     secret = client.cookies.get(SESSION_COOKIE)
@@ -146,11 +175,14 @@ def test_mutations_require_live_owner_without_side_effects(
             assert invalidate_session(session, secret)
     else:
         with SessionLocal.begin() as session:
-            session.execute(update(ApplicationSession).values(
-                last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-            ))
+            session.execute(
+                update(ApplicationSession).values(
+                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
+                )
+            )
     response = client.request(
-        method, path + suffix.format(draft=draft["recipeVersionId"]),
+        method,
+        path + suffix.format(draft=draft["recipeVersionId"]),
         json={**PAYLOAD, "imageId": str(uuid4())} if method != "DELETE" else None,
         headers={"X-Application-User": f"kochwiki:{owner.id}"},
     )
@@ -162,24 +194,35 @@ def test_mutations_require_live_owner_without_side_effects(
 
 @pytest.mark.parametrize(("method", "suffix"), MUTATIONS)
 def test_owner_can_mutate_and_unknown_lineages_return_404(
-    authenticated_client: TestClient, method: str, suffix: str,
+    authenticated_client: TestClient,
+    method: str,
+    suffix: str,
 ) -> None:
     client = authenticated_client
     active = client.post("/recipes", json=PAYLOAD).json()
     path = f"/recipes/{active['recipeLineageId']}"
     draft = client.post(f"{path}/drafts", json=PAYLOAD).json()
-    response = client.request(method, path + suffix.format(draft=draft["recipeVersionId"]),
-                              json=PAYLOAD if method != "DELETE" else None)
-    assert response.status_code == (204 if method == "DELETE" else 201 if suffix == "/drafts" else 200)
+    response = client.request(
+        method,
+        path + suffix.format(draft=draft["recipeVersionId"]),
+        json=PAYLOAD if method != "DELETE" else None,
+    )
+    assert response.status_code == (
+        204 if method == "DELETE" else 201 if suffix == "/drafts" else 200
+    )
     assert "HttpOnly" in response.headers["set-cookie"]
     assert response.headers["cache-control"] == "no-store"
-    missing = client.request(method, f"/recipes/{uuid4()}" + suffix.format(draft=uuid4()),
-                             json=PAYLOAD if method != "DELETE" else None)
+    missing = client.request(
+        method,
+        f"/recipes/{uuid4()}" + suffix.format(draft=uuid4()),
+        json=PAYLOAD if method != "DELETE" else None,
+    )
     assert missing.status_code == 404
 
 
 def test_other_user_can_read_all_lineage_states(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut],
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
 ) -> None:
     sign_in(client)
     historical = client.post("/recipes", json=PAYLOAD).json()
@@ -188,7 +231,10 @@ def test_other_user_can_read_all_lineage_states(
     active = client.post(f"{path}/publish", json=PAYLOAD).json()
     sign_in(client)
     for version in (historical, draft, active):
-        assert client.get(f"{path}/versions/{version['recipeVersionId']}").status_code == 200
+        assert (
+            client.get(f"{path}/versions/{version['recipeVersionId']}").status_code
+            == 200
+        )
     assert client.get(path).json() == active
     assert len(client.get(f"{path}/history").json()) == 1
     assert len(client.get("/recipes").json()) == 2
@@ -197,23 +243,39 @@ def test_other_user_can_read_all_lineage_states(
 @pytest.mark.parametrize("saved", [False, True])
 @pytest.mark.parametrize("caller", ["other", "missing", "revoked"])
 def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
-    client: TestClient, sign_in: Callable[[TestClient], UserOut], saved: bool, caller: str,
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+    saved: bool,
+    caller: str,
 ) -> None:
     owner = sign_in(client)
     secret = client.cookies.get(SESSION_COOKIE)
     source = client.post("/recipes", json=PAYLOAD).json()
     store = cast(RecipeProposalStore, client.app.state.recipe_proposals)
     with SessionLocal() as session:
-        proposal = store.create(session, RecipeProposalCreate.model_validate({
-            "sourceRecipeVersionId": source["recipeVersionId"],
-            "recipe": {
-                **PAYLOAD, "steps": [], "ingredients": [{
-                    "index": 1, "amount": 100, "foodstuff": {
-                        "kind": "temporary", "definition": {"name": "Beans", "unit": "G"},
+        proposal = store.create(
+            session,
+            RecipeProposalCreate.model_validate(
+                {
+                    "sourceRecipeVersionId": source["recipeVersionId"],
+                    "recipe": {
+                        **PAYLOAD,
+                        "steps": [],
+                        "ingredients": [
+                            {
+                                "index": 1,
+                                "amount": 100,
+                                "foodstuff": {
+                                    "kind": "temporary",
+                                    "definition": {"name": "Beans", "unit": "G"},
+                                },
+                            }
+                        ],
                     },
-                }],
-            },
-        }), user_id=owner.id)
+                }
+            ),
+            user_id=owner.id,
+        )
     path = f"/recipe-proposals/{proposal.proposalId}/save"
     if saved:
         assert client.post(path).status_code == 200
@@ -230,4 +292,6 @@ def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
     assert client.post(path).status_code == (404 if caller == "other" else 401)
     with SessionLocal() as session:
         assert counts(session) == before
-    assert (store.saved_version_id(proposal.proposalId, user_id=owner.id) is not None) == saved
+    assert (
+        store.saved_version_id(proposal.proposalId, user_id=owner.id) is not None
+    ) == saved

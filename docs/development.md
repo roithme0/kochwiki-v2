@@ -58,7 +58,30 @@ npm run test:tooling
 npm run test -- --watch=false
 ```
 
-**Repository root** — backend tests build their own image and start a separate test database:
+**Repository root**: format changed Python files and test the backend validation tooling:
+
+```sh
+node .codex/validation/backend.mts --format
+node --test .codex/validation/shared.test.mts .codex/validation/backend.test.mts
+```
+
+Install the backend development dependencies as described [below](#update-the-api-contract). Use the backend virtual environment's Black in your editor to match the pinned version and Python 3.13 settings in `backend/pyproject.toml`. Formatting includes staged, unstaged, and untracked changed files and leaves the Git index unchanged.
+
+Start the dedicated test database from the **repository root**:
+
+```sh
+docker compose -f deployment/tests/docker-compose-test.yml up -d --wait db
+```
+
+Then run the full suite from **backend/**:
+
+```powershell
+.venv/Scripts/python.exe -m pytest
+```
+
+On Unix use `.venv/bin/python -m pytest`. The default test database is `postgresql+psycopg://test:test@localhost:5433/kochwiki_test`; set `TEST_DATABASE_URL` if using another dedicated test database.
+
+Alternatively, backend tests can build their own image and use the test database:
 
 ```sh
 docker compose -f deployment/tests/docker-compose-test.yml run --build --rm backend-tests
@@ -95,14 +118,14 @@ Ship backend schema changes and frontend consumers together. Review generated ch
 | --- | --- |
 | [AGENTS.md](../AGENTS.md) | Repository rules for coding agents, including approval boundaries and required validation. |
 | [Skills](../.agents/skills/) | Reusable task workflows. Read each skill's `SKILL.md` for its scope and instructions. |
-| [Hooks](../.codex/hooks.json) | Codex prompt and stop hooks for frontend validation. |
+| [Hooks](../.codex/hooks.json) | Codex prompt and stop hooks for frontend and backend validation. |
 | [Codex configuration](../.codex/config.toml) | Project MCP connections for Angular CLI and OpenAI documentation. |
 
 For larger changes, the available workflow is `concept-creator` → `prepare-spec` → `deliver-spec` → `review-delivery`: explore the direction, agree a scoped spec, implement it, then review. Invoke the spec and delivery skills explicitly; routine changes do not require this workflow.
 
 Temporary concepts, specs, and plans belong under `.agents/`, as defined in `AGENTS.md`. Keep them out of commits and permanent documentation.
 
-The hooks snapshot frontend content before a prompt. When it changes, the stop hook formats changed files, runs lint, tooling tests, and the full Angular suite. Review formatting changes; validation logs are under `frontend/.codex-validation/`.
+The hooks snapshot frontend and backend content before a prompt and validate affected scopes on stop. Frontend validation formats changed files, runs lint, tooling tests, and the full Angular suite. Backend validation formats changed Python files with Black, runs tooling tests, and runs the full pytest suite against the dedicated test database, which must already be running. Shared hook changes validate both scopes. Hooks never install dependencies or start services automatically. Successful validation is reused only for identical content after every check passes; persistent failures request at most one continuation. Review formatting changes; logs are under `frontend/.codex-validation/` and `backend/.codex-validation/`.
 
 Review and trust hooks in Codex before relying on them. The current hook commands use PowerShell and absolute checkout paths. If hooks are unavailable, run the [validation commands](#validate-changes) manually.
 

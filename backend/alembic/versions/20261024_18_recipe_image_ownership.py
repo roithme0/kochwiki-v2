@@ -18,7 +18,9 @@ def upgrade() -> None:
             SELECT id FROM image_asset WHERE kind = 'recipe' AND uploader_id IS NULL
         )
     """))
-    op.execute(sa.text("DELETE FROM image_asset WHERE kind = 'recipe' AND uploader_id IS NULL"))
+    op.execute(
+        sa.text("DELETE FROM image_asset WHERE kind = 'recipe' AND uploader_id IS NULL")
+    )
 
 
 def downgrade() -> None:

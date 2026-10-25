@@ -16,12 +16,19 @@ def upgrade() -> None:
     op.execute(sa.text("DELETE FROM recipe_lineage WHERE owner_id IS NULL"))
     op.alter_column("recipe_lineage", "owner_id", nullable=False)
     op.create_foreign_key(
-        "fk_recipe_lineage_owner_id", "recipe_lineage", "custom_user", ["owner_id"], ["id"], ondelete="RESTRICT"
+        "fk_recipe_lineage_owner_id",
+        "recipe_lineage",
+        "custom_user",
+        ["owner_id"],
+        ["id"],
+        ondelete="RESTRICT",
     )
     op.create_index("ix_recipe_lineage_owner_id", "recipe_lineage", ["owner_id"])
 
 
 def downgrade() -> None:
     op.drop_index("ix_recipe_lineage_owner_id", table_name="recipe_lineage")
-    op.drop_constraint("fk_recipe_lineage_owner_id", "recipe_lineage", type_="foreignkey")
+    op.drop_constraint(
+        "fk_recipe_lineage_owner_id", "recipe_lineage", type_="foreignkey"
+    )
     op.drop_column("recipe_lineage", "owner_id")

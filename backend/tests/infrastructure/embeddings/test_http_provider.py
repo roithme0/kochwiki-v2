@@ -6,12 +6,17 @@ from pydantic import ValidationError
 
 from app.core.config import Settings
 from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS, PROFILE
-from app.infrastructure.embeddings.embeddings import EmbeddingClient, HTTPEmbeddingProvider
+from app.infrastructure.embeddings.embeddings import (
+    EmbeddingClient,
+    HTTPEmbeddingProvider,
+)
 
 
 def payload() -> dict[str, object]:
     return {
-        "profile": PROFILE, "model": "provider-model", "dimensions": STORAGE_DIMENSIONS,
+        "profile": PROFILE,
+        "model": "provider-model",
+        "dimensions": STORAGE_DIMENSIONS,
         "vector": [1.0] + [0.0] * (STORAGE_DIMENSIONS - 1),
     }
 
@@ -29,7 +34,10 @@ def test_http_provider_contract_and_cleanup() -> None:
     assert len(requests) == 1
     request = requests[0]
     assert str(request.url) == "http://ai-service/api/v1/embeddings"
-    assert json.loads(request.content) == {"profile": PROFILE, "input": "Soup\nBrand: Farm"}
+    assert json.loads(request.content) == {
+        "profile": PROFILE,
+        "input": "Soup\nBrand: Farm",
+    }
     assert "Authorization" not in request.headers
     assert "X-Application-User" not in request.headers
     assert "Cookie" not in request.headers
@@ -38,12 +46,18 @@ def test_http_provider_contract_and_cleanup() -> None:
 
 
 @pytest.mark.parametrize("include_model", [False, True])
-def test_provider_metadata_does_not_determine_compatibility(include_model: bool) -> None:
+def test_provider_metadata_does_not_determine_compatibility(
+    include_model: bool,
+) -> None:
     response = payload()
     if not include_model:
         del response["model"]
     response["provider_metadata"] = {"provider": "opaque"}
-    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=response))) as http:
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=response)
+        )
+    ) as http:
         provider = HTTPEmbeddingProvider("http://ai-service", client=http)
         assert provider.embed("Soup", PROFILE) == payload()["vector"]
 
@@ -61,9 +75,19 @@ def test_unsupported_profile_never_calls_service() -> None:
             client.embed("Soup", "unsupported")
 
 
-@pytest.mark.parametrize("invalid", [
-    "profile", "dimensions", "dimension_type", "short", "zero", "nonfinite", "bool", "missing",
-])
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "profile",
+        "dimensions",
+        "dimension_type",
+        "short",
+        "zero",
+        "nonfinite",
+        "bool",
+        "missing",
+    ],
+)
 def test_mismatched_or_invalid_response_is_rejected(invalid: str) -> None:
     response = payload()
     if invalid == "profile":
@@ -82,7 +106,11 @@ def test_mismatched_or_invalid_response_is_rejected(invalid: str) -> None:
         response["vector"] = [True] + [0.0] * (STORAGE_DIMENSIONS - 1)
     else:
         del response["profile"]
-    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json=response))) as http:
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=response)
+        )
+    ) as http:
         provider = HTTPEmbeddingProvider("http://ai-service", client=http)
         with pytest.raises(ValueError):
             provider.embed("Soup", PROFILE)
@@ -94,16 +122,24 @@ def test_service_errors_are_not_retried_or_followed(status: int) -> None:
 
     def send(request: httpx.Request) -> httpx.Response:
         requests.append(request)
-        return httpx.Response(status, json={"detail": "failure"}, headers={"Location": "http://other-service"})
+        return httpx.Response(
+            status,
+            json={"detail": "failure"},
+            headers={"Location": "http://other-service"},
+        )
 
     with httpx.Client(transport=httpx.MockTransport(send)) as http:
         with pytest.raises(httpx.HTTPStatusError):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
+            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
+                "Soup", PROFILE
+            )
     assert len(requests) == 1
 
 
 @pytest.mark.parametrize("failure", [httpx.ConnectError, httpx.ReadTimeout])
-def test_transport_failures_are_not_retried(failure: type[httpx.TransportError]) -> None:
+def test_transport_failures_are_not_retried(
+    failure: type[httpx.TransportError],
+) -> None:
     attempts = 0
 
     def send(request: httpx.Request) -> httpx.Response:
@@ -113,14 +149,22 @@ def test_transport_failures_are_not_retried(failure: type[httpx.TransportError])
 
     with httpx.Client(transport=httpx.MockTransport(send)) as http:
         with pytest.raises(failure):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
+            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
+                "Soup", PROFILE
+            )
     assert attempts == 1
 
 
 def test_invalid_json_is_rejected() -> None:
-    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, text="invalid"))) as http:
+    with httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text="invalid")
+        )
+    ) as http:
         with pytest.raises(ValueError):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
+            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
+                "Soup", PROFILE
+            )
 
 
 def test_configuration_uses_service_url_and_profile() -> None:
@@ -146,10 +190,17 @@ def test_missing_url_disables_generation(url: str | None) -> None:
     client.close()
 
 
-@pytest.mark.parametrize("url", [
-    "ftp://ai-service", "http://user:password@ai-service", "http://ai-service/path",
-    "http://ai-service?query=1", "http://ai-service#fragment", "http://ai-service:0",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "ftp://ai-service",
+        "http://user:password@ai-service",
+        "http://ai-service/path",
+        "http://ai-service?query=1",
+        "http://ai-service#fragment",
+        "http://ai-service:0",
+    ],
+)
 def test_invalid_service_origin_is_rejected(url: str) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, ai_service_url=url)

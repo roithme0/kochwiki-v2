@@ -11,10 +11,10 @@
     "watch": "ng build --watch --configuration development",
     "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
     "test": "node scripts/test.mts",
-    "test:tooling": "node --test scripts/format-changed.test.mts scripts/validate-frontend.test.mts",
-    "format:changed": "node scripts/format-changed.mts",
-    "lint": "eslint . --max-warnings=0",
-    "lint:fix": "eslint . --max-warnings=0 --fix"
+    "test:tooling": "node --test ../.codex/validation/shared.test.mts ../.codex/validation/frontend.test.mts",
+    "format:changed": "node ../.codex/validation/frontend.mts --format",
+    "lint": "eslint . ../.codex/validation --max-warnings=0",
+    "lint:fix": "eslint . ../.codex/validation --max-warnings=0 --fix"
   },
   "private": true,
   "dependencies": {

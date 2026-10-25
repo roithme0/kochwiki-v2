@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient
-from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffOut, FoodstuffSummaryOut, FoodstuffUpdate
+from app.foodstuffs.schemas.foodstuff import (
+    FoodstuffCreate,
+    FoodstuffOut,
+    FoodstuffSummaryOut,
+    FoodstuffUpdate,
+)
 from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
 from app.infrastructure.database.integrity import flush_for_unique_conflict
@@ -40,12 +45,18 @@ def foodstuff_out(foodstuff: Foodstuff) -> FoodstuffOut:
         carbs=summary.carbs,
         protein=summary.protein,
         fat=summary.fat,
-        recipeVersionIds=sorted({ingredient.recipe_version_id for ingredient in foodstuff.ingredients}),
+        recipeVersionIds=sorted(
+            {ingredient.recipe_version_id for ingredient in foodstuff.ingredients}
+        ),
     )
 
 
 def list_foodstuffs(session: Session) -> Sequence[Foodstuff]:
-    statement = select(Foodstuff).options(selectinload(Foodstuff.ingredients)).order_by(Foodstuff.id)
+    statement = (
+        select(Foodstuff)
+        .options(selectinload(Foodstuff.ingredients))
+        .order_by(Foodstuff.id)
+    )
     return session.scalars(statement).all()
 
 
@@ -63,28 +74,44 @@ def get_foodstuff(session: Session, foodstuff_id: int) -> Foodstuff:
 
 def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
     _validate_image(session, payload)
-    foodstuff = Foodstuff(**payload.model_dump(exclude={"imageId"}), image_id=payload.imageId)
+    foodstuff = Foodstuff(
+        **payload.model_dump(exclude={"imageId"}), image_id=payload.imageId
+    )
     session.add(foodstuff)
-    flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
+    flush_for_unique_conflict(
+        session,
+        "uq_foodstuff_name_brand",
+        "A foodstuff with the same name and brand already exists",
+    )
     mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
 
 
-def update_foodstuff(session: Session, foodstuff_id: int, payload: FoodstuffUpdate) -> Foodstuff:
+def update_foodstuff(
+    session: Session, foodstuff_id: int, payload: FoodstuffUpdate
+) -> Foodstuff:
     foodstuff = get_foodstuff(session, foodstuff_id)
     _validate_image(session, payload)
     previous_input = (foodstuff.name, foodstuff.brand or "")
-    for field_name, value in payload.model_dump(exclude_unset=True, exclude={"imageId"}).items():
+    for field_name, value in payload.model_dump(
+        exclude_unset=True, exclude={"imageId"}
+    ).items():
         setattr(foodstuff, field_name, value)
     if "imageId" in payload.model_fields_set:
         foodstuff.image_id = payload.imageId
-    flush_for_unique_conflict(session, "uq_foodstuff_name_brand", "A foodstuff with the same name and brand already exists")
+    flush_for_unique_conflict(
+        session,
+        "uq_foodstuff_name_brand",
+        "A foodstuff with the same name and brand already exists",
+    )
     if previous_input != (foodstuff.name, foodstuff.brand or ""):
         mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
 
 
-def _validate_image(session: Session, payload: FoodstuffCreate | FoodstuffUpdate) -> None:
+def _validate_image(
+    session: Session, payload: FoodstuffCreate | FoodstuffUpdate
+) -> None:
     if payload.imageId is not None:
         image = session.get(ImageAsset, payload.imageId)
         if image is None or image.kind != ImageKind.FOODSTUFF:
@@ -94,7 +121,9 @@ def _validate_image(session: Session, payload: FoodstuffCreate | FoodstuffUpdate
 def delete_foodstuff(session: Session, foodstuff_id: int) -> None:
     foodstuff = get_foodstuff(session, foodstuff_id)
     usage_count = session.scalar(
-        select(func.count()).select_from(Ingredient).where(Ingredient.foodstuff_id == foodstuff.id)
+        select(func.count())
+        .select_from(Ingredient)
+        .where(Ingredient.foodstuff_id == foodstuff.id)
     )
     if usage_count and usage_count > 0:
         raise ConflictError("Foodstuff cannot be deleted while it is used by a recipe")

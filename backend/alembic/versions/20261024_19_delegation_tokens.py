@@ -20,12 +20,22 @@ def upgrade() -> None:
         sa.Column("audience", sa.String(128), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["session_id"], ["application_session.id"], ondelete="CASCADE"),
-        sa.CheckConstraint("expires_at > created_at", name="ck_delegation_token_lifetime"),
-        sa.CheckConstraint("length(secret_hash) = 64", name="ck_delegation_token_secret_hash"),
+        sa.ForeignKeyConstraint(
+            ["session_id"], ["application_session.id"], ondelete="CASCADE"
+        ),
+        sa.CheckConstraint(
+            "expires_at > created_at", name="ck_delegation_token_lifetime"
+        ),
+        sa.CheckConstraint(
+            "length(secret_hash) = 64", name="ck_delegation_token_secret_hash"
+        ),
     )
-    op.create_index("ix_delegation_token_session_id", "delegation_token", ["session_id"])
-    op.create_index("ix_delegation_token_expires_at", "delegation_token", ["expires_at"])
+    op.create_index(
+        "ix_delegation_token_session_id", "delegation_token", ["session_id"]
+    )
+    op.create_index(
+        "ix_delegation_token_expires_at", "delegation_token", ["expires_at"]
+    )
 
 
 def downgrade() -> None:

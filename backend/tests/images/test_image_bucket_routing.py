@@ -21,7 +21,8 @@ from tests.infrastructure.storage.test_storage_adapter import configuration
 @pytest.mark.parametrize("kind", list(ImageKind))
 @pytest.mark.usefixtures("recipe_session")
 def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
-    client: TestClient, kind: ImageKind,
+    client: TestClient,
+    kind: ImageKind,
 ) -> None:
     config = configuration()
     other = ImageKind.FOODSTUFF if kind == ImageKind.RECIPE else ImageKind.RECIPE
@@ -48,7 +49,9 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
             target = stack.enter_context(Stubber(adapters[other_bucket]._internal))
             if other == ImageKind.FOODSTUFF:
                 target.add_client_error(
-                    "get_object", service_error_code="NoSuchKey", http_status_code=404,
+                    "get_object",
+                    service_error_code="NoSuchKey",
+                    http_status_code=404,
                     expected_params={
                         "Bucket": other_bucket,
                         "Key": f"{other.value}-image-uploads/{upload_id}",
@@ -56,30 +59,52 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
                 )
             source.add_response(
                 "get_object",
-                {"ContentLength": len(data), "Body": StreamingBody(BytesIO(data), len(data))},
+                {
+                    "ContentLength": len(data),
+                    "Body": StreamingBody(BytesIO(data), len(data)),
+                },
                 {"Bucket": source_bucket, "Key": temporary_key},
             )
-            source.add_response("put_object", {}, {
-                "Bucket": source_bucket, "Key": permanent_key,
-                "Body": data, "ContentType": "image/png",
-            })
             source.add_response(
-                "delete_object", {}, {"Bucket": source_bucket, "Key": temporary_key},
+                "put_object",
+                {},
+                {
+                    "Bucket": source_bucket,
+                    "Key": permanent_key,
+                    "Body": data,
+                    "ContentType": "image/png",
+                },
+            )
+            source.add_response(
+                "delete_object",
+                {},
+                {"Bucket": source_bucket, "Key": temporary_key},
             )
             if kind == ImageKind.FOODSTUFF:
                 source.add_client_error(
-                    "get_object", service_error_code="NoSuchKey", http_status_code=404,
+                    "get_object",
+                    service_error_code="NoSuchKey",
+                    http_status_code=404,
                     expected_params={"Bucket": source_bucket, "Key": temporary_key},
                 )
-            settings = stack.enter_context(patch("app.images.dependencies.get_settings"))
+            settings = stack.enter_context(
+                patch("app.images.dependencies.get_settings")
+            )
             settings.return_value.storage_config = config
-            stack.enter_context(patch("app.images.dependencies.Storage", side_effect=storage_for_bucket))
-            stack.enter_context(patch("app.images.transfers.uuid4", side_effect=[upload_id, image_id]))
+            stack.enter_context(
+                patch("app.images.dependencies.Storage", side_effect=storage_for_bucket)
+            )
+            stack.enter_context(
+                patch("app.images.transfers.uuid4", side_effect=[upload_id, image_id])
+            )
 
             started = client.post(f"/{kind.value}-image-uploads")
             assert started.status_code == 200
             assert started.json()["uploadId"] == str(upload_id)
-            assert urlsplit(started.json()["url"]).path == f"/storage/{source_bucket}/{temporary_key}"
+            assert (
+                urlsplit(started.json()["url"]).path
+                == f"/storage/{source_bucket}/{temporary_key}"
+            )
 
             wrong = client.post(f"/{other.value}-image-uploads/{upload_id}/complete")
             assert wrong.status_code == 404
@@ -99,9 +124,17 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
             download = client.get(f"/{kind.value}-images/{image_id}/download")
             assert download.status_code == 200
             assert download.headers["cache-control"] == "no-store"
-            assert urlsplit(download.json()["url"]).path == f"/storage/{source_bucket}/{permanent_key}"
+            assert (
+                urlsplit(download.json()["url"]).path
+                == f"/storage/{source_bucket}/{permanent_key}"
+            )
             assert download.json()["expiresIn"] == 300
-            assert client.post(f"/{kind.value}-image-uploads/{upload_id}/complete").status_code == 404
+            assert (
+                client.post(
+                    f"/{kind.value}-image-uploads/{upload_id}/complete"
+                ).status_code
+                == 404
+            )
             source.assert_no_pending_responses()
             target.assert_no_pending_responses()
     finally:

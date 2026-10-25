@@ -12,7 +12,9 @@ depends_on: Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    existing_users = op.get_bind().scalar(sa.text("SELECT EXISTS (SELECT 1 FROM custom_user)"))
+    existing_users = op.get_bind().scalar(
+        sa.text("SELECT EXISTS (SELECT 1 FROM custom_user)")
+    )
     if existing_users:
         raise RuntimeError(
             "The KochWiki user table must be empty before identity mapping is installed. "
@@ -24,7 +26,9 @@ def upgrade() -> None:
     op.add_column("custom_user", sa.Column("email", sa.Text(), nullable=False))
     op.add_column("custom_user", sa.Column("issuer", sa.Text(), nullable=False))
     op.add_column("custom_user", sa.Column("subject", sa.Text(), nullable=False))
-    op.create_unique_constraint("uq_custom_user_identity", "custom_user", ["issuer", "subject"])
+    op.create_unique_constraint(
+        "uq_custom_user_identity", "custom_user", ["issuer", "subject"]
+    )
 
 
 def downgrade() -> None:

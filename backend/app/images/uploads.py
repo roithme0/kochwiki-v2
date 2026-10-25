@@ -10,7 +10,9 @@ from app.images.transfers import ImagePersistenceFailed, ImageTransfers, Invalid
 
 
 class ImageUploads:
-    def __init__(self, transfers: ImageTransfers, sessions: sessionmaker[Session]) -> None:
+    def __init__(
+        self, transfers: ImageTransfers, sessions: sessionmaker[Session]
+    ) -> None:
         self._transfers = transfers
         self._sessions = sessions
 
@@ -28,7 +30,9 @@ class ImageUploads:
         try:
             with self._sessions.begin() as session:
                 owner_id = self._authorize_upload(session, upload_id, uploader_id)
-                image = self._transfers.complete(session, upload_id, uploader_id=owner_id)
+                image = self._transfers.complete(
+                    session, upload_id, uploader_id=owner_id
+                )
                 self._consume_upload(session, upload_id)
                 session.flush()
         except InvalidImage as error:
@@ -39,7 +43,9 @@ class ImageUploads:
                 raise ImagePersistenceFailed(cleanup_pending=False) from None
             self._recover(image, error)
         assert image is not None
-        return replace(image, cleanup_pending=not self._transfers.cleanup_upload(upload_id))
+        return replace(
+            image, cleanup_pending=not self._transfers.cleanup_upload(upload_id)
+        )
 
     def _recover(self, image: ValidatedImage, error: SQLAlchemyError) -> None:
         try:
@@ -51,12 +57,18 @@ class ImageUploads:
             return
         if isinstance(error, DBAPIError) and error.connection_invalidated:
             raise ImagePersistenceFailed(cleanup_pending=True) from None
-        raise ImagePersistenceFailed(cleanup_pending=not self._transfers.cleanup_image(image)) from None
+        raise ImagePersistenceFailed(
+            cleanup_pending=not self._transfers.cleanup_image(image)
+        ) from None
 
-    def _register_upload(self, session: Session, upload: ImageUpload, uploader_id: int) -> None:
+    def _register_upload(
+        self, session: Session, upload: ImageUpload, uploader_id: int
+    ) -> None:
         pass
 
-    def _authorize_upload(self, session: Session, upload_id: UUID, uploader_id: int) -> int | None:
+    def _authorize_upload(
+        self, session: Session, upload_id: UUID, uploader_id: int
+    ) -> int | None:
         return None
 
     def _consume_upload(self, session: Session, upload_id: UUID) -> None:

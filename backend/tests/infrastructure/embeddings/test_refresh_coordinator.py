@@ -44,10 +44,14 @@ def test_independent_domains_savepoints_rollback_and_unsubscribe() -> None:
         recipe_refresh.unsubscribe(recipe_ids.append)
 
 
-def test_subscriber_failure_does_not_fail_commit_or_other_subscribers(caplog: pytest.LogCaptureFixture) -> None:
+def test_subscriber_failure_does_not_fail_commit_or_other_subscribers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     captured: list[int] = []
+
     def fail(record_id: int) -> None:
         raise RuntimeError("private diagnostic")
+
     foodstuff_refresh.subscribe(fail)
     foodstuff_refresh.subscribe(captured.append)
     try:

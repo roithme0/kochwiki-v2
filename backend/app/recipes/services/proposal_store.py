@@ -38,7 +38,9 @@ class RecipeProposalStore:
         if validated.baseProposalId is not None:
             base = self.get(validated.baseProposalId, user_id=user_id)
             if base.sourceRecipeVersionId != validated.sourceRecipeVersionId:
-                raise ConflictError("A refinement must retain its base proposal's original source")
+                raise ConflictError(
+                    "A refinement must retain its base proposal's original source"
+                )
 
         with session.no_autoflush:
             source = session.scalar(
@@ -47,7 +49,9 @@ class RecipeProposalStore:
                 )
             )
             if source is None:
-                raise NotFoundError(f"Recipe version with id {validated.sourceRecipeVersionId} not found")
+                raise NotFoundError(
+                    f"Recipe version with id {validated.sourceRecipeVersionId} not found"
+                )
             require_recipe_lineage_owner(session, source.lineage_id, user_id)
             foodstuff_ids = {
                 ingredient.foodstuff.foodstuffId
@@ -55,7 +59,11 @@ class RecipeProposalStore:
                 if isinstance(ingredient.foodstuff, ExistingProposalFoodstuff)
             }
             if foodstuff_ids:
-                found_ids = set(session.scalars(select(Foodstuff.id).where(Foodstuff.id.in_(foodstuff_ids))))
+                found_ids = set(
+                    session.scalars(
+                        select(Foodstuff.id).where(Foodstuff.id.in_(foodstuff_ids))
+                    )
+                )
                 missing_ids = sorted(foodstuff_ids - found_ids)
                 if missing_ids:
                     raise NotFoundError(f"Foodstuff with id {missing_ids[0]} not found")
@@ -69,7 +77,9 @@ class RecipeProposalStore:
         )
         result = proposal.model_copy(deep=True)
         with self._save_lock:
-            self._proposals[proposal.proposalId] = StoredRecipeProposal(user_id, proposal)
+            self._proposals[proposal.proposalId] = StoredRecipeProposal(
+                user_id, proposal
+            )
         return result
 
     def get(self, proposal_id: UUID, *, user_id: int) -> RecipeProposalOut:
@@ -90,7 +100,9 @@ class RecipeProposalStore:
             self.get(proposal_id, user_id=user_id)
             return self._saved_versions.get(proposal_id)
 
-    def record_saved_version(self, proposal_id: UUID, version_id: UUID, *, user_id: int) -> None:
+    def record_saved_version(
+        self, proposal_id: UUID, version_id: UUID, *, user_id: int
+    ) -> None:
         with self._save_lock:
             self.get(proposal_id, user_id=user_id)
             self._saved_versions[proposal_id] = version_id

@@ -29,13 +29,19 @@ class EmbeddingResult(BaseModel):
 
     profile: Literal["semantic-text-v1"]
     dimensions: int = Field(ge=STORAGE_DIMENSIONS, le=STORAGE_DIMENSIONS)
-    vector: list[float] = Field(min_length=STORAGE_DIMENSIONS, max_length=STORAGE_DIMENSIONS)
+    vector: list[float] = Field(
+        min_length=STORAGE_DIMENSIONS, max_length=STORAGE_DIMENSIONS
+    )
 
 
 class HTTPEmbeddingProvider:
     def __init__(self, service_url: str, *, client: httpx.Client | None = None) -> None:
         self.url = service_url.rstrip("/") + "/api/v1/embeddings"
-        self.client = client if client is not None else httpx.Client(timeout=httpx.Timeout(35.0, connect=5.0))
+        self.client = (
+            client
+            if client is not None
+            else httpx.Client(timeout=httpx.Timeout(35.0, connect=5.0))
+        )
 
     def embed(self, text: str, profile: str) -> list[float]:
         if profile != PROFILE:
@@ -51,12 +57,20 @@ class HTTPEmbeddingProvider:
 
 
 def validate_vector(vector: list[float]) -> None:
-    if len(vector) != STORAGE_DIMENSIONS or not all(math.isfinite(value) for value in vector) or not any(vector):
-        raise ValueError(f"Expected a finite nonzero {STORAGE_DIMENSIONS}-dimensional embedding")
+    if (
+        len(vector) != STORAGE_DIMENSIONS
+        or not all(math.isfinite(value) for value in vector)
+        or not any(vector)
+    ):
+        raise ValueError(
+            f"Expected a finite nonzero {STORAGE_DIMENSIONS}-dimensional embedding"
+        )
 
 
 class EmbeddingClient:
-    def __init__(self, provider: EmbeddingProvider | None, profile: str = PROFILE) -> None:
+    def __init__(
+        self, provider: EmbeddingProvider | None, profile: str = PROFILE
+    ) -> None:
         if profile != PROFILE:
             raise ValueError("Unsupported embedding profile")
         self.provider = provider
@@ -64,9 +78,15 @@ class EmbeddingClient:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "EmbeddingClient":
-        provider = HTTPEmbeddingProvider(settings.ai_service_url) if settings.ai_service_url else None
+        provider = (
+            HTTPEmbeddingProvider(settings.ai_service_url)
+            if settings.ai_service_url
+            else None
+        )
         if provider is None:
-            logger.warning("Embedding refresh disabled: AI_SERVICE_URL is missing; semantic search unavailable")
+            logger.warning(
+                "Embedding refresh disabled: AI_SERVICE_URL is missing; semantic search unavailable"
+            )
         return cls(provider)
 
     @property
@@ -75,7 +95,9 @@ class EmbeddingClient:
 
     def embed(self, text: str, profile: str) -> list[float]:
         if self.provider is None:
-            raise RuntimeError("Embedding capability unavailable: AI_SERVICE_URL is missing")
+            raise RuntimeError(
+                "Embedding capability unavailable: AI_SERVICE_URL is missing"
+            )
         if profile != self.profile:
             raise ValueError("Embedding profile differs from the configured profile")
         vector = self.provider.embed(text, profile)

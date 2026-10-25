@@ -25,11 +25,16 @@ class Provider:
         self.closed = True
 
 
-def test_failed_worker_start_unsubscribes_and_can_be_stopped(monkeypatch: pytest.MonkeyPatch) -> None:
-    worker = refresh.EmbeddingRefreshWorker[int](lambda record_id: "skipped", lambda: None,
-        coordinator=foodstuff_refresh)
+def test_failed_worker_start_unsubscribes_and_can_be_stopped(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    worker = refresh.EmbeddingRefreshWorker[int](
+        lambda record_id: "skipped", lambda: None, coordinator=foodstuff_refresh
+    )
+
     def fail_start(thread: Thread) -> None:
         raise RuntimeError("thread start failed")
+
     monkeypatch.setattr(Thread, "start", fail_start)
     with pytest.raises(RuntimeError, match="thread start failed"):
         worker.start()
@@ -41,8 +46,9 @@ def test_failed_worker_start_unsubscribes_and_can_be_stopped(monkeypatch: pytest
 
 
 @pytest.mark.parametrize("failure", ["construction", "start", "stop"])
-def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
-        monkeypatch: pytest.MonkeyPatch) -> None:
+def test_lifespan_cleans_all_resources_on_partial_worker_failure(
+    failure: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     provider = Provider()
     bindings: list[FoodstuffSemanticSearch | None] = []
     recipe_bindings: list[RecipeSemanticSearch | None] = []
@@ -78,17 +84,24 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(failure: str,
     if failure == "stop":
         from uuid import UUID
         from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
+
         original_stop = EmbeddingRefreshWorker.stop
         stopped = 0
-        def stop(worker: EmbeddingRefreshWorker[int] | EmbeddingRefreshWorker[UUID]) -> None:
+
+        def stop(
+            worker: EmbeddingRefreshWorker[int] | EmbeddingRefreshWorker[UUID],
+        ) -> None:
             nonlocal stopped
             original_stop(worker)
             stopped += 1
             if stopped == 1:
                 raise RuntimeError("worker stop failed")
+
         monkeypatch.setattr(EmbeddingRefreshWorker, "stop", stop)
 
-    monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider))
+    monkeypatch.setattr(
+        EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider)
+    )
     monkeypatch.setattr(MCPServices, "bind_foodstuff_search", bind)
     monkeypatch.setattr(MCPServices, "bind_recipe_search", bind_recipe)
     monkeypatch.setattr(Thread, "start", start)

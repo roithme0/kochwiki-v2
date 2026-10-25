@@ -20,7 +20,11 @@ from app.images.transfers import (
     InvalidImage,
     ImageTransfers,
 )
-from app.infrastructure.storage.storage import PresignedTransfer, StorageObjectTooLarge, StorageUnavailable
+from app.infrastructure.storage.storage import (
+    PresignedTransfer,
+    StorageObjectTooLarge,
+    StorageUnavailable,
+)
 
 
 def png(width: int = 2, height: int = 3) -> bytes:
@@ -50,13 +54,19 @@ class ImageUploadTests(unittest.TestCase):
         self.temporary_key = f"{self.kind.value}-image-uploads/{self.upload_id}"
 
     def test_begin_only_signs_a_temporary_key(self) -> None:
-        self.storage.presign_upload.return_value = PresignedTransfer("secret-url", "PUT", 300)
+        self.storage.presign_upload.return_value = PresignedTransfer(
+            "secret-url", "PUT", 300
+        )
         upload = self.service.begin(1)
-        self.storage.presign_upload.assert_called_once_with(f"{self.kind.value}-image-uploads/{upload.id}")
+        self.storage.presign_upload.assert_called_once_with(
+            f"{self.kind.value}-image-uploads/{upload.id}"
+        )
         self.assertNotIn("secret-url", repr(upload))
         self.storage.write.assert_not_called()
 
-    def test_success_writes_exact_validated_bytes_and_cleans_temporary_object(self) -> None:
+    def test_success_writes_exact_validated_bytes_and_cleans_temporary_object(
+        self,
+    ) -> None:
         data = png()
         self.storage.read.return_value = data
         result = self.service.complete(self.upload_id, 1)
@@ -70,28 +80,67 @@ class ImageUploadTests(unittest.TestCase):
             assert saved is not None
             self.assertEqual(saved.kind, self.kind)
             self.assertEqual(
-                (saved.object_key, saved.size, saved.width, saved.height, saved.sha256, saved.content_type),
-                (result.object_key, result.size, result.width, result.height, result.sha256, result.content_type),
+                (
+                    saved.object_key,
+                    saved.size,
+                    saved.width,
+                    saved.height,
+                    saved.sha256,
+                    saved.content_type,
+                ),
+                (
+                    result.object_key,
+                    result.size,
+                    result.width,
+                    result.height,
+                    result.sha256,
+                    result.content_type,
+                ),
             )
             self.assertEqual(saved.created_at, result.created_at.replace(tzinfo=None))
-        self.storage.read.assert_called_once_with(self.temporary_key, max_bytes=MAX_IMAGE_BYTES)
-        self.storage.write.assert_called_once_with(result.object_key, data, content_type="image/png")
+        self.storage.read.assert_called_once_with(
+            self.temporary_key, max_bytes=MAX_IMAGE_BYTES
+        )
+        self.storage.write.assert_called_once_with(
+            result.object_key, data, content_type="image/png"
+        )
         self.storage.delete.assert_called_once_with(self.temporary_key)
 
     def test_invalid_images_are_rejected_and_removed(self) -> None:
         animated = BytesIO()
-        with Image.new("RGBA", (2, 2), "red") as first, Image.new("RGBA", (2, 2), "blue") as second:
-            first.save(animated, format="PNG", save_all=True, append_images=[second], duration=100, loop=0)
+        with (
+            Image.new("RGBA", (2, 2), "red") as first,
+            Image.new("RGBA", (2, 2), "blue") as second,
+        ):
+            first.save(
+                animated,
+                format="PNG",
+                save_all=True,
+                append_images=[second],
+                duration=100,
+                loop=0,
+            )
         control = b"acTL" + (1).to_bytes(4, "big") + (0).to_bytes(4, "big")
-        animation_chunk = (8).to_bytes(4, "big") + control + crc32(control).to_bytes(4, "big")
+        animation_chunk = (
+            (8).to_bytes(4, "big") + control + crc32(control).to_bytes(4, "big")
+        )
         one_frame_apng = png()[:33] + animation_chunk + png()[33:]
         jpeg = BytesIO()
         with Image.new("RGB", (2, 2)) as image:
             image.save(jpeg, format="JPEG")
         corrupted = bytearray(png())
         corrupted[-5] ^= 1
-        cases = (b"", b"not an image", jpeg.getvalue(), png()[:-15], bytes(corrupted),
-                 animated.getvalue(), one_frame_apng, png(4097, 1), png(1, 4097))
+        cases = (
+            b"",
+            b"not an image",
+            jpeg.getvalue(),
+            png()[:-15],
+            bytes(corrupted),
+            animated.getvalue(),
+            one_frame_apng,
+            png(4097, 1),
+            png(1, 4097),
+        )
         for data in cases:
             with self.subTest(size=len(data)):
                 self.storage.reset_mock()
@@ -122,8 +171,10 @@ class ImageUploadTests(unittest.TestCase):
     def test_valid_checksums_do_not_substitute_for_pixel_decoding(self) -> None:
         data = png()
         idat = data.index(b"IDAT") - 4
-        length = int.from_bytes(data[idat:idat + 4], "big")
-        broken = data[:idat] + chunk(b"IDAT", b"\x00" * length) + data[idat + length + 12:]
+        length = int.from_bytes(data[idat : idat + 4], "big")
+        broken = (
+            data[:idat] + chunk(b"IDAT", b"\x00" * length) + data[idat + length + 12 :]
+        )
         self.storage.read.return_value = broken
         with self.assertRaises(InvalidImage):
             self.service.complete(self.upload_id, 1)
@@ -137,7 +188,9 @@ class ImageUploadTests(unittest.TestCase):
         self.storage.delete.assert_called_once_with(self.temporary_key)
         self.storage.write.assert_not_called()
 
-    def test_missing_upload_and_transport_failure_do_not_delete_retryable_upload(self) -> None:
+    def test_missing_upload_and_transport_failure_do_not_delete_retryable_upload(
+        self,
+    ) -> None:
         self.storage.read.return_value = None
         with self.assertRaises(ImageUploadNotFound):
             self.service.complete(self.upload_id, 1)
@@ -170,11 +223,15 @@ class ImageUploadTests(unittest.TestCase):
         self.assertNotEqual(first.id, second.id)
         self.assertNotEqual(first.object_key, second.object_key)
 
-    def test_database_failure_removes_permanent_object_and_keeps_upload_retryable(self) -> None:
+    def test_database_failure_removes_permanent_object_and_keeps_upload_retryable(
+        self,
+    ) -> None:
         self.storage.read.return_value = png()
 
         def fail_commit(session: Session) -> None:
-            raise OperationalError("commit", None, RuntimeError("private database error"))
+            raise OperationalError(
+                "commit", None, RuntimeError("private database error")
+            )
 
         event.listen(self.sessions, "before_commit", fail_commit)
         with self.assertRaises(ImagePersistenceFailed) as failure:
@@ -207,13 +264,19 @@ class ImageUploadTests(unittest.TestCase):
         with self.assertRaises(ImagePersistenceFailed) as failure:
             self.service.complete(self.upload_id, 1)
         self.assertTrue(failure.exception.cleanup_pending)
-        self.storage.delete.assert_called_once_with(self.storage.write.call_args.args[0])
+        self.storage.delete.assert_called_once_with(
+            self.storage.write.call_args.args[0]
+        )
 
-    def test_lost_connection_retains_object_even_if_record_is_not_yet_visible(self) -> None:
+    def test_lost_connection_retains_object_even_if_record_is_not_yet_visible(
+        self,
+    ) -> None:
         self.storage.read.return_value = png()
 
         def lose_connection(session: Session) -> None:
-            raise OperationalError("commit", None, RuntimeError(), connection_invalidated=True)
+            raise OperationalError(
+                "commit", None, RuntimeError(), connection_invalidated=True
+            )
 
         event.listen(self.sessions, "before_commit", lose_connection)
         with self.assertRaises(ImagePersistenceFailed) as failure:
@@ -221,7 +284,9 @@ class ImageUploadTests(unittest.TestCase):
         self.assertTrue(failure.exception.cleanup_pending)
         self.storage.delete.assert_not_called()
 
-    def test_commit_acknowledgement_failure_does_not_delete_committed_image(self) -> None:
+    def test_commit_acknowledgement_failure_does_not_delete_committed_image(
+        self,
+    ) -> None:
         self.storage.read.return_value = png()
 
         def fail_acknowledgement(session: Session) -> None:

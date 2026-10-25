@@ -13,16 +13,27 @@ depends_on: Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column("image_asset", sa.Column("uploader_id", sa.Integer(), nullable=True))
-    op.create_foreign_key("fk_image_asset_uploader_id", "image_asset", "custom_user", ["uploader_id"], ["id"], ondelete="RESTRICT")
+    op.create_foreign_key(
+        "fk_image_asset_uploader_id",
+        "image_asset",
+        "custom_user",
+        ["uploader_id"],
+        ["id"],
+        ondelete="RESTRICT",
+    )
     op.create_index("ix_image_asset_uploader_id", "image_asset", ["uploader_id"])
     op.create_table(
         "recipe_image_upload",
         sa.Column("id", sa.Uuid(), primary_key=True),
         sa.Column("uploader_id", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["uploader_id"], ["custom_user.id"], ondelete="RESTRICT"),
+        sa.ForeignKeyConstraint(
+            ["uploader_id"], ["custom_user.id"], ondelete="RESTRICT"
+        ),
     )
-    op.create_index("ix_recipe_image_upload_uploader_id", "recipe_image_upload", ["uploader_id"])
+    op.create_index(
+        "ix_recipe_image_upload_uploader_id", "recipe_image_upload", ["uploader_id"]
+    )
 
 
 def downgrade() -> None:
