@@ -56,7 +56,6 @@ services:
   backend:
     image: roithme0/kochwiki-v2-backend:alpha
     environment:
-      AI_GATEWAY_URL: ${AI_GATEWAY_URL:-}
       STORAGE_ENDPOINT_URL: http://file-storage:3900
       STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:?Set STORAGE_PUBLIC_ORIGIN in deployment/.env}
       STORAGE_REGION: garage

@@ -24,8 +24,11 @@ if (
   throw new Error('Expected recipe object');
 
 describe('Recipe conversation contract', () => {
-  it('advertises rendering capabilities without browser-supplied recipe context', () => {
-    expect(mapSessionInput()).toEqual({
+  it('sends detached full source context and rendering capabilities', () => {
+    const source = conversationRecipe();
+    const input = mapSessionInput(source);
+    expect(input).toEqual({
+      initial_context: { source },
       artifact_capabilities: [
         JSON_ARTIFACT_CAPABILITY,
         FOODSTUFF_ARTIFACT_CAPABILITY,
@@ -33,6 +36,10 @@ describe('Recipe conversation contract', () => {
         NUTRITION_ARTIFACT_CAPABILITY,
       ],
     });
+    source.ingredients[0].foodstuff.name = 'Changed';
+    expect(input.initial_context.source.ingredients[0].foodstuff.name).toBe(
+      'Linsen',
+    );
   });
 
   it('preserves explicit JSON presentation instead of treating it as a recipe proposal', () => {

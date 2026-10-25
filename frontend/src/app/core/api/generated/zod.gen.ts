@@ -3,14 +3,6 @@
 import * as z from 'zod/mini';
 
 /**
- * ConversationCreated
- */
-export const zConversationCreated = z.strictObject({
-    expires_at: z.iso.datetime(),
-    session_id: z.string().check(z.minLength(1))
-});
-
-/**
  * ErrorResponse
  */
 export const zErrorResponse = z.strictObject({
@@ -65,34 +57,12 @@ export const zIngredientWrite = z.strictObject({
     index: z.int().check(z.gte(1), z.lte(99))
 });
 
-export const zJsonValue = z.unknown();
-
-/**
- * ArtifactCapability
- */
-export const zArtifactCapability = z.strictObject({
-    description: z.string(),
-    metadataSchema: z.nullish(z.record(z.string(), zJsonValue)),
-    payloadSchema: z.record(z.string(), zJsonValue),
-    subtitleDescription: z.nullish(z.string()),
-    titleDescription: z.nullish(z.string()),
-    type: z.string()
-});
-
 /**
  * MinimumNutrition
  */
 export const zMinimumNutrition = z.strictObject({
     status: z.literal('minimum'),
     value: z.number().check(z.gte(0))
-});
-
-/**
- * RecipeConversationCreate
- */
-export const zRecipeConversationCreate = z.strictObject({
-    artifact_capabilities: z.optional(z.array(zArtifactCapability)),
-    sourceRecipeVersionId: z.uuid()
 });
 
 /**

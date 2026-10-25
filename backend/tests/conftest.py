@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta
+from urllib.parse import quote
 from collections.abc import Callable
 from uuid import uuid4
 
@@ -26,7 +26,6 @@ from app.identity.services.users import map_identity
 from app.identity.config import SESSION_COOKIE
 from app.identity import dependencies
 from app.identity.services.sessions import establish_session
-from app.identity.services.delegation import issue_delegation_token
 from app.core.config import Settings
 
 
@@ -65,13 +64,7 @@ def mcp_user(provider_user: Callable[[str], UserOut]) -> UserOut:
 
 @pytest.fixture
 def mcp_headers(mcp_user: UserOut) -> dict[str, str]:
-    user = mcp_user
-    with SessionLocal.begin() as session:
-        secret, _ = establish_session(session, user.id, None)
-        session.flush()
-        token = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
-        assert token is not None
-    return {"Authorization": f"Bearer {token.secret}"}
+    return {"X-Application-User": f"{quote(mcp_user.issuer, safe="")}:{quote(mcp_user.subject, safe="")}"}
 
 
 @pytest.fixture

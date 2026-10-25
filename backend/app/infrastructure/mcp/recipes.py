@@ -11,7 +11,7 @@ from app.infrastructure.embeddings.embeddings import (
     QueryEmbeddingError,
     SemanticSearchUnavailable,
 )
-from app.infrastructure.mcp.authentication import current_caller
+from app.infrastructure.mcp.asserted_identity import current_caller
 from app.infrastructure.mcp.errors import tool_errors
 from app.infrastructure.mcp.services import MCPServices
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut

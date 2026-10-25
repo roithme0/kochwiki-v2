@@ -17,7 +17,7 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 - Create `deployment/.env` from [.env.example](../deployment/.env.example). Replace placeholders; the [development setup](development.md#run-locally) describes credential formats and integration settings.
 - Set `STORAGE_PUBLIC_ORIGIN` to the public application origin and `OIDC_CALLBACK_URL` to that origin plus `/api/auth/callback`. Configure the identity provider and any container-specific backchannel address.
 - Put HTTPS termination in front of the HTTP gateway. Staging currently defaults `OIDC_ALLOW_INSECURE_HTTP` to `true`; set it to `false` when HTTPS is configured.
-- Set `AI_GATEWAY_URL` to the external AI service origin reachable from the gateway and backend. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
+- Set `AI_GATEWAY_URL` to the external AI service origin reachable from the gateway. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
 
 ## Deploy or update
 
@@ -57,7 +57,7 @@ The repository has no automated backup or restore workflow. Verify recovery in a
 | Backend does not start | Backend migration logs, database health, and database credentials. |
 | Images fail | `file-storage-init` exit status, Garage health, storage credentials, and `STORAGE_PUBLIC_ORIGIN`. |
 | Login fails | Provider availability, registered callback, client credentials, and backchannel connectivity. |
-| AI requests fail | `AI_GATEWAY_URL` and external service connectivity; an empty URL disables the relay with 503. |
+| AI requests fail | `AI_GATEWAY_URL` and external service connectivity; an empty URL disables the direct AI gateway route with 503. |
 | Semantic search is unavailable | Backend embedding logs and `OPENAI_API_KEY`. |
 
 Use Compose logs for diagnosis. The repository does not configure centralized monitoring or alerting.

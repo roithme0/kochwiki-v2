@@ -27,8 +27,30 @@ from app.identity.services.sessions import establish_session, invalidate_session
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.mcp import authentication
 from app.infrastructure.mcp.authentication import MCPCaller, current_caller
-from app.infrastructure.mcp.server import create_mcp_server
+from app.infrastructure.mcp.server import create_mcp_server as create_unprotected_mcp_server
 from app.infrastructure.mcp.services import MCPServices
+
+
+def create_mcp_server(services: MCPServices) -> tuple[MCPServer, Starlette]:
+    server, app = create_unprotected_mcp_server(services)
+    server.middleware.append(authentication.authenticate_message)
+    app.add_middleware(authentication.MCPAuthenticationMiddleware)
+    return server, app
+
+
+@pytest.fixture(autouse=True)
+def isolated_authentication_boundary(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main, "create_mcp_server", create_mcp_server)
+
+
+@pytest.fixture
+def mcp_headers(mcp_user: UserOut) -> dict[str, str]:
+    with SessionLocal.begin() as session:
+        secret, _ = establish_session(session, mcp_user.id, None)
+        session.flush()
+        token = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
+        assert token is not None
+    return {"Authorization": f"Bearer {token.secret}"}
 
 
 RPC_HEADERS = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2026-07-28"}

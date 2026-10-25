@@ -5,7 +5,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.infrastructure.embeddings.config import MODEL
 from app.infrastructure.storage.config import StorageConfig
-from app.core.urls import validate_http_origin
 
 
 class Settings(BaseSettings):
@@ -13,7 +12,6 @@ class Settings(BaseSettings):
     embedding_model: str = MODEL
     app_version: str = "0.0.0"
     database_url: str = "postgresql+psycopg://user:password@localhost:5432/kochwiki"
-    ai_gateway_url: str | None = None
     oidc_issuer: str | None = None
     oidc_client_id: str = "kochwiki"
     oidc_client_secret: SecretStr | None = None
@@ -30,14 +28,6 @@ class Settings(BaseSettings):
     mcp_allowed_hosts: str = "localhost,localhost:*,127.0.0.1,127.0.0.1:*,[::1],[::1]:*,backend,backend:*"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
-
-    @field_validator("ai_gateway_url")
-    @classmethod
-    def validate_ai_gateway_url(cls, value: str | None) -> str | None:
-        if not value:
-            return None
-        validate_http_origin(value, allow_trailing_slash=True)
-        return value.rstrip("/")
 
     @field_validator("oidc_issuer", "oidc_client_secret", "oidc_callback_url", "oidc_backchannel_url", mode="before")
     @classmethod

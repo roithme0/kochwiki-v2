@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import os
 
 import httpx2
 from mcp import Client
@@ -8,10 +7,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 
 async def verify(url: str) -> None:
-    secret = os.environ.get("MCP_VERIFY_TOKEN")
-    if not secret:
-        raise RuntimeError("Set MCP_VERIFY_TOKEN to a valid delegation token")
-    async with httpx2.AsyncClient(headers={"Authorization": f"Bearer {secret}"}) as http, Client(
+    async with httpx2.AsyncClient() as http, Client(
         streamable_http_client(url, http_client=http)
     ) as client:
         if not client.instructions or not client.instructions.strip():
@@ -23,7 +19,7 @@ async def verify(url: str) -> None:
         }
         if {tool.name for tool in tools.tools} != expected:
             raise RuntimeError("Unexpected Kochwiki tool discovery")
-        print("Authenticated MCP connection, domain instructions, and discovery succeeded.")
+        print("MCP connection, domain instructions, and discovery succeeded.")
 
 
 def main() -> None:

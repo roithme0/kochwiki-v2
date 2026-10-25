@@ -86,7 +86,7 @@ describe('Recipe conversation page through published session controller and HTTP
     controller: ReadableStreamDefaultController<Uint8Array>;
     signal: AbortSignal | null | undefined;
   }[];
-  const createUrl = `${backendUrl}/recipe-conversations`;
+  const createUrl = '/ai/api/v1/agents/kochwiki/sessions';
   const sessionUrl = '/ai/api/v1/agents/kochwiki/sessions';
 
   function snapshot(): PresentedSession {
@@ -776,8 +776,7 @@ describe('Recipe conversation page through published session controller and HTTP
     const body = fetchMock.mock.calls[0][1]?.body;
     if (typeof body !== 'string') throw new Error('Expected JSON request body');
     expect(JSON.parse(body) as unknown).toEqual({
-      sourceRecipeVersionId: source.recipeVersionId,
-      artifact_capabilities: mapSessionInput().artifact_capabilities,
+      ...mapSessionInput(source),
     });
     expect(getRecipe).toHaveBeenCalledWith(
       source.recipeLineageId,
@@ -854,7 +853,7 @@ describe('Recipe conversation page through published session controller and HTTP
     },
   );
 
-  it('uses the authenticated creation relay and stable identity for direct observation and prompt admission', async () => {
+  it('uses direct creation and stable identity for observation and prompt admission', async () => {
     const page = await open();
     user.set({
       id: 1,
@@ -869,8 +868,8 @@ describe('Recipe conversation page through published session controller and HTTP
       new Headers(fetchMock.mock.calls[0][1]?.headers).has(
         'X-Application-User',
       ),
-    ).toBe(false);
-    for (const [, request] of fetchMock.mock.calls.slice(1)) {
+    ).toBe(true);
+    for (const [, request] of fetchMock.mock.calls) {
       expect(new Headers(request?.headers).get('X-Application-User')).toBe(
         'https%3A%2F%2Fidp.example%2Frealms%2Ftest:user-1',
       );

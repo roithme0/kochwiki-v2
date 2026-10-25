@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from datetime import timedelta
+from urllib.parse import quote
 from uuid import UUID, uuid4
 
 import httpx2
@@ -16,7 +16,6 @@ from app.main import create_app
 from app.identity.config import SESSION_COOKIE
 from app.identity.schemas.user import UserOut
 from app.identity.services.sessions import establish_session
-from app.identity.services.delegation import issue_delegation_token
 from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.models.recipe import RecipeVersion
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
@@ -101,7 +100,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(recipe_sessi
                     repeated = await client.call_tool("save_recipe_proposal", args)
                     assert not repeated.is_error and repeated.structured_content == saved.structured_content
                     http.cookies.set(SESSION_COOKIE, secret)
-                    http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save", headers={"Origin": "http://localhost:8000"})
+                    http_saved = await http.post(f"/recipe-proposals/{proposal.proposalId}/save", headers={"Origin": "http://localhost:8000", "X-Application-User": "unknown:unknown"})
                     assert http_saved.status_code == 200
                     assert http_saved.json() == draft.model_dump(mode="json")
                     with SessionLocal.begin() as session:
@@ -199,12 +198,7 @@ def test_mcp_proposal_authorization_and_shared_recipe_reads(
 ) -> None:
     payload = proposal_payload(mcp_user.id)
     other = provider_user("Other caller")
-    with SessionLocal.begin() as session:
-        secret, _ = establish_session(session, other.id, None)
-        session.flush()
-        token = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
-        assert token is not None
-        other_headers = {"Authorization": f"Bearer {token.secret}", "X-Application-User": str(mcp_user.id)}
+    other_headers = {"X-Application-User": f"{quote(other.issuer, safe='')}:{quote(other.subject, safe='')}"}
 
     async def exercise() -> None:
         app = create_app()
