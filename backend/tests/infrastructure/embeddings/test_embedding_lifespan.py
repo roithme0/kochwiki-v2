@@ -18,7 +18,7 @@ class Provider:
     def __init__(self) -> None:
         self.closed = False
 
-    def embed(self, text: str, model: str) -> list[float]:
+    def embed(self, text: str, profile: str) -> list[float]:
         raise AssertionError("Startup must not generate embeddings")
 
     def close(self) -> None:

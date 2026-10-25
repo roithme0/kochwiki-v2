@@ -20,7 +20,7 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
     def __init__(self, sessions: Callable[[], Session], embeddings: EmbeddingClient) -> None:
         self.sessions = sessions
         self.embeddings = embeddings
-        self.model = embeddings.model
+        self.profile = embeddings.profile
         self.refresh_lock = Lock()
 
     def refresh_one(self, record_id: RefreshId) -> str:
@@ -38,20 +38,20 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
             requested_text = self._load_source_text(session, record_id, for_update=False)
             if requested_text is None:
                 return "skipped"
-            requested_model = self.model
+            requested_profile = self.profile
             existing = self._load_embedding(session, record_id)
-            if existing and existing.model == requested_model and existing.source_text == requested_text:
+            if existing and existing.profile == requested_profile and existing.source_text == requested_text:
                 return "skipped"
-        vector = self.embeddings.embed(requested_text, requested_model)
+        vector = self.embeddings.embed(requested_text, requested_profile)
         with self.sessions() as session, session.begin():
             current_text = self._load_source_text(session, record_id, for_update=True)
-            if current_text is None or current_text != requested_text or self.model != requested_model:
+            if current_text is None or current_text != requested_text or self.profile != requested_profile:
                 return "skipped"
             existing = self._load_embedding(session, record_id)
             if existing is None:
-                session.add(self._new_embedding(record_id, requested_model, requested_text, vector))
+                session.add(self._new_embedding(record_id, requested_profile, requested_text, vector))
             else:
-                existing.model = requested_model
+                existing.profile = requested_profile
                 existing.source_text = requested_text
                 existing.vector = vector
         return "refreshed"
@@ -60,7 +60,7 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
         report = RefreshReport()
         self._before_sweep()
         if not self.embeddings.available:
-            logger.warning("%s embedding refresh disabled: OPENAI_API_KEY is missing", self.label)
+            logger.warning("%s embedding refresh disabled: AI_SERVICE_URL is missing", self.label)
             return report
         with self.sessions() as session:
             ids = self._refresh_ids(session)
@@ -89,7 +89,7 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
         ...
 
     @abstractmethod
-    def _new_embedding(self, record_id: RefreshId, model: str, text: str, vector: list[float]) -> EmbeddingRecord:
+    def _new_embedding(self, record_id: RefreshId, profile: str, text: str, vector: list[float]) -> EmbeddingRecord:
         ...
 
     @abstractmethod

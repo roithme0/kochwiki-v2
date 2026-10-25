@@ -39,8 +39,8 @@ class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
     def _load_embedding(self, session: Session, record_id: int) -> FoodstuffEmbedding | None:
         return session.get(FoodstuffEmbedding, record_id)
 
-    def _new_embedding(self, record_id: int, model: str, text: str, vector: list[float]) -> FoodstuffEmbedding:
-        return FoodstuffEmbedding(foodstuff_id=record_id, model=model, source_text=text, vector=vector)
+    def _new_embedding(self, record_id: int, profile: str, text: str, vector: list[float]) -> FoodstuffEmbedding:
+        return FoodstuffEmbedding(foodstuff_id=record_id, profile=profile, source_text=text, vector=vector)
 
     def _refresh_ids(self, session: Session) -> list[int]:
         return list(session.scalars(select(Foodstuff.id).order_by(Foodstuff.id)))

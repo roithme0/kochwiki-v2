@@ -13,7 +13,7 @@ TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", "postgresql+psycopg://test:test@localhost:5433/kochwiki_test"
 )
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-os.environ["OPENAI_API_KEY"] = ""
+os.environ["AI_SERVICE_URL"] = ""
 for variable in ("OIDC_ISSUER", "OIDC_CLIENT_SECRET", "OIDC_CALLBACK_URL", "OIDC_BACKCHANNEL_URL"):
     os.environ[variable] = ""
 os.environ["OIDC_CLIENT_ID"] = "kochwiki"

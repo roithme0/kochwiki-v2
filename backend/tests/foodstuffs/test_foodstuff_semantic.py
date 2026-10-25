@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 from app.identity.schemas.user import UserOut
 from app.foodstuffs.models.unit import Unit
-from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -19,12 +18,12 @@ from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker, next_nightly
 from app.foodstuffs.services.embeddings import FoodstuffEmbeddingService, foodstuff_refresh, source_text
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
-from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient, OpenAIEmbeddingProvider, QueryEmbeddingError, SemanticSearchUnavailable
+from app.infrastructure.embeddings.embeddings import STORAGE_DIMENSIONS, PROFILE, EmbeddingClient, QueryEmbeddingError, SemanticSearchUnavailable
 from app.foodstuffs.services.foodstuffs import create_foodstuff, delete_foodstuff, update_foodstuff
 
 
 def vector(axis: int = 0) -> list[float]:
-    result = [0.0] * DIMENSIONS
+    result = [0.0] * STORAGE_DIMENSIONS
     result[axis] = 1.0
     return result
 
@@ -37,8 +36,8 @@ class FakeProvider:
         self.result = vector()
         self.closed = False
 
-    def embed(self, text: str, model: str) -> list[float]:
-        self.calls.append((text, model))
+    def embed(self, text: str, profile: str) -> list[float]:
+        self.calls.append((text, profile))
         if text in self.failures:
             raise RuntimeError("provider failure")
         if self.before_return:
@@ -70,9 +69,9 @@ def test_refresh_metadata_freshness_and_nutrition() -> None:
     with SessionLocal() as session:
         stored = session.get(FoodstuffEmbedding, foodstuff_id)
         assert stored is not None
-        assert stored.model == MODEL
+        assert stored.profile == PROFILE
         assert stored.source_text == "Karotte\nBrand: Farm"
-        assert len(stored.vector) == DIMENSIONS
+        assert len(stored.vector) == STORAGE_DIMENSIONS
     assert search.refresh_one(foodstuff_id) == "skipped"
     with SessionLocal.begin() as session:
         update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(20)))
@@ -83,9 +82,9 @@ def test_refresh_metadata_freshness_and_nutrition() -> None:
     with SessionLocal.begin() as session:
         stored = session.get(FoodstuffEmbedding, foodstuff_id)
         assert stored is not None
-        stored.model = "old-model"
+        stored.profile = "old-profile"
     assert search.refresh_one(foodstuff_id) == "refreshed"
-    assert provider.calls == [("Karotte\nBrand: Farm", MODEL), ("Moehre\nBrand: New", MODEL), ("Moehre\nBrand: New", MODEL)]
+    assert provider.calls == [("Karotte\nBrand: Farm", PROFILE), ("Moehre\nBrand: New", PROFILE), ("Moehre\nBrand: New", PROFILE)]
 
 
 def test_sweep_failure_skips_and_next_sweep_can_retry(caplog: pytest.LogCaptureFixture) -> None:
@@ -108,14 +107,14 @@ def test_sweep_failure_skips_and_next_sweep_can_retry(caplog: pytest.LogCaptureF
     assert len(provider.calls) == 3
 
 
-@pytest.mark.parametrize("change", ["name", "brand", "delete", "model"])
+@pytest.mark.parametrize("change", ["name", "brand", "delete", "profile"])
 def test_obsolete_generation_is_discarded(change: str) -> None:
     foodstuff_id = create()
     provider = FakeProvider()
     search = service(provider)
     def mutate() -> None:
-        if change == "model":
-            search.model = "changed-model"
+        if change == "profile":
+            search.profile = "changed-profile"
             return
         with SessionLocal.begin() as session:
             if change == "delete":
@@ -143,18 +142,18 @@ def test_delete_cascades_embedding() -> None:
 def test_exact_search_filters_before_limit_and_returns_authoritative_summaries() -> None:
     provider = FakeProvider()
     search = search_service(provider)
-    ids = [create(name) for name in ["stale", "wrong-model", "current", "tied", "far", "missing"]]
+    ids = [create(name) for name in ["stale", "wrong-profile", "current", "tied", "far", "missing"]]
     with SessionLocal.begin() as session:
         for foodstuff_id in ids[:-1]:
             foodstuff = session.get(Foodstuff, foodstuff_id)
             assert foodstuff
-            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff_id, model=MODEL,
+            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff_id, profile=PROFILE,
                 source_text=source_text(foodstuff.name, foodstuff.brand), vector=vector(1 if foodstuff.name == "far" else 0)))
     with SessionLocal.begin() as session:
         update_foodstuff(session, ids[0], FoodstuffUpdate(name="changed"))
         stored = session.get(FoodstuffEmbedding, ids[1])
         assert stored
-        stored.model = "old"
+        stored.profile = "old"
         update_foodstuff(session, ids[2], FoodstuffUpdate(kcal=Decimal(17)))
     results = search.search("Moehre", 2)
     assert [item.foodstuff.id for item in results] == ids[2:4]
@@ -184,8 +183,8 @@ def test_empty_catalogue_and_provider_failures_are_distinct() -> None:
         search.search("query")
 
 
-def test_no_credentials_disables_capability(caplog: pytest.LogCaptureFixture) -> None:
-    settings = Settings(openai_api_key=SecretStr(""))
+def test_no_service_url_disables_capability(caplog: pytest.LogCaptureFixture) -> None:
+    settings = Settings(ai_service_url="")
     embeddings = EmbeddingClient.from_settings(settings)
     assert not embeddings.available
     refresh = FoodstuffEmbeddingService(SessionLocal, embeddings)
@@ -194,13 +193,7 @@ def test_no_credentials_disables_capability(caplog: pytest.LogCaptureFixture) ->
     assert refresh.refresh_all().refreshed == 0
     with pytest.raises(SemanticSearchUnavailable):
         search.search("query")
-    assert "OPENAI_API_KEY" in caplog.text
-
-
-def test_sdk_retries_disabled() -> None:
-    provider = OpenAIEmbeddingProvider("fake-test-key")
-    assert provider.client.max_retries == 0
-    provider.close()
+    assert "AI_SERVICE_URL" in caplog.text
 
 
 def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:

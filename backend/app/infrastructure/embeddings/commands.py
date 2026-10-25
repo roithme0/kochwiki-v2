@@ -49,7 +49,7 @@ def run_command(*, description: str,
     embeddings = EmbeddingClient.from_settings(get_settings())
     try:
         if not embeddings.available:
-            raise SemanticSearchUnavailable("Semantic capability unavailable: OPENAI_API_KEY is missing")
+            raise SemanticSearchUnavailable("Semantic capability unavailable: AI_SERVICE_URL is missing")
         if args.command == "refresh":
             return run_refresh(refresh_factory(SessionLocal, embeddings))
         return run_search(search_factory(SessionLocal, embeddings), args.query, args.limit, formatter, empty_message)

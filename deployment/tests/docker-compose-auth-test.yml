@@ -25,7 +25,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      OPENAI_API_KEY: ""
+      AI_SERVICE_URL: ""
       OIDC_ISSUER: http://localhost:8016/realms/services
       OIDC_CLIENT_ID: kochwiki
       OIDC_CLIENT_SECRET: disposable-test-client-secret-not-for-production

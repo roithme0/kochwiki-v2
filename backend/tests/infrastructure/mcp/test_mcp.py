@@ -21,7 +21,7 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.services import foodstuffs
 from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.infrastructure.embeddings.embeddings import DIMENSIONS, MODEL, EmbeddingClient
+from app.infrastructure.embeddings.embeddings import STORAGE_DIMENSIONS, PROFILE, EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff, foodstuff_summary_out
 from app.recipes.services.recipes import create_recipe_draft, recipe_version_out
 from tests.recipes.helpers import create_owned_recipe as create_recipe
@@ -254,11 +254,11 @@ class QueryProvider:
         self.fail = False
         self.closed = False
 
-    def embed(self, text: str, model: str) -> list[float]:
+    def embed(self, text: str, profile: str) -> list[float]:
         self.calls.append(text)
         if self.fail:
             raise RuntimeError("secret provider diagnostic")
-        return [1.0] + [0.0] * (DIMENSIONS - 1)
+        return [1.0] + [0.0] * (STORAGE_DIMENSIONS - 1)
 
     def close(self) -> None:
         self.closed = True
@@ -275,8 +275,8 @@ def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
             foodstuff = create_foodstuff(session, FoodstuffCreate(name=name, unit=Unit.G))
             if name == "Missing":
                 continue
-            vector = ([1.0, 0.0] if name == "Karotte" else [0.0, 1.0]) + [0.0] * (DIMENSIONS - 2)
-            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff.id, model=MODEL, source_text=name, vector=vector))
+            vector = ([1.0, 0.0] if name == "Karotte" else [0.0, 1.0]) + [0.0] * (STORAGE_DIMENSIONS - 2)
+            session.add(FoodstuffEmbedding(foodstuff_id=foodstuff.id, profile=PROFILE, source_text=name, vector=vector))
             summaries.append(foodstuff_summary_out(foodstuff).model_dump(mode="json"))
 
     async def exercise() -> None:
@@ -338,8 +338,8 @@ def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
         draft = create_recipe_draft(session, active.lineage_id, write.model_copy(update={"name": "Soup draft"}))
         create_recipe(session, write.model_copy(update={"name": "Missing embedding"}))
         for version, axis in [(active, 0), (draft, 1)]:
-            vector = ([1.0, 0.0] if axis == 0 else [0.0, 1.0]) + [0.0] * (DIMENSIONS - 2)
-            session.add(RecipeEmbedding(recipe_version_id=version.version_id, model=MODEL,
+            vector = ([1.0, 0.0] if axis == 0 else [0.0, 1.0]) + [0.0] * (STORAGE_DIMENSIONS - 2)
+            session.add(RecipeEmbedding(recipe_version_id=version.version_id, profile=PROFILE,
                 source_text=version.name, vector=vector))
             recipes.append(recipe_version_out(version).model_dump(mode="json"))
 
