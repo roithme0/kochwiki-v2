@@ -4,8 +4,10 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy import func, select
 
+from app.core.config import Settings
 from app.foodstuffs.routes.images import get_foodstuff_image_storage
 from app.identity import dependencies
 from app.identity.models.application_session import ApplicationSession
@@ -17,6 +19,56 @@ from app.recipes.models.image_upload import RecipeImageUpload
 from app.recipes.models.recipe import RecipeLineage, RecipeVersion
 from app.recipes.routes.images import get_recipe_image_storage
 from tests.recipes.test_recipe_proposal_http import prepare
+
+
+@pytest.mark.parametrize("origin", [
+    "http://localhost:4202/", "http://localhost:4202/path", "null",
+    "https://*.example.com", "https://name:password@example.com",
+    "https://example.com?", "https://example.com#", "http://localhost:bad",
+])
+def test_invalid_additional_origin_configuration(origin: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, csrf_trusted_origins=origin)
+
+
+@pytest.mark.parametrize(("origin", "expected_status"), [
+    ("http://localhost:8000", 201),
+    ("http://localhost:4202", 201),
+    ("https://preview.example:443", 201),
+    ("http://localhost:4203", 403),
+    ("https://attacker.invalid", 403),
+    ("http://localhost:4202/", 403),
+    (None, 403),
+])
+def test_additional_origins_keep_callback_trusted_and_reject_other_requests(
+    client: TestClient, recipe_session: UserOut, monkeypatch: pytest.MonkeyPatch,
+    origin: str | None, expected_status: int,
+) -> None:
+    configured = Settings(
+        _env_file=None,
+        csrf_trusted_origins=" http://localhost:4202, https://preview.example ",
+    )
+    settings = dependencies.get_settings().model_copy(update={
+        "csrf_trusted_origins": configured.csrf_trusted_origins,
+    })
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+    client.headers.pop("Origin")
+    response = client.post(
+        "/recipes", json={"name": "Recipe", "servings": 1},
+        headers={"Origin": origin} if origin else {},
+    )
+    assert response.status_code == expected_status
+
+
+def test_logout_accepts_additional_frontend_origin(
+    client: TestClient, recipe_session: UserOut, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = dependencies.get_settings().model_copy(update={
+        "csrf_trusted_origins": "http://localhost:4202",
+    })
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+    assert client.post("/auth/logout", headers={"Origin": "http://localhost:4202"}).status_code == 204
+    assert client.get("/recipes").status_code == 401
 
 
 @pytest.mark.parametrize("origin", [

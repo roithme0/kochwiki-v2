@@ -73,6 +73,7 @@ def _origin(url: str) -> tuple[str, str | None, int]:
 
 def require_trusted_origin(request: Request, callback_url: str) -> None:
     origins = request.headers.getlist("origin")
+    allowed_origins = [callback_url, *get_settings().csrf_trusted_origin_list]
     trusted = False
     if len(origins) == 1:
         try:
@@ -87,7 +88,7 @@ def require_trusted_origin(request: Request, callback_url: str) -> None:
                 and not supplied.path
                 and not supplied.query
                 and not supplied.fragment
-                and _origin(origins[0]) == _origin(callback_url)
+                and any(_origin(origins[0]) == _origin(allowed) for allowed in allowed_origins)
             )
         except ValueError:
             pass
