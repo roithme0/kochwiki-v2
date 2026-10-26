@@ -1,6 +1,7 @@
 import { BackendMetaService } from '../../core/services/backend-meta.service';
 import { PageHeaderComponent } from '../../core/components/page-header/page-header.component';
 import { signal } from '@angular/core';
+import type { PresentedSession } from '@roithme0/chat-ui/conversation';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -22,6 +23,7 @@ import { mapConversationArtifact } from './recipe-conversation-contract';
 import {
   conversationProposal,
   conversationRecipe,
+  conversationUsage,
 } from './recipe-conversation.fixtures';
 import { routes } from '../../app.routes';
 
@@ -65,7 +67,8 @@ describe('Version-specific conversation routing', () => {
                           expires_at: '2026-10-23T00:00:00Z',
                           error: null,
                           history: [],
-                        },
+                          usage: conversationUsage(),
+                        } satisfies PresentedSession,
                       })}\n\n`,
                     ),
                   );

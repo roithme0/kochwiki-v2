@@ -35,6 +35,7 @@ import { RecipePresentationComponent } from '../../components/recipe-presentatio
 import {
   conversationProposal,
   conversationRecipe,
+  conversationUsage,
   proposalId,
 } from '../../conversation/recipe-conversation.fixtures';
 import { RecipeConversationPageComponent } from './recipe-conversation-page.component';
@@ -95,6 +96,7 @@ describe('Recipe conversation page through published session controller and HTTP
       expires_at: '2026-10-23T00:00:00Z',
       error: null,
       history: structuredClone(history),
+      usage: conversationUsage(),
     };
   }
 
@@ -221,6 +223,7 @@ describe('Recipe conversation page through published session controller and HTTP
       { part_kind: 'user-prompt', content: text },
       {
         part_kind: 'turn',
+        usage: conversationUsage(),
         lifecycle: {
           run_id: runId,
           status,
@@ -439,6 +442,56 @@ describe('Recipe conversation page through published session controller and HTTP
       ),
     ).toBeNull();
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('shows session usage stats and updates them from streamed snapshots', async () => {
+    await open();
+    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
+      .componentInstance as ChatUiComponent;
+    emit({
+      kind: 'snapshot',
+      snapshot: {
+        ...snapshot(),
+        usage: {
+          input_tokens: 120,
+          output_tokens: 40,
+          reasoning_tokens: 10,
+          cache_read_tokens: 20,
+          cache_write_tokens: 30,
+          total_tokens: 160,
+          estimated_cost_usd: '0.0123',
+          requests: 2,
+          tool_calls: 3,
+        },
+      },
+    });
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(chat.usage()).toEqual({
+        inputTokens: 120,
+        outputTokens: 40,
+        reasoningTokens: 10,
+        cacheReadTokens: 20,
+        cacheWriteTokens: 30,
+        totalTokens: 160,
+        estimatedCostUsd: '0.0123',
+        requests: 2,
+        toolCalls: 3,
+      });
+    });
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('ai-chat-usage-line')?.textContent).toContain(
+      '160 Tokens',
+    );
+
+    publish();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(chat.usage()?.totalTokens).toBe(0);
+    });
+    expect(element.querySelector('ai-chat-usage-line')?.textContent).toContain(
+      'Kosten unbekannt',
+    );
   });
 
   it('renders proposals while execution is running, permits draft edits and blocks overlapping submissions until terminal snapshot', async () => {

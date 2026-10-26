@@ -20,6 +20,7 @@ import {
   ChatArtifact,
   ChatSubmission,
   ChatTurn,
+  ChatUsage,
   ChatUiComponent,
   artifactRenderer,
 } from '@roithme0/chat-ui/ui';
@@ -134,6 +135,22 @@ export class RecipeConversationPageComponent {
           ...turns,
         ]
       : turns;
+  });
+  readonly usage = computed<ChatUsage | null>(() => {
+    const usage = this.view().snapshot?.usage;
+    return usage
+      ? {
+          totalTokens: usage.total_tokens,
+          estimatedCostUsd: usage.estimated_cost_usd,
+          inputTokens: usage.input_tokens,
+          outputTokens: usage.output_tokens,
+          reasoningTokens: usage.reasoning_tokens,
+          cacheReadTokens: usage.cache_read_tokens,
+          cacheWriteTokens: usage.cache_write_tokens,
+          requests: usage.requests,
+          toolCalls: usage.tool_calls,
+        }
+      : null;
   });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
