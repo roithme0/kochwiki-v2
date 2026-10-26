@@ -223,7 +223,7 @@ def test_empty_catalogue_and_provider_failures_are_distinct() -> None:
 
 
 def test_no_service_url_disables_capability(caplog: pytest.LogCaptureFixture) -> None:
-    settings = Settings(ai_service_url="")
+    settings = Settings(ai_gateway_url="")
     embeddings = EmbeddingClient.from_settings(settings)
     assert not embeddings.available
     refresh = FoodstuffEmbeddingService(SessionLocal, embeddings)
@@ -232,7 +232,7 @@ def test_no_service_url_disables_capability(caplog: pytest.LogCaptureFixture) ->
     assert refresh.refresh_all().refreshed == 0
     with pytest.raises(SemanticSearchUnavailable):
         search.search("query")
-    assert "AI_SERVICE_URL" in caplog.text
+    assert "AI_GATEWAY_URL" in caplog.text
 
 
 def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:

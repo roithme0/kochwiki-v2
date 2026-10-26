@@ -167,11 +167,14 @@ def test_invalid_json_is_rejected() -> None:
             )
 
 
-def test_configuration_uses_service_url_and_profile() -> None:
-    settings = Settings(_env_file=None, ai_service_url=" http://ai-service:8004/ ")
+def test_configuration_uses_gateway_url_and_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AI_GATEWAY_URL", " http://ai-gateway:8000/ ")
+    settings = Settings(_env_file=None)
     client = EmbeddingClient.from_settings(settings)
     try:
-        assert settings.ai_service_url == "http://ai-service:8004"
+        assert settings.ai_gateway_url == "http://ai-gateway:8000"
         assert client.available
         assert client.profile == PROFILE
         assert isinstance(client.provider, HTTPEmbeddingProvider)
@@ -183,9 +186,9 @@ def test_configuration_uses_service_url_and_profile() -> None:
 
 @pytest.mark.parametrize("url", [None, "", "  "])
 def test_missing_url_disables_generation(url: str | None) -> None:
-    client = EmbeddingClient.from_settings(Settings(_env_file=None, ai_service_url=url))
+    client = EmbeddingClient.from_settings(Settings(_env_file=None, ai_gateway_url=url))
     assert not client.available
-    with pytest.raises(RuntimeError, match="AI_SERVICE_URL"):
+    with pytest.raises(RuntimeError, match="AI_GATEWAY_URL"):
         client.embed("Soup", PROFILE)
     client.close()
 
@@ -201,6 +204,6 @@ def test_missing_url_disables_generation(url: str | None) -> None:
         "http://ai-service:0",
     ],
 )
-def test_invalid_service_origin_is_rejected(url: str) -> None:
+def test_invalid_gateway_origin_is_rejected(url: str) -> None:
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, ai_service_url=url)
+        Settings(_env_file=None, ai_gateway_url=url)

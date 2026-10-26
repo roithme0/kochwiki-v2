@@ -67,7 +67,7 @@ def run_command(
     try:
         if not embeddings.available:
             raise SemanticSearchUnavailable(
-                "Semantic capability unavailable: AI_SERVICE_URL is missing"
+                "Semantic capability unavailable: AI_GATEWAY_URL is missing"
             )
         if args.command == "refresh":
             return run_refresh(refresh_factory(SessionLocal, embeddings))

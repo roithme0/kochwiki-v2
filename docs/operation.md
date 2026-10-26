@@ -18,8 +18,7 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 - Set `STORAGE_PUBLIC_ORIGIN` to the public application origin and `OIDC_CALLBACK_URL` to that origin plus `/api/auth/callback`. Configure the identity provider and any container-specific backchannel address.
 - The callback origin is trusted for authenticated mutations. Add other frontend origins with `CSRF_TRUSTED_ORIGINS` (comma-separated exact HTTP(S) origins), for example `http://localhost:4202` for the Angular dev server. Login still returns to the configured callback origin.
 - Put HTTPS termination in front of the HTTP gateway. Staging currently defaults `OIDC_ALLOW_INSECURE_HTTP` to `true`; set it to `false` when HTTPS is configured.
-- Set `AI_GATEWAY_URL` to the external AI service origin reachable from the gateway. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
-- Set `AI_SERVICE_URL` to the AI service origin reachable from the backend for embeddings; blank disables semantic search and refresh. `AI_GATEWAY_URL` separately serves browser conversations.
+- Set `AI_GATEWAY_URL` to the AI service gateway origin reachable from both the gateway and backend containers. It serves browser conversations and backend embeddings; blank disables conversations, semantic search, and embedding refresh. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
 
 ## Deploy or update
 
@@ -60,6 +59,6 @@ The repository has no automated backup or restore workflow. Verify recovery in a
 | Images fail | `file-storage-init` exit status, Garage health, storage credentials, and `STORAGE_PUBLIC_ORIGIN`. |
 | Login fails | Provider availability, registered callback, client credentials, and backchannel connectivity. |
 | AI requests fail | `AI_GATEWAY_URL` and external service connectivity; an empty URL disables the direct AI gateway route with 503. |
-| Semantic search is unavailable | `AI_SERVICE_URL`, connectivity from the backend, and AI service embedding logs. |
+| Semantic search is unavailable | `AI_GATEWAY_URL`, connectivity from the backend, and AI service embedding logs. |
 
 Use Compose logs for diagnosis. The repository does not configure centralized monitoring or alerting.

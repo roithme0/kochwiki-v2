@@ -7,7 +7,7 @@ from app.infrastructure.storage.config import StorageConfig
 
 
 class Settings(BaseSettings):
-    ai_service_url: str | None = None
+    ai_gateway_url: str | None = None
     app_version: str = "0.0.0"
     database_url: str = "postgresql+psycopg://user:password@localhost:5432/kochwiki"
     oidc_issuer: str | None = None
@@ -32,9 +32,9 @@ class Settings(BaseSettings):
         env_file=".env", extra="ignore", hide_input_in_errors=True
     )
 
-    @field_validator("ai_service_url", mode="before")
+    @field_validator("ai_gateway_url", mode="before")
     @classmethod
-    def validate_ai_service_url(cls, value: object) -> object:
+    def validate_ai_gateway_url(cls, value: object) -> object:
         from app.core.urls import validate_http_origin
 
         if isinstance(value, str):

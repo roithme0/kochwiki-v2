@@ -151,4 +151,4 @@ def test_provider_failure_and_missing_service_url_exit_nonzero(
     )
     monkeypatch.setattr("sys.argv", ["semantic", "refresh"])
     assert main() == 1
-    assert "AI_SERVICE_URL is missing" in capsys.readouterr().out
+    assert "AI_GATEWAY_URL is missing" in capsys.readouterr().out

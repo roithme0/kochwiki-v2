@@ -84,7 +84,7 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
         self._before_sweep()
         if not self.embeddings.available:
             logger.warning(
-                "%s embedding refresh disabled: AI_SERVICE_URL is missing", self.label
+                "%s embedding refresh disabled: AI_GATEWAY_URL is missing", self.label
             )
             return report
         with self.sessions() as session:

@@ -79,13 +79,13 @@ class EmbeddingClient:
     @classmethod
     def from_settings(cls, settings: Settings) -> "EmbeddingClient":
         provider = (
-            HTTPEmbeddingProvider(settings.ai_service_url)
-            if settings.ai_service_url
+            HTTPEmbeddingProvider(settings.ai_gateway_url)
+            if settings.ai_gateway_url
             else None
         )
         if provider is None:
             logger.warning(
-                "Embedding refresh disabled: AI_SERVICE_URL is missing; semantic search unavailable"
+                "Embedding refresh disabled: AI_GATEWAY_URL is missing; semantic search unavailable"
             )
         return cls(provider)
 
@@ -96,7 +96,7 @@ class EmbeddingClient:
     def embed(self, text: str, profile: str) -> list[float]:
         if self.provider is None:
             raise RuntimeError(
-                "Embedding capability unavailable: AI_SERVICE_URL is missing"
+                "Embedding capability unavailable: AI_GATEWAY_URL is missing"
             )
         if profile != self.profile:
             raise ValueError("Embedding profile differs from the configured profile")

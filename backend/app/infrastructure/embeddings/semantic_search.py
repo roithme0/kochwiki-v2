@@ -32,7 +32,7 @@ class SemanticSearch(Generic[Candidate], ABC):
             raise ValueError("Result limit must be between 1 and 20")
         if not self.embeddings.available:
             raise SemanticSearchUnavailable(
-                "Semantic search unavailable: AI_SERVICE_URL is missing"
+                "Semantic search unavailable: AI_GATEWAY_URL is missing"
             )
         try:
             vector = self.embeddings.embed(query.strip(), self.profile)

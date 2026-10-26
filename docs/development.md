@@ -16,8 +16,7 @@ Commands below run from the stated directory. On Windows, use `npm.cmd` if Power
    | Integration | Configuration |
    | --- | --- |
    | Login | Set `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, and `OIDC_CALLBACK_URL`. Register the callback with the provider: `http://localhost:8002/api/auth/callback` for the container UI, or port `4202` for the frontend dev server. The secret must have at least 32 characters. Use `OIDC_BACKCHANNEL_URL` if the container needs a different address to reach the provider. |
-   | AI conversation | Set `AI_GATEWAY_URL` to the external service origin reachable from Docker. Leave empty if unavailable. |
-   | Semantic search | Set `AI_SERVICE_URL` to the AI service origin reachable from the backend, for example `http://host.docker.internal:8004`; blank disables semantic search and refresh. Provider credentials belong in the AI service. |
+   | AI conversations and semantic search | Set `AI_GATEWAY_URL` to the AI service gateway origin reachable from both Docker gateway and backend containers, for example `http://host.docker.internal:8000`. Blank disables conversations, semantic search, and embedding refresh. Provider credentials belong in the AI service. |
 
 3. From the **repository root**:
 
