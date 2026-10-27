@@ -13,6 +13,13 @@ const frontend = resolve(
   '../../frontend',
 );
 
+// lintText needs the supplied source instead of CI's cached on-disk program.
+const textLintConfig = {
+  languageOptions: {
+    parserOptions: { disallowAutomaticSingleRunInference: true },
+  },
+};
+
 void test('fingerprints include new, changed, renamed, and deleted inputs but exclude caches', async () => {
   const root = await mkdtemp(join(tmpdir(), 'kochwiki-v2-lint-'));
   const frontend = join(root, 'frontend');
@@ -44,7 +51,7 @@ void test('configuration checks typed code, external and inline templates, and s
     dirname(fileURLToPath(import.meta.url)),
     '../../frontend',
   );
-  const eslint = new ESLint({ cwd: frontend });
+  const eslint = new ESLint({ cwd: frontend, overrideConfig: textLintConfig });
   const [typescript] = await eslint.lintText('Promise.resolve(1);', {
     filePath: join(frontend, 'src/main.ts'),
   });
@@ -52,6 +59,7 @@ void test('configuration checks typed code, external and inline templates, and s
     typescript.messages.some(
       (message) => message.ruleId === '@typescript-eslint/no-floating-promises',
     ),
+    JSON.stringify(typescript.messages),
   );
   const [template] = await eslint.lintText('<img src="photo.png">', {
     filePath: join(frontend, 'src/app/app.component.html'),
@@ -88,7 +96,10 @@ void test('configuration checks typed code, external and inline templates, and s
 
 void test('validation TypeScript receives strict lint rules from its own configuration', async () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-  const eslint = new ESLint({ cwd: join(root, '.agents/validation') });
+  const eslint = new ESLint({
+    cwd: join(root, '.agents/validation'),
+    overrideConfig: textLintConfig,
+  });
   const [result] = await eslint.lintText('Promise.resolve(1);', {
     filePath: join(root, '.agents/validation/shared.mts'),
   });
@@ -96,6 +107,7 @@ void test('validation TypeScript receives strict lint rules from its own configu
     result.messages.some(
       (message) => message.ruleId === '@typescript-eslint/no-floating-promises',
     ),
+    JSON.stringify(result.messages),
   );
 });
 
