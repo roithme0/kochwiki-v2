@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     tags:
+
       - 'v*'
 
 permissions:
@@ -17,6 +18,7 @@ jobs:
       run:
         working-directory: frontend
     steps:
+
       - name: Check out repository
         uses: actions/checkout@v6
 
@@ -46,8 +48,89 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
+  frontend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        env:
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run frontend tooling tests
+        run: npm run test:tooling
+
+      - name: Run frontend unit tests
+        run: npm run test -- --watch=false
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v6
+
+      - name: Read identity-provider revision
+        id: identity-provider
+        run: echo "revision=$(cat deployment/tests/identity-provider.ref)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out shared identity-provider configuration
+        uses: actions/checkout@v6
+        with:
+          repository: roithme0/identity-provider
+          ref: ${{ steps.identity-provider.outputs.revision }}
+          path: .e2e-identity-provider
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+        env:
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Chromium and browser dependencies
+        run: npx playwright install --with-deps chromium
+        working-directory: frontend
+
+      - name: Provide private package build secret
+        env:
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$NPM_TOKEN" > frontend/.npm-token
+
+      - name: Run isolated E2E
+        run: node .agents/validation/e2e.mts
+        env:
+          IDENTITY_PROVIDER_REPOSITORY: ${{ github.workspace }}/.e2e-identity-provider
+
+      - name: Upload E2E failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-failure-diagnostics
+          path: |
+            .agents/.codex-validation/e2e/manual/*.log
+            frontend/e2e/test-results/
+          include-hidden-files: true
+          retention-days: 7
+
   build-and-publish:
-    needs: [check-kochwiki-contract]
+    needs: [check-kochwiki-contract, frontend-tests, e2e]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -64,6 +147,7 @@ jobs:
             build_args: CONFIGURATION=production
 
     steps:
+
       - name: Check out repository
         uses: actions/checkout@v6
 
@@ -104,7 +188,6 @@ jobs:
             type=ref,event=pr
             type=raw,value=${{ steps.release.outputs.version }},enable=${{ github.event_name == 'push' }}
             type=raw,value=${{ steps.release.outputs.channel }},enable=${{ github.event_name == 'push' }}
-
 
       - name: Build and push image
         uses: docker/build-push-action@v7

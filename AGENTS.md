@@ -13,6 +13,7 @@
 - Summarize changes and call out risks.
 - Treat backend API as an internal contract for this repo's frontend by default: ship backend/frontend contract changes together, and do not preserve legacy compatibility unless explicitly required for a feature or an external consumer.
 - Write tests where they provide meaningful regression protection: critical user flows, branching logic, stateful behavior, contract boundaries, and bug-prone edge cases. Avoid low-signal tests that only restate implementation details. Do not remove existing tests unless they are redundant, obsolete, flaky, or block legitimate refactoring, and explain the reason when removing them.
+- Create new end-to-end tests only as an explicitly requested, intentional step. Adjust and repair existing end-to-end tests as needed during routine changes, preserving their regression coverage.
 
 ## Temporary AI Artifacts
 
@@ -28,7 +29,7 @@ After edits, run the applicable commands in order:
 | Scope | Working directory | Commands |
 | --- | --- | --- |
 | Frontend | `frontend` | `npm run format:changed`, `npm run lint`, `npm run test:tooling`, `npm run test -- --watch=false` |
-| Backend | Repository root | `node .codex/validation/backend.mts --format`, `node --test .codex/validation/shared.test.mts .codex/validation/backend.test.mts` |
+| Backend | Repository root | `node .agents/validation/backend.mts --format`, `node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts` |
 | Backend | `backend` | `.venv/Scripts/python.exe -m pytest` (`.venv/bin/python` on Unix) |
 
 Backend pytest requires the dedicated PostgreSQL test database. See [development setup](docs/development.md#validate-changes) for the database command.
@@ -37,7 +38,8 @@ Use `npm.cmd` if PowerShell blocks `npm.ps1`. See [development setup and contrac
 
 - Format only changed staged, unstaged, and untracked files, respecting configured exclusions and leaving the Git index unchanged. Coordinate before formatting unrelated user edits and review the resulting diff. Full-backend formatting requires an explicit request.
 - Lint errors and warnings fail validation. Run `lint:fix` only deliberately and review its diff; hooks and CI never apply lint fixes.
-- Review and trust hooks before relying on them. They validate changed scopes automatically and reuse success only for identical content after all checks pass. Shared hook changes validate both scopes; persistent failures request at most one continuation.
+- Review and trust hooks before relying on them. They validate changed scopes automatically and reuse success only for identical content after all checks pass. Shared hook changes validate both scopes and isolated E2E; persistent failures request at most one continuation.
+- After frontend, backend, or E2E deployment changes, run `node .agents/validation/e2e.mts` from the root. The runner rebuilds the isolated disposable Docker stack and runs Playwright; see the development guide for prerequisites. E2E success is not reused across changed turns.
 - Fix findings introduced by your work; broader cleanup requires authorization. Report missing dependencies or failed checks as incomplete validation. Hooks never install dependencies automatically.
 
 ## Communication Preferences

@@ -43,3 +43,8 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Browser test artifacts
+/e2e/test-results/
+/playwright-report/
+/playwright/.cache/

@@ -26,7 +26,10 @@
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
-              { "glob": "**/*", "input": "public" },
+              {
+                "glob": "**/*",
+                "input": "public"
+              },
               {
                 "glob": "**/*",
                 "input": "node_modules/@roithme0/chat-ui/public",
@@ -131,7 +134,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "include": ["**/*.spec.ts"],
+            "include": ["src/**/*.spec.ts"],
             "tsConfig": "tsconfig.spec.json",
             "setupFiles": ["src/test-setup.ts"]
           }

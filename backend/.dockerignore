@@ -1,9 +1,26 @@
+# Secrets and local Python environment
 .env
+.env.*
 .venv
+
+# Bytecode, caches and reports
 __pycache__
 *.pyc
 .pytest_cache
-contract/build
-contract/dist
-contract/.venv
-contract/src/*.egg-info
+.pytest_cache*
+.codex-validation
+.coverage*
+htmlcov/
+tests/.pytest_tmp*
+
+# Contract packaging is not used by either Dockerfile
+contract/
+
+# Editor and documentation files
+.vscode/
+.idea/
+.gitignore
+README.md
+requirements*.in
+pyproject.toml
+pytest.ini
