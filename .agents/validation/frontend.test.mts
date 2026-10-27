@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, rename, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -8,14 +8,27 @@ import { fileURLToPath } from 'node:url';
 import { fingerprint, formatFrontend, frontendRequire } from './frontend.mts';
 
 const { ESLint } = frontendRequire('eslint') as typeof import('eslint');
-const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '../../frontend');
+const frontend = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../frontend',
+);
+
+// lintText needs the supplied source instead of CI's cached on-disk program.
+const textLintConfig = {
+  languageOptions: {
+    parserOptions: { disallowAutomaticSingleRunInference: true },
+  },
+};
 
 void test('fingerprints include new, changed, renamed, and deleted inputs but exclude caches', async () => {
   const root = await mkdtemp(join(tmpdir(), 'kochwiki-v2-lint-'));
   const frontend = join(root, 'frontend');
   await mkdir(join(frontend, '.angular/cache'), { recursive: true });
   await mkdir(join(frontend, '.codex-validation'), { recursive: true });
-  await writeFile(join(frontend, '.gitignore'), '.angular/cache/\n.codex-validation/\n');
+  await writeFile(
+    join(frontend, '.gitignore'),
+    '.angular/cache/\n.codex-validation/\n',
+  );
   await writeFile(join(frontend, 'source.ts'), 'export const value = 1;');
   execFileSync('git', ['init', '-q'], { cwd: root });
   execFileSync('git', ['add', 'frontend/source.ts'], { cwd: root });
@@ -33,46 +46,12 @@ void test('fingerprints include new, changed, renamed, and deleted inputs but ex
   assert.notEqual(await fingerprint(root), added);
 });
 
-void test(
-  'PowerShell wrapper dispatches start and stop without linting an unchanged turn',
-  {
-    skip: process.platform !== 'win32',
-  },
-  () => {
-    const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-    const session = `lint-wrapper-test-${process.pid}`;
-    for (const mode of ['start', 'stop']) {
-      const result = spawnSync(
-        'powershell.exe',
-        [
-          '-NoProfile',
-          '-NonInteractive',
-          '-ExecutionPolicy',
-          'Bypass',
-          '-File',
-          join(root, '.codex/validate.ps1'),
-          '-Mode',
-          mode,
-        ],
-        {
-          cwd: root,
-          encoding: 'utf8',
-          windowsHide: true,
-          input: JSON.stringify({
-            session_id: session,
-            stop_hook_active: false,
-          }),
-        },
-      );
-      assert.equal(result.status, 0, result.stderr);
-      assert.equal(result.stdout, '{}');
-    }
-  },
-);
-
 void test('configuration checks typed code, external and inline templates, and scripts', async () => {
-  const frontend = resolve(dirname(fileURLToPath(import.meta.url)), '../../frontend');
-  const eslint = new ESLint({ cwd: frontend });
+  const frontend = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '../../frontend',
+  );
+  const eslint = new ESLint({ cwd: frontend, overrideConfig: textLintConfig });
   const [typescript] = await eslint.lintText('Promise.resolve(1);', {
     filePath: join(frontend, 'src/main.ts'),
   });
@@ -80,19 +59,24 @@ void test('configuration checks typed code, external and inline templates, and s
     typescript.messages.some(
       (message) => message.ruleId === '@typescript-eslint/no-floating-promises',
     ),
+    JSON.stringify(typescript.messages),
   );
   const [template] = await eslint.lintText('<img src="photo.png">', {
     filePath: join(frontend, 'src/app/app.component.html'),
   });
   assert.ok(
-    template.messages.some((message) => message.ruleId === '@angular-eslint/template/alt-text'),
+    template.messages.some(
+      (message) => message.ruleId === '@angular-eslint/template/alt-text',
+    ),
   );
   const [inline] = await eslint.lintText(
     "import { Component } from '@angular/core'; @Component({selector: 'app-test', template: '<img src=\"photo.png\">'}) export class TestComponent {}",
     { filePath: join(frontend, 'src/app/app.component.ts') },
   );
   assert.ok(
-    inline.messages.some((message) => message.ruleId === '@angular-eslint/template/alt-text'),
+    inline.messages.some(
+      (message) => message.ruleId === '@angular-eslint/template/alt-text',
+    ),
   );
   const [script] = await eslint.lintText('missingFunction();', {
     filePath: join(frontend, 'generate-version.js'),
@@ -104,17 +88,26 @@ void test('configuration checks typed code, external and inline templates, and s
     ),
     true,
   );
-  assert.equal(await eslint.isPathIgnored(join(frontend, 'src/version.ts')), true);
+  assert.equal(
+    await eslint.isPathIgnored(join(frontend, 'src/version.ts')),
+    true,
+  );
 });
 
 void test('validation TypeScript receives strict lint rules from its own configuration', async () => {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-  const eslint = new ESLint({ cwd: join(root, '.codex/validation') });
+  const eslint = new ESLint({
+    cwd: join(root, '.agents/validation'),
+    overrideConfig: textLintConfig,
+  });
   const [result] = await eslint.lintText('Promise.resolve(1);', {
-    filePath: join(root, '.codex/validation/shared.mts'),
+    filePath: join(root, '.agents/validation/shared.mts'),
   });
   assert.ok(
-    result.messages.some((message) => message.ruleId === '@typescript-eslint/no-floating-promises'),
+    result.messages.some(
+      (message) => message.ruleId === '@typescript-eslint/no-floating-promises',
+    ),
+    JSON.stringify(result.messages),
   );
 });
 
@@ -125,7 +118,10 @@ async function fixture(): Promise<string> {
   });
   await mkdir(join(root, 'backend'));
   for (const config of ['.prettierrc.json', '.prettierignore', '.gitignore']) {
-    await writeFile(join(root, 'frontend', config), await readFile(join(frontend, config)));
+    await writeFile(
+      join(root, 'frontend', config),
+      await readFile(join(frontend, config)),
+    );
   }
   execFileSync('git', ['init', '-q'], { cwd: root });
   execFileSync('git', ['config', 'user.name', 'Formatter test'], { cwd: root });
@@ -156,14 +152,20 @@ void test('formats staged, unstaged and new files, preserving unchanged files an
   git(root, ['add', 'frontend/staged.ts']);
   const stagedBefore = git(root, ['show', ':frontend/staged.ts']);
   await writeFile(join(root, 'frontend/unstaged.ts'), 'export const value=  3');
-  await writeFile(join(root, 'frontend/new file ä.ts'), 'export const value=  4');
+  await writeFile(
+    join(root, 'frontend/new file ä.ts'),
+    'export const value=  4',
+  );
   const result = await formatFrontend(root);
   assert.deepEqual(result.formatted, [
     'frontend/new file ä.ts',
     'frontend/staged.ts',
     'frontend/unstaged.ts',
   ]);
-  assert.equal(await readFile(join(root, 'frontend/unchanged.ts'), 'utf8'), original);
+  assert.equal(
+    await readFile(join(root, 'frontend/unchanged.ts'), 'utf8'),
+    original,
+  );
   assert.equal(git(root, ['show', ':frontend/staged.ts']), stagedBefore);
   assert.deepEqual((await formatFrontend(root)).formatted, []);
 });
@@ -198,10 +200,16 @@ void test('skips generated, ignored, unsupported and backend files; handles miss
 void test('formats Angular control flow using the Angular parser', async () => {
   const root = await fixture();
   commit(root);
-  await writeFile(join(root, 'frontend/template.html'), '@if(visible){<span>{{value}}</span>}');
+  await writeFile(
+    join(root, 'frontend/template.html'),
+    '@if(visible){<span>{{value}}</span>}',
+  );
   const result = await formatFrontend(root);
   assert.deepEqual(result.formatted, ['frontend/template.html']);
-  assert.match(await readFile(join(root, 'frontend/template.html'), 'utf8'), /@if \(visible\)/);
+  assert.match(
+    await readFile(join(root, 'frontend/template.html'), 'utf8'),
+    /@if \(visible\)/,
+  );
   assert.deepEqual((await formatFrontend(root)).formatted, []);
 });
 

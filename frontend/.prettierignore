@@ -7,3 +7,6 @@ coverage/
 src/app/core/api/generated/
 src/version.ts
 package-lock.json
+
+e2e/test-results/
+playwright-report/

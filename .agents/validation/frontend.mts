@@ -26,7 +26,7 @@ const policy: ValidationPolicy = {
 export function fingerprint(root: string): Promise<string> {
   return contentFingerprint(
     root,
-    ['frontend/', '.editorconfig', '.codex/'],
+    ['frontend/', '.editorconfig', '.codex/', '.agents/validation/'],
     ['frontend/node_modules/.package-lock.json'],
   );
 }
@@ -38,7 +38,15 @@ export function frontendProfile(root: string): ValidationProfile {
     dependencies: (cache) => ({
       fingerprint: () => fingerprint(root),
       hasChanges: () =>
-        git(root, ['status', '--porcelain', '-z', '--', 'frontend/', '.codex/']).length > 0,
+        git(root, [
+          'status',
+          '--porcelain',
+          '-z',
+          '--',
+          'frontend/',
+          '.codex/',
+          '.agents/validation/',
+        ]).length > 0,
       format: () => formatFrontend(root),
       lint: () => lintFrontend(root, join(cache, 'lint.log')),
       test: () => testFrontend(root, cache),
@@ -54,7 +62,8 @@ async function lintFrontend(root: string, logPath: string): Promise<void> {
     [
       join(frontend, 'node_modules/eslint/bin/eslint.js'),
       '.',
-      '../.codex/validation',
+      '../.agents/validation',
+      '../.codex',
       '--max-warnings=0',
     ],
     logPath,
@@ -67,7 +76,12 @@ async function testFrontend(root: string, cache: string): Promise<void> {
   await runCheck(
     frontend,
     'Frontend tooling tests',
-    ['--test', '../.codex/validation/frontend.test.mts'],
+    [
+      '--test',
+      '../.agents/validation/frontend.test.mts',
+      '../.codex/validate.test.mts',
+      '../.agents/validation/e2e.test.mts',
+    ],
     join(cache, 'tooling-tests.log'),
     120_000,
   );
@@ -97,7 +111,10 @@ async function prepareFormatting(
     const path = await sourcePath(root, 'frontend', name);
     if (!path) continue;
     const info = await prettier.getFileInfo(path, {
-      ignorePath: [join(frontend, '.gitignore'), join(frontend, '.prettierignore')],
+      ignorePath: [
+        join(frontend, '.gitignore'),
+        join(frontend, '.prettierignore'),
+      ],
     });
     if (info.ignored || !info.inferredParser) {
       continue;
@@ -128,9 +145,12 @@ export async function formatFrontend(root: string): Promise<FormatResult> {
   return { checked, formatted };
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   if (process.argv.length !== 3 || process.argv[2] !== '--format')
-    throw new Error('Usage: node .codex/validation/frontend.mts --format');
+    throw new Error('Usage: node .agents/validation/frontend.mts --format');
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   const result = await formatFrontend(root);
   process.stdout.write(

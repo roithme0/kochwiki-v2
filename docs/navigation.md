@@ -43,4 +43,6 @@ Database changes live in [Alembic migrations](../backend/alembic/versions/). Bac
 
 - Frontend: `*.spec.ts` files beside the implementation; script tests in [frontend/scripts/](../frontend/scripts/).
 - Backend: [backend/tests/](../backend/tests/), grouped by feature and infrastructure area.
+- Browser E2E: [frontend/e2e/](../frontend/e2e/), real-login navigation against the [isolated stack](../deployment/tests/docker-compose-e2e.yml); run instructions in the [development guide](development.md#end-to-end-tests).
+- Shared validation: [.agents/validation/](../.agents/validation/) and the [Codex adapter](../.codex/validate.mts).
 - Deployment integrations: [deployment/tests/](../deployment/tests/), including gateway and storage checks.
