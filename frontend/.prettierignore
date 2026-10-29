@@ -9,4 +9,5 @@ src/version.ts
 package-lock.json
 
 e2e/test-results/
+test-results/
 playwright-report/
