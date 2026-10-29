@@ -65,9 +65,12 @@ describe('Session-gated application routing', () => {
     expect(page.querySelector('[role="status"]')).not.toBeNull();
     expect(page.textContent).not.toContain('Protected page');
     expect(page.textContent).not.toContain('Authenticated header');
-    TestBed.inject(HttpTestingController)
-      .expectOne('/api/auth/me')
-      .flush({ id: 7, display_name: 'Cook' });
+    TestBed.inject(HttpTestingController).expectOne('/api/auth/me').flush({
+      id: 7,
+      display_name: 'Cook',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-7',
+    });
     expect(await pending).toBe(true);
     fixture.detectChanges();
     await fixture.whenStable();

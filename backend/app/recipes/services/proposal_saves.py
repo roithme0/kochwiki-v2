@@ -4,31 +4,51 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.schemas.recipe import IngredientWrite, RecipeVersionOut, RecipeVersionWrite
+from app.recipes.schemas.recipe import (
+    IngredientWrite,
+    RecipeVersionOut,
+    RecipeVersionWrite,
+)
 from app.recipes.schemas.proposal import ExistingProposalFoodstuff, ProposalRecipe
 from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import create_foodstuff
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.recipes import create_recipe_draft, get_recipe_version_by_id, recipe_version_out
+from app.recipes.services.recipes import (
+    create_recipe_draft,
+    get_recipe_version_by_id,
+    recipe_version_out,
+    require_recipe_lineage_owner,
+)
 
 
 def save_recipe_proposal(
-    session_factory: Callable[[], Session], store: RecipeProposalStore, proposal_id: UUID
+    session_factory: Callable[[], Session],
+    store: RecipeProposalStore,
+    proposal_id: UUID,
+    *,
+    user_id: int,
 ) -> RecipeVersionOut:
-    with store.saving(proposal_id), session_factory() as session:
-        saved_version_id = store.saved_version_id(proposal_id)
-        if saved_version_id is not None:
-            return recipe_version_out(_get_version(session, saved_version_id))
-
-        proposal = store.get(proposal_id)
+    with store.saving(proposal_id, user_id=user_id), session_factory() as session:
         with session.begin():
-            source = _get_version(session, proposal.sourceRecipeVersionId)
+            proposal = store.get(proposal_id, user_id=user_id)
+            saved_version_id = store.saved_version_id(proposal_id, user_id=user_id)
+            source = session.get(RecipeVersion, proposal.sourceRecipeVersionId)
+            if source is not None:
+                require_recipe_lineage_owner(session, source.lineage_id, user_id)
+            if saved_version_id is not None:
+                saved = _get_version(session, saved_version_id)
+                require_recipe_lineage_owner(session, saved.lineage_id, user_id)
+                return recipe_version_out(saved)
+            if source is None:
+                raise NotFoundError(
+                    f"Recipe version with id {proposal.sourceRecipeVersionId} not found"
+                )
             payload = _materialize_recipe(session, proposal.recipe)
             payload.imageId = source.image_id
             draft = create_recipe_draft(session, source.lineage_id, payload)
             result = recipe_version_out(draft)
-        store.record_saved_version(proposal_id, result.recipeVersionId)
+        store.record_saved_version(proposal_id, result.recipeVersionId, user_id=user_id)
         return result
 
 
@@ -46,11 +66,18 @@ def _materialize_recipe(session: Session, recipe: ProposalRecipe) -> RecipeVersi
         foodstuff_id = (
             foodstuff.foodstuffId
             if isinstance(foodstuff, ExistingProposalFoodstuff)
-            else create_foodstuff(session, FoodstuffCreate.model_validate(foodstuff.definition.model_dump())).id
+            else create_foodstuff(
+                session,
+                FoodstuffCreate.model_validate(foodstuff.definition.model_dump()),
+            ).id
         )
-        ingredients.append(IngredientWrite(
-            index=ingredient.index, amount=ingredient.amount, foodstuffId=foodstuff_id
-        ))
+        ingredients.append(
+            IngredientWrite(
+                index=ingredient.index,
+                amount=ingredient.amount,
+                foodstuffId=foodstuff_id,
+            )
+        )
     return RecipeVersionWrite(
         name=recipe.name,
         servings=recipe.servings,

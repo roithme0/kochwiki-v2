@@ -4,7 +4,14 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Enum,
+    ForeignKey,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.base import Base
@@ -18,14 +25,22 @@ class Foodstuff(Base):
     __tablename__ = "foodstuff"
     __table_args__ = (
         UniqueConstraint("name", "brand", name="uq_foodstuff_name_brand"),
-        CheckConstraint("kcal IS NULL OR kcal >= 0", name="ck_foodstuff_kcal_nonnegative"),
-        CheckConstraint("carbs IS NULL OR carbs >= 0", name="ck_foodstuff_carbs_nonnegative"),
-        CheckConstraint("protein IS NULL OR protein >= 0", name="ck_foodstuff_protein_nonnegative"),
+        CheckConstraint(
+            "kcal IS NULL OR kcal >= 0", name="ck_foodstuff_kcal_nonnegative"
+        ),
+        CheckConstraint(
+            "carbs IS NULL OR carbs >= 0", name="ck_foodstuff_carbs_nonnegative"
+        ),
+        CheckConstraint(
+            "protein IS NULL OR protein >= 0", name="ck_foodstuff_protein_nonnegative"
+        ),
         CheckConstraint("fat IS NULL OR fat >= 0", name="ck_foodstuff_fat_nonnegative"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    image_id: Mapped[UUID | None] = mapped_column(ForeignKey("image_asset.id", ondelete="RESTRICT"), nullable=True, index=True)
+    image_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("image_asset.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
     unit: Mapped[Unit] = mapped_column(Enum(Unit, name="unit_enum"), nullable=False)

@@ -1,0 +1,130 @@
+name: kochwiki-e2e
+
+services:
+  db:
+    image: pgvector/pgvector:0.8.2-pg16
+    environment:
+      POSTGRES_DB: kochwiki_e2e
+      POSTGRES_PASSWORD: disposable-e2e-admin
+      APP_DB_USER: test
+      APP_DB_PASSWORD: disposable-e2e-db
+    tmpfs:
+      - /var/lib/postgresql/data
+    volumes:
+      - ../postgres/init-kochwiki.sh:/docker-entrypoint-initdb.d/10-kochwiki.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U test -d kochwiki_e2e"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  identity-provider:
+    image: quay.io/keycloak/keycloak:26.8.0
+    command: [start-dev, --hostname, "http://localhost:8026"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: e2e-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: disposable-e2e-admin-password
+      KOCHWIKI_CLIENT_SECRET: disposable-e2e-client-secret-not-for-production
+      KOCHWIKI_REDIRECT_URIS: http://localhost:9002/api/auth/callback
+      KOCHWIKI_LOGOUT_REDIRECT_URIS: http://localhost:9002/signed-out
+    ports:
+      - "127.0.0.1:8026:8080"
+    tmpfs:
+      - /opt/keycloak/data:uid=1000,gid=0
+    volumes:
+      - ${IDENTITY_PROVIDER_REPOSITORY:?Run the E2E validation runner}/config:/opt/identity-provider/config:ro
+      - ${IDENTITY_PROVIDER_REPOSITORY:?Run the E2E validation runner}/scripts/apply-config.sh:/opt/identity-provider/apply-config.sh:ro
+      - ./prepare-e2e-identity.sh:/opt/e2e/prepare.sh:ro
+      - ./e2e-user.json:/opt/e2e/user.json:ro
+
+  file-storage:
+    image: dxflrs/garage:v2.4.1
+    command: [/garage, server, --single-node]
+    environment:
+      GARAGE_ADMIN_TOKEN: disposable-e2e-garage-admin
+      GARAGE_RPC_SECRET: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      RUST_LOG: info,garage_api_common::generic_server=off
+    tmpfs:
+      - /var/lib/garage/data
+      - /var/lib/garage/meta
+    volumes:
+      - ../garage/garage.toml:/etc/garage.toml:ro
+    healthcheck:
+      test: [CMD, /garage, status]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  file-storage-init:
+    image: python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+    network_mode: service:file-storage
+    command: [python, /config/init_storage.py]
+    environment:
+      GARAGE_ADMIN_TOKEN: disposable-e2e-garage-admin
+      GARAGE_ACCESS_KEY_ID: GKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      GARAGE_SECRET_ACCESS_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    volumes:
+      - ../garage/init_storage.py:/config/init_storage.py:ro
+      - ../garage/buckets.json:/config/buckets.json:ro
+    depends_on:
+      file-storage:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ../../backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://test:disposable-e2e-db@db:5432/kochwiki_e2e
+      AI_GATEWAY_URL: ""
+      OIDC_ISSUER: http://localhost:8026/realms/services
+      OIDC_BACKCHANNEL_URL: http://identity-provider:8080/realms/services
+      OIDC_ALLOW_INSECURE_HTTP: "true"
+      OIDC_CLIENT_ID: kochwiki
+      OIDC_CLIENT_SECRET: disposable-e2e-client-secret-not-for-production
+      OIDC_CALLBACK_URL: http://localhost:9002/api/auth/callback
+      STORAGE_ENDPOINT_URL: http://file-storage:3900
+      STORAGE_PUBLIC_ORIGIN: http://localhost:9002
+      STORAGE_REGION: garage
+      STORAGE_BUCKET_RECIPE_IMAGES: recipe-images
+      STORAGE_BUCKET_FOODSTUFF_IMAGES: foodstuff-images
+      STORAGE_ACCESS_KEY_ID: GKaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      STORAGE_SECRET_ACCESS_KEY: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+
+  frontend:
+    build:
+      context: ../../frontend
+      args:
+        CONFIGURATION: local
+      secrets:
+        - npm_token
+    healthcheck:
+      test: [CMD, curl, --fail, http://localhost/]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  gateway:
+    image: nginx:1.25
+    environment:
+      AI_GATEWAY_URL: ""
+    entrypoint: [/bin/sh, -c, "sh /etc/nginx/configure-ai-gateway.sh && exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
+    ports:
+      - "127.0.0.1:9002:80"
+    volumes:
+      - ../gateway/nginx.conf:/etc/nginx/kochwiki-gateway.conf.template:ro
+      - ../gateway/configure-ai-gateway.sh:/etc/nginx/configure-ai-gateway.sh:ro
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_healthy
+      file-storage-init:
+        condition: service_completed_successfully
+
+secrets:
+  npm_token:
+    file: ../../frontend/.npm-token

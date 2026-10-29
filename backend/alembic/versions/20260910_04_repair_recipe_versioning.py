@@ -30,7 +30,8 @@ uuid_type = postgresql.UUID(as_uuid=True)
 def upgrade() -> None:
     connection = op.get_bind()
     recipe_version_columns = {
-        column["name"] for column in sa.inspect(connection).get_columns("recipe_version")
+        column["name"]
+        for column in sa.inspect(connection).get_columns("recipe_version")
     }
     if "lineage_id" in recipe_version_columns:
         return
@@ -76,7 +77,9 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
 
-    op.add_column("ingredient", sa.Column("recipe_version_uuid", uuid_type, nullable=True))
+    op.add_column(
+        "ingredient", sa.Column("recipe_version_uuid", uuid_type, nullable=True)
+    )
     op.add_column("step", sa.Column("recipe_version_uuid", uuid_type, nullable=True))
     connection.execute(
         sa.text(
@@ -93,7 +96,9 @@ def upgrade() -> None:
         )
     )
 
-    op.drop_constraint("ingredient_recipe_version_id_fkey", "ingredient", type_="foreignkey")
+    op.drop_constraint(
+        "ingredient_recipe_version_id_fkey", "ingredient", type_="foreignkey"
+    )
     op.drop_constraint("step_recipe_version_id_fkey", "step", type_="foreignkey")
     op.drop_constraint("uq_ingredient_foodstuff_recipe", "ingredient", type_="unique")
     op.drop_constraint("uq_ingredient_recipe_index", "ingredient", type_="unique")
@@ -101,10 +106,16 @@ def upgrade() -> None:
     op.drop_column("ingredient", "recipe_version_id")
     op.drop_column("step", "recipe_version_id")
     op.alter_column(
-        "ingredient", "recipe_version_uuid", new_column_name="recipe_version_id", nullable=False
+        "ingredient",
+        "recipe_version_uuid",
+        new_column_name="recipe_version_id",
+        nullable=False,
     )
     op.alter_column(
-        "step", "recipe_version_uuid", new_column_name="recipe_version_id", nullable=False
+        "step",
+        "recipe_version_uuid",
+        new_column_name="recipe_version_id",
+        nullable=False,
     )
 
     op.drop_index("uq_recipe_version_active", table_name="recipe_version")

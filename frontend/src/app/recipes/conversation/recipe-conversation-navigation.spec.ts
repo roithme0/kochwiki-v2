@@ -1,6 +1,7 @@
 import { BackendMetaService } from '../../core/services/backend-meta.service';
 import { PageHeaderComponent } from '../../core/components/page-header/page-header.component';
 import { signal } from '@angular/core';
+import type { PresentedSession } from '@roithme0/chat-ui/conversation';
 import { provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -22,6 +23,7 @@ import { mapConversationArtifact } from './recipe-conversation-contract';
 import {
   conversationProposal,
   conversationRecipe,
+  conversationUsage,
 } from './recipe-conversation.fixtures';
 import { routes } from '../../app.routes';
 
@@ -65,7 +67,8 @@ describe('Version-specific conversation routing', () => {
                           expires_at: '2026-10-23T00:00:00Z',
                           error: null,
                           history: [],
-                        },
+                          usage: conversationUsage(),
+                        } satisfies PresentedSession,
                       })}\n\n`,
                     ),
                   );
@@ -111,7 +114,12 @@ describe('Version-specific conversation routing', () => {
         {
           provide: ActiveUserService,
           useValue: {
-            activeUser: signal({ id: 1, display_name: 'Test' }),
+            activeUser: signal({
+              id: 1,
+              display_name: 'Test',
+              issuer: 'https://idp.example/realms/test',
+              subject: 'user-1',
+            }),
             restorationState: signal('idle'),
             ensureSession: async () => {},
           },
@@ -224,7 +232,12 @@ describe('Version-specific conversation routing', () => {
     const auth = TestBed.inject(ActiveUserService);
     const http = TestBed.inject(HttpTestingController);
     const check = auth.ensureSession();
-    http.expectOne('/api/auth/me').flush({ id: 1, display_name: 'Test' });
+    http.expectOne('/api/auth/me').flush({
+      id: 1,
+      display_name: 'Test',
+      issuer: 'https://idp.example/realms/test',
+      subject: 'user-1',
+    });
     await check;
     const harness = await RouterTestingHarness.create();
     const page = await harness.navigateByUrl(

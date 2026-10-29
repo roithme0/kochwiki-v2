@@ -1,4 +1,4 @@
 -r requirements.in
-httpx
 pytest
 boto3-stubs[s3]
+black==26.10.1

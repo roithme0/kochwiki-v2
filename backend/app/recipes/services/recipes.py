@@ -23,16 +23,24 @@ from app.recipes.schemas.recipe import (
     StepOut,
     StepWrite,
 )
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
 from app.recipes.services.embeddings import mark_recipe_refresh, remove_recipe_embedding
-from app.recipes.services.nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.recipes.services.nutrition import (
+    ResolvedNutritionIngredient,
+    per_serving,
+    total_nutrition,
+)
 
 
 def list_recipe_versions(session: Session) -> Sequence[RecipeVersion]:
     return session.scalars(
         _recipe_version_statement()
-        .where(RecipeVersion.state.in_((RecipeVersionState.ACTIVE, RecipeVersionState.DRAFT)))
+        .where(
+            RecipeVersion.state.in_(
+                (RecipeVersionState.ACTIVE, RecipeVersionState.DRAFT)
+            )
+        )
         .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
     ).all()
 
@@ -49,7 +57,9 @@ def get_active_recipe_version(session: Session, lineage_id: UUID) -> RecipeVersi
     return version
 
 
-def get_recipe_version_by_id(session: Session, lineage_id: UUID, version_id: UUID) -> RecipeVersion:
+def get_recipe_version_by_id(
+    session: Session, lineage_id: UUID, version_id: UUID
+) -> RecipeVersion:
     version = session.scalar(
         _recipe_version_statement().where(
             RecipeVersion.lineage_id == lineage_id,
@@ -61,17 +71,26 @@ def get_recipe_version_by_id(session: Session, lineage_id: UUID, version_id: UUI
     return version
 
 
-def list_historical_recipe_versions(session: Session, lineage_id: UUID) -> Sequence[RecipeVersion]:
+def list_historical_recipe_versions(
+    session: Session, lineage_id: UUID
+) -> Sequence[RecipeVersion]:
     _get_lineage(session, lineage_id)
     return session.scalars(
         _recipe_version_statement()
-        .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.state == RecipeVersionState.HISTORICAL)
+        .where(
+            RecipeVersion.lineage_id == lineage_id,
+            RecipeVersion.state == RecipeVersionState.HISTORICAL,
+        )
         .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
     ).all()
 
 
 def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
-    lineage_id = select(RecipeVersion.lineage_id).where(RecipeVersion.version_id == version_id).scalar_subquery()
+    lineage_id = (
+        select(RecipeVersion.lineage_id)
+        .where(RecipeVersion.version_id == version_id)
+        .scalar_subquery()
+    )
     versions = session.scalars(
         _recipe_version_statement()
         .where(RecipeVersion.lineage_id == lineage_id)
@@ -81,58 +100,101 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
     return RecipeLineageOut(
         recipeLineageId=versions[0].lineage_id,
+        ownerId=versions[0].lineage.owner_id,
         versions=[recipe_version_out(version) for version in versions],
     )
 
 
-def create_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersion:
-    image_id = _resolve_image_id(session, payload)
+def require_recipe_lineage_owner(
+    session: Session, lineage_id: UUID, user_id: int
+) -> None:
+    lineage = _get_lineage(session, lineage_id)
+    if lineage.owner_id != user_id:
+        raise ForbiddenError("Only the recipe owner may modify this lineage")
+
+
+def create_recipe(
+    session: Session, payload: RecipeVersionWrite, *, owner_id: int
+) -> RecipeVersion:
+    image_id = _resolve_image_id(session, payload, owner_id=owner_id)
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     now = _now()
-    lineage = RecipeLineage(created_at=now)
-    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id)
+    lineage = RecipeLineage(created_at=now, owner_id=owner_id)
+    version = _new_recipe_version(
+        lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id
+    )
     session.add(lineage)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage.id, version.version_id)
 
 
-def publish_active_recipe_edit(session: Session, lineage_id: UUID, payload: RecipeVersionWrite) -> RecipeVersion:
+def publish_active_recipe_edit(
+    session: Session, lineage_id: UUID, payload: RecipeVersionWrite
+) -> RecipeVersion:
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
-    image_id = _resolve_image_id(session, payload, active_version.image_id)
+    image_id = _resolve_image_id(
+        session,
+        payload,
+        active_version.image_id,
+        owner_id=active_version.lineage.owner_id,
+    )
     now = _now()
     active_version.state = RecipeVersionState.HISTORICAL
     remove_recipe_embedding(session, active_version.version_id)
     session.flush()
-    version = _new_recipe_version(active_version.lineage, payload, foodstuffs, RecipeVersionState.ACTIVE, now, image_id)
+    version = _new_recipe_version(
+        active_version.lineage,
+        payload,
+        foodstuffs,
+        RecipeVersionState.ACTIVE,
+        now,
+        image_id,
+    )
     session.add(version)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
-def create_recipe_draft(session: Session, lineage_id: UUID, payload: RecipeVersionWrite) -> RecipeVersion:
+def create_recipe_draft(
+    session: Session, lineage_id: UUID, payload: RecipeVersionWrite
+) -> RecipeVersion:
     lineage = _get_lineage(session, lineage_id)
     source_image_id = session.scalar(
         select(RecipeVersion.image_id)
-        .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.state == RecipeVersionState.ACTIVE)
+        .where(
+            RecipeVersion.lineage_id == lineage_id,
+            RecipeVersion.state == RecipeVersionState.ACTIVE,
+        )
         .with_for_update()
     )
-    image_id = _resolve_image_id(session, payload, source_image_id)
+    image_id = _resolve_image_id(
+        session, payload, source_image_id, owner_id=lineage.owner_id
+    )
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
-    version = _new_recipe_version(lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now(), image_id)
+    version = _new_recipe_version(
+        lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now(), image_id
+    )
     session.add(version)
     session.flush()
     mark_recipe_refresh(session, version.version_id)
     return get_recipe_version_by_id(session, lineage_id, version.version_id)
 
 
-def update_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID, payload: RecipeVersionWrite) -> RecipeVersion:
+def update_recipe_draft(
+    session: Session, lineage_id: UUID, version_id: UUID, payload: RecipeVersionWrite
+) -> RecipeVersion:
     draft_version = _get_recipe_version_for_update(session, lineage_id, version_id)
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be updated")
-    image_id = _resolve_image_id(session, payload, draft_version.image_id)
+    image_id = _resolve_image_id(
+        session,
+        payload,
+        draft_version.image_id,
+        owner_id=draft_version.lineage.owner_id,
+    )
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     previous_name = draft_version.name
     _apply_version_content(session, draft_version, payload, foodstuffs)
@@ -144,7 +206,9 @@ def update_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID, pa
     return get_recipe_version_by_id(session, lineage_id, version_id)
 
 
-def publish_recipe_draft(session: Session, lineage_id: UUID, version_id: UUID) -> RecipeVersion:
+def publish_recipe_draft(
+    session: Session, lineage_id: UUID, version_id: UUID
+) -> RecipeVersion:
     draft_version = _get_recipe_version_for_update(session, lineage_id, version_id)
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be published")
@@ -181,10 +245,14 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
+        ownerId=version.lineage.owner_id,
         imageId=version.image_id,
         imageDimensions=(
-            RecipeImageDimensionsOut(width=version.image.width, height=version.image.height)
-            if version.image is not None else None
+            RecipeImageDimensionsOut(
+                width=version.image.width, height=version.image.height
+            )
+            if version.image is not None
+            else None
         ),
         state=version.state,
         createdAt=version.created_at,
@@ -196,12 +264,20 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         carbs=per_serving(total_carbs, version.servings),
         protein=per_serving(total_protein, version.servings),
         fat=per_serving(total_fat, version.servings),
-        ingredients=[ingredient_out(item) for item in sorted(version.ingredients, key=lambda item: item.index)],
-        steps=[step_out(item) for item in sorted(version.steps, key=lambda item: item.index)],
+        ingredients=[
+            ingredient_out(item)
+            for item in sorted(version.ingredients, key=lambda item: item.index)
+        ],
+        steps=[
+            step_out(item)
+            for item in sorted(version.steps, key=lambda item: item.index)
+        ],
     )
 
 
-def resolve_recipe_presentation(session: Session, payload: RecipePresentationResolve) -> RecipePresentationOut:
+def resolve_recipe_presentation(
+    session: Session, payload: RecipePresentationResolve
+) -> RecipePresentationOut:
     foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     ingredients = [
         RecipePresentationIngredientOut(
@@ -212,16 +288,26 @@ def resolve_recipe_presentation(session: Session, payload: RecipePresentationRes
         for ingredient in sorted(payload.ingredients, key=lambda item: item.index)
     ]
     nutrition_ingredients = [
-        ResolvedNutritionIngredient(amount=ingredient.amount, foodstuff=foodstuffs[ingredient.foodstuffId])
+        ResolvedNutritionIngredient(
+            amount=ingredient.amount, foodstuff=foodstuffs[ingredient.foodstuffId]
+        )
         for ingredient in payload.ingredients
     ]
     return RecipePresentationOut(
         servings=payload.servings,
         preptime=payload.preptime,
-        kcal=per_serving(total_nutrition(nutrition_ingredients, "kcal"), payload.servings),
-        carbs=per_serving(total_nutrition(nutrition_ingredients, "carbs"), payload.servings),
-        protein=per_serving(total_nutrition(nutrition_ingredients, "protein"), payload.servings),
-        fat=per_serving(total_nutrition(nutrition_ingredients, "fat"), payload.servings),
+        kcal=per_serving(
+            total_nutrition(nutrition_ingredients, "kcal"), payload.servings
+        ),
+        carbs=per_serving(
+            total_nutrition(nutrition_ingredients, "carbs"), payload.servings
+        ),
+        protein=per_serving(
+            total_nutrition(nutrition_ingredients, "protein"), payload.servings
+        ),
+        fat=per_serving(
+            total_nutrition(nutrition_ingredients, "fat"), payload.servings
+        ),
         ingredients=ingredients,
         steps=[
             RecipePresentationStepOut(index=step.index, description=step.description)
@@ -252,20 +338,29 @@ def step_out(step: Step) -> StepOut:
 def list_ingredients(session: Session) -> Sequence[Ingredient]:
     return session.scalars(
         select(Ingredient)
-        .options(selectinload(Ingredient.foodstuff), selectinload(Ingredient.recipe_version))
+        .options(
+            selectinload(Ingredient.foodstuff), selectinload(Ingredient.recipe_version)
+        )
         .order_by(Ingredient.id)
     ).all()
 
 
 def list_steps(session: Session) -> Sequence[Step]:
-    return session.scalars(select(Step).options(selectinload(Step.recipe_version)).order_by(Step.id)).all()
+    return session.scalars(
+        select(Step).options(selectinload(Step.recipe_version)).order_by(Step.id)
+    ).all()
 
 
 def _recipe_version_statement() -> Select[tuple[RecipeVersion]]:
-    return select(RecipeVersion).execution_options(populate_existing=True).options(
-        selectinload(RecipeVersion.image),
-        selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
-        selectinload(RecipeVersion.steps),
+    return (
+        select(RecipeVersion)
+        .execution_options(populate_existing=True)
+        .options(
+            selectinload(RecipeVersion.lineage),
+            selectinload(RecipeVersion.image),
+            selectinload(RecipeVersion.ingredients).selectinload(Ingredient.foodstuff),
+            selectinload(RecipeVersion.steps),
+        )
     )
 
 
@@ -276,10 +371,15 @@ def _get_lineage(session: Session, lineage_id: UUID) -> RecipeLineage:
     return lineage
 
 
-def _get_active_recipe_version_for_update(session: Session, lineage_id: UUID) -> RecipeVersion:
+def _get_active_recipe_version_for_update(
+    session: Session, lineage_id: UUID
+) -> RecipeVersion:
     version = session.scalar(
         select(RecipeVersion)
-        .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.state == RecipeVersionState.ACTIVE)
+        .where(
+            RecipeVersion.lineage_id == lineage_id,
+            RecipeVersion.state == RecipeVersionState.ACTIVE,
+        )
         .with_for_update()
     )
     if version is None:
@@ -287,10 +387,15 @@ def _get_active_recipe_version_for_update(session: Session, lineage_id: UUID) ->
     return version
 
 
-def _get_recipe_version_for_update(session: Session, lineage_id: UUID, version_id: UUID) -> RecipeVersion:
+def _get_recipe_version_for_update(
+    session: Session, lineage_id: UUID, version_id: UUID
+) -> RecipeVersion:
     version = session.scalar(
         select(RecipeVersion)
-        .where(RecipeVersion.lineage_id == lineage_id, RecipeVersion.version_id == version_id)
+        .where(
+            RecipeVersion.lineage_id == lineage_id,
+            RecipeVersion.version_id == version_id,
+        )
         .with_for_update()
     )
     if version is None:
@@ -322,7 +427,11 @@ def _new_recipe_version(
 
 
 def _resolve_image_id(
-    session: Session, payload: RecipeVersionWrite, source_image_id: UUID | None = None
+    session: Session,
+    payload: RecipeVersionWrite,
+    source_image_id: UUID | None = None,
+    *,
+    owner_id: int,
 ) -> UUID | None:
     if "imageId" not in payload.model_fields_set:
         return source_image_id
@@ -330,6 +439,10 @@ def _resolve_image_id(
         image = session.get(ImageAsset, payload.imageId)
         if image is None or image.kind != ImageKind.RECIPE:
             raise NotFoundError(f"Recipe image with id {payload.imageId} not found")
+        if image.uploader_id != owner_id:
+            raise ForbiddenError(
+                "Only images uploaded by the recipe owner may be attached"
+            )
     return payload.imageId
 
 
@@ -346,13 +459,17 @@ def _apply_version_content(
     version.preptime = payload.preptime
 
 
-def _foodstuffs_for_ingredients(session: Session, ingredients: Sequence[IngredientWrite]) -> dict[int, Foodstuff]:
+def _foodstuffs_for_ingredients(
+    session: Session, ingredients: Sequence[IngredientWrite]
+) -> dict[int, Foodstuff]:
     foodstuff_ids = [ingredient.foodstuffId for ingredient in ingredients]
     if len(foodstuff_ids) != len(set(foodstuff_ids)):
         raise ConflictError("A foodstuff may only occur once per recipe")
     if not foodstuff_ids:
         return {}
-    foodstuffs = session.scalars(select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids))).all()
+    foodstuffs = session.scalars(
+        select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids))
+    ).all()
     by_id = {foodstuff.id: foodstuff for foodstuff in foodstuffs}
     missing_ids = sorted(set(foodstuff_ids).difference(by_id))
     if missing_ids:
@@ -360,9 +477,15 @@ def _foodstuffs_for_ingredients(session: Session, ingredients: Sequence[Ingredie
     return by_id
 
 
-def _new_ingredients(payloads: list[IngredientWrite], foodstuffs: dict[int, Foodstuff]) -> list[Ingredient]:
+def _new_ingredients(
+    payloads: list[IngredientWrite], foodstuffs: dict[int, Foodstuff]
+) -> list[Ingredient]:
     return [
-        Ingredient(index=payload.index, amount=payload.amount, foodstuff=foodstuffs[payload.foodstuffId])
+        Ingredient(
+            index=payload.index,
+            amount=payload.amount,
+            foodstuff=foodstuffs[payload.foodstuffId],
+        )
         for payload in payloads
     ]
 
@@ -378,14 +501,19 @@ def _replace_version_ingredients(
     version.ingredients = _new_ingredients(payloads, foodstuffs)
 
 
-def _replace_version_steps(session: Session, version: RecipeVersion, payloads: list[StepWrite]) -> None:
+def _replace_version_steps(
+    session: Session, version: RecipeVersion, payloads: list[StepWrite]
+) -> None:
     version.steps.clear()
     session.flush()
     version.steps = _new_steps(payloads)
 
 
 def _new_steps(payloads: list[StepWrite]) -> list[Step]:
-    return [Step(index=payload.index, description=payload.description) for payload in payloads]
+    return [
+        Step(index=payload.index, description=payload.description)
+        for payload in payloads
+    ]
 
 
 def _now() -> datetime:

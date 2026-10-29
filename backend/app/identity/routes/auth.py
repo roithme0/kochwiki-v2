@@ -1,25 +1,27 @@
-from datetime import datetime, timezone
 from typing import Annotated
-from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Request, Security
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
-from fastapi.security import APIKeyCookie
 
-from app.core.config import get_settings
 from app.identity.config import (
     LOGIN_COOKIE,
     LOGIN_COOKIE_PATH,
     LOGIN_TRANSACTION_LIFETIME_SECONDS,
     SESSION_COOKIE,
     SESSION_COOKIE_PATH,
-    SESSION_LIFETIME_SECONDS,
 )
 from app.infrastructure.database.session import SessionLocal
+from app.identity.dependencies import (
+    HEADERS,
+    login_service,
+    require_trusted_origin,
+    session_cookie,
+    set_session_cookie,
+    unauthenticated,
+)
 from app.identity.schemas.user import UserOut
 from app.identity.services.oidc import (
     LoginRejected,
-    OIDCLogin,
     ProviderUnavailable,
 )
 from app.identity.services.sessions import (
@@ -31,14 +33,6 @@ from app.identity.services.sessions import (
 from app.identity.services.users import map_identity
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
-session_cookie = APIKeyCookie(name=SESSION_COOKIE, auto_error=False)
-HEADERS = {
-    "Cache-Control": "no-store",
-    "Pragma": "no-cache",
-    "Referrer-Policy": "no-referrer",
-    "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
-    "X-Content-Type-Options": "nosniff",
-}
 
 
 def result(message: str, status: int) -> HTMLResponse:
@@ -48,11 +42,6 @@ def result(message: str, status: int) -> HTMLResponse:
         status_code=status,
         headers=HEADERS,
     )
-
-
-def login_service() -> OIDCLogin | None:
-    settings = get_settings()
-    return OIDCLogin(settings) if settings.oidc_issuer else None
 
 
 @router.get("/login", response_model=None, include_in_schema=False)
@@ -135,31 +124,6 @@ def callback(request: Request) -> Response:
     return response
 
 
-def set_session_cookie(
-    response: Response, secret: str, expires: datetime, secure: bool
-) -> None:
-    response.set_cookie(
-        SESSION_COOKIE,
-        secret,
-        max_age=SESSION_LIFETIME_SECONDS,
-        expires=expires.astimezone(timezone.utc),
-        path=SESSION_COOKIE_PATH,
-        secure=secure,
-        httponly=True,
-        samesite="lax",
-    )
-
-
-def unauthenticated(secure: bool) -> JSONResponse:
-    response = JSONResponse(
-        {"detail": "Authentication required."}, status_code=401, headers=HEADERS
-    )
-    response.delete_cookie(
-        SESSION_COOKIE, path=SESSION_COOKIE_PATH, secure=secure, httponly=True, samesite="lax"
-    )
-    return response
-
-
 @router.get(
     "/me",
     response_model=UserOut,
@@ -186,19 +150,6 @@ def current_user(secret: Annotated[str | None, Security(session_cookie)]) -> Res
     return response
 
 
-def origin(url: str) -> tuple[str, str | None, int | None]:
-    parsed = urlsplit(url)
-    return (
-        parsed.scheme,
-        parsed.hostname,
-        (
-            parsed.port
-            if parsed.port is not None
-            else (443 if parsed.scheme == "https" else 80)
-        ),
-    )
-
-
 @router.post(
     "/logout",
     status_code=204,
@@ -217,26 +168,7 @@ def logout(
         return JSONResponse(
             {"detail": "Login is not configured."}, status_code=503, headers=HEADERS
         )
-    origins = request.headers.getlist("origin")
-    trusted = False
-    if len(origins) == 1:
-        try:
-            supplied = urlsplit(origins[0])
-            trusted = (
-                not any(ord(character) <= 32 for character in origins[0])
-                and not supplied.username
-                and not supplied.password
-                and not supplied.path
-                and not supplied.query
-                and not supplied.fragment
-                and origin(origins[0]) == origin(service.callback_url)
-            )
-        except ValueError:
-            pass
-    if not trusted:
-        return JSONResponse(
-            {"detail": "Untrusted request origin."}, status_code=403, headers=HEADERS
-        )
+    require_trusted_origin(request, service.callback_url)
     with SessionLocal.begin() as session:
         if not invalidate_session(session, secret):
             return unauthenticated(service.secure_cookie)

@@ -1,10 +1,12 @@
 from collections.abc import Sequence
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database.session import get_db, get_write_db
 from app.core.schemas.errors import (
+    AUTHENTICATION_RESPONSES,
+    FORBIDDEN_RESPONSE,
     NOT_FOUND_AND_CONFLICT_RESPONSES,
     NOT_FOUND_RESPONSE,
 )
@@ -14,8 +16,12 @@ from app.foodstuffs.schemas.foodstuff import (
     FoodstuffUpdate,
 )
 from app.foodstuffs.services import foodstuffs
+from app.identity.dependencies import require_current_user
 
-router = APIRouter()
+router = APIRouter(
+    dependencies=[Depends(require_current_user, scope="function")],
+    responses=AUTHENTICATION_RESPONSES,
+)
 
 
 @router.get("/foodstuffs", response_model=list[FoodstuffOut])
@@ -41,7 +47,7 @@ def get_foodstuff(
     "/foodstuffs",
     response_model=FoodstuffOut,
     status_code=status.HTTP_201_CREATED,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def post_foodstuff(
     payload: FoodstuffCreate, session: Session = Depends(get_write_db, scope="function")
@@ -53,7 +59,7 @@ def post_foodstuff(
 @router.patch(
     "/foodstuffs/{foodstuff_id}",
     response_model=FoodstuffOut,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def patch_foodstuff(
     foodstuff_id: int,
@@ -67,10 +73,9 @@ def patch_foodstuff(
 @router.delete(
     "/foodstuffs/{foodstuff_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=NOT_FOUND_AND_CONFLICT_RESPONSES,
+    responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def delete_foodstuff(
     foodstuff_id: int, session: Session = Depends(get_write_db, scope="function")
-) -> Response:
+) -> None:
     foodstuffs.delete_foodstuff(session, foodstuff_id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

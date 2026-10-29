@@ -1,8 +1,23 @@
 import type { RecipeVersionOut } from '../../core/api/generated';
+import type { PresentedSession } from '@roithme0/chat-ui/conversation';
 import type { RecipeSessionArtifact } from './recipe-conversation-contract';
 import type { FoodstuffOut } from '../../core/api/generated';
 import { recipeArtifact } from './recipe-conversation-contract';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
+
+export function conversationUsage(): PresentedSession['usage'] {
+  return {
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    estimated_cost_usd: null,
+    input_tokens: 0,
+    output_tokens: 0,
+    reasoning_tokens: 0,
+    requests: 0,
+    tool_calls: 0,
+    total_tokens: 0,
+  };
+}
 
 export function conversationFoodstuff(): FoodstuffOut {
   return {
@@ -24,6 +39,7 @@ export function conversationRecipe(): RecipeVersionOut {
   return {
     imageId: null,
     imageDimensions: null,
+    ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002',
     state: 'active',

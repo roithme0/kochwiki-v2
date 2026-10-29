@@ -13,21 +13,34 @@
 - Summarize changes and call out risks.
 - Treat backend API as an internal contract for this repo's frontend by default: ship backend/frontend contract changes together, and do not preserve legacy compatibility unless explicitly required for a feature or an external consumer.
 - Write tests where they provide meaningful regression protection: critical user flows, branching logic, stateful behavior, contract boundaries, and bug-prone edge cases. Avoid low-signal tests that only restate implementation details. Do not remove existing tests unless they are redundant, obsolete, flaky, or block legitimate refactoring, and explain the reason when removing them.
+- Create new end-to-end tests only as an explicitly requested, intentional step. Adjust and repair existing end-to-end tests as needed during routine changes, preserving their regression coverage.
 
 ## Temporary AI Artifacts
 
 - Store implementation-specific concepts, plans, and specs in `.agents/concepts/`, `.agents/plans/`, and `.agents/specs/`, respectively, relative to the target repository root. Use these locations even when older artifacts live elsewhere.
-- Generated files in these folders are temporary and gitignored. Never commit or force-add them. Keep the folder scaffolding and reusable skill resources tracked.
+- Generated files in these folders are temporary and gitignored. Never commit or force-add them.
 - Keep artifacts available through implementation and final review. Leave cleanup to the human; do not delete them automatically.
 - Permanent documentation must never link to, cite, or depend on these temporary files. Document lasting behavior and contracts directly in maintained documentation, grounded in the implementation.
 
-## Frontend Validation
+## Validation
 
-- After frontend edits, run `npm run format:changed`, then `npm run lint`, `npm run test:tooling`, and `npm run test -- --watch=false` from `frontend` before completing coding work. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`. Lint does not replace compilation or tests.
-- Formatting covers whole staged, unstaged, and untracked frontend files without updating the Git index. Check the worktree first and coordinate before formatting files containing unrelated user edits. Generated contracts and version output, lockfiles, dependencies, caches, and build output are excluded; do not hand-format generated output.
-- Lint covers the whole frontend, including tests, handwritten scripts, and Angular templates; generated contracts and version output are excluded. Both errors and warnings fail validation. Use `npm run lint:fix` only deliberately and review its diff. The hook and CI never apply ESLint fixes; CI runs read-only linting and does not run formatting.
-- Codex hooks snapshot frontend content before each prompt, then format changed files, lint, run tooling tests, and run the full Angular suite when content changes. Review formatting changes before completion and rerun relevant validation if files changed afterward. Successful checks are reused only for identical content after every check passes. Review and trust changed hook definitions in Codex before relying on them.
-- Address findings introduced by your work; broad existing-debt cleanup requires separate authorization. Report missing dependencies or failing checks as incomplete validation; never claim failed checks passed. Persistent hook failures request at most one continuation.
+After edits, run the applicable commands in order:
+
+| Scope | Working directory | Commands |
+| --- | --- | --- |
+| Frontend | `frontend` | `npm run format:changed`, `npm run lint`, `npm run test:tooling`, `npm run test -- --watch=false` |
+| Backend | Repository root | `node .agents/validation/backend.mts --format`, `node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts` |
+| Backend | `backend` | `.venv/Scripts/python.exe -m pytest` (`.venv/bin/python` on Unix) |
+
+Backend pytest requires the dedicated PostgreSQL test database. See [development setup](docs/development.md#validate-changes) for the database command.
+
+Use `npm.cmd` if PowerShell blocks `npm.ps1`. See [development setup and contract validation](docs/development.md) for dependencies, editor configuration, and generated API contracts.
+
+- Format only changed staged, unstaged, and untracked files, respecting configured exclusions and leaving the Git index unchanged. Coordinate before formatting unrelated user edits and review the resulting diff. Full-backend formatting requires an explicit request.
+- Lint errors and warnings fail validation. Run `lint:fix` only deliberately and review its diff; hooks and CI never apply lint fixes.
+- Review and trust hooks before relying on them. They validate changed scopes automatically and reuse success only for identical content after all checks pass. Shared hook changes validate both scopes and isolated E2E; persistent failures request at most one continuation.
+- After frontend, backend, or E2E deployment changes, run `node .agents/validation/e2e.mts` from the root. The runner rebuilds the isolated disposable Docker stack and runs Playwright; see the development guide for prerequisites. E2E success is not reused across changed turns.
+- Fix findings introduced by your work; broader cleanup requires authorization. Report missing dependencies or failed checks as incomplete validation. Hooks never install dependencies automatically.
 
 ## Communication Preferences
 

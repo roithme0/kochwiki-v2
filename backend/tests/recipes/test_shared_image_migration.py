@@ -20,12 +20,16 @@ class Migration(Protocol):
 
 @pytest.fixture
 def shared_image_migration() -> Migration:
-    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision("20261017_13")
+    revision = ScriptDirectory.from_config(Config("alembic.ini")).get_revision(
+        "20261017_13"
+    )
     assert revision is not None
     return cast(Migration, revision.module)
 
 
-def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(shared_image_migration: Migration) -> None:
+def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(
+    shared_image_migration: Migration,
+) -> None:
     image_id, version_id = uuid4(), uuid4()
     created_at = datetime.now(timezone.utc)
     with engine.begin() as connection:
@@ -48,13 +52,20 @@ def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(share
                 image_id UUID REFERENCES recipe_image(id) ON DELETE RESTRICT
             ) ON COMMIT DROP
         """))
-        connection.execute(text("""
+        connection.execute(
+            text("""
             INSERT INTO recipe_image VALUES
             (:id, 'recipe-images/original.png', 'image/png', 100, 800, 600, :sha, :created)
-        """), {"id": image_id, "sha": "a" * 64, "created": created_at})
-        connection.execute(text("INSERT INTO recipe_version VALUES (:version, :image)"), {
-            "version": version_id, "image": image_id,
-        })
+        """),
+            {"id": image_id, "sha": "a" * 64, "created": created_at},
+        )
+        connection.execute(
+            text("INSERT INTO recipe_version VALUES (:version, :image)"),
+            {
+                "version": version_id,
+                "image": image_id,
+            },
+        )
         original = connection.execute(text("SELECT * FROM recipe_image")).one()
         with Operations.context(MigrationContext.configure(connection)):
             shared_image_migration.upgrade()
@@ -63,7 +74,9 @@ def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(share
             FROM pg_temp.image_asset
         """)).one()
         assert migrated == original
-        assert connection.scalar(text("SELECT kind FROM pg_temp.image_asset")) == "recipe"
+        assert (
+            connection.scalar(text("SELECT kind FROM pg_temp.image_asset")) == "recipe"
+        )
         assert connection.execute(text("""
             SELECT v.version_id, i.id FROM pg_temp.recipe_version v
             JOIN pg_temp.image_asset i ON v.image_id = i.id
@@ -75,22 +88,35 @@ def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(share
         with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(text("UPDATE pg_temp.image_asset SET kind = NULL"))
         with pytest.raises(IntegrityError), connection.begin_nested():
-            connection.execute(text("""
+            connection.execute(
+                text("""
                 INSERT INTO pg_temp.image_asset SELECT :id, object_key, content_type, size,
                     width, height, sha256, created_at, kind FROM pg_temp.image_asset
-            """), {"id": uuid4()})
+            """),
+                {"id": uuid4()},
+            )
         foodstuff_id = uuid4()
-        connection.execute(text("""
+        connection.execute(
+            text("""
             INSERT INTO pg_temp.image_asset SELECT :id, object_key, content_type, size,
                 width, height, sha256, created_at, 'foodstuff' FROM pg_temp.image_asset
-        """), {"id": foodstuff_id})
+        """),
+            {"id": foodstuff_id},
+        )
         with Operations.context(MigrationContext.configure(connection)):
             with pytest.raises(RuntimeError, match="non-recipe images exist"):
                 shared_image_migration.downgrade()
-        connection.execute(text("DELETE FROM pg_temp.image_asset WHERE id = :id"), {"id": foodstuff_id})
+        connection.execute(
+            text("DELETE FROM pg_temp.image_asset WHERE id = :id"), {"id": foodstuff_id}
+        )
         with Operations.context(MigrationContext.configure(connection)):
             shared_image_migration.downgrade()
-        assert connection.execute(text("SELECT * FROM pg_temp.recipe_image")).one() == original
-        assert connection.execute(text("SELECT * FROM pg_temp.recipe_version")).one() == (version_id, image_id)
+        assert (
+            connection.execute(text("SELECT * FROM pg_temp.recipe_image")).one()
+            == original
+        )
+        assert connection.execute(
+            text("SELECT * FROM pg_temp.recipe_version")
+        ).one() == (version_id, image_id)
         with pytest.raises(IntegrityError), connection.begin_nested():
             connection.execute(text("DELETE FROM pg_temp.recipe_image"))

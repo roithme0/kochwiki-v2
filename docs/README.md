@@ -1,6 +1,6 @@
 # Documentation
 
-Keep documentation short, useful, and close to the code. Each page should answer a specific question.
+These docs contain only the essential guidance for getting started with the repository. The code is the main documentation and should explain its behavior through clear structure and readable implementation. Keep written guidance concise and avoid duplicating details already expressed in code to reduce documentation drift.
 
 ## What belongs where
 
@@ -26,4 +26,5 @@ Keep documentation short, useful, and close to the code. Each page should answer
 - Exhaustive file lists, copied source code, and handwritten copies of generated API reference.
 - Routine implementation choices, task logs, and PR summaries.
 - Temporary plans, concepts, specs, and unfinished feature designs.
+- One-time rollout, cutover, or migration hints that become obsolete after deployment. Keep these in release notes or task artifacts.
 - Speculative pages for features or procedures we do not have.

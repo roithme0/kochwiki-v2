@@ -10,7 +10,10 @@ from app.core.config import get_settings
 from app.infrastructure.mcp.server import create_mcp_server
 from app.infrastructure.mcp.services import MCPServices
 from app.core.schemas.errors import ErrorResponse
-from app.infrastructure.embeddings.lifecycle import embedding_refresh_workers, semantic_search_services
+from app.infrastructure.embeddings.lifecycle import (
+    embedding_refresh_workers,
+    semantic_search_services,
+)
 from app.core.exceptions import DomainError
 from app.recipes.services.proposal_store import RecipeProposalStore
 

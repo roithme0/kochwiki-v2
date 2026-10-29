@@ -22,6 +22,7 @@ import { RecipesPageComponent } from './recipes-page.component';
 const recipeVersion = (id: number, name: string) => ({
   imageId: null,
   imageDimensions: null,
+  ownerId: 1,
   recipeLineageId: `00000000-0000-4000-8000-00000000000${id}`,
   recipeVersionId: `00000000-0000-0000-0000-00000000000${id}`,
   state: 'active' as const,

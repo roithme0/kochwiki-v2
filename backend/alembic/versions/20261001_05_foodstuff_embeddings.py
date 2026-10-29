@@ -1,4 +1,5 @@
 """Store current foodstuff name/brand embeddings."""
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -15,7 +16,12 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     op.create_table(
         "foodstuff_embedding",
-        sa.Column("foodstuff_id", sa.Integer(), sa.ForeignKey("foodstuff.id", ondelete="CASCADE"), primary_key=True),
+        sa.Column(
+            "foodstuff_id",
+            sa.Integer(),
+            sa.ForeignKey("foodstuff.id", ondelete="CASCADE"),
+            primary_key=True,
+        ),
         sa.Column("model", sa.String(100), nullable=False),
         sa.Column("source_text", sa.Text(), nullable=False),
         sa.Column("vector", Vector(3072), nullable=False),

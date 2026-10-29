@@ -3,7 +3,7 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
@@ -18,6 +18,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from app.identity import dependencies
 from app.identity.routes import auth
 from app.identity.config import LOGIN_COOKIE, LOGIN_COOKIE_PATH
 from app.identity.logging import AuthQueryFilter
@@ -25,6 +26,9 @@ from app.core.config import Settings
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.models.user import User
+from app.identity.models.application_session import ApplicationSession
+from app.identity.schemas.user import UserOut
+from app.recipes.models.recipe import RecipeLineage
 from app.identity.schemas.oidc import Identity
 from app.identity.services import oidc
 from app.identity.services.users import map_identity
@@ -51,30 +55,51 @@ class Provider:
         if self.unavailable:
             raise oidc.ProviderUnavailable()
         if url.endswith("/.well-known/openid-configuration"):
-            return json.dumps({
-                "issuer": self.discovery_issuer,
-                "authorization_endpoint": ISSUER + "/protocol/openid-connect/auth",
-                "token_endpoint": ISSUER + "/protocol/openid-connect/token",
-                "jwks_uri": ISSUER + "/protocol/openid-connect/certs",
-            }).encode()
+            return json.dumps(
+                {
+                    "issuer": self.discovery_issuer,
+                    "authorization_endpoint": ISSUER + "/protocol/openid-connect/auth",
+                    "token_endpoint": ISSUER + "/protocol/openid-connect/token",
+                    "jwks_uri": ISSUER + "/protocol/openid-connect/certs",
+                }
+            ).encode()
         if url.endswith("/token"):
             assert form is not None
             self.token_form = form
             now = int(time.time())
             claims: dict[str, object] = {
-                "iss": ISSUER, "sub": "provider-user", "aud": "kochwiki",
-                "exp": now + 60, "iat": now, "nonce": self.nonce,
-                "email": "cook@example.invalid", "email_verified": False,
+                "iss": ISSUER,
+                "sub": "provider-user",
+                "aud": "kochwiki",
+                "exp": now + 60,
+                "iat": now,
+                "nonce": self.nonce,
+                "email": "cook@example.invalid",
+                "email_verified": False,
                 "displayName": "Kitchen Friend",
             }
             claims.update(self.override)
             if self.omit_email:
                 claims.pop("email")
-            key = rsa.generate_private_key(public_exponent=65537, key_size=2048) if self.invalid_signature else self.key
-            token = jwt.encode(claims, key, algorithm="RS256", headers={"kid": "test-key"})
-            return json.dumps({"id_token": token, "access_token": "must-stay-server-side", "refresh_token": "must-also-stay-server-side"}).encode()
+            key = (
+                rsa.generate_private_key(public_exponent=65537, key_size=2048)
+                if self.invalid_signature
+                else self.key
+            )
+            token = jwt.encode(
+                claims, key, algorithm="RS256", headers={"kid": "test-key"}
+            )
+            return json.dumps(
+                {
+                    "id_token": token,
+                    "access_token": "must-stay-server-side",
+                    "refresh_token": "must-also-stay-server-side",
+                }
+            ).encode()
         if url.endswith("/certs"):
-            key_data = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(self.key.public_key()))
+            key_data = json.loads(
+                jwt.algorithms.RSAAlgorithm.to_jwk(self.key.public_key())
+            )
             key_data.update({"kid": "test-key", "use": "sig", "alg": "RS256"})
             return json.dumps({"keys": [key_data]}).encode()
         raise AssertionError("Unexpected provider endpoint")
@@ -82,7 +107,12 @@ class Provider:
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(_env_file=None, oidc_issuer=ISSUER, oidc_client_secret=SECRET, oidc_callback_url=CALLBACK)
+    return Settings(
+        _env_file=None,
+        oidc_issuer=ISSUER,
+        oidc_client_secret=SECRET,
+        oidc_callback_url=CALLBACK,
+    )
 
 
 @pytest.fixture
@@ -93,8 +123,10 @@ def provider(monkeypatch: pytest.MonkeyPatch) -> Provider:
 
 
 @pytest.fixture
-def browser(monkeypatch: pytest.MonkeyPatch, settings: Settings, provider: Provider) -> Iterator[TestClient]:
-    monkeypatch.setattr(auth, "get_settings", lambda: settings)
+def browser(
+    monkeypatch: pytest.MonkeyPatch, settings: Settings, provider: Provider
+) -> Iterator[TestClient]:
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
     application = FastAPI()
     application.include_router(auth.router, prefix="/api")
     with TestClient(application, base_url="http://localhost:8000") as client:
@@ -110,7 +142,11 @@ def begin(browser: TestClient, provider: Provider) -> dict[str, list[str]]:
 
 
 def finish(browser: TestClient, query: dict[str, list[str]]) -> int:
-    return browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER}, follow_redirects=False).status_code
+    return browser.get(
+        "/api/auth/callback",
+        params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER},
+        follow_redirects=False,
+    ).status_code
 
 
 def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> None:
@@ -125,30 +161,58 @@ def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> 
         assert transaction is not None
         assert transaction.state_hash == oidc.digest(query["state"][0])
         verifier = transaction.verifier
-    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER}, follow_redirects=False)
+    response = browser.get(
+        "/api/auth/callback",
+        params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER},
+        follow_redirects=False,
+    )
     assert response.status_code == 302 and response.headers["location"] == "/"
     assert provider.token_form["client_secret"] == SECRET
     assert provider.token_form["code_verifier"] == verifier
-    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+        .rstrip(b"=")
+        .decode()
+    )
     assert query["code_challenge"] == [challenge]
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert LOGIN_COOKIE not in browser.cookies
-    for private_value in (SECRET, "provider-user", "cook@example.invalid", "must-stay-server-side", "must-also-stay-server-side"):
+    for private_value in (
+        SECRET,
+        "provider-user",
+        "cook@example.invalid",
+        "must-stay-server-side",
+        "must-also-stay-server-side",
+    ):
         assert private_value not in response.text
-    browser.cookies.set(LOGIN_COOKIE, binding, domain="localhost.local", path=LOGIN_COOKIE_PATH)
+    browser.cookies.set(
+        LOGIN_COOKIE, binding, domain="localhost.local", path=LOGIN_COOKIE_PATH
+    )
     assert finish(browser, query) == 400
 
 
-@pytest.mark.parametrize("override", [
-    {"iss": "https://other.example/realm"}, {"aud": "other-client"},
-    {"exp": 1}, {"iat": int(time.time()) + 600}, {"nonce": "wrong"},
-    {"nonce": "non-ascii-\u00e4"}, {"sub": ""}, {"email_verified": "false"},
-    {"displayName": "a" * 51}, {"azp": "other-client"},
-    {"displayName": "   "}, {"displayName": "Kitchen\nFriend"},
-    {"aud": ["kochwiki", "other-client"]},
-])
-def test_invalid_identity_rejected(browser: TestClient, provider: Provider, override: dict[str, object]) -> None:
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"iss": "https://other.example/realm"},
+        {"aud": "other-client"},
+        {"exp": 1},
+        {"iat": int(time.time()) + 600},
+        {"nonce": "wrong"},
+        {"nonce": "non-ascii-\u00e4"},
+        {"sub": ""},
+        {"email_verified": "false"},
+        {"displayName": "a" * 51},
+        {"azp": "other-client"},
+        {"displayName": "   "},
+        {"displayName": "Kitchen\nFriend"},
+        {"aud": ["kochwiki", "other-client"]},
+    ],
+)
+def test_invalid_identity_rejected(
+    browser: TestClient, provider: Provider, override: dict[str, object]
+) -> None:
     query = begin(browser, provider)
     provider.override = override
     assert finish(browser, query) == 400
@@ -157,7 +221,9 @@ def test_invalid_identity_rejected(browser: TestClient, provider: Provider, over
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
-def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: Provider) -> None:
+def test_identity_mapping_refresh_and_separation(
+    browser: TestClient, provider: Provider
+) -> None:
     provider.override = {"displayName": "  " + "a" * 50 + "  "}
     assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
@@ -168,7 +234,11 @@ def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: 
         assert (first.issuer, first.subject) == (ISSUER, "provider-user")
     provider.override = {"displayName": "Shared Name", "email": "new@example.invalid"}
     assert finish(browser, begin(browser, provider)) == 302
-    provider.override = {"sub": "recreated-account", "displayName": "Shared Name", "email": "new@example.invalid"}
+    provider.override = {
+        "sub": "recreated-account",
+        "displayName": "Shared Name",
+        "email": "new@example.invalid",
+    }
     assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal() as session:
         users = session.scalars(select(User).order_by(User.id)).all()
@@ -180,7 +250,9 @@ def test_identity_mapping_refresh_and_separation(browser: TestClient, provider: 
 
 
 @pytest.mark.parametrize("problem", ["missing", "null", "empty"])
-def test_email_claim_is_required(browser: TestClient, provider: Provider, problem: str) -> None:
+def test_email_claim_is_required(
+    browser: TestClient, provider: Provider, problem: str
+) -> None:
     query = begin(browser, provider)
     if problem == "missing":
         provider.omit_email = True
@@ -192,8 +264,14 @@ def test_email_claim_is_required(browser: TestClient, provider: Provider, proble
 
 
 def test_concurrent_first_login_and_issuer_separation() -> None:
-    identity = Identity(iss=ISSUER, sub="same-subject", email="cook@example.invalid",
-                             email_verified=False, displayName="Shared Name", nonce="test")
+    identity = Identity(
+        iss=ISSUER,
+        sub="same-subject",
+        email="cook@example.invalid",
+        email_verified=False,
+        displayName="Shared Name",
+        nonce="test",
+    )
 
     barrier = Barrier(4)
 
@@ -207,30 +285,63 @@ def test_concurrent_first_login_and_issuer_separation() -> None:
         ids = [future.result() for future in futures]
     assert len(set(ids)) == 1
     with SessionLocal.begin() as session:
-        other = map_identity(session, identity.model_copy(update={"iss": "https://other.example/realm"}))
+        other = map_identity(
+            session, identity.model_copy(update={"iss": "https://other.example/realm"})
+        )
         assert other.id != ids[0]
         assert session.scalar(select(func.count()).select_from(User)) == 2
 
 
-def test_user_creation_and_profile_edit_are_not_exposed(client: TestClient) -> None:
-    identity = Identity(iss=ISSUER, sub="provider-user", email="cook@example.invalid",
-                             email_verified=False, displayName="Shared Name", nonce="test")
-    with SessionLocal.begin() as session:
-        user_id = map_identity(session, identity).id
-    assert client.get(f"/users/{user_id}").json() == {"id": user_id, "display_name": "Shared Name"}
-    assert client.patch(f"/users/{user_id}", json={"display_name": "Local override"}).status_code == 405
-    assert client.post("/users", json={"display_name": "Shared Name", "issuer": ISSUER, "subject": "fake"}).status_code == 405
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_user_management_is_not_exposed(
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+    authenticated: bool,
+) -> None:
+    user = sign_in(client)
+    recipe = client.post("/recipes", json={"name": "Retained recipe", "servings": 1})
+    assert recipe.status_code == 201
+    if not authenticated:
+        client.cookies.clear()
+    for method, path in (
+        ("GET", "/users"),
+        ("GET", f"/users/{user.id}"),
+        ("DELETE", f"/users/{user.id}"),
+        ("PATCH", f"/users/{user.id}"),
+        ("POST", "/users"),
+    ):
+        response = client.request(method, path, json={"display_name": "Local override"})
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Not Found"}
     paths = client.get("/api/openapi.json").json()["paths"]
-    assert "post" not in paths["/users"]
-    assert "patch" not in paths["/users/{user_id}"]
+    assert not any(path == "/users" or path.startswith("/users/") for path in paths)
+    with SessionLocal() as session:
+        retained = session.get(User, user.id)
+        assert retained is not None and UserOut.model_validate(retained) == user
+        assert session.scalar(select(func.count()).select_from(User)) == 1
+        assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 1
+        assert session.scalar(select(RecipeLineage.owner_id)) == user.id
+    if authenticated:
+        assert client.get("/auth/me").json() == user.model_dump()
 
 
-@pytest.mark.parametrize("issuer,subject", [(None, None), (ISSUER, None), (None, "provider-user")])
-def test_users_require_provider_identity(issuer: str | None, subject: str | None) -> None:
+@pytest.mark.parametrize(
+    "issuer,subject", [(None, None), (ISSUER, None), (None, "provider-user")]
+)
+def test_users_require_provider_identity(
+    issuer: str | None, subject: str | None
+) -> None:
     with SessionLocal.begin() as session:
         with pytest.raises(IntegrityError):
             with session.begin_nested():
-                session.add(User(display_name="Unlinked", issuer=issuer, subject=subject, email="cook@example.invalid"))
+                session.add(
+                    User(
+                        display_name="Unlinked",
+                        issuer=issuer,
+                        subject=subject,
+                        email="cook@example.invalid",
+                    )
+                )
                 session.flush()
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
@@ -239,7 +350,14 @@ def test_users_require_email() -> None:
     with SessionLocal.begin() as session:
         with pytest.raises(IntegrityError):
             with session.begin_nested():
-                session.add(User(display_name="No email", issuer=ISSUER, subject="provider-user", email=None))
+                session.add(
+                    User(
+                        display_name="No email",
+                        issuer=ISSUER,
+                        subject="provider-user",
+                        email=None,
+                    )
+                )
                 session.flush()
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
@@ -252,8 +370,13 @@ def test_invalid_signature(browser: TestClient, provider: Provider) -> None:
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
-@pytest.mark.parametrize("problem", ["missing-cookie", "wrong-cookie", "wrong-state", "expired", "duplicate-state"])
-def test_invalid_transaction_no_provider_call(browser: TestClient, provider: Provider, problem: str) -> None:
+@pytest.mark.parametrize(
+    "problem",
+    ["missing-cookie", "wrong-cookie", "wrong-state", "expired", "duplicate-state"],
+)
+def test_invalid_transaction_no_provider_call(
+    browser: TestClient, provider: Provider, problem: str
+) -> None:
     query = begin(browser, provider)
     parameters = [("state", query["state"][0]), ("code", "provider-code")]
     if problem == "missing-cookie":
@@ -265,7 +388,11 @@ def test_invalid_transaction_no_provider_call(browser: TestClient, provider: Pro
         parameters[0] = ("state", "unrelated-state")
     elif problem == "expired":
         with SessionLocal.begin() as session:
-            session.execute(update(LoginTransaction).values(expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)))
+            session.execute(
+                update(LoginTransaction).values(
+                    expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
+                )
+            )
     else:
         parameters.append(("state", "duplicate"))
     calls = provider.calls
@@ -273,17 +400,28 @@ def test_invalid_transaction_no_provider_call(browser: TestClient, provider: Pro
     assert provider.calls == calls
 
 
-def test_cancellation_consumes_transaction(browser: TestClient, provider: Provider) -> None:
+def test_cancellation_consumes_transaction(
+    browser: TestClient, provider: Provider
+) -> None:
     query = begin(browser, provider)
     calls = provider.calls
-    response = browser.get("/api/auth/callback", params={"state": query["state"][0], "error": "access_denied", "error_description": "untrusted-html"})
+    response = browser.get(
+        "/api/auth/callback",
+        params={
+            "state": query["state"][0],
+            "error": "access_denied",
+            "error_description": "untrusted-html",
+        },
+    )
     assert response.status_code == 400 and "cancelled" in response.text
     assert "untrusted-html" not in response.text and provider.calls == calls
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(LoginTransaction)) == 0
 
 
-def test_provider_failure_consumes_transaction(browser: TestClient, provider: Provider) -> None:
+def test_provider_failure_consumes_transaction(
+    browser: TestClient, provider: Provider
+) -> None:
     query = begin(browser, provider)
     provider.unavailable = True
     assert finish(browser, query) == 503
@@ -300,7 +438,9 @@ def test_discovery_mismatch_and_outage(browser: TestClient, provider: Provider) 
         assert session.scalar(select(func.count()).select_from(LoginTransaction)) == 0
 
 
-def test_atomic_consumption_and_restart(browser: TestClient, provider: Provider, settings: Settings) -> None:
+def test_atomic_consumption_and_restart(
+    browser: TestClient, provider: Provider, settings: Settings
+) -> None:
     query = begin(browser, provider)
     binding = browser.cookies.get(LOGIN_COOKIE)
     assert binding is not None
@@ -317,27 +457,52 @@ def test_atomic_consumption_and_restart(browser: TestClient, provider: Provider,
         assert sorted(future.result() for future in futures) == [False, True]
 
 
-def test_cookie_flags(browser: TestClient, provider: Provider, settings: Settings) -> None:
+def test_cookie_flags(
+    browser: TestClient, provider: Provider, settings: Settings
+) -> None:
     response = browser.get("/api/auth/login", follow_redirects=False)
     cookie = response.headers["set-cookie"]
-    assert "HttpOnly" in cookie and "SameSite=lax" in cookie and "Path=/api/auth" in cookie
+    assert (
+        "HttpOnly" in cookie and "SameSite=lax" in cookie and "Path=/api/auth" in cookie
+    )
     assert "Max-Age=600" in cookie and "Secure" not in cookie
-    assert oidc.OIDCLogin(settings.model_copy(update={"oidc_callback_url": "https://wiki.example/api/auth/callback"})).secure_cookie
+    assert oidc.OIDCLogin(
+        settings.model_copy(
+            update={"oidc_callback_url": "https://wiki.example/api/auth/callback"}
+        )
+    ).secure_cookie
 
 
-@pytest.mark.parametrize("values", [
-    {"oidc_issuer": ISSUER},
-    {"oidc_issuer": ISSUER, "oidc_client_secret": "xxxx", "oidc_callback_url": CALLBACK},
-    {"oidc_issuer": "http://idp.example/realm", "oidc_client_secret": SECRET, "oidc_callback_url": CALLBACK},
-    {"oidc_issuer": ISSUER, "oidc_client_secret": SECRET, "oidc_callback_url": "https://wiki.example/other"},
-])
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"oidc_issuer": ISSUER},
+        {
+            "oidc_issuer": ISSUER,
+            "oidc_client_secret": "xxxx",
+            "oidc_callback_url": CALLBACK,
+        },
+        {
+            "oidc_issuer": "http://idp.example/realm",
+            "oidc_client_secret": SECRET,
+            "oidc_callback_url": CALLBACK,
+        },
+        {
+            "oidc_issuer": ISSUER,
+            "oidc_client_secret": SECRET,
+            "oidc_callback_url": "https://wiki.example/other",
+        },
+    ],
+)
 def test_invalid_configuration(values: dict[str, str]) -> None:
     with pytest.raises(ValidationError) as error:
         Settings(_env_file=None, **values)
     assert SECRET not in str(error.value)
 
 
-@pytest.mark.parametrize("field", ["oidc_issuer", "oidc_callback_url", "oidc_backchannel_url"])
+@pytest.mark.parametrize(
+    "field", ["oidc_issuer", "oidc_callback_url", "oidc_backchannel_url"]
+)
 @pytest.mark.parametrize("allow_http", [False, True])
 def test_nonlocal_http_requires_opt_in(field: str, allow_http: bool) -> None:
     urls = {
@@ -359,38 +524,68 @@ def test_nonlocal_http_requires_opt_in(field: str, allow_http: bool) -> None:
     assert service.secure_cookie == (field != "oidc_callback_url")
 
 
-@pytest.mark.parametrize("issuer", [
-    "ftp://idp.example/realms/services",
-    "http:///realms/services",
-    "http://user:password@idp.example/realms/services",
-    "http://idp.example/realms/services?query=value",
-    "http://idp.example/realms/services#fragment",
-    "http://*.example/realms/services",
-    "http://idp.example:0/realms/services",
-    "http://idp.example/realms/services/",
-])
+@pytest.mark.parametrize(
+    "issuer",
+    [
+        "ftp://idp.example/realms/services",
+        "http:///realms/services",
+        "http://user:password@idp.example/realms/services",
+        "http://idp.example/realms/services?query=value",
+        "http://idp.example/realms/services#fragment",
+        "http://*.example/realms/services",
+        "http://idp.example:0/realms/services",
+        "http://idp.example/realms/services/",
+    ],
+)
 def test_http_opt_in_preserves_url_validation(issuer: str) -> None:
     with pytest.raises(ValidationError):
         Settings(
-            _env_file=None, oidc_issuer=issuer, oidc_client_secret=SECRET,
-            oidc_callback_url=CALLBACK, oidc_allow_insecure_http=True,
+            _env_file=None,
+            oidc_issuer=issuer,
+            oidc_client_secret=SECRET,
+            oidc_callback_url=CALLBACK,
+            oidc_allow_insecure_http=True,
         )
 
 
 def test_backchannel_never_changes_identity(settings: Settings) -> None:
-    service = oidc.OIDCLogin(settings.model_copy(update={"oidc_backchannel_url": "http://host.docker.internal:8006/realms/services"}))
-    assert service.transport_url(ISSUER + "/protocol/openid-connect/token") == "http://host.docker.internal:8006/realms/services/protocol/openid-connect/token"
+    service = oidc.OIDCLogin(
+        settings.model_copy(
+            update={
+                "oidc_backchannel_url": "http://host.docker.internal:8006/realms/services"
+            }
+        )
+    )
+    assert (
+        service.transport_url(ISSUER + "/protocol/openid-connect/token")
+        == "http://host.docker.internal:8006/realms/services/protocol/openid-connect/token"
+    )
     assert service.issuer == ISSUER
     with pytest.raises(oidc.ProviderUnavailable):
         service.transport_url("https://untrusted.example/token")
 
 
-@pytest.mark.parametrize("path", [
-    "/auth/callback", "/auth/callback/", "/api/auth/callback/",
-    "/auth/login/", "/api/auth/login/", "/auth/unknown",
-])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/auth/callback",
+        "/auth/callback/",
+        "/api/auth/callback/",
+        "/auth/login/",
+        "/api/auth/login/",
+        "/auth/unknown",
+    ],
+)
 def test_access_log_redacts_auth_namespace(path: str) -> None:
-    record = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, "%s - %s %s %s %s", ("client", "GET", path + "?code=private&state=private", "1.1", 307), None)
+    record = logging.LogRecord(
+        "uvicorn.access",
+        logging.INFO,
+        "",
+        0,
+        "%s - %s %s %s %s",
+        ("client", "GET", path + "?code=private&state=private", "1.1", 307),
+        None,
+    )
     assert AuthQueryFilter().filter(record)
     assert "private" not in record.getMessage()
 

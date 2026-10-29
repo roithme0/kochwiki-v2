@@ -1,4 +1,5 @@
 """Operational commands: python -m app.recipes.semantic refresh|search."""
+
 from app.infrastructure.embeddings.commands import run_command
 from app.recipes.services.embeddings import RecipeEmbeddingService
 from app.recipes.services.search import RecipeSearchCandidate, RecipeSemanticSearch

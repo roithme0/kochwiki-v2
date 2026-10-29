@@ -6,13 +6,28 @@ from pydantic import TypeAdapter, ValidationError
 from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.recipes.schemas.nutrition import NutrientResult
-from app.recipes.services.nutrition import NutritionField, ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.recipes.services.nutrition import (
+    NutritionField,
+    ResolvedNutritionIngredient,
+    per_serving,
+    total_nutrition,
+)
 
 
-def ingredient(unit: Unit, amount: int, value: int | None) -> ResolvedNutritionIngredient:
+def ingredient(
+    unit: Unit, amount: int, value: int | None
+) -> ResolvedNutritionIngredient:
     foodstuff = FoodstuffSummaryOut(
-        id=1, imageId=None, name="Ingredient", brand=None, unit=unit, unitVerbose=unit.verbose_name,
-        kcal=value, carbs=value, protein=value, fat=value,
+        id=1,
+        imageId=None,
+        name="Ingredient",
+        brand=None,
+        unit=unit,
+        unitVerbose=unit.verbose_name,
+        kcal=value,
+        carbs=value,
+        protein=value,
+        fat=value,
     )
     return ResolvedNutritionIngredient(amount=Decimal(amount), foodstuff=foodstuff)
 
@@ -35,8 +50,10 @@ class NutritionTests(unittest.TestCase):
         zero = ingredient(Unit.G, 100, 0)
         missing = ingredient(Unit.G, 100, None)
         for ingredients, status, value in (
-            ([], "unknown", None), ([missing], "unknown", None),
-            ([zero], "exact", Decimal(0)), ([zero, missing], "minimum", Decimal(0)),
+            ([], "unknown", None),
+            ([missing], "unknown", None),
+            ([zero], "exact", Decimal(0)),
+            ([zero, missing], "minimum", Decimal(0)),
         ):
             with self.subTest(status=status, ingredients=ingredients):
                 result = per_serving(total_nutrition(ingredients, "fat"), 2)
@@ -49,16 +66,23 @@ class NutritionTests(unittest.TestCase):
         fields: tuple[NutritionField, ...] = ("kcal", "carbs", "protein", "fat")
         for field in fields:
             result = per_serving(total_nutrition([first, second], field), 2)
-            self.assertEqual(result.status, "minimum" if field == "protein" else "exact")
+            self.assertEqual(
+                result.status, "minimum" if field == "protein" else "exact"
+            )
             self.assertEqual(result.value, Decimal(10 if field == "protein" else 15))
 
     def test_contract_rejects_inconsistent_or_legacy_results(self) -> None:
         adapter = TypeAdapter(NutrientResult)
         for payload in (
-            None, 12, {"status": "exact", "value": None},
-            {"status": "minimum", "value": -1}, {"status": "unknown", "value": 0},
-            {"status": "exact", "value": True}, {"status": "exact", "value": "12"},
-            {"status": "exact"}, {"value": 12},
+            None,
+            12,
+            {"status": "exact", "value": None},
+            {"status": "minimum", "value": -1},
+            {"status": "unknown", "value": 0},
+            {"status": "exact", "value": True},
+            {"status": "exact", "value": "12"},
+            {"status": "exact"},
+            {"value": 12},
             {"status": "exact", "value": 12, "extra": True},
         ):
             with self.subTest(payload=payload), self.assertRaises(ValidationError):

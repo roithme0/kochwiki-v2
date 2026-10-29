@@ -16,14 +16,18 @@ from app.recipes.schemas.proposal import (
 )
 from app.core.exceptions import NotFoundError
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
-from app.recipes.services.nutrition import ResolvedNutritionIngredient, per_serving, total_nutrition
+from app.recipes.services.nutrition import (
+    ResolvedNutritionIngredient,
+    per_serving,
+    total_nutrition,
+)
 from app.recipes.services.proposal_store import RecipeProposalStore
 
 
 def resolve_recipe_proposal_presentation(
-    session: Session, store: RecipeProposalStore, proposal_id: UUID
+    session: Session, store: RecipeProposalStore, proposal_id: UUID, *, user_id: int
 ) -> RecipeProposalPresentationOut:
-    recipe = store.get(proposal_id).recipe
+    recipe = store.get(proposal_id, user_id=user_id).recipe
     foodstuff_ids = {
         ingredient.foodstuff.foodstuffId
         for ingredient in recipe.ingredients
@@ -34,7 +38,9 @@ def resolve_recipe_proposal_presentation(
         if foodstuff_ids:
             foodstuffs = {
                 foodstuff.id: foodstuff
-                for foodstuff in session.scalars(select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids)))
+                for foodstuff in session.scalars(
+                    select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids))
+                )
             }
         missing_ids = sorted(foodstuff_ids - foodstuffs.keys())
         if missing_ids:
@@ -45,17 +51,27 @@ def resolve_recipe_proposal_presentation(
         for ingredient in sorted(recipe.ingredients, key=lambda item: item.index):
             resolved = _resolve_proposal_foodstuff(ingredient.foodstuff, foodstuffs)
             ingredients.append(
-                ProposalPresentationIngredientOut(index=ingredient.index, amount=ingredient.amount, foodstuff=resolved)
+                ProposalPresentationIngredientOut(
+                    index=ingredient.index, amount=ingredient.amount, foodstuff=resolved
+                )
             )
-            nutrition_ingredients.append(ResolvedNutritionIngredient(ingredient.amount, resolved))
+            nutrition_ingredients.append(
+                ResolvedNutritionIngredient(ingredient.amount, resolved)
+            )
 
     return RecipeProposalPresentationOut(
         name=recipe.name,
         servings=recipe.servings,
         preptime=recipe.preptime,
-        kcal=per_serving(total_nutrition(nutrition_ingredients, "kcal"), recipe.servings),
-        carbs=per_serving(total_nutrition(nutrition_ingredients, "carbs"), recipe.servings),
-        protein=per_serving(total_nutrition(nutrition_ingredients, "protein"), recipe.servings),
+        kcal=per_serving(
+            total_nutrition(nutrition_ingredients, "kcal"), recipe.servings
+        ),
+        carbs=per_serving(
+            total_nutrition(nutrition_ingredients, "carbs"), recipe.servings
+        ),
+        protein=per_serving(
+            total_nutrition(nutrition_ingredients, "protein"), recipe.servings
+        ),
         fat=per_serving(total_nutrition(nutrition_ingredients, "fat"), recipe.servings),
         ingredients=ingredients,
         steps=[
@@ -70,10 +86,18 @@ def _resolve_proposal_foodstuff(
 ) -> ResolvedExistingProposalFoodstuff | ResolvedTemporaryProposalFoodstuff:
     if isinstance(foodstuff, ExistingProposalFoodstuff):
         summary = foodstuff_summary_out(foodstuffs[foodstuff.foodstuffId])
-        return ResolvedExistingProposalFoodstuff.model_validate({
-            **summary.model_dump(), "kind": "existing",
-        })
+        return ResolvedExistingProposalFoodstuff.model_validate(
+            {
+                **summary.model_dump(),
+                "kind": "existing",
+            }
+        )
     definition = foodstuff.definition
-    return ResolvedTemporaryProposalFoodstuff.model_validate({
-        **definition.model_dump(), "kind": "temporary", "imageId": None, "unitVerbose": definition.unit.verbose_name,
-    })
+    return ResolvedTemporaryProposalFoodstuff.model_validate(
+        {
+            **definition.model_dump(),
+            "kind": "temporary",
+            "imageId": None,
+            "unitVerbose": definition.unit.verbose_name,
+        }
+    )

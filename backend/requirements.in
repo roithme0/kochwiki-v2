@@ -7,7 +7,7 @@ psycopg[binary]
 pydantic-settings
 sqlalchemy
 uvicorn[standard]
-openai
+httpx
 pgvector
 tzdata
 pyjwt[crypto]

@@ -10,23 +10,40 @@ from app.recipes.schemas.recipe import RecipePresentationOut
 
 def presentation() -> dict[str, object]:
     return {
-        "servings": 2, "preptime": None,
-        "kcal": {"status": "exact", "value": 12.5}, "carbs": {"status": "unknown", "value": None},
-        "protein": {"status": "exact", "value": 0}, "fat": {"status": "unknown", "value": None},
-        "ingredients": [{
-            "index": 1, "amount": 12.5,
-            "foodstuff": {
-                "id": 7, "imageId": None, "name": "Oats", "brand": None, "unit": "G",
-                "unitVerbose": "g", "kcal": 100, "carbs": None,
-                "protein": 0, "fat": None,
-            },
-        }],
+        "servings": 2,
+        "preptime": None,
+        "kcal": {"status": "exact", "value": 12.5},
+        "carbs": {"status": "unknown", "value": None},
+        "protein": {"status": "exact", "value": 0},
+        "fat": {"status": "unknown", "value": None},
+        "ingredients": [
+            {
+                "index": 1,
+                "amount": 12.5,
+                "foodstuff": {
+                    "id": 7,
+                    "imageId": None,
+                    "name": "Oats",
+                    "brand": None,
+                    "unit": "G",
+                    "unitVerbose": "g",
+                    "kcal": 100,
+                    "carbs": None,
+                    "protein": 0,
+                    "fat": None,
+                },
+            }
+        ],
         "steps": [{"index": 1, "description": "Mix"}],
     }
 
 
-@pytest.mark.parametrize("path", [(), ("ingredients", 0), ("ingredients", 0, "foodstuff"), ("steps", 0)])
-def test_resolver_response_rejects_undocumented_fields(path: tuple[str | int, ...]) -> None:
+@pytest.mark.parametrize(
+    "path", [(), ("ingredients", 0), ("ingredients", 0, "foodstuff"), ("steps", 0)]
+)
+def test_resolver_response_rejects_undocumented_fields(
+    path: tuple[str | int, ...],
+) -> None:
     body = deepcopy(presentation())
     target: object = body
     for key in path:
@@ -54,7 +71,10 @@ def test_resolver_response_preserves_numbers_nulls_and_empty_collections() -> No
     assert json.loads(parsed.model_dump_json()) == body
 
     empty = {**body, "ingredients": [], "steps": []}
-    assert json.loads(RecipePresentationOut.model_validate(empty).model_dump_json()) == empty
+    assert (
+        json.loads(RecipePresentationOut.model_validate(empty).model_dump_json())
+        == empty
+    )
 
 
 @pytest.mark.parametrize("field", ["preptime", "kcal", "carbs", "protein", "fat"])

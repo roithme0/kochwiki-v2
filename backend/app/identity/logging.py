@@ -8,7 +8,10 @@ class AuthQueryFilter(logging.Filter):
             path = arguments[2]
             if isinstance(path, str):
                 route_path = path.split("?", 1)[0]
-                if any(route_path == prefix or route_path.startswith(prefix + "/") for prefix in ("/auth", "/api/auth")):
+                if any(
+                    route_path == prefix or route_path.startswith(prefix + "/")
+                    for prefix in ("/auth", "/api/auth")
+                ):
                     arguments[2] = route_path
                     record.args = tuple(arguments)
         return True

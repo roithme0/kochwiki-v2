@@ -1,0 +1,16 @@
+{
+  "username": "e2e@example.invalid",
+  "enabled": true,
+  "emailVerified": false,
+  "email": "e2e@example.invalid",
+  "attributes": {
+    "displayName": ["E2E User"]
+  },
+  "credentials": [
+    {
+      "type": "password",
+      "value": "disposable-e2e-password",
+      "temporary": false
+    }
+  ]
+}

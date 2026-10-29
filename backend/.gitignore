@@ -1,6 +1,12 @@
+# Python bytecode
 **/__pycache__
+# Package build output
 build/
 dist/
 *.egg-info/
+# Local Python environment
 .venv/
-.pytest_cache/
+# Test and legacy validation artifacts
+.pytest_cache*/
+.codex-validation/
+tests/.pytest_tmp*/

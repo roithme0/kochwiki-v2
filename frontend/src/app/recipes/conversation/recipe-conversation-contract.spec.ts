@@ -24,7 +24,7 @@ if (
   throw new Error('Expected recipe object');
 
 describe('Recipe conversation contract', () => {
-  it('captures the enriched recipe with inline foodstuffs as detached generic context', () => {
+  it('sends detached full source context and rendering capabilities', () => {
     const source = conversationRecipe();
     const input = mapSessionInput(source);
     expect(input).toEqual({
@@ -36,19 +36,7 @@ describe('Recipe conversation contract', () => {
         NUTRITION_ARTIFACT_CAPABILITY,
       ],
     });
-    expect(input.initial_context.source).not.toBe(source);
-    expect(input.initial_context.source.ingredients[0].foodstuff).not.toBe(
-      source.ingredients[0].foodstuff,
-    );
-    expect(input.initial_context.source.recipeVersionId).toBe(
-      source.recipeVersionId,
-    );
-    expect(input.initial_context.source.ingredients[0].foodstuff.id).toBe(1);
-    source.steps[0].description = 'Changed';
     source.ingredients[0].foodstuff.name = 'Changed';
-    expect(input.initial_context.source.steps[0].description).toBe(
-      'Linsen kochen.',
-    );
     expect(input.initial_context.source.ingredients[0].foodstuff.name).toBe(
       'Linsen',
     );

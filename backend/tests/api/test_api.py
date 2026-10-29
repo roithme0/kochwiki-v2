@@ -27,7 +27,9 @@ def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, objec
     return response.json()
 
 
-def recipe_version_payload(name: str, foodstuff_id: object | None = None, **overrides: object) -> dict[str, object]:
+def recipe_version_payload(
+    name: str, foodstuff_id: object | None = None, **overrides: object
+) -> dict[str, object]:
     payload: dict[str, object] = {
         "name": name,
         "servings": 2,
@@ -36,25 +38,36 @@ def recipe_version_payload(name: str, foodstuff_id: object | None = None, **over
         "steps": [{"index": 1, "description": "Cook"}],
     }
     if foodstuff_id is not None:
-        payload["ingredients"] = [{"index": 1, "amount": 100, "foodstuffId": foodstuff_id}]
+        payload["ingredients"] = [
+            {"index": 1, "amount": 100, "foodstuffId": foodstuff_id}
+        ]
     payload.update(overrides)
     return payload
 
 
-def create_recipe(client: TestClient, name: str, foodstuff_id: object | None = None) -> dict[str, object]:
+def create_recipe(
+    client: TestClient, name: str, foodstuff_id: object | None = None
+) -> dict[str, object]:
     response = client.post("/recipes", json=recipe_version_payload(name, foodstuff_id))
     assert response.status_code == 201
     return response.json()
 
 
-def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(
+    client: TestClient,
+) -> None:
     known = create_foodstuff(client, protein=0, fat=None)
-    partial = create_foodstuff(client, name="Partial", kcal=None, protein=None, fat=None)
+    partial = create_foodstuff(
+        client, name="Partial", kcal=None, protein=None, fat=None
+    )
     ingredients = [
         {"index": 1, "amount": 100, "foodstuffId": known["id"]},
         {"index": 2, "amount": 100, "foodstuffId": partial["id"]},
     ]
-    response = client.post("/recipes", json=recipe_version_payload("Minimums", ingredients=ingredients))
+    response = client.post(
+        "/recipes", json=recipe_version_payload("Minimums", ingredients=ingredients)
+    )
     assert response.status_code == 201
     saved = response.json()
     expected = {
@@ -63,9 +76,15 @@ def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(client: 
         "protein": {"status": "minimum", "value": 0},
         "fat": {"status": "unknown", "value": None},
     }
-    resolved = client.post("/recipe-presentations/resolve", json={
-        "servings": 2, "preptime": 10, "ingredients": ingredients, "steps": [],
-    })
+    resolved = client.post(
+        "/recipe-presentations/resolve",
+        json={
+            "servings": 2,
+            "preptime": 10,
+            "ingredients": ingredients,
+            "steps": [],
+        },
+    )
     assert resolved.status_code == 200
     retrieved = client.get(f"/recipes/{saved['recipeLineageId']}")
     assert retrieved.status_code == 200
@@ -84,12 +103,20 @@ def recipe_presentation_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_presentation(
     client: TestClient,
 ) -> None:
     oats = create_foodstuff(client)
     egg = create_foodstuff(
-        client, name="Egg", brand="Farm", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5
+        client,
+        name="Egg",
+        brand="Farm",
+        unit="PIECE",
+        kcal=78,
+        carbs=1,
+        protein=6,
+        fat=5,
     )
 
     response = client.post(
@@ -99,14 +126,24 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
                 {"index": 2, "amount": 2, "foodstuffId": egg["id"]},
                 {"index": 1, "amount": 50, "foodstuffId": oats["id"]},
             ],
-            steps=[{"index": 2, "description": "Serve"}, {"index": 1, "description": "Cook"}],
+            steps=[
+                {"index": 2, "description": "Serve"},
+                {"index": 1, "description": "Cook"},
+            ],
         ),
     )
 
     assert response.status_code == 200
     presentation = response.json()
     assert set(presentation) == {
-        "servings", "preptime", "kcal", "carbs", "protein", "fat", "ingredients", "steps"
+        "servings",
+        "preptime",
+        "kcal",
+        "carbs",
+        "protein",
+        "fat",
+        "ingredients",
+        "steps",
     }
     assert presentation["kcal"] == {"status": "exact", "value": 170.5}
     assert presentation["carbs"] == {"status": "exact", "value": 16}
@@ -131,7 +168,9 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert client.get("/ingredients").json() == []
     assert client.get("/steps").json() == []
 
-    assert client.patch(f"/foodstuffs/{oats['id']}", json={"kcal": 400}).status_code == 200
+    assert (
+        client.patch(f"/foodstuffs/{oats['id']}", json={"kcal": 400}).status_code == 200
+    )
     updated = client.post(
         "/recipe-presentations/resolve",
         json=recipe_presentation_payload(
@@ -142,7 +181,10 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
     assert updated.json()["kcal"] == {"status": "exact", "value": 100}
 
 
-def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(
+    client: TestClient,
+) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
 
     response = client.post(
@@ -159,12 +201,18 @@ def test_recipe_presentation_resolver_keeps_nutrient_nullability_independent(cli
     assert response.json()["fat"] == {"status": "exact", "value": 3.5}
 
 
-def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestClient) -> None:
-    foodstuff = create_foodstuff(client, unit="PIECE", kcal=9999, carbs=0, protein=None, fat=0)
+@pytest.mark.usefixtures("recipe_session")
+def test_resolver_calculated_nutrition_can_exceed_request_limits(
+    client: TestClient,
+) -> None:
+    foodstuff = create_foodstuff(
+        client, unit="PIECE", kcal=9999, carbs=0, protein=None, fat=0
+    )
     response = client.post(
         "/recipe-presentations/resolve",
         json=recipe_presentation_payload(
-            servings=1, preptime=None,
+            servings=1,
+            preptime=None,
             ingredients=[{"index": 1, "amount": 9999, "foodstuffId": foodstuff["id"]}],
             steps=[{"index": 1, "description": "x" * 200}],
         ),
@@ -179,7 +227,10 @@ def test_resolver_calculated_nutrition_can_exceed_request_limits(client: TestCli
     assert body["preptime"] is None
 
 
-def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(
+    client: TestClient,
+) -> None:
     foodstuff = create_foodstuff(client)
     unknown = client.post(
         "/recipe-presentations/resolve",
@@ -203,77 +254,123 @@ def test_recipe_presentation_resolver_rejects_unknown_and_duplicate_references(c
         ),
     )
     assert duplicate_foodstuff.status_code == 422
-    assert client.post(
-        "/recipe-presentations/resolve",
-        json=recipe_presentation_payload(
-            ingredients=[
-                {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"]},
-                {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"] + 1},
-            ]
-        ),
-    ).status_code == 422
-    assert client.post(
-        "/recipe-presentations/resolve",
-        json=recipe_presentation_payload(
-            steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}]
-        ),
-    ).status_code == 422
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json=recipe_presentation_payload(
+                ingredients=[
+                    {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"]},
+                    {"index": 1, "amount": 1, "foodstuffId": foodstuff["id"] + 1},
+                ]
+            ),
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json=recipe_presentation_payload(
+                steps=[
+                    {"index": 1, "description": "A"},
+                    {"index": 1, "description": "B"},
+                ]
+            ),
+        ).status_code
+        == 422
+    )
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_presentation_resolver_requires_all_fields(client: TestClient) -> None:
     for field in ("servings", "preptime", "ingredients", "steps"):
         payload = recipe_presentation_payload()
         del payload[field]
-        assert client.post("/recipe-presentations/resolve", json=payload).status_code == 422
+        assert (
+            client.post("/recipe-presentations/resolve", json=payload).status_code
+            == 422
+        )
 
 
 @pytest.mark.parametrize("amount", ["12.5", True, None])
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_and_recipe_writes_reject_non_numeric_amounts(
     client: TestClient, amount: object
 ) -> None:
     foodstuff = create_foodstuff(client)
     ingredients = [{"index": 1, "amount": amount, "foodstuffId": foodstuff["id"]}]
     for path, payload in (
-        ("/recipe-presentations/resolve", recipe_presentation_payload(ingredients=ingredients)),
+        (
+            "/recipe-presentations/resolve",
+            recipe_presentation_payload(ingredients=ingredients),
+        ),
         ("/recipes", recipe_version_payload("Invalid amount", ingredients=ingredients)),
     ):
         response = client.post(path, json=payload)
         assert response.status_code == 422
-        assert response.json()["detail"][0]["loc"] == ["body", "ingredients", 0, "amount"]
+        assert response.json()["detail"][0]["loc"] == [
+            "body",
+            "ingredients",
+            0,
+            "amount",
+        ]
     assert client.get("/recipes").json() == []
 
 
-@pytest.mark.parametrize("field,value", [("servings", "2"), ("servings", True), ("preptime", "10")])
+@pytest.mark.parametrize(
+    "field,value", [("servings", "2"), ("servings", True), ("preptime", "10")]
+)
+@pytest.mark.usefixtures("recipe_session")
 def test_resolver_rejects_coerced_integer_fields(
     client: TestClient, field: str, value: object
 ) -> None:
     response = client.post(
-        "/recipe-presentations/resolve", json=recipe_presentation_payload(**{field: value})
+        "/recipe-presentations/resolve",
+        json=recipe_presentation_payload(**{field: value}),
     )
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", field]
 
 
-def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(client: TestClient) -> None:
-    assert client.post(
-        "/recipe-presentations/resolve", json=recipe_presentation_payload(servings=0)
-    ).status_code == 422
-    assert client.post(
-        "/recipe-presentations/resolve",
-        json=recipe_presentation_payload(steps=[{"index": 1, "description": ""}]),
-    ).status_code == 422
-    assert client.post(
-        "/recipe-presentations/resolve", json={**recipe_presentation_payload(), "name": "Not accepted"}
-    ).status_code == 422
-    assert client.post(
-        "/recipe-presentations/resolve",
-        json=recipe_presentation_payload(
-            ingredients=[{"index": 1, "amount": 1, "foodstuffId": 1, "kcal": 100}]
-        ),
-    ).status_code == 422
+@pytest.mark.usefixtures("recipe_session")
+def test_recipe_presentation_resolver_enforces_bounds_and_closed_objects(
+    client: TestClient,
+) -> None:
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json=recipe_presentation_payload(servings=0),
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json=recipe_presentation_payload(steps=[{"index": 1, "description": ""}]),
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json={**recipe_presentation_payload(), "name": "Not accepted"},
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/recipe-presentations/resolve",
+            json=recipe_presentation_payload(
+                ingredients=[{"index": 1, "amount": 1, "foodstuffId": 1, "kcal": 100}]
+            ),
+        ).status_code
+        == 422
+    )
 
 
-def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_recipe_contract_creates_active_lineage_and_derives_nutrition(
+    client: TestClient,
+) -> None:
     oats = create_foodstuff(client)
     recipe_version = create_recipe(client, "Oat breakfast", oats["id"])
 
@@ -282,111 +379,213 @@ def test_recipe_contract_creates_active_lineage_and_derives_nutrition(client: Te
     assert UUID(recipe_version["recipeVersionId"]).version == 4
     assert recipe_version["kcal"] == {"status": "exact", "value": 185}
     assert recipe_version["carbs"] == {"status": "exact", "value": 30}
-    assert set(recipe_version) >= {"recipeLineageId", "recipeVersionId", "state", "createdAt", "lastModified"}
-    assert recipe_version["ingredients"][0]["recipeVersionId"] == recipe_version["recipeVersionId"]
-    assert client.get(f"/foodstuffs/{oats['id']}").json()["recipeVersionIds"] == [recipe_version["recipeVersionId"]]
-    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json() == recipe_version
-    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}/history").json() == []
+    assert set(recipe_version) >= {
+        "recipeLineageId",
+        "recipeVersionId",
+        "state",
+        "createdAt",
+        "lastModified",
+    }
+    assert (
+        recipe_version["ingredients"][0]["recipeVersionId"]
+        == recipe_version["recipeVersionId"]
+    )
+    assert client.get(f"/foodstuffs/{oats['id']}").json()["recipeVersionIds"] == [
+        recipe_version["recipeVersionId"]
+    ]
+    assert (
+        client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()
+        == recipe_version
+    )
+    assert (
+        client.get(f"/recipes/{recipe_version['recipeLineageId']}/history").json() == []
+    )
 
 
-def test_active_edits_create_history_and_drafts_are_separate(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_active_edits_create_history_and_drafts_are_separate(
+    client: TestClient,
+) -> None:
     active_version = create_recipe(client, "Original")
     lineage_id = active_version["recipeLineageId"]
 
     draft_response = client.post(
-        f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Alternative draft")
+        f"/recipes/{lineage_id}/drafts",
+        json=recipe_version_payload("Alternative draft"),
     )
     assert draft_response.status_code == 201
     draft_version = draft_response.json()
     assert draft_version["state"] == "draft"
-    assert client.get(f"/recipes/{lineage_id}").json()["recipeVersionId"] == active_version["recipeVersionId"]
+    assert (
+        client.get(f"/recipes/{lineage_id}").json()["recipeVersionId"]
+        == active_version["recipeVersionId"]
+    )
 
     published_version_response = client.post(
-        f"/recipes/{lineage_id}/publish", json=recipe_version_payload("Published revision")
+        f"/recipes/{lineage_id}/publish",
+        json=recipe_version_payload("Published revision"),
     )
     assert published_version_response.status_code == 200
     assert published_version_response.json()["state"] == "active"
-    assert published_version_response.json()["recipeVersionId"] != active_version["recipeVersionId"]
+    assert (
+        published_version_response.json()["recipeVersionId"]
+        != active_version["recipeVersionId"]
+    )
     history = client.get(f"/recipes/{lineage_id}/history")
     assert history.status_code == 200
-    assert [version["recipeVersionId"] for version in history.json()] == [active_version["recipeVersionId"]]
+    assert [version["recipeVersionId"] for version in history.json()] == [
+        active_version["recipeVersionId"]
+    ]
     assert history.json()[0]["name"] == "Original"
 
     listed = client.get("/recipes").json()
-    assert {version["recipeVersionId"] for version in listed} == {published_version_response.json()["recipeVersionId"], draft_version["recipeVersionId"]}
-    assert client.get(f"/recipes/{lineage_id}/versions/{active_version['recipeVersionId']}").json()["state"] == "historical"
+    assert {version["recipeVersionId"] for version in listed} == {
+        published_version_response.json()["recipeVersionId"],
+        draft_version["recipeVersionId"],
+    }
+    assert (
+        client.get(
+            f"/recipes/{lineage_id}/versions/{active_version['recipeVersionId']}"
+        ).json()["state"]
+        == "historical"
+    )
 
 
-def test_drafts_update_in_place_and_publish_without_affecting_other_drafts(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_drafts_update_in_place_and_publish_without_affecting_other_drafts(
+    client: TestClient,
+) -> None:
     active_version = create_recipe(client, "Active")
     lineage_id = active_version["recipeLineageId"]
-    first_draft_version = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("First draft")).json()
-    second_draft_version = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Second draft")).json()
+    first_draft_version = client.post(
+        f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("First draft")
+    ).json()
+    second_draft_version = client.post(
+        f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Second draft")
+    ).json()
 
     updated_draft_version_response = client.put(
         f"/recipes/{lineage_id}/drafts/{first_draft_version['recipeVersionId']}",
         json=recipe_version_payload("First draft updated"),
     )
     assert updated_draft_version_response.status_code == 200
-    assert updated_draft_version_response.json()["recipeVersionId"] == first_draft_version["recipeVersionId"]
+    assert (
+        updated_draft_version_response.json()["recipeVersionId"]
+        == first_draft_version["recipeVersionId"]
+    )
     assert updated_draft_version_response.json()["state"] == "draft"
-    assert updated_draft_version_response.json()["lastModified"] >= first_draft_version["lastModified"]
+    assert (
+        updated_draft_version_response.json()["lastModified"]
+        >= first_draft_version["lastModified"]
+    )
 
-    publication = client.post(f"/recipes/{lineage_id}/drafts/{first_draft_version['recipeVersionId']}/publish")
+    publication = client.post(
+        f"/recipes/{lineage_id}/drafts/{first_draft_version['recipeVersionId']}/publish"
+    )
     assert publication.status_code == 200
-    assert publication.json()["recipeVersionId"] == first_draft_version["recipeVersionId"]
+    assert (
+        publication.json()["recipeVersionId"] == first_draft_version["recipeVersionId"]
+    )
     assert publication.json()["state"] == "active"
-    assert client.get(f"/recipes/{lineage_id}/versions/{second_draft_version['recipeVersionId']}").json()["state"] == "draft"
-    assert client.get(f"/recipes/{lineage_id}/history").json()[0]["recipeVersionId"] == active_version["recipeVersionId"]
+    assert (
+        client.get(
+            f"/recipes/{lineage_id}/versions/{second_draft_version['recipeVersionId']}"
+        ).json()["state"]
+        == "draft"
+    )
+    assert (
+        client.get(f"/recipes/{lineage_id}/history").json()[0]["recipeVersionId"]
+        == active_version["recipeVersionId"]
+    )
 
-    assert client.put(
-        f"/recipes/{lineage_id}/drafts/{active_version['recipeVersionId']}", json=recipe_version_payload("Invalid")
-    ).status_code == 409
-    assert client.delete(f"/recipes/{lineage_id}/drafts/{active_version['recipeVersionId']}").status_code == 409
+    assert (
+        client.put(
+            f"/recipes/{lineage_id}/drafts/{active_version['recipeVersionId']}",
+            json=recipe_version_payload("Invalid"),
+        ).status_code
+        == 409
+    )
+    assert (
+        client.delete(
+            f"/recipes/{lineage_id}/drafts/{active_version['recipeVersionId']}"
+        ).status_code
+        == 409
+    )
 
 
-def test_duplicate_names_and_foodstuff_references_across_history_and_drafts(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_duplicate_names_and_foodstuff_references_across_history_and_drafts(
+    client: TestClient,
+) -> None:
     foodstuff = create_foodstuff(client)
     first_recipe_version = create_recipe(client, "Same name", foodstuff["id"])
     second_recipe_version = create_recipe(client, "Same name", foodstuff["id"])
-    assert first_recipe_version["recipeLineageId"] != second_recipe_version["recipeLineageId"]
+    assert (
+        first_recipe_version["recipeLineageId"]
+        != second_recipe_version["recipeLineageId"]
+    )
 
     direct_publish = client.post(
-        f"/recipes/{first_recipe_version['recipeLineageId']}/publish", json=recipe_version_payload("Same name", foodstuff["id"])
+        f"/recipes/{first_recipe_version['recipeLineageId']}/publish",
+        json=recipe_version_payload("Same name", foodstuff["id"]),
     )
     assert direct_publish.status_code == 200
     draft_version_response = client.post(
-        f"/recipes/{first_recipe_version['recipeLineageId']}/drafts", json=recipe_version_payload("Same name", foodstuff["id"])
+        f"/recipes/{first_recipe_version['recipeLineageId']}/drafts",
+        json=recipe_version_payload("Same name", foodstuff["id"]),
     )
     assert draft_version_response.status_code == 201
     blocked_delete = client.delete(f"/foodstuffs/{foodstuff['id']}")
     assert blocked_delete.status_code == 409
-    assert blocked_delete.json() == {"detail": "Foodstuff cannot be deleted while it is used by a recipe"}
+    assert blocked_delete.json() == {
+        "detail": "Foodstuff cannot be deleted while it is used by a recipe"
+    }
 
-    assert client.delete(f"/recipes/{first_recipe_version['recipeLineageId']}/drafts/{draft_version_response.json()['recipeVersionId']}").status_code == 204
-    assert client.delete(f"/recipes/{first_recipe_version['recipeLineageId']}").status_code == 204
-    assert client.delete(f"/recipes/{second_recipe_version['recipeLineageId']}").status_code == 204
+    assert (
+        client.delete(
+            f"/recipes/{first_recipe_version['recipeLineageId']}/drafts/{draft_version_response.json()['recipeVersionId']}"
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(f"/recipes/{first_recipe_version['recipeLineageId']}").status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/recipes/{second_recipe_version['recipeLineageId']}"
+        ).status_code
+        == 204
+    )
     assert client.delete(f"/foodstuffs/{foodstuff['id']}").status_code == 204
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_lists_all_referencing_recipe_versions(client: TestClient) -> None:
     foodstuff = create_foodstuff(client)
     initial_recipe_version = create_recipe(client, "Initial", foodstuff["id"])
     draft_recipe_version = client.post(
-        f"/recipes/{initial_recipe_version['recipeLineageId']}/drafts", json=recipe_version_payload("Draft", foodstuff["id"])
+        f"/recipes/{initial_recipe_version['recipeLineageId']}/drafts",
+        json=recipe_version_payload("Draft", foodstuff["id"]),
     ).json()
     active_recipe_version = client.post(
-        f"/recipes/{initial_recipe_version['recipeLineageId']}/publish", json=recipe_version_payload("Published", foodstuff["id"])
+        f"/recipes/{initial_recipe_version['recipeLineageId']}/publish",
+        json=recipe_version_payload("Published", foodstuff["id"]),
     ).json()
 
     response = client.get(f"/foodstuffs/{foodstuff['id']}")
 
     assert response.status_code == 200
     assert response.json()["recipeVersionIds"] == sorted(
-        [initial_recipe_version["recipeVersionId"], draft_recipe_version["recipeVersionId"], active_recipe_version["recipeVersionId"]]
+        [
+            initial_recipe_version["recipeVersionId"],
+            draft_recipe_version["recipeVersionId"],
+            active_recipe_version["recipeVersionId"],
+        ]
     )
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_validation_and_version_contracts(client: TestClient) -> None:
     invalid = client.post("/foodstuffs", json={"name": "Missing required values"})
     assert invalid.status_code == 422
@@ -394,50 +593,116 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert invalid.json()["detail"][0]["loc"] == ["body", "unit"]
     assert invalid.json()["detail"][0]["type"] == "missing"
     assert invalid.json()["detail"][0]["input"] == {"name": "Missing required values"}
-    unknown_field = client.post("/foodstuffs", json={"name": "Oats", "unit": "G", "unexpected": True})
+    unknown_field = client.post(
+        "/foodstuffs", json={"name": "Oats", "unit": "G", "unexpected": True}
+    )
     assert unknown_field.status_code == 422
     assert unknown_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
     assert unknown_field.json()["detail"][0]["type"] == "extra_forbidden"
     assert client.post("/recipes", json={"name": "Incomplete"}).status_code == 422
-    unknown_recipe_field = client.post("/recipes", json=recipe_version_payload(
-        "Unknown recipe field", unexpected=True,
-    ))
+    unknown_recipe_field = client.post(
+        "/recipes",
+        json=recipe_version_payload(
+            "Unknown recipe field",
+            unexpected=True,
+        ),
+    )
     assert unknown_recipe_field.status_code == 422
     assert unknown_recipe_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
     assert unknown_recipe_field.json()["detail"][0]["type"] == "extra_forbidden"
-    unknown_step_field = client.post("/recipes", json=recipe_version_payload(
-        "Unknown step field", steps=[{"index": 1, "description": "Cook", "unexpected": True}],
-    ))
+    unknown_step_field = client.post(
+        "/recipes",
+        json=recipe_version_payload(
+            "Unknown step field",
+            steps=[{"index": 1, "description": "Cook", "unexpected": True}],
+        ),
+    )
     assert unknown_step_field.status_code == 422
-    assert unknown_step_field.json()["detail"][0]["loc"] == ["body", "steps", 0, "unexpected"]
+    assert unknown_step_field.json()["detail"][0]["loc"] == [
+        "body",
+        "steps",
+        0,
+        "unexpected",
+    ]
     assert unknown_step_field.json()["detail"][0]["type"] == "extra_forbidden"
-    unknown_ingredient_field = client.post("/recipes", json=recipe_version_payload(
-        "Unknown ingredient field",
-        ingredients=[{"index": 1, "amount": 100, "foodstuffId": 1, "unexpected": True}],
-    ))
+    unknown_ingredient_field = client.post(
+        "/recipes",
+        json=recipe_version_payload(
+            "Unknown ingredient field",
+            ingredients=[
+                {"index": 1, "amount": 100, "foodstuffId": 1, "unexpected": True}
+            ],
+        ),
+    )
     assert unknown_ingredient_field.status_code == 422
-    assert unknown_ingredient_field.json()["detail"][0]["loc"] == ["body", "ingredients", 0, "unexpected"]
+    assert unknown_ingredient_field.json()["detail"][0]["loc"] == [
+        "body",
+        "ingredients",
+        0,
+        "unexpected",
+    ]
     assert unknown_ingredient_field.json()["detail"][0]["type"] == "extra_forbidden"
     unknown_update_field = client.patch("/foodstuffs/1", json={"unexpected": True})
     assert unknown_update_field.status_code == 422
     assert unknown_update_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
     assert unknown_update_field.json()["detail"][0]["type"] == "extra_forbidden"
-    assert client.post("/recipes", json=recipe_version_payload("Bad index", steps=[{"index": 1, "description": "A"}, {"index": 1, "description": "B"}])).status_code == 422
+    assert (
+        client.post(
+            "/recipes",
+            json=recipe_version_payload(
+                "Bad index",
+                steps=[
+                    {"index": 1, "description": "A"},
+                    {"index": 1, "description": "B"},
+                ],
+            ),
+        ).status_code
+        == 422
+    )
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
     assert client.patch("/foodstuffs/1", json={"unit": None}).status_code == 422
-    for field, value in (("originName", "Home"), ("originUrl", "https://example.com/recipe")):
-        removed_field = client.post("/recipes", json=recipe_version_payload(f"Removed {field}", **{field: value}))
+    for field, value in (
+        ("originName", "Home"),
+        ("originUrl", "https://example.com/recipe"),
+    ):
+        removed_field = client.post(
+            "/recipes",
+            json=recipe_version_payload(f"Removed {field}", **{field: value}),
+        )
         assert removed_field.status_code == 422
         assert removed_field.json()["detail"][0]["loc"] == ["body", field]
         assert removed_field.json()["detail"][0]["type"] == "extra_forbidden"
     openapi = client.get("/api/openapi.json").json()
     recipe_paths = openapi["paths"]
     validation_schema = {"$ref": "#/components/schemas/HTTPValidationError"}
-    assert set(openapi["components"]["schemas"]["HTTPValidationError"]["properties"]) == {"detail"}
-    assert set(openapi["components"]["schemas"]["ValidationError"]["properties"]) == {"loc", "msg", "type", "input", "ctx"}
-    assert recipe_paths["/foodstuffs"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
-    assert recipe_paths["/recipes"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
-    assert recipe_paths["/recipe-presentations/resolve"]["post"]["responses"]["422"]["content"]["application/json"]["schema"] == validation_schema
+    assert set(
+        openapi["components"]["schemas"]["HTTPValidationError"]["properties"]
+    ) == {"detail"}
+    assert set(openapi["components"]["schemas"]["ValidationError"]["properties"]) == {
+        "loc",
+        "msg",
+        "type",
+        "input",
+        "ctx",
+    }
+    assert (
+        recipe_paths["/foodstuffs"]["post"]["responses"]["422"]["content"][
+            "application/json"
+        ]["schema"]
+        == validation_schema
+    )
+    assert (
+        recipe_paths["/recipes"]["post"]["responses"]["422"]["content"][
+            "application/json"
+        ]["schema"]
+        == validation_schema
+    )
+    assert (
+        recipe_paths["/recipe-presentations/resolve"]["post"]["responses"]["422"][
+            "content"
+        ]["application/json"]["schema"]
+        == validation_schema
+    )
     assert "RequestValidationErrorResponse" not in openapi["components"]["schemas"]
     assert "/recipes/{lineage_id}" in recipe_paths
     assert "/recipes/{lineage_id}/versions/{version_id}" in recipe_paths
@@ -445,17 +710,27 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_domain_error_responses_match_openapi(client: TestClient) -> None:
-    missing = client.get("/users/999")
+    missing = client.get("/foodstuffs/999")
     assert missing.status_code == 404
-    assert missing.json() == {"detail": "User with id 999 not found"}
-    assert ErrorResponse.model_validate(missing.json()).detail == missing.json()["detail"]
+    assert missing.json() == {"detail": "Foodstuff with id 999 not found"}
+    assert (
+        ErrorResponse.model_validate(missing.json()).detail == missing.json()["detail"]
+    )
 
     create_foodstuff(client, brand="Mill")
-    duplicate = client.post("/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"})
+    duplicate = client.post(
+        "/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"}
+    )
     assert duplicate.status_code == 409
-    assert duplicate.json() == {"detail": "A foodstuff with the same name and brand already exists"}
-    assert ErrorResponse.model_validate(duplicate.json()).detail == duplicate.json()["detail"]
+    assert duplicate.json() == {
+        "detail": "A foodstuff with the same name and brand already exists"
+    }
+    assert (
+        ErrorResponse.model_validate(duplicate.json()).detail
+        == duplicate.json()["detail"]
+    )
 
     assert client.get("/missing-route").json() == {"detail": "Not Found"}
 
@@ -480,16 +755,20 @@ def test_domain_error_responses_match_openapi(client: TestClient) -> None:
         ("/foodstuffs", "post"): {409},
         ("/foodstuffs/{foodstuff_id}", "patch"): {404, 409},
         ("/foodstuffs/{foodstuff_id}", "delete"): {404, 409},
-        ("/users/{user_id}", "get"): {404},
-        ("/users/{user_id}", "delete"): {404},
     }
     for (path, method), statuses in expected_responses.items():
         responses = openapi["paths"][path][method]["responses"]
         for status in statuses:
-            assert responses[str(status)]["content"]["application/json"]["schema"] == error_schema
+            assert (
+                responses[str(status)]["content"]["application/json"]["schema"]
+                == error_schema
+            )
 
 
-def test_success_response_media_types_and_bodies_match_openapi(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_success_response_media_types_and_bodies_match_openapi(
+    client: TestClient,
+) -> None:
     paths = client.get("/api/openapi.json").json()["paths"]
 
     version = client.get("/meta/version")
@@ -501,7 +780,6 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
 
     delete_routes = (
         ("/foodstuffs/{foodstuff_id}", "delete"),
-        ("/users/{user_id}", "delete"),
         ("/recipes/{lineage_id}/drafts/{version_id}", "delete"),
         ("/recipes/{lineage_id}", "delete"),
     )
@@ -510,37 +788,51 @@ def test_success_response_media_types_and_bodies_match_openapi(client: TestClien
 
     recipe = create_recipe(client, "To delete")
     lineage_id = recipe["recipeLineageId"]
-    draft = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft"))
+    draft = client.post(
+        f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Draft")
+    )
     assert draft.status_code == 201
     foodstuff = create_foodstuff(client)
-    user = provider_user("To delete")
 
     for response in (
-        client.delete(f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"),
+        client.delete(
+            f"/recipes/{lineage_id}/drafts/{draft.json()['recipeVersionId']}"
+        ),
         client.delete(f"/recipes/{lineage_id}"),
         client.delete(f"/foodstuffs/{foodstuff['id']}"),
-        client.delete(f"/users/{user.id}"),
     ):
         assert response.status_code == 204
         assert response.content == b""
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_numeric_success_schema_matches_json_responses(client: TestClient) -> None:
     openapi = client.get("/api/openapi.json").json()
     schemas = openapi["components"]["schemas"]
     paths = openapi["paths"]
-    assert paths["/recipe-presentations/resolve"]["post"]["responses"]["200"]["content"]["application/json"]["schema"] == {
+    assert paths["/recipe-presentations/resolve"]["post"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/RecipePresentationOut"
     }
     assert schemas["FoodstuffOut"]["properties"]["kcal"]["anyOf"] == [
-        {"type": "number", "minimum": 0}, {"type": "null"},
+        {"type": "number", "minimum": 0},
+        {"type": "null"},
     ]
     for schema_name in ("RecipeVersionOut", "RecipePresentationOut"):
-        assert schemas[schema_name]["properties"]["kcal"]["discriminator"]["propertyName"] == "status"
-    assert schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"] == "number"
+        assert (
+            schemas[schema_name]["properties"]["kcal"]["discriminator"]["propertyName"]
+            == "status"
+        )
+    assert (
+        schemas["RecipePresentationIngredientOut"]["properties"]["amount"]["type"]
+        == "number"
+    )
     for name in (
-        "RecipePresentationOut", "RecipePresentationIngredientOut",
-        "RecipePresentationStepOut", "FoodstuffSummaryOut",
+        "RecipePresentationOut",
+        "RecipePresentationIngredientOut",
+        "RecipePresentationStepOut",
+        "FoodstuffSummaryOut",
     ):
         assert schemas[name]["additionalProperties"] is False
         assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
@@ -557,13 +849,20 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
     presentation = response.json()
     RecipePresentationOut.model_validate(presentation)
     assert set(presentation) == set(schemas["RecipePresentationOut"]["properties"])
-    assert set(presentation["ingredients"][0]) == set(schemas["RecipePresentationIngredientOut"]["properties"])
-    assert set(presentation["ingredients"][0]["foodstuff"]) == set(schemas["FoodstuffSummaryOut"]["properties"])
-    assert set(presentation["steps"][0]) == set(schemas["RecipePresentationStepOut"]["properties"])
+    assert set(presentation["ingredients"][0]) == set(
+        schemas["RecipePresentationIngredientOut"]["properties"]
+    )
+    assert set(presentation["ingredients"][0]["foodstuff"]) == set(
+        schemas["FoodstuffSummaryOut"]["properties"]
+    )
+    assert set(presentation["steps"][0]) == set(
+        schemas["RecipePresentationStepOut"]["properties"]
+    )
     assert isinstance(presentation["kcal"]["value"], (int, float))
     assert isinstance(presentation["ingredients"][0]["amount"], (int, float))
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
     for name in ("FoodstuffOut", "FoodstuffSummaryOut"):
@@ -590,24 +889,27 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
-def test_user_success_responses_follow_closed_schema(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
+def test_current_user_success_response_follows_closed_schema(
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+) -> None:
     schema = client.get("/api/openapi.json").json()["components"]["schemas"]["UserOut"]
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == set(schema["properties"])
 
-    user = provider_user("Roi")
-    for body in (
-        client.get("/users").json()[0],
-        client.get(f"/users/{user.id}").json(),
-    ):
-        assert set(body) == set(schema["properties"])
-        UserOut.model_validate(body)
+    user = sign_in(client)
+    response = client.get("/auth/me")
+    assert response.status_code == 200
+    assert response.json() == user.model_dump()
+    assert set(response.json()) == set(schema["properties"])
+    UserOut.model_validate(response.json())
 
     with pytest.raises(ValidationError) as error:
         UserOut.model_validate({**user.model_dump(), "unexpected": True})
     assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
     for name in ("RecipeVersionOut", "IngredientOut", "StepOut", "FoodstuffSummaryOut"):
@@ -615,10 +917,14 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
 
     oats = create_foodstuff(client)
-    created = client.post("/recipes", json=recipe_version_payload(
-        "Decimal recipe", ingredients=[{"index": 1, "amount": 12.5, "foodstuffId": oats["id"]}],
-        preptime=None,
-    ))
+    created = client.post(
+        "/recipes",
+        json=recipe_version_payload(
+            "Decimal recipe",
+            ingredients=[{"index": 1, "amount": 12.5, "foodstuffId": oats["id"]}],
+            preptime=None,
+        ),
+    )
     assert created.status_code == 201
     recipe = created.json()
     lineage_id = recipe["recipeLineageId"]
@@ -640,9 +946,18 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         {**recipe, "unexpected": True},
         {**recipe, "ingredients": [{**recipe["ingredients"][0], "unexpected": True}]},
         {**recipe, "steps": [{**recipe["steps"][0], "unexpected": True}]},
-        {**recipe, "ingredients": [{**recipe["ingredients"][0], "foodstuff": {
-            **recipe["ingredients"][0]["foodstuff"], "unexpected": True,
-        }}]},
+        {
+            **recipe,
+            "ingredients": [
+                {
+                    **recipe["ingredients"][0],
+                    "foodstuff": {
+                        **recipe["ingredients"][0]["foodstuff"],
+                        "unexpected": True,
+                    },
+                }
+            ],
+        },
     ]
     for body in malformed:
         with pytest.raises(ValidationError) as error:
@@ -650,9 +965,12 @@ def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
         assert error.value.errors()[0]["type"] == "extra_forbidden"
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
     oats = create_foodstuff(client)
-    egg = create_foodstuff(client, name="Egg", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5)
+    egg = create_foodstuff(
+        client, name="Egg", unit="PIECE", kcal=78, carbs=1, protein=6, fat=5
+    )
     response = client.post(
         "/recipes",
         json=recipe_version_payload(
@@ -661,7 +979,10 @@ def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
                 {"index": 2, "amount": 2, "foodstuffId": egg["id"]},
                 {"index": 1, "amount": 50, "foodstuffId": oats["id"]},
             ],
-            steps=[{"index": 2, "description": "Serve"}, {"index": 1, "description": "Cook"}],
+            steps=[
+                {"index": 2, "description": "Serve"},
+                {"index": 1, "description": "Cook"},
+            ],
         ),
     )
 
@@ -671,27 +992,54 @@ def test_recipe_orders_ingredients_and_steps(client: TestClient) -> None:
     assert recipe_version["carbs"] == {"status": "exact", "value": 16}
     assert recipe_version["protein"] == {"status": "exact", "value": 9.25}
     assert recipe_version["fat"] == {"status": "exact", "value": 6.75}
-    assert [ingredient["foodstuff"]["name"] for ingredient in recipe_version["ingredients"]] == ["Oats", "Egg"]
-    assert [step["description"] for step in recipe_version["steps"]] == ["Cook", "Serve"]
-    assert set(recipe_version["ingredients"][0]) == {"id", "index", "amount", "foodstuff", "recipeVersionId"}
+    assert [
+        ingredient["foodstuff"]["name"] for ingredient in recipe_version["ingredients"]
+    ] == ["Oats", "Egg"]
+    assert [step["description"] for step in recipe_version["steps"]] == [
+        "Cook",
+        "Serve",
+    ]
+    assert set(recipe_version["ingredients"][0]) == {
+        "id",
+        "index",
+        "amount",
+        "foodstuff",
+        "recipeVersionId",
+    }
     assert "recipeVersionIds" not in recipe_version["ingredients"][0]["foodstuff"]
-    assert client.get("/ingredients").json()[0]["recipeVersionId"] == recipe_version["recipeVersionId"]
-    assert client.get("/steps").json()[0]["recipeVersionId"] == recipe_version["recipeVersionId"]
+    assert (
+        client.get("/ingredients").json()[0]["recipeVersionId"]
+        == recipe_version["recipeVersionId"]
+    )
+    assert (
+        client.get("/steps").json()[0]["recipeVersionId"]
+        == recipe_version["recipeVersionId"]
+    )
 
 
-def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(
+    client: TestClient,
+) -> None:
     foodstuff = create_foodstuff(client, kcal=None)
     recipe_version = create_recipe(client, "Unknown calories", foodstuff["id"])
     assert recipe_version["kcal"] == {"status": "unknown", "value": None}
     assert recipe_version["carbs"] == {"status": "exact", "value": 30}
 
-    updated_foodstuff = client.patch(f"/foodstuffs/{foodstuff['id']}", json={"kcal": 400, "brand": ""})
+    updated_foodstuff = client.patch(
+        f"/foodstuffs/{foodstuff['id']}", json={"kcal": 400, "brand": ""}
+    )
     assert updated_foodstuff.status_code == 200
     assert updated_foodstuff.json()["brand"] is None
-    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()["kcal"] == {"status": "exact", "value": 200}
+    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()[
+        "kcal"
+    ] == {"status": "exact", "value": 200}
 
 
-def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_duplicate_foodstuff_membership_and_positions_are_rejected(
+    client: TestClient,
+) -> None:
     oats = create_foodstuff(client)
     egg = create_foodstuff(client, name="Egg")
     duplicate_foodstuff = client.post(
@@ -706,7 +1054,10 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
     )
     assert duplicate_foodstuff.status_code == 422
     assert duplicate_foodstuff.json()["detail"][0]["loc"] == ["body", "ingredients"]
-    assert "foodstuffs must be unique per recipe" in duplicate_foodstuff.json()["detail"][0]["msg"]
+    assert (
+        "foodstuffs must be unique per recipe"
+        in duplicate_foodstuff.json()["detail"][0]["msg"]
+    )
     duplicate_ingredient_position = client.post(
         "/recipes",
         json=recipe_version_payload(
@@ -722,79 +1073,148 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(client: TestC
         "/recipes",
         json=recipe_version_payload(
             "Duplicate step position",
-            steps=[{"index": 1, "description": "Cook"}, {"index": 1, "description": "Serve"}],
+            steps=[
+                {"index": 1, "description": "Cook"},
+                {"index": 1, "description": "Serve"},
+            ],
         ),
     )
     assert duplicate_step_position.status_code == 422
 
 
-def test_user_contract_has_no_shopping_list_side_effect(client: TestClient, provider_user: Callable[[str], UserOut]) -> None:
-    created = provider_user("Roi")
+def test_current_user_contract_has_no_shopping_list_side_effect(
+    client: TestClient,
+    sign_in: Callable[[TestClient], UserOut],
+) -> None:
+    created = sign_in(client)
 
-    assert created.model_dump() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/1").json() == {"id": 1, "display_name": "Roi"}
-    assert client.get("/users/999").status_code == 404
+    assert client.get("/auth/me").json() == created.model_dump()
     assert client.get("/shoppingLists/1").status_code == 404
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_draft_can_publish_after_a_newer_active_version(client: TestClient) -> None:
     initial_recipe_version = create_recipe(client, "Initial")
     lineage_id = initial_recipe_version["recipeLineageId"]
-    draft_recipe_version = client.post(f"/recipes/{lineage_id}/drafts", json=recipe_version_payload("Older alternative")).json()
-    newer_active_version_response = client.post(f"/recipes/{lineage_id}/publish", json=recipe_version_payload("Newer active"))
+    draft_recipe_version = client.post(
+        f"/recipes/{lineage_id}/drafts",
+        json=recipe_version_payload("Older alternative"),
+    ).json()
+    newer_active_version_response = client.post(
+        f"/recipes/{lineage_id}/publish", json=recipe_version_payload("Newer active")
+    )
     assert newer_active_version_response.status_code == 200
 
-    published_draft_version_response = client.post(f"/recipes/{lineage_id}/drafts/{draft_recipe_version['recipeVersionId']}/publish")
+    published_draft_version_response = client.post(
+        f"/recipes/{lineage_id}/drafts/{draft_recipe_version['recipeVersionId']}/publish"
+    )
 
     assert published_draft_version_response.status_code == 200
-    assert published_draft_version_response.json()["recipeVersionId"] == draft_recipe_version["recipeVersionId"]
+    assert (
+        published_draft_version_response.json()["recipeVersionId"]
+        == draft_recipe_version["recipeVersionId"]
+    )
     assert client.get(f"/recipes/{lineage_id}").json()["name"] == "Older alternative"
-    assert {version["name"] for version in client.get(f"/recipes/{lineage_id}/history").json()} == {
+    assert {
+        version["name"]
+        for version in client.get(f"/recipes/{lineage_id}/history").json()
+    } == {
         "Initial",
         "Newer active",
     }
 
 
+@pytest.mark.usefixtures("recipe_session")
 def test_failed_direct_publication_preserves_active_version(client: TestClient) -> None:
     active_recipe_version = create_recipe(client, "Original")
 
     failed_publication = client.post(
         f"/recipes/{active_recipe_version['recipeLineageId']}/publish",
-        json=recipe_version_payload("Broken", ingredients=[{"index": 1, "amount": 1, "foodstuffId": 999}]),
+        json=recipe_version_payload(
+            "Broken", ingredients=[{"index": 1, "amount": 1, "foodstuffId": 999}]
+        ),
     )
 
     assert failed_publication.status_code == 404
-    assert client.get(f"/recipes/{active_recipe_version['recipeLineageId']}").json()["recipeVersionId"] == active_recipe_version["recipeVersionId"]
-    assert client.get(f"/recipes/{active_recipe_version['recipeLineageId']}/history").json() == []
+    assert (
+        client.get(f"/recipes/{active_recipe_version['recipeLineageId']}").json()[
+            "recipeVersionId"
+        ]
+        == active_recipe_version["recipeVersionId"]
+    )
+    assert (
+        client.get(
+            f"/recipes/{active_recipe_version['recipeLineageId']}/history"
+        ).json()
+        == []
+    )
 
 
-def test_historical_versions_reject_draft_mutation_endpoints(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_historical_versions_reject_draft_mutation_endpoints(
+    client: TestClient,
+) -> None:
     initial_recipe_version = create_recipe(client, "Initial")
     lineage_id = initial_recipe_version["recipeLineageId"]
-    assert client.post(f"/recipes/{lineage_id}/publish", json=recipe_version_payload("Current")).status_code == 200
+    assert (
+        client.post(
+            f"/recipes/{lineage_id}/publish", json=recipe_version_payload("Current")
+        ).status_code
+        == 200
+    )
 
-    assert client.put(
-        f"/recipes/{lineage_id}/drafts/{initial_recipe_version['recipeVersionId']}", json=recipe_version_payload("Mutated history")
-    ).status_code == 409
-    assert client.delete(f"/recipes/{lineage_id}/drafts/{initial_recipe_version['recipeVersionId']}").status_code == 409
-    assert client.get(f"/recipes/{lineage_id}/versions/{initial_recipe_version['recipeVersionId']}").json()["name"] == "Initial"
+    assert (
+        client.put(
+            f"/recipes/{lineage_id}/drafts/{initial_recipe_version['recipeVersionId']}",
+            json=recipe_version_payload("Mutated history"),
+        ).status_code
+        == 409
+    )
+    assert (
+        client.delete(
+            f"/recipes/{lineage_id}/drafts/{initial_recipe_version['recipeVersionId']}"
+        ).status_code
+        == 409
+    )
+    assert (
+        client.get(
+            f"/recipes/{lineage_id}/versions/{initial_recipe_version['recipeVersionId']}"
+        ).json()["name"]
+        == "Initial"
+    )
 
 
-def test_foodstuff_deletion_is_blocked_by_historical_or_draft_only_references(client: TestClient) -> None:
+@pytest.mark.usefixtures("recipe_session")
+def test_foodstuff_deletion_is_blocked_by_historical_or_draft_only_references(
+    client: TestClient,
+) -> None:
     historical_foodstuff = create_foodstuff(client, name="Historical")
     replacement_foodstuff = create_foodstuff(client, name="Replacement")
-    historical_recipe_version = create_recipe(client, "Historical reference", historical_foodstuff["id"])
-    assert client.post(
-        f"/recipes/{historical_recipe_version['recipeLineageId']}/publish",
-        json=recipe_version_payload("Replacement reference", replacement_foodstuff["id"]),
-    ).status_code == 200
+    historical_recipe_version = create_recipe(
+        client, "Historical reference", historical_foodstuff["id"]
+    )
+    assert (
+        client.post(
+            f"/recipes/{historical_recipe_version['recipeLineageId']}/publish",
+            json=recipe_version_payload(
+                "Replacement reference", replacement_foodstuff["id"]
+            ),
+        ).status_code
+        == 200
+    )
     assert client.delete(f"/foodstuffs/{historical_foodstuff['id']}").status_code == 409
 
     draft_foodstuff = create_foodstuff(client, name="Draft only")
     draft_recipe_version = create_recipe(client, "Draft reference")
     draft_version = client.post(
-        f"/recipes/{draft_recipe_version['recipeLineageId']}/drafts", json=recipe_version_payload("Draft reference", draft_foodstuff["id"])
+        f"/recipes/{draft_recipe_version['recipeLineageId']}/drafts",
+        json=recipe_version_payload("Draft reference", draft_foodstuff["id"]),
     ).json()
     assert client.delete(f"/foodstuffs/{draft_foodstuff['id']}").status_code == 409
-    assert client.delete(f"/recipes/{draft_recipe_version['recipeLineageId']}/drafts/{draft_version['recipeVersionId']}").status_code == 204
+    assert (
+        client.delete(
+            f"/recipes/{draft_recipe_version['recipeLineageId']}/drafts/{draft_version['recipeVersionId']}"
+        ).status_code
+        == 204
+    )
     assert client.delete(f"/foodstuffs/{draft_foodstuff['id']}").status_code == 204

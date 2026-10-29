@@ -1,10 +1,39 @@
+# Local dependencies and build output
+node_modules/
 .angular/
+.codex-validation/
+dist/
+out-tsc/
+coverage/
+tmp/
+bazel-out/
+
+# Secrets and local environment
+.npm-token
+.env
+.env.*
+
+# Browser and unit tests
+e2e/
+tests/
+playwright-report/
+playwright/
+playwright.config.ts
+**/*.spec.ts
+src/test-setup.ts
+tsconfig.spec.json
+
+# Development tooling and documentation
 .github/
 .vscode/
-dist/
-node_modules/
-.npm-token
+.idea/
 .editorconfig
 .gitignore
+.prettierignore
+.prettierrc.json
+eslint.config.mjs
+tsconfig.eslint.json
+scripts/
+proxy.conf.cjs
 README.md
-tsconfig.spec.json
+*.log

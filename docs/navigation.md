@@ -11,6 +11,7 @@ flowchart LR
     Gateway -->|/api/ and /mcp/| Backend[FastAPI backend]
     Gateway -->|/storage/| Storage[Garage object storage]
     Gateway -->|/ai/| AI[External AI service]
+    AI -->|MCP tools| Backend
     Backend --> Database[PostgreSQL + pgvector]
     Backend --> Storage
     Backend --> Identity[External OIDC identity provider]
@@ -35,11 +36,13 @@ Database changes live in [Alembic migrations](../backend/alembic/versions/). Bac
 ## Follow a flow
 
 - **Read or edit a recipe:** [recipe page](../frontend/src/app/recipes/pages/recipe-page/recipe-page.component.ts) → [frontend API service](../frontend/src/app/recipes/services/recipe-backend.service.ts) → [HTTP routes](../backend/app/recipes/routes/recipes.py) → [recipe service](../backend/app/recipes/services/recipes.py) → [database models](../backend/app/recipes/models/recipe.py).
-- **Improve a recipe:** [conversation page](../frontend/src/app/recipes/pages/recipe-conversation-page/recipe-conversation-page.component.ts) connects to the external AI service through `/ai/`. Backend [MCP tools](../backend/app/infrastructure/mcp/recipes.py) expose proposal creation. Proposals stay in memory until [saving](../backend/app/recipes/services/proposal_saves.py) persists a recipe draft.
+- **Improve a recipe:** [conversation page](../frontend/src/app/recipes/pages/recipe-conversation-page/recipe-conversation-page.component.ts) uses ChatUI through `/ai/`, supplying full recipe context and encoded issuer/subject. The AI service owns and stores conversations. [MCP tools](../backend/app/infrastructure/mcp/recipes.py) create private proposals; [saving](../backend/app/recipes/services/proposal_saves.py) persists a draft. MCP is temporarily unauthenticated: proposal ownership checks use an unverified `X-Application-User` assertion, while discovery, reads, and shared foodstuff mutations are public. Browser saves use authenticated sessions.
 - **Upload an image:** [frontend transfer service](../frontend/src/app/core/services/image-transfer.service.ts) requests upload instructions, sends the file through `/storage/`, then asks the backend to complete the upload. [Image transfers](../backend/app/images/transfers.py) validate the file and persist image metadata.
 
 ## Find related tests
 
 - Frontend: `*.spec.ts` files beside the implementation; script tests in [frontend/scripts/](../frontend/scripts/).
 - Backend: [backend/tests/](../backend/tests/), grouped by feature and infrastructure area.
+- Browser E2E: [frontend/e2e/](../frontend/e2e/), real-login navigation against the [isolated stack](../deployment/tests/docker-compose-e2e.yml); run instructions in the [development guide](development.md#end-to-end-tests).
+- Shared validation: [.agents/validation/](../.agents/validation/) and the [Codex adapter](../.codex/validate.mts).
 - Deployment integrations: [deployment/tests/](../deployment/tests/), including gateway and storage checks.

@@ -3,6 +3,7 @@
 The removed origin_name and origin_url values are discarded during upgrade.
 Downgrade restores nullable columns only; the deleted values cannot be recovered.
 """
+
 from collections.abc import Sequence
 
 from alembic import op
@@ -20,5 +21,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.add_column("recipe_version", sa.Column("origin_name", sa.String(length=200), nullable=True))
-    op.add_column("recipe_version", sa.Column("origin_url", sa.String(length=200), nullable=True))
+    op.add_column(
+        "recipe_version", sa.Column("origin_name", sa.String(length=200), nullable=True)
+    )
+    op.add_column(
+        "recipe_version", sa.Column("origin_url", sa.String(length=200), nullable=True)
+    )

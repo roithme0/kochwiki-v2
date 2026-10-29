@@ -8,7 +8,6 @@ from zlib import crc32, error as ZlibError
 
 from PIL import Image, UnidentifiedImageError
 from PIL.PngImagePlugin import PngImageFile
-from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.images.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
@@ -40,7 +39,11 @@ class InvalidImage(Exception):
 
 class ImageTransfers:
     def __init__(
-        self, storage: Storage, sessions: sessionmaker[Session], *, kind: ImageKind,
+        self,
+        storage: Storage,
+        sessions: sessionmaker[Session],
+        *,
+        kind: ImageKind,
     ) -> None:
         self._storage = storage
         self._sessions = sessions
@@ -58,28 +61,25 @@ class ImageTransfers:
         transfer = self._storage.presign_upload(self._temporary_key(upload_id))
         return ImageUpload(id=upload_id, transfer=transfer)
 
-    def complete(self, upload_id: UUID) -> ValidatedImage:
+    def complete(
+        self, session: Session, upload_id: UUID, *, uploader_id: int | None = None
+    ) -> ValidatedImage:
         temporary_key = self._temporary_key(upload_id)
         try:
             data = self._storage.read(temporary_key, max_bytes=MAX_IMAGE_BYTES)
         except StorageObjectTooLarge:
             raise InvalidImage(
                 f"Image must not exceed {MAX_IMAGE_BYTES / (1024 * 1024):g} MiB",
-                cleanup_pending=not self._cleanup(temporary_key),
             ) from None
         if data is None:
             raise ImageUploadNotFound("Upload has not been received")
-        try:
-            width, height = self._validate(data)
-        except InvalidImage as error:
-            error.cleanup_pending = not self._cleanup(temporary_key)
-            raise
+        width, height = self._validate(data)
         image_id = uuid4()
         object_key = f"{self._kind.value}-images/{image_id}.png"
-        self._storage.write(object_key, data, content_type=IMAGE_CONTENT_TYPE)
         created_at = datetime.now(timezone.utc)
         digest = sha256(data).hexdigest()
         record = ImageAsset(
+            uploader_id=uploader_id,
             kind=self._kind,
             id=image_id,
             object_key=object_key,
@@ -90,21 +90,8 @@ class ImageTransfers:
             content_type=IMAGE_CONTENT_TYPE,
             created_at=created_at,
         )
-        try:
-            with self._sessions.begin() as session:
-                session.add(record)
-        except SQLAlchemyError as error:
-            try:
-                with self._sessions() as session:
-                    persisted = session.get(ImageAsset, image_id) is not None
-            except SQLAlchemyError:
-                raise ImagePersistenceFailed(cleanup_pending=True) from None
-            if not persisted:
-                if isinstance(error, DBAPIError) and error.connection_invalidated:
-                    raise ImagePersistenceFailed(cleanup_pending=True) from None
-                raise ImagePersistenceFailed(
-                    cleanup_pending=not self._cleanup(object_key),
-                ) from None
+        session.add(record)
+        self._storage.write(object_key, data, content_type=IMAGE_CONTENT_TYPE)
         return ValidatedImage(
             id=image_id,
             object_key=object_key,
@@ -113,8 +100,13 @@ class ImageTransfers:
             height=height,
             sha256=digest,
             created_at=created_at,
-            cleanup_pending=not self._cleanup(temporary_key),
         )
+
+    def cleanup_upload(self, upload_id: UUID) -> bool:
+        return self._cleanup(self._temporary_key(upload_id))
+
+    def cleanup_image(self, image: ValidatedImage) -> bool:
+        return self._cleanup(image.object_key)
 
     def _cleanup(self, key: str) -> bool:
         try:

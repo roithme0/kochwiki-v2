@@ -1,2 +1,2 @@
-MODEL = "text-embedding-3-large"
-DIMENSIONS = 3072
+STORAGE_DIMENSIONS = 3072
+PROFILE = "semantic-text-v1"
