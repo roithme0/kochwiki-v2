@@ -1,17 +1,8 @@
-import { expect, test, type Page } from '@playwright/test';
-import { IdentityProviderLoginPage } from './support/identity-provider-login-page';
-import { LandingPage } from './support/landing-page';
+import { expect, test } from '@playwright/test';
+import { signIn } from './support/authentication';
 import { SignedOutPage } from './support/signed-out-page';
 
-async function signIn(page: Page): Promise<LandingPage> {
-  const landingPage = new LandingPage(page);
-  await landingPage.goto();
-  await expect(page).toHaveURL(/^http:\/\/localhost:8026\/realms\/services\//);
-  const loginPage = new IdentityProviderLoginPage(page);
-  await loginPage.signIn('e2e@example.invalid', 'disposable-e2e-password');
-  await expect(page).toHaveURL('/');
-  return landingPage;
-}
+test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('Authentication', () => {
   test('unauthenticated visitor signs in and lands on the homepage', async ({

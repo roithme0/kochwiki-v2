@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { authenticatedStatePath } from './e2e/support/auth-state';
 
 export default defineConfig({
   testDir: './e2e',
@@ -13,7 +14,22 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
+    { name: 'setup', testMatch: /auth\.setup\.ts/ },
+    {
+      name: 'desktop-chromium',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: authenticatedStatePath,
+      },
+    },
+    {
+      name: 'mobile-chromium',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Pixel 7'],
+        storageState: authenticatedStatePath,
+      },
+    },
   ],
 });
