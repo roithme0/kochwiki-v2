@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { test } from '@playwright/test';
-import { RecipeCreateDialog } from './support/recipe-create-dialog';
-import { RecipeDeleteDialog } from './support/recipe-delete-dialog';
-import { RecipeEditDialog } from './support/recipe-edit-dialog';
-import { RecipePage } from './support/recipe-page';
-import { RecipesPage } from './support/recipes-page';
+import { RecipeCreateDialog } from '../support/recipe-create-dialog';
+import { RecipeDeleteDialog } from '../support/recipe-delete-dialog';
+import { RecipeEditDialog } from '../support/recipe-edit-dialog';
+import { RecipePage } from '../support/recipe-page';
+import { RecipesPage } from '../support/recipes-page';
 
 test.describe('Recipe management', () => {
   test('creates-minimal-recipe-and-persists-after-reload', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Recipe management', () => {
     await createDialog.expectLoaded({ name: '', servings: 2 }, 'empty');
     await createDialog.form.fill({ name: values.name });
     await createDialog.imageInput.chooseFile(
-      resolve(__dirname, 'fixtures/foodstuff.png'),
+      resolve(__dirname, '../../shared/fixtures/upload.png'),
       {
         width: 13,
         height: 7,

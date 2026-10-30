@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { PageHeader } from './page-header';
+import { PageHeader } from '../../shared/support/page-header';
 
 export class LandingPage {
   readonly path = '/';

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { authenticatedStatePath } from './e2e/support/auth-state';
+import { authenticatedStatePath } from './e2e/auth/support/auth-state';
 
 export default defineConfig({
   testDir: './e2e',

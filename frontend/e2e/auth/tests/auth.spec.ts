@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { signIn } from './support/authentication';
-import { PageHeader } from './support/page-header';
-import { SignedOutPage } from './support/signed-out-page';
+import { signIn } from '../support/authentication';
+import { PageHeader } from '../../shared/support/page-header';
+import { SignedOutPage } from '../support/signed-out-page';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 

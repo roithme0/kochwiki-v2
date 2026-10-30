@@ -2,8 +2,8 @@ import { expect, type Page } from '@playwright/test';
 import type {
   FoodstuffCreate,
   FoodstuffOut,
-} from '../../src/app/core/api/generated';
-import { zFoodstuffOut } from '../../src/app/core/api/generated/zod.gen';
+} from '../../../src/app/core/api/generated';
+import { zFoodstuffOut } from '../../../src/app/core/api/generated/zod.gen';
 
 export async function seedFoodstuff(
   page: Page,

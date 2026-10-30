@@ -1,8 +1,8 @@
 import { test } from '@playwright/test';
-import { FoodstuffsPage } from './support/foodstuffs-page';
-import { LandingPage } from './support/landing-page';
-import { PageHeader } from './support/page-header';
-import { RecipesPage } from './support/recipes-page';
+import { FoodstuffsPage } from '../../foodstuffs/support/foodstuffs-page';
+import { LandingPage } from '../support/landing-page';
+import { PageHeader } from '../../shared/support/page-header';
+import { RecipesPage } from '../../recipes/support/recipes-page';
 
 test.describe('Homepage navigation', () => {
   test('opens recipes', async ({ page }) => {

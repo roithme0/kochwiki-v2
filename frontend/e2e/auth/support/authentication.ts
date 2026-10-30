@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { IdentityProviderLoginPage } from './identity-provider-login-page';
-import { LandingPage } from './landing-page';
+import { LandingPage } from '../../navigation/support/landing-page';
 
 export async function signIn(page: Page): Promise<LandingPage> {
   const landingPage = new LandingPage(page);

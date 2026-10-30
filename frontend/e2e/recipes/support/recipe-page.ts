@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { PageHeader } from './page-header';
+import { PageHeader } from '../../shared/support/page-header';
 import type { RecipeFormValues } from './recipe-form';
 
 export class RecipePage {

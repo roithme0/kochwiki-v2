@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { expect, test, type Locator } from '@playwright/test';
-import { FoodstuffCreateDialog } from './support/foodstuff-create-dialog';
-import { FoodstuffDeleteDialog } from './support/foodstuff-delete-dialog';
-import { FoodstuffEditDialog } from './support/foodstuff-edit-dialog';
-import { seedFoodstuff } from './support/foodstuff-seed';
-import { FoodstuffsPage } from './support/foodstuffs-page';
+import { FoodstuffCreateDialog } from '../support/foodstuff-create-dialog';
+import { FoodstuffDeleteDialog } from '../support/foodstuff-delete-dialog';
+import { FoodstuffEditDialog } from '../support/foodstuff-edit-dialog';
+import { seedFoodstuff } from '../support/foodstuff-seed';
+import { FoodstuffsPage } from '../support/foodstuffs-page';
 
 async function expectUploadedImage(image: Locator): Promise<void> {
   await expect(image).toBeVisible();
@@ -60,10 +60,13 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.editButton(name).click();
     await editDialog.expectLoaded({ name }, 'empty');
 
-    await imageInput.chooseFile(resolve(__dirname, 'fixtures/foodstuff.png'), {
-      width: 13,
-      height: 7,
-    });
+    await imageInput.chooseFile(
+      resolve(__dirname, '../../shared/fixtures/upload.png'),
+      {
+        width: 13,
+        height: 7,
+      },
+    );
     await editDialog.save();
     await expectUploadedImage(foodstuffsPage.image(name));
 

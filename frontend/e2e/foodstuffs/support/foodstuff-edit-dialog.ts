@@ -1,21 +1,21 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { ImageInput } from './image-input';
-import { RecipeForm, type RecipeFormValues } from './recipe-form';
+import { FoodstuffForm, type FoodstuffFormValues } from './foodstuff-form';
+import { ImageInput } from '../../shared/support/image-input';
 
-export class RecipeCreateDialog {
+export class FoodstuffEditDialog {
   readonly dialog: Locator;
   readonly heading: Locator;
-  readonly form: RecipeForm;
+  readonly form: FoodstuffForm;
   readonly imageInput: ImageInput;
   readonly saveButton: Locator;
 
   constructor(page: Page) {
     this.dialog = page.getByRole('dialog');
     this.heading = this.dialog.getByRole('heading', {
-      name: 'Rezept erstellen',
+      name: 'Lebensmittel bearbeiten',
       exact: true,
     });
-    this.form = new RecipeForm(this.dialog);
+    this.form = new FoodstuffForm(page, this.dialog);
     this.imageInput = new ImageInput(page, this.dialog);
     this.saveButton = this.dialog.getByRole('button', {
       name: 'Speichern',
@@ -24,7 +24,7 @@ export class RecipeCreateDialog {
   }
 
   async expectLoaded(
-    values: Partial<RecipeFormValues>,
+    values: Partial<FoodstuffFormValues>,
     imageState: 'empty' | 'image',
   ): Promise<void> {
     await expect(this.heading).toBeVisible();
@@ -37,14 +37,5 @@ export class RecipeCreateDialog {
     await expect(this.saveButton).toBeEnabled();
     await this.saveButton.click();
     await expect(this.dialog).toBeHidden();
-  }
-
-  async create(
-    values: Pick<RecipeFormValues, 'name'> & Partial<RecipeFormValues>,
-  ): Promise<void> {
-    await this.expectLoaded({ name: '', servings: 2 }, 'empty');
-    await this.form.fill(values);
-    await this.form.expectValues(values);
-    await this.save();
   }
 }
