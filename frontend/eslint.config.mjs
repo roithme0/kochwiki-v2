@@ -15,6 +15,7 @@ export default defineConfig(
     'out-tsc/**',
     'coverage/**',
     'e2e/test-results/**',
+    'test-results/**',
     'playwright-report/**',
     'src/app/core/api/generated/**',
     'src/version.ts',

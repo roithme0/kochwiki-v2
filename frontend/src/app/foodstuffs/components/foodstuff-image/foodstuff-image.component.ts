@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
+import { foodstuffImagePlaceholder } from '../../../core/constants/image-assets';
 
 @Component({
   selector: 'app-foodstuff-image',
@@ -20,7 +21,10 @@ export class FoodstuffImageComponent {
   readonly loading = signal(false);
   private readonly images = inject(FoodstuffImageService);
   private readonly destroyRef = inject(DestroyRef);
+
   private request = 0;
+
+  readonly placeholder = foodstuffImagePlaceholder;
 
   constructor() {
     effect(() => {

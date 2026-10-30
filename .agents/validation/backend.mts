@@ -11,6 +11,8 @@ import {
   type FormatResult,
   type PendingFormatting,
   type ValidationProfile,
+  type ValidationChecks,
+  defaultChecks,
 } from './shared.mts';
 
 export function backendPython(root: string): string {
@@ -122,13 +124,16 @@ export async function runBackendPytest(
   );
 }
 
-export function backendProfile(root: string): ValidationProfile {
+export function backendProfile(
+  root: string,
+  checks: Readonly<ValidationChecks> = defaultChecks,
+): ValidationProfile {
   return {
     scope: 'backend',
     policy: {
       label: 'Backend',
       formatter: 'Black',
-      success: 'Shared hook tests and the full backend pytest suite passed.',
+      success: 'Selected backend checks passed.',
       retry:
         'backend validation: node .agents/validation/backend.mts --format, node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts from the repository root, then .venv/Scripts/python.exe -m pytest from backend (use .venv/bin/python on Unix)',
     },
@@ -146,14 +151,15 @@ export function backendProfile(root: string): ValidationProfile {
         ]).length > 0,
       format: () => formatBackend(root, cache),
       test: async () => {
-        await runCheck(
-          root,
-          'Backend tooling tests',
-          ['--test', '.agents/validation/backend.test.mts'],
-          join(cache, 'tooling-tests.log'),
-          120_000,
-        );
-        await runBackendPytest(root, cache);
+        if (checks.toolingTests)
+          await runCheck(
+            root,
+            'Backend tooling tests',
+            ['--test', '.agents/validation/backend.test.mts'],
+            join(cache, 'tooling-tests.log'),
+            120_000,
+          );
+        if (checks.appTests) await runBackendPytest(root, cache);
       },
     }),
   };

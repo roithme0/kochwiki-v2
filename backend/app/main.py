@@ -16,6 +16,7 @@ from app.infrastructure.embeddings.lifecycle import (
 )
 from app.core.exceptions import DomainError
 from app.recipes.services.proposal_store import RecipeProposalStore
+from app.images.dependencies import ImageStoragePool
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
@@ -30,6 +31,7 @@ def create_app() -> FastAPI:
     configure_auth_logging()
     settings = get_settings()
     recipe_proposals = RecipeProposalStore()
+    image_storages = ImageStoragePool()
     mcp_services = MCPServices(recipe_proposals)
     server, mcp_app = create_mcp_server(mcp_services)
 
@@ -41,6 +43,7 @@ def create_app() -> FastAPI:
                     async with server.session_manager.run():
                         yield
         finally:
+            image_storages.close()
             recipe_proposals.clear()
 
     application = FastAPI(
@@ -52,6 +55,7 @@ def create_app() -> FastAPI:
     )
     application.add_exception_handler(DomainError, handle_domain_error)
     application.state.recipe_proposals = recipe_proposals
+    application.state.image_storages = image_storages
     application.include_router(router)
     application.mount("/mcp", mcp_app)
     return application

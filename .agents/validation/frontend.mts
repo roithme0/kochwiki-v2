@@ -13,14 +13,16 @@ import {
   writeFormatting,
   type FormatResult,
   type PendingFormatting,
+  type ValidationChecks,
+  defaultChecks,
 } from './shared.mts';
 
 const policy: ValidationPolicy = {
   label: 'Frontend',
   formatter: 'Prettier',
-  success: 'Frontend lint and the full frontend test suite passed.',
+  success: 'Selected frontend checks passed.',
   retry:
-    'frontend validation: npm run lint, npm run test:tooling, npm run test -- --watch=false from frontend',
+    'frontend validation: npm run lint, npm run test:tooling, npm run test -- --watch=false, and npm run test:browser from frontend',
 };
 
 export function fingerprint(root: string): Promise<string> {
@@ -31,7 +33,10 @@ export function fingerprint(root: string): Promise<string> {
   );
 }
 
-export function frontendProfile(root: string): ValidationProfile {
+export function frontendProfile(
+  root: string,
+  checks: Readonly<ValidationChecks> = defaultChecks,
+): ValidationProfile {
   return {
     scope: 'frontend',
     policy,
@@ -49,7 +54,10 @@ export function frontendProfile(root: string): ValidationProfile {
         ]).length > 0,
       format: () => formatFrontend(root),
       lint: () => lintFrontend(root, join(cache, 'lint.log')),
-      test: () => testFrontend(root, cache),
+      test: async () => {
+        if (checks.toolingTests) await testFrontendTooling(root, cache);
+        if (checks.appTests) await testFrontendProjects(root, cache);
+      },
     }),
   };
 }
@@ -71,7 +79,7 @@ async function lintFrontend(root: string, logPath: string): Promise<void> {
   );
 }
 
-async function testFrontend(root: string, cache: string): Promise<void> {
+async function testFrontendTooling(root: string, cache: string): Promise<void> {
   const frontend = join(root, 'frontend');
   await runCheck(
     frontend,
@@ -85,11 +93,25 @@ async function testFrontend(root: string, cache: string): Promise<void> {
     join(cache, 'tooling-tests.log'),
     120_000,
   );
+}
+
+async function testFrontendProjects(
+  root: string,
+  cache: string,
+): Promise<void> {
+  const frontend = join(root, 'frontend');
   await runCheck(
     frontend,
     'Frontend tests',
     ['scripts/test.mts', '--watch=false'],
     join(cache, 'tests.log'),
+    300_000,
+  );
+  await runCheck(
+    frontend,
+    'Frontend browser component tests',
+    ['scripts/test.mts', '--configuration', 'browser', '--watch=false'],
+    join(cache, 'browser-tests.log'),
     300_000,
   );
 }
