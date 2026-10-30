@@ -135,8 +135,19 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "include": ["src/**/*.spec.ts"],
+            "exclude": ["src/**/*.browser.spec.ts"],
             "tsConfig": "tsconfig.spec.json",
             "setupFiles": ["src/test-setup.ts"]
+          },
+          "configurations": {
+            "browser": {
+              "include": ["src/**/*.browser.spec.ts"],
+              "exclude": [],
+              "setupFiles": [],
+              "runnerConfig": "vitest.browser.config.ts",
+              "browsers": ["chromiumHeadless"],
+              "browserViewport": "390x844"
+            }
           }
         }
       }

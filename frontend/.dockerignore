@@ -16,9 +16,11 @@ bazel-out/
 # Browser and unit tests
 e2e/
 tests/
+test-results/
 playwright-report/
 playwright/
 playwright.config.ts
+vitest.browser.config.ts
 **/*.spec.ts
 src/test-setup.ts
 tsconfig.spec.json

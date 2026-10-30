@@ -48,16 +48,43 @@ docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml
 
 ## Validate changes
 
-**Frontend/** — run in order after frontend edits. Formatting includes all changed frontend files; review unrelated edits first.
+With [frontend dependencies and Chromium](#frontend-checks) installed and the [dedicated backend test database](#backend-checks) running, validate from the **repository root**:
+
+```sh
+node .agents/validation/run.mts
+node .agents/validation/run.mts --scope frontend
+```
+
+The runner defaults to all scopes with app and tooling checks enabled; [E2E](#end-to-end-tests) is opt-in with `--e2e`. Use `--scope frontend|backend` to narrow validation or `--app-tests=false`, `--tooling-tests=false`, and `--shared-tooling-tests=false` to skip test groups. See [the runner](../.agents/validation/run.mts) for argument handling. Review formatting changes.
+
+### Frontend checks
+
+Install dependencies and Chromium from **frontend/**:
+
+```sh
+npm ci
+npx playwright install chromium
+```
+
+Then run in order after frontend edits. Formatting includes all changed frontend files; review unrelated edits first.
 
 ```sh
 npm run format:changed
 npm run lint
 npm run test:tooling
 npm run test -- --watch=false
+npm run test:browser
 ```
 
-**Repository root**: format changed Python files and test the backend validation tooling:
+The default unit suite runs in jsdom; `test:browser` runs `*.browser.spec.ts` in headless Chromium. App validation includes both suites. See [Angular test configuration](../frontend/angular.json) and [browser configuration](../frontend/vitest.browser.config.ts).
+
+Browser component failure screenshots and traces are under `frontend/test-results/browser/` and uploaded on CI failure.
+
+Upgrade `vitest` and `@vitest/browser-playwright` together; their pinned versions must match. Keep `playwright` aligned with `@playwright/test` so component and E2E suites use the same browser installation.
+
+### Backend checks
+
+From the **repository root**, format changed Python files and test the backend validation tooling:
 
 ```sh
 node .agents/validation/backend.mts --format
@@ -117,25 +144,20 @@ Ship backend schema changes and frontend consumers together. Review generated ch
 | --- | --- |
 | [AGENTS.md](../AGENTS.md) | Repository rules for coding agents, including approval boundaries and required validation. |
 | [Skills](../.agents/skills/) | Reusable task workflows. Read each skill's `SKILL.md` for its scope and instructions. |
-| [Hooks](../.codex/hooks.json) | Codex prompt and stop hooks for frontend, backend, and isolated E2E validation. |
+| [Hooks](../.codex/hooks.json) | Codex prompt and stop hooks for frontend and backend app and tooling validation. |
 | [Codex configuration](../.codex/config.toml) | Project MCP connections for Angular CLI, OpenAI documentation, and Playwright tests. |
 
 For larger changes, the available workflow is `concept-creator` → `prepare-spec` → `deliver-spec` → `review-delivery`: explore the direction, agree a scoped spec, implement it, then review. Invoke the spec and delivery skills explicitly; routine changes do not require this workflow.
 
 Temporary concepts, specs, and plans belong under `.agents/`, as defined in `AGENTS.md`. Keep them out of commits and permanent documentation.
 
-Review and trust hooks in Codex before relying on them. They validate affected frontend, backend, and E2E scopes automatically; dependencies must already be installed, and the backend test database must be running. Review any formatting changes. Validation state and logs are under `.agents/.codex-validation/{scope}/`. Update the absolute checkout paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the repository. If hooks are unavailable, run the validation commands manually.
+Review and trust hooks in Codex before relying on them. They run affected [frontend and backend checks](#validate-changes), excluding [E2E](#end-to-end-tests); prepare the same dependencies first. Logs are under `.agents/.codex-validation/`. Update absolute paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the checkout. If hooks are unavailable, run validation manually.
 
 Use `/skills` and `/hooks` to inspect them in the Codex CLI; see the [official command reference](https://learn.chatgpt.com/docs/developer-commands).
 
 ## End-to-end tests
 
-With the [prerequisites](#prerequisites) available, install the frontend dependencies and Chromium from **frontend/**:
-
-```sh
-npm ci
-npx playwright install chromium
-```
+Run isolated E2E explicitly for changes to browser flows, frontend/backend integration, or deployment behavior. Prepare the [repository prerequisites](#prerequisites) and [frontend dependencies and Chromium](#frontend-checks).
 
 Check out [identity-provider](https://github.com/roithme0/identity-provider) beside this repository at the revision in [identity-provider.ref](../deployment/tests/identity-provider.ref). Its configuration and apply script must have no local changes. Set `IDENTITY_PROVIDER_REPOSITORY` to use another checkout path. CI checks out the pinned revision automatically; update the pin deliberately when adopting provider changes.
 
@@ -147,6 +169,8 @@ node .agents/validation/e2e.mts
 
 The runner rebuilds and recreates the isolated `kochwiki-e2e` stack using [the E2E Compose configuration](../deployment/tests/docker-compose-e2e.yml). It applies the provider's original realm, profile, client and mapper configuration through its original apply script, then creates a [disposable test account](../deployment/tests/e2e-user.json). Callback URLs and credentials are specific to the test instance. Its database, storage, and identity data are temporary and reset on each run. The development environment is separate. The stack stays running for inspection.
 
-To rerun only the browser tests against the prepared stack, run `npm run test:e2e:browser` from **frontend/**. See [the browser tests](../frontend/e2e/) for the login and navigation flows and [the Playwright configuration](../frontend/playwright.config.ts) for browser settings.
+Every E2E test runs in two Chromium projects: `desktop-chromium` uses Desktop Chrome settings, and `mobile-chromium` uses Pixel 7 settings. To rerun only the browser tests against the prepared stack, run `npm run test:e2e:browser` from **frontend/**. Select one project with `npm run test:e2e:browser -- --project=mobile-chromium` (or `desktop-chromium`). See [the browser tests](../frontend/e2e/) for the login and navigation flows and [the Playwright configuration](../frontend/playwright.config.ts) for browser settings.
 
-On failure, inspect `.agents/.codex-validation/e2e/` for validation and Compose logs, and `frontend/e2e/test-results/` for browser traces. CI runs E2E validation before publishing and uploads failure diagnostics; see [the publish workflow](../.github/workflows/publish-app.yml).
+Each isolated run prints its retained artifact directory under `.agents/.codex-validation/e2e/`, containing logs, `html-report/`, and failure traces/screenshots in `test-results/`. From **frontend/**, open a report with `npx playwright show-report <artifact-directory>/html-report`.
+
+Direct browser runs use `frontend/e2e/test-results/` and `frontend/playwright-report/`. CI uploads diagnostics on failure; see [the publish workflow](../.github/workflows/publish-app.yml).

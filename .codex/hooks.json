@@ -19,7 +19,7 @@
             "type": "command",
             "command": "node C:/Code/kochwiki-v2/.codex/validate.mts --stop",
             "timeout": 2400,
-            "statusMessage": "Formatting changed files and validating frontend, backend, and isolated E2E"
+            "statusMessage": "Formatting changed files and running app, tooling, and shared tooling checks; isolated E2E skipped"
           }
         ]
       }

@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import type { RecipeImageDimensionsOut } from '../../../core/api/generated';
+import { recipeImagePlaceholder } from '../../../core/constants/image-assets';
 
 @Component({
   selector: 'app-recipe-image',
@@ -23,6 +24,9 @@ export class RecipeImageComponent {
   readonly imageId = input.required<string | null>();
   readonly naturalHeight = input(false);
   readonly imageDimensions = input<RecipeImageDimensionsOut | null>(null);
+
+  readonly placeholder = recipeImagePlaceholder;
+
   readonly placeholderDimensions = { width: 1254, height: 747 };
   readonly dimensions = computed(() =>
     this.imageId() === null

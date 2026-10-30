@@ -1,6 +1,6 @@
 <div class="image-area" [attr.aria-busy]="loading()">
   @if (!imageUrl() || loading()) {
-    <img src="images/question-mark.png" [alt]="alt()" />
+    <img [src]="placeholder" [alt]="alt()" />
   }
   @if (imageUrl(); as url) {
     <img

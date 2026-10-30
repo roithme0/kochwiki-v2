@@ -1,4 +1,4 @@
-import { mkdir, access, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, access, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -37,7 +37,7 @@ const issuerURL =
 
 export async function identityProviderRepository(
   root: string,
-  configuredRepository: string = process.env.IDENTITY_PROVIDER_REPOSITORY ??
+  configuredRepository: string = process.env['IDENTITY_PROVIDER_REPOSITORY'] ??
     '../identity-provider',
 ): Promise<string> {
   const repository = resolve(root, configuredRepository);
@@ -97,8 +97,13 @@ export async function waitForServices(
   throw new Error(`E2E services did not become ready: ${failure}`);
 }
 
-export async function testE2E(root: string, cache: string): Promise<void> {
-  await mkdir(cache, { recursive: true });
+export async function testE2E(
+  root: string,
+  artifactsRoot: string,
+): Promise<void> {
+  await mkdir(artifactsRoot, { recursive: true });
+  const cache = await mkdtemp(join(artifactsRoot, 'run-'));
+  process.stdout.write(`E2E artifacts: ${cache}\n`);
   const frontend = join(root, 'frontend');
   const cli = join(frontend, 'node_modules/@playwright/test/cli.js');
   for (const [path, description] of [
@@ -180,36 +185,46 @@ export async function testE2E(root: string, cache: string): Promise<void> {
     await runCheck(
       frontend,
       'Playwright (install Chromium with npx playwright install chromium if missing)',
-      [cli, 'test'],
+      [cli, 'test', '--output', join(cache, 'test-results')],
       join(cache, 'playwright.log'),
       180_000,
       process.execPath,
       undefined,
-      { ...process.env, PLAYWRIGHT_BASE_URL: baseURL },
+      {
+        ...process.env,
+        PLAYWRIGHT_BASE_URL: baseURL,
+        PLAYWRIGHT_HTML_OUTPUT_DIR: join(cache, 'html-report'),
+        PLAYWRIGHT_HTML_OPEN: 'never',
+      },
     );
   } catch (error: unknown) {
     for (const [command, name] of [
       ['ps', 'services'],
       ['logs', 'services-logs'],
     ]) {
-      await runCheck(
-        root,
-        'E2E failure diagnostics',
-        [
-          ...compose,
-          command,
-          ...(command === 'logs'
-            ? ['--no-color', '--tail', '2000']
-            : ['--all']),
-        ],
-        join(cache, `${name}.log`),
-        30_000,
-        'docker',
-        undefined,
-        composeEnv,
-      ).catch((diagnosticError: unknown) =>
-        writeFile(join(cache, `${name}-error.log`), String(diagnosticError)),
-      );
+      try {
+        await runCheck(
+          root,
+          'E2E failure diagnostics',
+          [
+            ...compose,
+            command,
+            ...(command === 'logs'
+              ? ['--no-color', '--tail', '2000']
+              : ['--all']),
+          ],
+          join(cache, `${name}.log`),
+          30_000,
+          'docker',
+          undefined,
+          composeEnv,
+        );
+      } catch (diagnosticError: unknown) {
+        await writeFile(
+          join(cache, `${name}-error.log`),
+          String(diagnosticError),
+        ).catch(() => {});
+      }
     }
     throw error;
   }

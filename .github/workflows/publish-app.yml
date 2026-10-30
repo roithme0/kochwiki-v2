@@ -74,6 +74,21 @@ jobs:
       - name: Run frontend unit tests
         run: npm run test -- --watch=false
 
+      - name: Install Chromium for browser component tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run frontend browser component tests
+        run: npm run test:browser
+
+      - name: Upload browser component failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: browser-component-diagnostics
+          path: frontend/test-results/browser/
+          include-hidden-files: true
+          retention-days: 7
+
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -124,8 +139,9 @@ jobs:
         with:
           name: e2e-failure-diagnostics
           path: |
-            .agents/.codex-validation/e2e/manual/*.log
+            .agents/.codex-validation/e2e/
             frontend/e2e/test-results/
+            frontend/playwright-report/
           include-hidden-files: true
           retention-days: 7
 
