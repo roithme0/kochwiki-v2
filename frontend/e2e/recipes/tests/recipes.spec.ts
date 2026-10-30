@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { test } from '@playwright/test';
+import { expectUploadedImage } from '../../shared/support/uploaded-image';
 import { RecipeCreateDialog } from '../support/recipe-create-dialog';
 import { RecipeDeleteDialog } from '../support/recipe-delete-dialog';
 import { RecipeEditDialog } from '../support/recipe-edit-dialog';
@@ -52,11 +53,11 @@ test.describe('Recipe management', () => {
     await createDialog.save();
     await recipePage.expectLoaded(values);
     const recipeUrl = recipePage.url;
-    await recipePage.expectImageDimensions(13, 7);
+    await expectUploadedImage(recipePage.image, 13, 7);
 
     await page.reload();
     await recipePage.expectLoaded(values, recipeUrl);
-    await recipePage.expectImageDimensions(13, 7);
+    await expectUploadedImage(recipePage.image, 13, 7);
   });
 
   test('updates-recipe-and-persists-after-reload', async ({ page }) => {

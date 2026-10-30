@@ -89,6 +89,6 @@ export class FoodstuffsPage {
   }
 
   image(name: string): Locator {
-    return this.row(name).locator('img');
+    return this.row(name).locator('img[src^="/storage/"]');
   }
 }

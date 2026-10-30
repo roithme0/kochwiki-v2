@@ -1,28 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { expectUploadedImage } from '../../shared/support/uploaded-image';
 import { FoodstuffCreateDialog } from '../support/foodstuff-create-dialog';
 import { FoodstuffDeleteDialog } from '../support/foodstuff-delete-dialog';
 import { FoodstuffEditDialog } from '../support/foodstuff-edit-dialog';
 import { seedFoodstuff } from '../support/foodstuff-seed';
 import { FoodstuffsPage } from '../support/foodstuffs-page';
-
-async function expectUploadedImage(image: Locator): Promise<void> {
-  await expect(image).toBeVisible();
-  await expect(image).not.toHaveAttribute(
-    'src',
-    /^(blob:|data:)|question-mark\.png/,
-  );
-  await expect
-    .poll(() =>
-      image.evaluate((element: HTMLImageElement) => ({
-        complete: element.complete,
-        width: element.naturalWidth,
-        height: element.naturalHeight,
-      })),
-    )
-    .toEqual({ complete: true, width: 13, height: 7 });
-}
 
 test.describe('Foodstuffs', () => {
   test('authenticated visitor creates a foodstuff and finds it after reload', async ({
@@ -68,15 +52,15 @@ test.describe('Foodstuffs', () => {
       },
     );
     await editDialog.save();
-    await expectUploadedImage(foodstuffsPage.image(name));
+    await expectUploadedImage(foodstuffsPage.image(name), 13, 7);
 
     await page.reload();
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
-    await expectUploadedImage(foodstuffsPage.image(name));
+    await expectUploadedImage(foodstuffsPage.image(name), 13, 7);
     await foodstuffsPage.editButton(name).click();
     await editDialog.expectLoaded({ name }, 'image');
-    await expectUploadedImage(imageInput.preview);
+    await expectUploadedImage(imageInput.preview, 13, 7);
   });
 
   test('authenticated visitor edits a foodstuff and sees saved values after reload', async ({

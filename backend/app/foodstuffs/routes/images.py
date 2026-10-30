@@ -1,7 +1,6 @@
-from collections.abc import Iterator
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from app.images.config import IMAGE_CONTENT_TYPE
 from app.images.dependencies import image_storage
@@ -40,8 +39,8 @@ router = APIRouter(
 )
 
 
-def get_foodstuff_image_storage() -> Iterator[Storage]:
-    yield from image_storage(ImageKind.FOODSTUFF)
+def get_foodstuff_image_storage(request: Request) -> Storage:
+    return image_storage(request, ImageKind.FOODSTUFF)
 
 
 def get_foodstuff_image_transfers(

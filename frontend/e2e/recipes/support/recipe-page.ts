@@ -44,12 +44,6 @@ export class RecipePage {
     await expect(this.editButton).toBeVisible();
   }
 
-  async expectImageDimensions(width: number, height: number): Promise<void> {
-    await expect(this.image).toBeVisible();
-    await expect(this.image).toHaveJSProperty('naturalWidth', width);
-    await expect(this.image).toHaveJSProperty('naturalHeight', height);
-  }
-
   async expectNotFound(name: string): Promise<void> {
     await expect(this.notFoundMessage).toBeVisible();
     await expect(this.page.getByText(name, { exact: true })).toHaveCount(0);

@@ -29,6 +29,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
+import { foodstuffImagePlaceholder } from '../../../core/constants/image-assets';
 
 @Component({
   selector: 'app-foodstuff-form',
@@ -61,6 +62,7 @@ export class FoodstuffFormComponent {
 
   readonly busy = this.image.busy;
 
+  readonly imagePlaceholder = foodstuffImagePlaceholder;
   readonly unitChoices = foodstuffUnitChoices;
   readonly fieldLabels = foodstuffFieldLabels;
 

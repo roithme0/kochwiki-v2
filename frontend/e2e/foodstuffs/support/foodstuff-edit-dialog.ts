@@ -9,7 +9,7 @@ export class FoodstuffEditDialog {
   readonly imageInput: ImageInput;
   readonly saveButton: Locator;
 
-  constructor(page: Page) {
+  constructor(private readonly page: Page) {
     this.dialog = page.getByRole('dialog');
     this.heading = this.dialog.getByRole('heading', {
       name: 'Lebensmittel bearbeiten',
@@ -35,7 +35,15 @@ export class FoodstuffEditDialog {
 
   async save(): Promise<void> {
     await expect(this.saveButton).toBeEnabled();
-    await this.saveButton.click();
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          /^\/api\/foodstuffs\/\d+$/.test(new URL(response.url()).pathname),
+      ),
+      this.saveButton.click(),
+    ]);
+    expect(response.status()).toBe(200);
     await expect(this.dialog).toBeHidden();
   }
 }

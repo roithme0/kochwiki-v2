@@ -1,4 +1,5 @@
 import { ImageEditorComponent } from '../../../core/components/image-editor/image-editor.component';
+import { recipeImagePlaceholder } from '../../../core/constants/image-assets';
 import type { OnInit, AfterViewInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 
@@ -126,6 +127,8 @@ export class RecipeEditorComponent implements OnInit, AfterViewInit {
   readonly submitted = output<RecipeEditorSubmission>();
 
   readonly uploadingChanged = output<boolean>();
+
+  readonly imagePlaceholder = recipeImagePlaceholder;
 
   readonly state = signal<RecipeEditorState>({ status: 'loading' });
   readonly recipeVersion = signal<RecipeVersionOut | null>(null);

@@ -9,7 +9,7 @@ export class RecipeCreateDialog {
   readonly imageInput: ImageInput;
   readonly saveButton: Locator;
 
-  constructor(page: Page) {
+  constructor(private readonly page: Page) {
     this.dialog = page.getByRole('dialog');
     this.heading = this.dialog.getByRole('heading', {
       name: 'Rezept erstellen',
@@ -35,7 +35,15 @@ export class RecipeCreateDialog {
 
   async save(): Promise<void> {
     await expect(this.saveButton).toBeEnabled();
-    await this.saveButton.click();
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          new URL(response.url()).pathname === '/api/recipes',
+      ),
+      this.saveButton.click(),
+    ]);
+    expect(response.status()).toBe(201);
     await expect(this.dialog).toBeHidden();
   }
 
