@@ -13,6 +13,7 @@ export const inputs = [
   'frontend/',
   'backend/',
   'deployment/tests/docker-compose-e2e.yml',
+  'deployment/tests/docker-compose-e2e.override.yml',
   'deployment/tests/e2e-user.json',
   'deployment/tests/identity-provider.ref',
   'deployment/tests/prepare-e2e-identity.sh',
@@ -100,30 +101,38 @@ export async function waitForServices(
 export async function testE2E(
   root: string,
   artifactsRoot: string,
+  run: typeof runCheck = runCheck,
+  prebuiltImages = false,
 ): Promise<void> {
   await mkdir(artifactsRoot, { recursive: true });
   const cache = await mkdtemp(join(artifactsRoot, 'run-'));
   process.stdout.write(`E2E artifacts: ${cache}\n`);
   const frontend = join(root, 'frontend');
   const cli = join(frontend, 'node_modules/@playwright/test/cli.js');
-  for (const [path, description] of [
-    [
+  const prerequisites = [
+    [cli, 'installed Playwright dependency (run npm ci in frontend)'],
+  ];
+  if (!prebuiltImages) {
+    prerequisites.unshift([
       join(frontend, '.npm-token'),
       'private package token in frontend/.npm-token',
-    ],
-    [cli, 'installed Playwright dependency (run npm ci in frontend)'],
-  ]) {
+    ]);
+  }
+  for (const [path, description] of prerequisites) {
     await access(path).catch(() => {
       throw new Error(`Incomplete E2E validation: missing ${description}.`);
     });
   }
   const repository = await identityProviderRepository(root);
+  const composeCommand = prebuiltImages
+    ? [...compose, '-f', 'deployment/tests/docker-compose-e2e.override.yml']
+    : compose;
   const composeEnv = {
     ...process.env,
     IDENTITY_PROVIDER_REPOSITORY: repository,
   };
   try {
-    await runCheck(
+    await run(
       root,
       'Docker availability',
       ['info', '--format', '{{.ServerVersion}}'],
@@ -131,14 +140,34 @@ export async function testE2E(
       30_000,
       'docker',
     );
-    await runCheck(
+    if (prebuiltImages) {
+      await run(
+        root,
+        'Infrastructure image pull',
+        [
+          ...composeCommand,
+          'pull',
+          'db',
+          'identity-provider',
+          'file-storage',
+          'file-storage-init',
+          'gateway',
+        ],
+        join(cache, 'infrastructure-pull.log'),
+        180_000,
+        'docker',
+        undefined,
+        composeEnv,
+      );
+    }
+    await run(
       root,
       'Docker build and startup',
       [
-        ...compose,
+        ...composeCommand,
         'up',
         '-d',
-        '--build',
+        ...(prebuiltImages ? ['--no-build', '--pull', 'never'] : ['--build']),
         '--wait',
         '--wait-timeout',
         '180',
@@ -153,11 +182,11 @@ export async function testE2E(
     await waitForServices([
       'http://localhost:8026/realms/master/.well-known/openid-configuration',
     ]);
-    await runCheck(
+    await run(
       root,
       'Shared identity configuration and test account',
       [
-        ...compose,
+        ...composeCommand,
         'exec',
         '-T',
         'identity-provider',
@@ -171,10 +200,10 @@ export async function testE2E(
       composeEnv,
     );
     // Nginx must resolve upstream addresses again after container replacement.
-    await runCheck(
+    await run(
       root,
       'Gateway restart',
-      [...compose, 'restart', 'gateway'],
+      [...composeCommand, 'restart', 'gateway'],
       join(cache, 'gateway.log'),
       60_000,
       'docker',
@@ -182,7 +211,7 @@ export async function testE2E(
       composeEnv,
     );
     await waitForServices([baseURL, `${baseURL}/api/meta/version`, issuerURL]);
-    await runCheck(
+    await run(
       frontend,
       'Playwright (install Chromium with npx playwright install chromium if missing)',
       [cli, 'test', '--output', join(cache, 'test-results')],
@@ -203,11 +232,11 @@ export async function testE2E(
       ['logs', 'services-logs'],
     ]) {
       try {
-        await runCheck(
+        await run(
           root,
           'E2E failure diagnostics',
           [
-            ...compose,
+            ...composeCommand,
             command,
             ...(command === 'logs'
               ? ['--no-color', '--tail', '2000']
@@ -256,9 +285,17 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  if (process.argv.length !== 2)
-    throw new Error('Usage: node .agents/validation/e2e.mts');
+  const args = process.argv.slice(2);
+  if (args.length > 1 || (args.length === 1 && args[0] !== '--prebuilt-images'))
+    throw new Error(
+      'Usage: node .agents/validation/e2e.mts [--prebuilt-images]',
+    );
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-  await testE2E(root, join(root, '.agents/.codex-validation/e2e/manual'));
+  await testE2E(
+    root,
+    join(root, '.agents/.codex-validation/e2e/manual'),
+    runCheck,
+    args[0] === '--prebuilt-images',
+  );
   process.stdout.write('Isolated Docker preparation and Playwright passed.\n');
 }

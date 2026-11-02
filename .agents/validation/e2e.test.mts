@@ -12,6 +12,7 @@ import {
   testE2E,
   waitForServices,
 } from './e2e.mts';
+import { runCheck } from './shared.mts';
 
 void test('readiness waits for every service and reports unavailable endpoints', async () => {
   let ready = false;
@@ -123,4 +124,144 @@ void test('missing private package credentials or Playwright reports incomplete 
     testE2E(root, cache),
     /Incomplete E2E validation: missing installed Playwright dependency/,
   );
+});
+
+void test('E2E uses prebuilt images without app builds or pulls and retains diagnostics', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'kochwiki-e2e-images-'));
+  const repository = join(root, 'provider');
+  await mkdir(join(root, 'deployment/tests'), { recursive: true });
+  await mkdir(join(repository, 'config'), { recursive: true });
+  await mkdir(join(repository, 'scripts'), { recursive: true });
+  await writeFile(join(repository, 'config/services-realm.json'), '{}');
+  await writeFile(join(repository, 'scripts/apply-config.sh'), 'exit 0');
+  execFileSync('git', ['init', '-q'], { cwd: repository });
+  execFileSync('git', ['add', '.'], { cwd: repository });
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'fixture',
+    ],
+    { cwd: repository },
+  );
+  await writeFile(
+    join(root, 'deployment/tests/identity-provider.ref'),
+    execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repository }),
+  );
+  const cli = join(root, 'frontend/node_modules/@playwright/test/cli.js');
+  await mkdir(join(root, 'frontend/node_modules/@playwright/test'), {
+    recursive: true,
+  });
+  await writeFile(cli, '');
+  t.mock.method(globalThis, 'fetch', () =>
+    Promise.resolve(new Response('ready')),
+  );
+  const previousRepository = process.env['IDENTITY_PROVIDER_REPOSITORY'];
+  process.env['IDENTITY_PROVIDER_REPOSITORY'] = repository;
+  try {
+    for (const prebuilt of [true, false]) {
+      if (!prebuilt)
+        await writeFile(join(root, 'frontend/.npm-token'), 'fixture');
+      for (const failure of [
+        undefined,
+        'Infrastructure image pull',
+        'Docker build and startup',
+        'Playwright',
+      ]) {
+        if (!prebuilt && failure === 'Infrastructure image pull') continue;
+        const calls: Parameters<typeof runCheck>[] = [];
+        const original = new Error('original failure');
+        const run: typeof runCheck = (...args) => {
+          calls.push(args);
+          if (failure && args[1].startsWith(failure)) throw original;
+          if (args[1] === 'E2E failure diagnostics')
+            throw new Error('diagnostics failed');
+          return Promise.resolve('');
+        };
+        const result = testE2E(root, join(root, 'artifacts'), run, prebuilt);
+        if (failure)
+          await assert.rejects(result, (error: unknown) => error === original);
+        else await result;
+        const compose = [
+          'compose',
+          '--project-name',
+          'kochwiki-e2e',
+          '-f',
+          'deployment/tests/docker-compose-e2e.yml',
+          ...(prebuilt
+            ? ['-f', 'deployment/tests/docker-compose-e2e.override.yml']
+            : []),
+        ];
+        const commands = calls
+          .filter((args) => args[2][0] === 'compose')
+          .map((args) => args[2]);
+        assert.deepEqual(commands, [
+          ...(prebuilt
+            ? [
+                [
+                  ...compose,
+                  'pull',
+                  'db',
+                  'identity-provider',
+                  'file-storage',
+                  'file-storage-init',
+                  'gateway',
+                ],
+              ]
+            : []),
+          ...(failure === 'Infrastructure image pull'
+            ? []
+            : [
+                [
+                  ...compose,
+                  'up',
+                  '-d',
+                  ...(prebuilt
+                    ? ['--no-build', '--pull', 'never']
+                    : ['--build']),
+                  '--wait',
+                  '--wait-timeout',
+                  '180',
+                  '--force-recreate',
+                ],
+              ]),
+          ...(!failure || failure === 'Playwright'
+            ? [
+                [
+                  ...compose,
+                  'exec',
+                  '-T',
+                  'identity-provider',
+                  'bash',
+                  '/opt/e2e/prepare.sh',
+                ],
+                [...compose, 'restart', 'gateway'],
+              ]
+            : []),
+          ...(failure
+            ? [
+                [...compose, 'ps', '--all'],
+                [...compose, 'logs', '--no-color', '--tail', '2000'],
+              ]
+            : []),
+        ]);
+        assert.equal(
+          calls.some((args) => args[1].startsWith('Playwright')),
+          !failure || failure === 'Playwright',
+        );
+        for (const call of calls.filter((args) => args[2][0] === 'compose')) {
+          assert.equal(call[7]?.['IDENTITY_PROVIDER_REPOSITORY'], repository);
+        }
+      }
+    }
+  } finally {
+    if (previousRepository === undefined)
+      delete process.env['IDENTITY_PROVIDER_REPOSITORY'];
+    else process.env['IDENTITY_PROVIDER_REPOSITORY'] = previousRepository;
+  }
 });
