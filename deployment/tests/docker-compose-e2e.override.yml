@@ -1,0 +1,6 @@
+services:
+  backend:
+    image: kochwiki-v2-backend:e2e
+
+  frontend:
+    image: kochwiki-v2-frontend:e2e
