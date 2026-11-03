@@ -14,6 +14,12 @@ from app.foodstuffs.schemas.foodstuff import (
 )
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
+from app.foodstuffs.schemas.nutrition_enrichment import (
+    FoodstuffIdentity,
+    FoodstuffNutrient,
+    NutritionFill,
+    NutritionFillResult,
+)
 from app.infrastructure.database.integrity import flush_for_unique_conflict
 from app.images.models import ImageAsset, ImageKind
 
@@ -98,7 +104,7 @@ def create_foodstuff(
 def update_foodstuff(
     session: Session, foodstuff_id: int, payload: FoodstuffUpdate, *, owner_id: int
 ) -> Foodstuff:
-    foodstuff = get_foodstuff(session, foodstuff_id)
+    foodstuff = _get_foodstuff_for_update(session, foodstuff_id)
     require_foodstuff_owner(foodstuff, owner_id)
     if "imageId" in payload.model_fields_set and payload.imageId != foodstuff.image_id:
         _validate_image(session, payload.imageId, owner_id=owner_id)
@@ -117,6 +123,51 @@ def update_foodstuff(
     if previous_input != (foodstuff.name, foodstuff.brand or ""):
         mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
+
+
+def _get_foodstuff_for_update(session: Session, foodstuff_id: int) -> Foodstuff:
+    foodstuff = session.scalar(
+        select(Foodstuff)
+        .where(Foodstuff.id == foodstuff_id)
+        .options(selectinload(Foodstuff.ingredients))
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if foodstuff is None:
+        raise NotFoundError(f"Foodstuff with id {foodstuff_id} not found")
+    return foodstuff
+
+
+def fill_foodstuff_nutrition(
+    session: Session,
+    foodstuff_id: int,
+    expected: FoodstuffIdentity,
+    nutrition: NutritionFill,
+    *,
+    owner_id: int,
+) -> NutritionFillResult:
+    foodstuff = _get_foodstuff_for_update(session, foodstuff_id)
+    require_foodstuff_owner(foodstuff, owner_id)
+    if (foodstuff.name, foodstuff.brand, foodstuff.unit) != (
+        expected.name,
+        expected.brand,
+        expected.unit,
+    ):
+        raise ConflictError(
+            "Foodstuff identity or unit changed; retrieve it and research again"
+        )
+    applied: list[FoodstuffNutrient] = []
+    retained: list[FoodstuffNutrient] = []
+    for name, value in nutrition.supplied_values():
+        if getattr(foodstuff, name) is None:
+            setattr(foodstuff, name, value)
+            applied.append(name)
+        else:
+            retained.append(name)
+    session.flush()
+    return NutritionFillResult(
+        foodstuff=foodstuff_out(foodstuff), applied=applied, retained=retained
+    )
 
 
 def require_foodstuff_owner(foodstuff: Foodstuff, owner_id: int) -> None:

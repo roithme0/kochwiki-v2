@@ -135,7 +135,7 @@ def test_invalid_assertions_cannot_access_or_write_proposals(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
                 ) as client,
             ):
-                assert len((await client.list_tools()).tools) == 8
+                assert len((await client.list_tools()).tools) == 10
                 calls = [
                     (
                         "create_recipe_proposal",
@@ -331,7 +331,7 @@ def test_identity_lookup_database_failure_is_closed_and_sanitized(
                 streamable_http_client("http://localhost/mcp/", http_client=http)
             ) as client,
         ):
-            assert len((await client.list_tools()).tools) == 8
+            assert len((await client.list_tools()).tools) == 10
             with pytest.raises(
                 MCPError, match="Caller identity service unavailable"
             ) as error:

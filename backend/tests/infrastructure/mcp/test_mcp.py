@@ -59,6 +59,8 @@ def test_mcp_http_discovery_invocation_and_lifecycle(
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
                         "search_foodstuffs",
+                        "get_foodstuff",
+                        "fill_foodstuff_nutrition",
                         "create_foodstuff",
                         "update_foodstuff",
                         "search_recipes",
@@ -645,7 +647,7 @@ def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
                         and "Semantic search unavailable" in item.text
                         for item in result.content
                     )
-                    assert len((await client.list_tools()).tools) == 8
+                    assert len((await client.list_tools()).tools) == 10
 
     asyncio.run(exercise())
 

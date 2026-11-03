@@ -16,6 +16,8 @@ async def verify(url: str) -> None:
         tools = await client.list_tools()
         expected = {
             "search_foodstuffs",
+            "get_foodstuff",
+            "fill_foodstuff_nutrition",
             "search_recipes",
             "get_recipe_lineage",
             "create_foodstuff",
