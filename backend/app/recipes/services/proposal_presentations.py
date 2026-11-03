@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.foodstuffs.models.foodstuff import Foodstuff
@@ -14,8 +13,10 @@ from app.recipes.schemas.proposal import (
     ResolvedExistingProposalFoodstuff,
     ResolvedTemporaryProposalFoodstuff,
 )
-from app.core.exceptions import NotFoundError
-from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
+from app.foodstuffs.services.foodstuffs import (
+    foodstuff_summary_out,
+    owned_foodstuffs_by_id,
+)
 from app.recipes.services.nutrition import (
     ResolvedNutritionIngredient,
     per_serving,
@@ -34,17 +35,7 @@ def resolve_recipe_proposal_presentation(
         if isinstance(ingredient.foodstuff, ExistingProposalFoodstuff)
     }
     with session.no_autoflush:
-        foodstuffs: dict[int, Foodstuff] = {}
-        if foodstuff_ids:
-            foodstuffs = {
-                foodstuff.id: foodstuff
-                for foodstuff in session.scalars(
-                    select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids))
-                )
-            }
-        missing_ids = sorted(foodstuff_ids - foodstuffs.keys())
-        if missing_ids:
-            raise NotFoundError(f"Foodstuff with id {missing_ids[0]} not found")
+        foodstuffs = owned_foodstuffs_by_id(session, foodstuff_ids, owner_id=user_id)
 
         ingredients: list[ProposalPresentationIngredientOut] = []
         nutrition_ingredients: list[ResolvedNutritionIngredient] = []

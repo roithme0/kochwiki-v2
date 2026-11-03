@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.services.foodstuffs import owned_foodstuffs_by_id
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.proposal import (
     ExistingProposalFoodstuff,
@@ -58,15 +58,7 @@ class RecipeProposalStore:
                 for ingredient in validated.recipe.ingredients
                 if isinstance(ingredient.foodstuff, ExistingProposalFoodstuff)
             }
-            if foodstuff_ids:
-                found_ids = set(
-                    session.scalars(
-                        select(Foodstuff.id).where(Foodstuff.id.in_(foodstuff_ids))
-                    )
-                )
-                missing_ids = sorted(foodstuff_ids - found_ids)
-                if missing_ids:
-                    raise NotFoundError(f"Foodstuff with id {missing_ids[0]} not found")
+            owned_foodstuffs_by_id(session, foodstuff_ids, owner_id=user_id)
 
         proposal = RecipeProposalOut(
             proposalId=uuid4(),

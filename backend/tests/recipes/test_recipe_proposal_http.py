@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from app.identity.schemas.user import UserOut
 
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
@@ -53,6 +54,7 @@ def prepare(client: TestClient) -> RecipeProposalOut:
 
 def test_save_creates_ingredients_and_repeated_save_returns_same_draft(
     client: TestClient,
+    recipe_session: UserOut,
 ) -> None:
     proposal = prepare(client)
     url = f"/recipe-proposals/{proposal.proposalId}/save"
@@ -63,7 +65,7 @@ def test_save_creates_ingredients_and_repeated_save_returns_same_draft(
     assert draft.ingredients[0].foodstuff.name == "Beans"
     assert client.post(url).json() == response.json()
     with SessionLocal() as session:
-        assert len(list_foodstuffs(session)) == 1
+        assert len(list_foodstuffs(session, owner_id=recipe_session.id)) == 1
     with SessionLocal.begin() as session:
         discard_recipe_draft(session, draft.recipeLineageId, draft.recipeVersionId)
     assert client.post(url).status_code == 404
@@ -76,6 +78,7 @@ def test_unknown_proposal_does_not_create_data(client: TestClient) -> None:
 
 def test_missing_source_fails_without_creating_temporary_foodstuffs(
     client: TestClient,
+    recipe_session: UserOut,
 ) -> None:
     proposal = prepare(client)
     with SessionLocal() as session:
@@ -87,4 +90,4 @@ def test_missing_source_fails_without_creating_temporary_foodstuffs(
         client.post(f"/recipe-proposals/{proposal.proposalId}/save").status_code == 404
     )
     with SessionLocal() as session:
-        assert list_foodstuffs(session) == []
+        assert list_foodstuffs(session, owner_id=recipe_session.id) == []

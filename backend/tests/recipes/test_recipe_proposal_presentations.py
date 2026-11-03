@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 from decimal import Decimal
 from uuid import uuid4
 
@@ -54,6 +55,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
                 protein=Decimal(0),
                 fat=Decimal(4),
             ),
+            owner_id=fixture_owner_id(session),
         )
         proposal = store.create(
             session,
@@ -104,7 +106,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
         before = [
             session.scalar(select(func.count()).select_from(model)) for model in models
         ]
-        pending = Foodstuff(name="Pending", unit=Unit.G)
+        pending = Foodstuff(name="Pending", unit=Unit.G, owner_id=fixture_owner_id())
         session.add(pending)
         presentation = resolve_recipe_proposal_presentation(
             session, store, proposal.proposalId, user_id=recipe_owner_id(session)
@@ -203,7 +205,9 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
     with SessionLocal.begin() as session:
         source = create_recipe(session, RecipeVersionWrite(name="Source", servings=1))
         foodstuff = create_foodstuff(
-            session, FoodstuffCreate(name="Milk", unit=Unit.ML, kcal=Decimal(100))
+            session,
+            FoodstuffCreate(name="Milk", unit=Unit.ML, kcal=Decimal(100)),
+            owner_id=fixture_owner_id(session),
         )
         lineage_id, foodstuff_id = source.lineage_id, foodstuff.id
         proposal = store.create(
@@ -232,7 +236,10 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
         )
     with SessionLocal.begin() as session:
         update_foodstuff(
-            session, foodstuff_id, FoodstuffUpdate(name="Renamed", kcal=Decimal(250))
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(name="Renamed", kcal=Decimal(250)),
+            owner_id=fixture_owner_id(session),
         )
         delete_recipe_lineage(session, lineage_id)
     with SessionLocal() as session:
@@ -246,7 +253,7 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
         and resolved.name == "Renamed"
     )
     with SessionLocal.begin() as session:
-        delete_foodstuff(session, foodstuff_id)
+        delete_foodstuff(session, foodstuff_id, owner_id=fixture_owner_id(session))
     with SessionLocal() as session:
         with pytest.raises(
             NotFoundError, match=f"Foodstuff with id {foodstuff_id} not found"

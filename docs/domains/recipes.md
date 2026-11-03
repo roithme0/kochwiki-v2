@@ -23,7 +23,7 @@ A recipe has a stable identity across versions. Each version contains ingredient
 - Creating a recipe requires a valid local session and creates a lineage owned by that user, with its active version. The server assigns ownership; recipe content cannot select an owner.
 - Publishing an edit to the active version creates a new active version; the previous one becomes historical.
 - Publishing a draft makes that same version active; the previous active version becomes historical. Other drafts remain drafts.
-- Saving a proposal creates a draft in the source version's lineage and creates any temporary foodstuffs in the catalogue. Saving does not publish it.
+- Saving a proposal creates a draft in the source version's lineage and creates any temporary foodstuffs in the owner's [catalogue](foodstuffs.md). Saving does not publish it.
 - Proposals are private to their creator. Creating, refining, and saving them requires ownership of the source recipe lineage.
 - Proposals are held in memory and do not survive a backend restart. Persisted drafts do.
 
@@ -37,4 +37,4 @@ Ingredient contributions use the [foodstuff nutrition basis](foodstuffs.md#gloss
 | `minimum` | Only some ingredients have known values; the result is their subtotal per serving. |
 | `unknown` | No ingredient has a known value, or there are no ingredients. |
 
-`exact` describes completeness of the recorded data, not measurement accuracy. Calculations use current shared foodstuffs, including for historical versions.
+`exact` describes completeness of the recorded data, not measurement accuracy. Calculations use the recipe owner's current foodstuffs, including for historical versions.

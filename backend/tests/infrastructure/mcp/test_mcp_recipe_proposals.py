@@ -40,7 +40,9 @@ def proposal_payload(owner_id: int) -> RecipeProposalCreate:
         source = create_recipe(
             session, RecipeVersionWrite(name="Original", servings=1), owner_id=owner_id
         )
-        foodstuff = create_foodstuff(session, FoodstuffCreate(name="Oats", unit=Unit.G))
+        foodstuff = create_foodstuff(
+            session, FoodstuffCreate(name="Oats", unit=Unit.G), owner_id=owner_id
+        )
         return RecipeProposalCreate.model_validate(
             {
                 "sourceRecipeVersionId": source.version_id,
@@ -129,7 +131,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(
                     )
                     assert details.presentation.ingredients[1].foodstuff.name == "Beans"
                     with SessionLocal() as session:
-                        assert len(list_foodstuffs(session)) == 1
+                        assert len(list_foodstuffs(session, owner_id=mcp_user.id)) == 1
                         assert session.query(RecipeVersion).count() == 1
 
                     refinement = payload.model_dump(mode="json")
@@ -167,7 +169,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(
                     assert http_saved.status_code == 200
                     assert http_saved.json() == draft.model_dump(mode="json")
                     with SessionLocal.begin() as session:
-                        assert len(list_foodstuffs(session)) == 2
+                        assert len(list_foodstuffs(session, owner_id=mcp_user.id)) == 2
                         assert session.query(RecipeVersion).count() == 2
                         discard_recipe_draft(
                             session, draft.recipeLineageId, draft.recipeVersionId
@@ -246,7 +248,11 @@ def test_proposal_mcp_validation_and_missing_dependencies(
                         )
                     ).is_error
                     with SessionLocal.begin() as session:
-                        delete_foodstuff(session, list_foodstuffs(session)[0].id)
+                        delete_foodstuff(
+                            session,
+                            list_foodstuffs(session, owner_id=mcp_user.id)[0].id,
+                            owner_id=mcp_user.id,
+                        )
                     for tool in ["get_recipe_proposal", "save_recipe_proposal"]:
                         result = await client.call_tool(tool, args)
                         assert (
@@ -255,7 +261,7 @@ def test_proposal_mcp_validation_and_missing_dependencies(
                             and "not found" in str(result)
                         )
                     with SessionLocal() as session:
-                        assert list_foodstuffs(session) == []
+                        assert list_foodstuffs(session, owner_id=mcp_user.id) == []
                         assert session.query(RecipeVersion).count() == 1
 
     asyncio.run(exercise())
@@ -300,7 +306,7 @@ def test_proposal_mcp_save_failure_is_sanitized_and_can_be_retried(
                     )
                     assert "private database details" not in str(failed)
                     with SessionLocal() as session:
-                        assert len(list_foodstuffs(session)) == 1
+                        assert len(list_foodstuffs(session, owner_id=mcp_user.id)) == 1
                         assert session.query(RecipeVersion).count() == 1
                     monkeypatch.setattr(proposal_saves, "create_recipe_draft", original)
                     assert not (
@@ -366,7 +372,7 @@ def test_mcp_proposal_authorization_and_shared_recipe_reads(
                     with SessionLocal() as session:
                         before = (
                             session.query(RecipeVersion).count(),
-                            len(list_foodstuffs(session)),
+                            len(list_foodstuffs(session, owner_id=mcp_user.id)),
                         )
                     read = await other_client.call_tool(
                         "get_recipe_lineage",
@@ -392,7 +398,7 @@ def test_mcp_proposal_authorization_and_shared_recipe_reads(
                     with SessionLocal() as session:
                         assert (
                             session.query(RecipeVersion).count(),
-                            len(list_foodstuffs(session)),
+                            len(list_foodstuffs(session, owner_id=mcp_user.id)),
                         ) == before
                     assert not (
                         await owner_client.call_tool("get_recipe_proposal", args)

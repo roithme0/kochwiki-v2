@@ -1,6 +1,6 @@
 # Foodstuffs
 
-Foodstuffs are reusable catalogue entries used by [recipes](recipes.md) as ingredients.
+Foodstuffs are user-owned catalogue entries used by [recipes](recipes.md) as ingredients.
 
 ## Glossary
 
@@ -16,5 +16,8 @@ Foodstuffs are reusable catalogue entries used by [recipes](recipes.md) as ingre
 
 - A foodstuff describes the catalogue item; an [ingredient](recipes.md#glossary) records how much of it a recipe version uses.
 - Unknown nutrition is stored as `null`. Zero means a known zero value.
-- Recipe versions reference shared foodstuffs. Changes to their nutrition values or units affect recipe calculations, including historical versions.
+- Each user manages a personal catalogue. Lists, selection, and AI search include only that user's entries; only the owner can modify, delete, or submit them for recipe use.
+- Foodstuff details remain readable under existing authentication, including inside another user's recipe. Reading does not permit selecting or changing the entry.
+- Recipe versions reference their owner's foodstuffs. Changes to nutrition values or units affect the owner's recipe calculations, including historical versions.
 - A foodstuff cannot be deleted while any recipe version references it.
+- New image attachments must come from the owner's uploads. Changing a foodstuff's image leaves other foodstuffs unchanged.

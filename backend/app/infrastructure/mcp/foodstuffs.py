@@ -22,6 +22,7 @@ from app.infrastructure.embeddings.embeddings import (
 )
 from app.infrastructure.mcp.errors import tool_errors
 from app.infrastructure.mcp.services import MCPServices
+from app.infrastructure.mcp.asserted_identity import current_caller
 
 
 @contextmanager
@@ -46,7 +47,9 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         Only foodstuffs with current embeddings can be returned.
         """
         try:
-            candidates = services.get_foodstuff_search().search(query, limit)
+            candidates = services.get_foodstuff_search(
+                owner_id=current_caller().user_id
+            ).search(query, limit)
         except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
             raise ToolError(str(error)) from None
         return [candidate.foodstuff for candidate in candidates]
@@ -60,14 +63,16 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         )
     )
     def create_foodstuff(foodstuff: FoodstuffCreate) -> FoodstuffOut:
-        """Persist a new foodstuff in the shared catalogue.
+        """Persist a new foodstuff in the caller's catalogue.
 
         Name and unit are required. Nutrition values apply per 100 g for G,
         per 100 ml for ML, or per piece for PIECE. Returns the complete saved
         foodstuff with its assigned ID and recipe version references.
         """
         with foodstuff_write_transaction("creation") as session:
-            created = foodstuffs.create_foodstuff(session, foodstuff)
+            created = foodstuffs.create_foodstuff(
+                session, foodstuff, owner_id=current_caller().user_id
+            )
             result = foodstuffs.foodstuff_out(created)
         return result
 
@@ -88,13 +93,15 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         ],
         changes: FoodstuffUpdate,
     ) -> FoodstuffOut:
-        """Update a shared catalogue entry, affecting all recipes using it.
+        """Update an owned catalogue entry, affecting all recipes using it.
 
         Omitted fields stay unchanged; null clears optional fields. Name and unit
         cannot be cleared. Unit changes do not convert retained nutrition values.
         Returns the complete saved foodstuff with its recipe version references.
         """
         with foodstuff_write_transaction("update") as session:
-            updated = foodstuffs.update_foodstuff(session, foodstuff_id, changes)
+            updated = foodstuffs.update_foodstuff(
+                session, foodstuff_id, changes, owner_id=current_caller().user_id
+            )
             result = foodstuffs.foodstuff_out(updated)
         return result
