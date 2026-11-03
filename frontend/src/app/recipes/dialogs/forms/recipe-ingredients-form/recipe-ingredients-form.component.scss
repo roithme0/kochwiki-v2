@@ -108,3 +108,15 @@ input::-webkit-inner-spin-button {
 input[type='number'] {
   -moz-appearance: textfield;
 }
+
+.nutrition-separator,
+.additional-nutrition {
+  grid-column: 1 / -1;
+}
+
+.nutrition-separator {
+  align-self: stretch;
+  margin: 0.25rem 0;
+  border: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant, currentColor);
+}

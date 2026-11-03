@@ -51,9 +51,9 @@ describe('Foodstuff nutrition presentation', () => {
       );
       expect(
         (fixture.nativeElement as HTMLElement).querySelectorAll(
-          'app-chart-legend-element [aria-label]',
+          'app-chart-legend-element [aria-label], app-nutrition-value [aria-label]',
         ),
-      ).toHaveLength(2);
+      ).toHaveLength(3);
       fixture.destroy();
     },
   );

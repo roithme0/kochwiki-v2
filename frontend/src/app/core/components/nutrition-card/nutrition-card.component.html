@@ -13,6 +13,11 @@
           @for (entry of nutrientLegend(); track entry.displayName) {
             <app-chart-legend-element [legendElement]="entry" />
           }
+          <hr class="nutrition-separator" />
+          <app-nutrition-value
+            label="Ballaststoffe"
+            [value]="nutrition().fiber"
+          />
         </div>
       }
     </div>

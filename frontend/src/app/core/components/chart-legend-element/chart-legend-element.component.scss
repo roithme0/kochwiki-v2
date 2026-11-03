@@ -1,3 +1,7 @@
+:host {
+  display: block;
+}
+
 mat-card {
   --mdc-elevated-card-container-shape: 0.1rem;
   --mdc-elevated-card-container-color: transparent;
@@ -11,10 +15,10 @@ mat-card {
 }
 
 .color-indicator {
-  flex: 0 0 0.5rem;
-  height: 1.5rem;
-  border-radius: 0.1rem;
-  background-color: transparent;
+  flex: 0 0 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background-color: var(--color);
 }
 
 p {
@@ -50,7 +54,7 @@ p {
 @container nutrition-legend (max-width: 14rem) {
   .legend-content {
     display: grid;
-    grid-template-columns: 0.5rem minmax(0, 1fr) auto auto;
+    grid-template-columns: 0.625rem minmax(0, 1fr) auto auto;
     column-gap: 0.25rem;
     padding: 0.25rem;
   }

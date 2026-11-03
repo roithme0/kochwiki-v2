@@ -49,7 +49,7 @@ describe('Standalone nutrition artifact rendering', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['12\u00a0g', '≥ 0\u00a0g', '—']);
+    ).toEqual(['12\u00a0g', '≥ 0\u00a0g', '—', '≥ 8.2\u00a0g']);
     expect(element.querySelector('.value-percentage')).toBeNull();
   });
 });

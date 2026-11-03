@@ -56,7 +56,7 @@ describe('NutritionCardComponent', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—']);
+    ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—', '—']);
     expect(element.querySelector('.value-percentage')).toBeNull();
 
     render(
@@ -87,7 +87,7 @@ describe('NutritionCardComponent', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g']);
+    ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g', '—']);
     render(
       nutritionSummary({
         kcal: { status: 'exact', value: 0 },
@@ -119,6 +119,37 @@ describe('NutritionCardComponent', () => {
     ]);
   });
 
+  it.each([
+    [{ status: 'exact', value: 8.25 }, '8.3\u00a0g'],
+    [{ status: 'exact', value: 0 }, '0\u00a0g'],
+    [{ status: 'minimum', value: 8.25 }, '\u2265 8.2\u00a0g'],
+    [{ status: 'unknown', value: null }, '\u2014'],
+  ] as const)(
+    'shows fiber %j separately without changing macro percentages',
+    (fiber, expected) => {
+      const element = render({ ...nutrition, fiber });
+      const row = element.querySelector('app-nutrition-value');
+      expect(row?.textContent).toContain('Ballaststoffe');
+      expect(element.querySelectorAll('app-chart-legend-element')).toHaveLength(
+        3,
+      );
+      expect(
+        row?.previousElementSibling?.matches('hr.nutrition-separator'),
+      ).toBe(true);
+      expect(row?.querySelector('.value-absolute')?.textContent?.trim()).toBe(
+        expected,
+      );
+      expect(row?.querySelector('.color-indicator')).toBeNull();
+      expect(row?.querySelector('.value-percentage')).toBeNull();
+      expect(element.querySelectorAll('.value-percentage')).toHaveLength(3);
+      expect(renderedChart().dataIncompleteOrInvalid()).toBe(false);
+      expect(
+        row?.querySelector('[aria-label="Ballaststoffe: Angabe fehlt"]') !==
+          null,
+      ).toBe(fiber.status === 'unknown');
+    },
+  );
+
   it('accepts a foodstuff basis without recipe-specific input', () => {
     fixture.componentRef.setInput('basis', 'pro 100 ml');
     expect(render(nutrition).textContent).toContain('pro 100 ml');
@@ -145,7 +176,7 @@ describe('NutritionCardComponent', () => {
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(element.querySelectorAll('mat-icon').length).toBe(0);
-    expect(element.querySelectorAll('.value-absolute').length).toBe(3);
+    expect(element.querySelectorAll('.value-absolute').length).toBe(4);
     expect(renderedChart().nutrition().kcal.value).toBe(0);
   });
 
@@ -157,7 +188,7 @@ describe('NutritionCardComponent', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['—', '—', '—']);
+    ).toEqual(['—', '—', '—', '—']);
     expect(
       element.querySelector('[aria-label="Protein: Angabe fehlt"]'),
     ).not.toBeNull();
