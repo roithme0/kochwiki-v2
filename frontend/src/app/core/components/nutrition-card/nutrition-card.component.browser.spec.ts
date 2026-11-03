@@ -28,7 +28,7 @@ describe('NutritionCardComponent legend layout', () => {
 
   afterEach(() => fixture.destroy());
 
-  it.each([480, 190])(
+  it.each([480, 448, 390, 190])(
     'keeps fiber separate and values readable at %i px',
     async (width) => {
       host.style.width = `${width}px`;
@@ -90,17 +90,30 @@ describe('NutritionCardComponent legend layout', () => {
         expect(entryBounds.right).toBeLessThanOrEqual(bounds.right);
         expect(entry.scrollWidth).toBeLessThanOrEqual(entry.clientWidth);
       }
-      const label = rows[0].querySelector<HTMLElement>('.display-name');
-      const value = rows[0].querySelector<HTMLElement>('.value-absolute');
-      if (!label || !value) throw new Error('Expected macro label and value');
-      if (width === 480) {
-        expect(value.getBoundingClientRect().top).toBe(
-          label.getBoundingClientRect().top,
-        );
-      } else {
-        expect(value.getBoundingClientRect().top).toBeGreaterThanOrEqual(
-          label.getBoundingClientRect().bottom,
-        );
+      for (const row of rows) {
+        const label = row.querySelector<HTMLElement>('.display-name');
+        const value = row.querySelector<HTMLElement>('.value-absolute');
+        const percentage = row.querySelector<HTMLElement>('.value-percentage');
+        const marker = row.querySelector<HTMLElement>('.color-indicator');
+        if (!label || !value || !percentage || !marker)
+          throw new Error('Expected complete macro legend row');
+        const labelBounds = label.getBoundingClientRect();
+        const valueBounds = value.getBoundingClientRect();
+        const percentageBounds = percentage.getBoundingClientRect();
+        expect(valueBounds.left).toBeGreaterThanOrEqual(percentageBounds.right);
+        expect(valueBounds.top).toBeCloseTo(percentageBounds.top, 0);
+        if (width > 190) {
+          expect(labelBounds.left).toBeGreaterThanOrEqual(
+            marker.getBoundingClientRect().right,
+          );
+          expect(percentageBounds.left).toBeGreaterThanOrEqual(
+            labelBounds.right,
+          );
+          expect(valueBounds.top).toBeCloseTo(labelBounds.top, 0);
+          expect(row.getBoundingClientRect().height).toBeLessThan(64);
+        } else {
+          expect(valueBounds.top).toBeGreaterThanOrEqual(labelBounds.bottom);
+        }
       }
     },
   );

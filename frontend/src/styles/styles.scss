@@ -1,5 +1,6 @@
 @use './style-tokens' as tokens;
 @use './chat-ui-integration';
+@use './mat-card-styles';
 
 // Material has no public token for horizontal form-field padding.
 .foodstuff-nutrition-input .mat-mdc-text-field-wrapper {

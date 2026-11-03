@@ -7,8 +7,9 @@ mat-card {
   --mdc-elevated-card-container-color: transparent;
 }
 
-.legend-content {
+mat-card-content.legend-content {
   display: flex;
+  flex-direction: row;
   gap: 0.5rem;
   align-items: center;
   padding: 0.5rem;
@@ -46,13 +47,13 @@ p {
   flex: 1 0 0;
 }
 
-.percentage-content {
+mat-card-content.percentage-content {
   padding: 0.5rem;
   color: gray;
 }
 
 @container nutrition-legend (max-width: 14rem) {
-  .legend-content {
+  mat-card-content.legend-content {
     display: grid;
     grid-template-columns: 0.625rem minmax(0, 1fr) auto auto;
     column-gap: 0.25rem;
@@ -67,7 +68,7 @@ p {
     display: none;
   }
 
-  .percentage-content {
+  mat-card-content.percentage-content {
     padding: 0.25rem;
   }
 
