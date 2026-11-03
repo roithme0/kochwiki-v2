@@ -1,6 +1,11 @@
 @use './style-tokens' as tokens;
 @use './chat-ui-integration';
 
+// Material has no public token for horizontal form-field padding.
+.foodstuff-nutrition-input .mat-mdc-text-field-wrapper {
+  padding-inline: 0.5rem;
+}
+
 html,
 body,
 div,

@@ -65,13 +65,13 @@ mat-form-field {
 .calories-field {
   position: absolute;
   top: 50%;
-  left: 17%;
-  width: 66%;
+  left: 20%;
+  width: 60%;
   transform: translateY(-50%);
 }
 
 .calories-field input {
-  text-align: center;
+  text-align: right;
 }
 
 .nutrition-separator {
