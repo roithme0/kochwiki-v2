@@ -25,6 +25,7 @@ describe('Foodstuff nutrition presentation', () => {
         carbs: 12,
         protein: 8,
         fat: 4,
+        fiber: null,
       });
       fixture.detectChanges();
       const chart = fixture.debugElement.query(
@@ -40,6 +41,7 @@ describe('Foodstuff nutrition presentation', () => {
         carbs: 0,
         protein: null,
         fat: null,
+        fiber: null,
       });
       fixture.detectChanges();
       expect(chart.dataIncompleteOrInvalid()).toBe(true);
@@ -49,9 +51,9 @@ describe('Foodstuff nutrition presentation', () => {
       );
       expect(
         (fixture.nativeElement as HTMLElement).querySelectorAll(
-          'app-chart-legend-element [aria-label]',
+          'app-chart-legend-element [aria-label], app-nutrition-value [aria-label]',
         ),
-      ).toHaveLength(2);
+      ).toHaveLength(3);
       fixture.destroy();
     },
   );

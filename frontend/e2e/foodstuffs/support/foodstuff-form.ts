@@ -5,6 +5,7 @@ export interface FoodstuffFormValues {
   readonly unit: string;
   readonly brand: string;
   readonly kcal: number;
+  readonly fiber: number | null;
 }
 
 export class FoodstuffForm {
@@ -12,6 +13,7 @@ export class FoodstuffForm {
   readonly unitSelect: Locator;
   readonly brandInput: Locator;
   readonly kcalInput: Locator;
+  readonly fiberInput: Locator;
 
   constructor(
     private readonly page: Page,
@@ -27,6 +29,10 @@ export class FoodstuffForm {
     });
     this.brandInput = container.getByRole('textbox', {
       name: 'Marke',
+      exact: true,
+    });
+    this.fiberInput = container.getByRole('spinbutton', {
+      name: 'Ballaststoffe',
       exact: true,
     });
     this.kcalInput = container.getByRole('spinbutton', {
@@ -45,6 +51,11 @@ export class FoodstuffForm {
     if (values.brand !== undefined) {
       await this.brandInput.fill(values.brand);
     }
+    if (values.fiber !== undefined) {
+      await this.fiberInput.fill(
+        values.fiber === null ? '' : String(values.fiber),
+      );
+    }
     if (values.kcal !== undefined) {
       await this.kcalInput.fill(String(values.kcal));
     }
@@ -59,6 +70,11 @@ export class FoodstuffForm {
     }
     if (expected.brand !== undefined) {
       await expect(this.brandInput).toHaveValue(expected.brand);
+    }
+    if (expected.fiber !== undefined) {
+      await expect(this.fiberInput).toHaveValue(
+        expected.fiber === null ? '' : String(expected.fiber),
+      );
     }
     if (expected.kcal !== undefined) {
       await expect(this.kcalInput).toHaveValue(String(expected.kcal));

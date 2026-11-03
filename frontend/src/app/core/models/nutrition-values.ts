@@ -3,4 +3,5 @@ export interface NutritionValues {
   carbs?: number | null;
   protein?: number | null;
   fat?: number | null;
+  fiber?: number | null;
 }

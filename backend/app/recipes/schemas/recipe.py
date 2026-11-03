@@ -94,6 +94,7 @@ class RecipePresentationOut(BaseModel):
     carbs: NutrientResult
     protein: NutrientResult
     fat: NutrientResult
+    fiber: NutrientResult
     ingredients: list[RecipePresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
 
@@ -182,6 +183,7 @@ class RecipeVersionOut(BaseModel):
     carbs: NutrientResult
     protein: NutrientResult
     fat: NutrientResult
+    fiber: NutrientResult
     ingredients: list[IngredientOut]
     steps: list[StepOut]
 

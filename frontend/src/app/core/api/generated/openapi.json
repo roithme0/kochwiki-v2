@@ -83,6 +83,22 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
           "imageId": {
             "anyOf": [
               {
@@ -283,6 +299,18 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
+          },
           "id": {
             "exclusiveMinimum": 0.0,
             "title": "Id",
@@ -355,6 +383,7 @@
           "carbs",
           "protein",
           "fat",
+          "fiber",
           "recipeVersionIds"
         ],
         "title": "FoodstuffOut",
@@ -397,6 +426,18 @@
               }
             ],
             "title": "Fat"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
           },
           "id": {
             "exclusiveMinimum": 0.0,
@@ -461,7 +502,8 @@
           "kcal",
           "carbs",
           "protein",
-          "fat"
+          "fat",
+          "fiber"
         ],
         "title": "FoodstuffSummaryOut",
         "type": "object"
@@ -512,6 +554,22 @@
               }
             ],
             "title": "Fat"
+          },
+          "fiber": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fiber"
           },
           "imageId": {
             "anyOf": [
@@ -917,6 +975,28 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExactNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
+              }
+            ],
+            "title": "Fiber"
+          },
           "ingredients": {
             "items": {
               "$ref": "#/components/schemas/RecipePresentationIngredientOut"
@@ -1000,6 +1080,7 @@
           "carbs",
           "protein",
           "fat",
+          "fiber",
           "ingredients",
           "steps"
         ],
@@ -1149,6 +1230,28 @@
             ],
             "title": "Fat"
           },
+          "fiber": {
+            "discriminator": {
+              "mapping": {
+                "exact": "#/components/schemas/ExactNutrition",
+                "minimum": "#/components/schemas/MinimumNutrition",
+                "unknown": "#/components/schemas/UnknownNutrition"
+              },
+              "propertyName": "status"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ExactNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/MinimumNutrition"
+              },
+              {
+                "$ref": "#/components/schemas/UnknownNutrition"
+              }
+            ],
+            "title": "Fiber"
+          },
           "imageDimensions": {
             "anyOf": [
               {
@@ -1288,6 +1391,7 @@
           "carbs",
           "protein",
           "fat",
+          "fiber",
           "ingredients",
           "steps"
         ],

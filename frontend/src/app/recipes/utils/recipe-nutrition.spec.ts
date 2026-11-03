@@ -1,48 +1,43 @@
+import { foodstuffOut } from '../../testing/foodstuff.fixtures';
 import { calculateDraftNutrition } from './recipe-nutrition';
 import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
 
 describe('calculateDraftNutrition', () => {
   const foodstuffs: FoodstuffOut[] = [
-    {
+    foodstuffOut({
       id: 1,
       name: 'Haferflocken',
-      brand: null,
       unit: FoodstuffUnit.Gram,
-      imageId: null,
       unitVerbose: 'g',
       kcal: 370,
       carbs: 60,
       protein: 13,
       fat: 7,
-      recipeVersionIds: [],
-    },
-    {
+      fiber: 10,
+    }),
+    foodstuffOut({
       id: 2,
       name: 'Ei',
-      brand: null,
       unit: FoodstuffUnit.Piece,
-      imageId: null,
       unitVerbose: 'Stk.',
       kcal: 80,
       carbs: 1,
       protein: 7,
       fat: 5,
-      recipeVersionIds: [],
-    },
-    {
+      fiber: 0,
+    }),
+    foodstuffOut({
       id: 3,
       name: 'Milch',
-      brand: null,
       unit: FoodstuffUnit.Milliliter,
-      imageId: null,
       unitVerbose: 'ml',
       kcal: 50,
       carbs: 5,
       protein: 3,
       fat: 2,
-      recipeVersionIds: [],
-    },
+      fiber: 1,
+    }),
   ];
 
   it('calculates per-serving values using per-100 and per-piece units', () => {
@@ -63,6 +58,7 @@ describe('calculateDraftNutrition', () => {
         carbs: { status: 'exact', value: 66 },
         protein: { status: 'exact', value: 23 },
         fat: { status: 'exact', value: 14 },
+        fiber: { status: 'exact', value: 11 },
       },
     });
   });
@@ -75,7 +71,10 @@ describe('calculateDraftNutrition', () => {
           { foodstuffId: 2, amount: 2 },
         ],
         2,
-        [foodstuffs[0], { ...foodstuffs[1], protein: null, kcal: null }],
+        [
+          foodstuffs[0],
+          { ...foodstuffs[1], protein: null, kcal: null, fiber: null },
+        ],
       ),
     ).toEqual({
       status: 'ready',
@@ -84,6 +83,7 @@ describe('calculateDraftNutrition', () => {
         carbs: { status: 'exact', value: 31 },
         protein: { status: 'minimum', value: 6.5 },
         fat: { status: 'exact', value: 8.5 },
+        fiber: { status: 'minimum', value: 5 },
       },
     });
   });
@@ -100,6 +100,7 @@ describe('calculateDraftNutrition', () => {
       carbs: 25,
       protein: 25,
       fat: 25,
+      fiber: 25,
     };
     const missing = {
       ...known,
@@ -108,6 +109,7 @@ describe('calculateDraftNutrition', () => {
       carbs: null,
       protein: null,
       fat: null,
+      fiber: null,
     };
     const ingredients = [
       { foodstuffId: 1, amount },
@@ -124,7 +126,14 @@ describe('calculateDraftNutrition', () => {
   });
 
   it('distinguishes unknown, exact zero and minimum zero', () => {
-    const zero = { ...foodstuffs[0], kcal: 0, carbs: 0, protein: 0, fat: 0 };
+    const zero = {
+      ...foodstuffs[0],
+      kcal: 0,
+      carbs: 0,
+      protein: 0,
+      fat: 0,
+      fiber: 0,
+    };
     const missing = {
       ...zero,
       id: 2,
@@ -132,6 +141,7 @@ describe('calculateDraftNutrition', () => {
       carbs: null,
       protein: null,
       fat: null,
+      fiber: null,
     };
     expect(calculateDraftNutrition([], 2, [zero])).toEqual(
       uniformResult('unknown', null),
@@ -163,6 +173,7 @@ describe('calculateDraftNutrition', () => {
         carbs: 20,
         protein: 20,
         fat: 20,
+        fiber: 20,
       };
       expect(
         calculateDraftNutrition(
@@ -233,6 +244,7 @@ function uniformResult(
       carbs: { status, value },
       protein: { status, value },
       fat: { status, value },
+      fiber: { status, value },
     },
   };
 }

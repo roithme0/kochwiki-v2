@@ -1,9 +1,11 @@
-import type { RecipeVersionOut } from '../../core/api/generated';
+import { recipeVersionOut } from './recipe.fixtures';
+import { foodstuffOut } from './foodstuff.fixtures';
+import type { RecipeVersionOut } from '../core/api/generated';
 import type { PresentedSession } from '@roithme0/chat-ui/conversation';
-import type { RecipeSessionArtifact } from './recipe-conversation-contract';
-import type { FoodstuffOut } from '../../core/api/generated';
-import { recipeArtifact } from './recipe-conversation-contract';
-import { FoodstuffUnit } from '../../foodstuffs/models/foodstuff-unit';
+import type { RecipeSessionArtifact } from '../recipes/conversation/recipe-conversation-contract';
+import type { FoodstuffOut } from '../core/api/generated';
+import { recipeArtifact } from '../recipes/conversation/recipe-conversation-contract';
+import { FoodstuffUnit } from '../foodstuffs/models/foodstuff-unit';
 
 export function conversationUsage(): PresentedSession['usage'] {
   return {
@@ -20,25 +22,20 @@ export function conversationUsage(): PresentedSession['usage'] {
 }
 
 export function conversationFoodstuff(): FoodstuffOut {
-  return {
+  return foodstuffOut({
     id: 1,
     name: 'Linsen',
-    brand: null,
     unit: FoodstuffUnit.Gram,
-    imageId: null,
     unitVerbose: 'g',
     kcal: 120,
     carbs: 20,
     protein: 8,
-    fat: null,
-    recipeVersionIds: [],
-  };
+    fiber: 7,
+  });
 }
 
 export function conversationRecipe(): RecipeVersionOut {
-  return {
-    imageId: null,
-    imageDimensions: null,
+  return recipeVersionOut({
     ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002',
@@ -48,10 +45,10 @@ export function conversationRecipe(): RecipeVersionOut {
     name: 'Linsensuppe',
     servings: 2,
     preptime: 30,
-    kcal: { status: 'exact' as const, value: 120 },
-    carbs: { status: 'exact' as const, value: 20 },
-    protein: { status: 'exact' as const, value: 8 },
-    fat: { status: 'unknown' as const, value: null },
+    kcal: { status: 'exact', value: 120 },
+    carbs: { status: 'exact', value: 20 },
+    protein: { status: 'exact', value: 8 },
+    fiber: { status: 'minimum', value: 3.5 },
     ingredients: [
       {
         id: 1,
@@ -69,7 +66,7 @@ export function conversationRecipe(): RecipeVersionOut {
         recipeVersionId: 'version',
       },
     ],
-  };
+  });
 }
 
 export const proposalId = '00000000-0000-4000-8000-000000000003';

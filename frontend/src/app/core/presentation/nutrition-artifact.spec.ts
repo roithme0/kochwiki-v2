@@ -1,17 +1,19 @@
+import { nutritionSummary } from '../../testing/nutrition.fixtures';
 import { mapConversationArtifact } from '../../recipes/conversation/recipe-conversation-contract';
-import { conversationProposal } from '../../recipes/conversation/recipe-conversation.fixtures';
+import { conversationProposal } from '../../testing/conversation.fixtures';
 import {
   NUTRITION_ARTIFACT_CAPABILITY,
   isNutritionPresentation,
   nutritionBasisLabel,
 } from './nutrition-artifact';
 
-const values = {
+const values = nutritionSummary({
   kcal: { status: 'minimum', value: 200.9 },
   carbs: { status: 'exact', value: 12 },
   protein: { status: 'minimum', value: 0 },
   fat: { status: 'unknown', value: null },
-};
+  fiber: { status: 'unknown', value: null },
+});
 
 describe('Nutrition artifact contract', () => {
   it.each([
@@ -51,6 +53,7 @@ describe('Nutrition artifact contract', () => {
         carbs: unknown,
         protein: unknown,
         fat: unknown,
+        fiber: unknown,
       }),
     ).toBe(true);
   });

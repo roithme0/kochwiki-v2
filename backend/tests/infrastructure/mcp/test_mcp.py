@@ -59,6 +59,8 @@ def test_mcp_http_discovery_invocation_and_lifecycle(
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
                         "search_foodstuffs",
+                        "get_foodstuff",
+                        "fill_foodstuff_nutrition",
                         "create_foodstuff",
                         "update_foodstuff",
                         "search_recipes",
@@ -114,6 +116,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                             "carbs": 6,
                             "protein": 1,
                             "fat": 0,
+                            "fiber": 1.5,
                         },
                     ]:
                         result = await client.call_tool(
@@ -157,11 +160,12 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                         {"name": "Missing unit"},
                         *(
                             {"name": "Missing unit", field: 0}
-                            for field in ["kcal", "carbs", "protein", "fat"]
+                            for field in ["kcal", "carbs", "protein", "fat", "fiber"]
                         ),
                         {"name": "Null unit", "unit": None, "protein": 1},
                         {"name": "Invalid unit", "unit": "KG"},
                         {"name": "Negative", "unit": "G", "kcal": -1},
+                        {"name": "Negative fiber", "unit": "G", "fiber": -1},
                         {"name": "Unknown field", "unit": "G", "unexpected": True},
                     ]:
                         assert (
@@ -302,7 +306,9 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                     assert tool.annotations.destructive_hint is True
                     for changes, expected_refresh in [
                         ({"protein": 0}, []),
+                        ({"fiber": 0}, []),
                         ({"unit": "PIECE"}, []),
+                        ({"fiber": None}, []),
                         ({"name": "Whole milk"}, [target_id]),
                         ({"brand": None, "kcal": None}, [target_id, target_id]),
                     ]:
@@ -325,6 +331,7 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                             assert persisted.protein == Decimal(0)
                             if "unit" in changes:
                                 assert persisted.unit == Unit.PIECE
+                                assert persisted.fiber == Decimal(0)
                                 assert persisted.kcal == Decimal(40)
                             for field, value in (
                                 FoodstuffUpdate.model_validate(changes)
@@ -640,7 +647,7 @@ def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
                         and "Semantic search unavailable" in item.text
                         for item in result.content
                     )
-                    assert len((await client.list_tools()).tools) == 8
+                    assert len((await client.list_tools()).tools) == 10
 
     asyncio.run(exercise())
 

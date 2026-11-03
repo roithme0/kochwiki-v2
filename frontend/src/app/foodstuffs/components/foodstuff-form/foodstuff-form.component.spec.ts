@@ -100,6 +100,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: 15,
       protein: 7,
       fat: 1,
+      fiber: null,
     });
     fixture.detectChanges();
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
@@ -110,6 +111,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: { status: 'exact', value: 15 },
       protein: { status: 'exact', value: 7 },
       fat: { status: 'exact', value: 1 },
+      fiber: { status: 'unknown' as const, value: null },
     });
   });
 
@@ -118,6 +120,45 @@ describe('FoodstuffFormComponent', () => {
     Object.defineProperty(input, 'files', { value: { item: () => file } });
     component.image.selectImage(input);
   }
+
+  it.each([null, 0, 8.5])(
+    'submits fiber %s when creating a foodstuff',
+    async (fiber) => {
+      validForm();
+      const submitted = vi.fn();
+      component.submitted.subscribe(submitted);
+      component.form.controls.fiber.setValue(fiber);
+      await component.onSubmit();
+      expect(submitted).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ fiber }),
+      );
+    },
+  );
+
+  it.each([null, 0, 4.5])(
+    'updates recorded fiber to %s in an edit',
+    async (fiber) => {
+      fixture.componentRef.setInput('foodstuff', {
+        name: 'Oats',
+        unit: 'G',
+        fiber: 8.5,
+      });
+      const submitted = vi.fn();
+      component.submitted.subscribe(submitted);
+      fixture.detectChanges();
+      expect(component.form.controls.fiber.value).toBe(8.5);
+      const input = (
+        fixture.nativeElement as HTMLElement
+      ).querySelector<HTMLInputElement>('input[aria-label="Ballaststoffe"]');
+      if (!input) throw new Error('Expected editable fiber input');
+      input.value = fiber === null ? '' : String(fiber);
+      input.dispatchEvent(new Event('input'));
+      await component.onSubmit();
+      expect(submitted).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ name: 'Oats', unit: 'G', fiber }),
+      );
+    },
+  );
 
   function validForm(): void {
     fixture.detectChanges();
@@ -263,6 +304,13 @@ describe('FoodstuffFormComponent', () => {
     const pending = component.onSubmit();
     fixture.detectChanges();
     expect(component.form.disabled).toBe(true);
+    const nutritionInputs = (
+      fixture.nativeElement as HTMLElement
+    ).querySelectorAll<HTMLInputElement>('app-foodstuff-nutrition-row input');
+    expect(nutritionInputs).toHaveLength(4);
+    expect(Array.from(nutritionInputs).every((input) => input.disabled)).toBe(
+      true,
+    );
     expect(busy).toHaveBeenCalledWith(true);
     component.image.removeImage();
     select(null);
@@ -289,20 +337,21 @@ describe('FoodstuffFormComponent', () => {
       carbs: 12,
       protein: 8,
       fat: 1,
+      fiber: null,
     });
     await component.onSubmit();
 
     const labels: NodeListOf<Element> = (
       fixture.nativeElement as HTMLElement
-    ).querySelectorAll('mat-label');
+    ).querySelectorAll('mat-label, .nutrient-label > span:last-child');
     expect(Array.from(labels, (label) => label.textContent?.trim())).toEqual([
       'Name',
       'Einheit',
       'Marke',
-      'Kalorien',
       'Kohlenhydrate',
       'Proteine',
       'Fett',
+      'Ballaststoffe',
     ]);
     expect(submitted).toHaveBeenCalledTimes(1);
     expect(submitted).toHaveBeenCalledWith({
@@ -313,6 +362,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: 12,
       protein: 8,
       fat: 1,
+      fiber: null,
     });
   });
 
@@ -325,6 +375,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: 15,
       protein: 7,
       fat: 1,
+      fiber: null,
     });
     fixture.detectChanges();
 
@@ -336,6 +387,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: 15,
       protein: 7,
       fat: 1,
+      fiber: null,
     });
   });
 

@@ -1,8 +1,9 @@
+import { nutritionSummary } from '../../testing/nutrition.fixtures';
 import { mapConversationArtifact } from '../conversation/recipe-conversation-contract';
 import {
   conversationProposal,
   proposalId,
-} from '../conversation/recipe-conversation.fixtures';
+} from '../../testing/conversation.fixtures';
 import {
   RECIPE_ARTIFACT_CAPABILITY,
   isRecipePresentation,
@@ -16,13 +17,14 @@ const foodstuff = {
   carbs: 3.9,
   protein: null,
   fat: 0,
+  fiber: null,
 };
 const payload = {
+  ...nutritionSummary(),
   servings: 2,
   preptime: 25,
   kcal: { status: 'exact', value: 18 },
   carbs: { status: 'exact', value: 3.9 },
-  protein: { status: 'unknown', value: null },
   fat: { status: 'exact', value: 0 },
   ingredients: [{ index: 1, amount: 100, foodstuff }],
   steps: [{ index: 1, description: 'Tomaten schneiden.' }],

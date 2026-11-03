@@ -20,6 +20,7 @@ def create_foodstuff(client: TestClient, **overrides: object) -> dict[str, objec
         "carbs": 60,
         "protein": 13,
         "fat": 7,
+        "fiber": None,
     }
     payload.update(overrides)
     response = client.post("/foodstuffs", json=payload)
@@ -75,6 +76,7 @@ def test_saved_recipe_and_resolved_presentation_preserve_minimum_values(
         "carbs": {"status": "exact", "value": 60},
         "protein": {"status": "minimum", "value": 0},
         "fat": {"status": "unknown", "value": None},
+        "fiber": {"status": "unknown", "value": None},
     }
     resolved = client.post(
         "/recipe-presentations/resolve",
@@ -142,6 +144,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
         "carbs",
         "protein",
         "fat",
+        "fiber",
         "ingredients",
         "steps",
     }
@@ -163,6 +166,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
         "carbs": 1,
         "protein": 6,
         "fat": 5,
+        "fiber": None,
     }
     assert client.get("/recipes").json() == []
     assert client.get("/ingredients").json() == []
@@ -1024,16 +1028,31 @@ def test_missing_nutrition_and_live_foodstuff_updates_affect_versions(
     foodstuff = create_foodstuff(client, kcal=None)
     recipe_version = create_recipe(client, "Unknown calories", foodstuff["id"])
     assert recipe_version["kcal"] == {"status": "unknown", "value": None}
+    assert recipe_version["fiber"] == {"status": "unknown", "value": None}
+    published = client.post(
+        f"/recipes/{recipe_version['recipeLineageId']}/publish",
+        json=recipe_version_payload("Updated recipe", foodstuff["id"]),
+    )
+    assert published.status_code == 200
     assert recipe_version["carbs"] == {"status": "exact", "value": 30}
 
     updated_foodstuff = client.patch(
-        f"/foodstuffs/{foodstuff['id']}", json={"kcal": 400, "brand": ""}
+        f"/foodstuffs/{foodstuff['id']}", json={"kcal": 400, "fiber": 8, "brand": ""}
     )
     assert updated_foodstuff.status_code == 200
     assert updated_foodstuff.json()["brand"] is None
     assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()[
         "kcal"
     ] == {"status": "exact", "value": 200}
+    assert client.get(f"/recipes/{recipe_version['recipeLineageId']}").json()[
+        "fiber"
+    ] == {"status": "exact", "value": 4}
+    historical = client.get(
+        f"/recipes/{recipe_version['recipeLineageId']}/versions/{recipe_version['recipeVersionId']}"
+    )
+    assert historical.status_code == 200
+    assert historical.json()["state"] == "historical"
+    assert historical.json()["fiber"] == {"status": "exact", "value": 4}
 
 
 @pytest.mark.usefixtures("recipe_session")

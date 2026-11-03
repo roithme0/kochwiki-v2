@@ -15,6 +15,11 @@ from app.foodstuffs.schemas.foodstuff import (
     FoodstuffUpdate,
 )
 from app.foodstuffs.services import foodstuffs
+from app.foodstuffs.schemas.nutrition_enrichment import (
+    FoodstuffIdentity,
+    NutritionFill,
+    NutritionFillResult,
+)
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.embeddings.embeddings import (
     QueryEmbeddingError,
@@ -41,7 +46,7 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         ],
         limit: Annotated[int, Field(strict=True, ge=1, le=20)] = 5,
     ) -> list[FoodstuffSummaryOut]:
-        """Find a bounded, ranked shortlist of existing foodstuffs by name or alias.
+        """Find a ranked shortlist in the caller's catalogue by name or alias.
 
         Returns foodstuff summaries with IDs, names, brands, units and nutrition.
         Only foodstuffs with current embeddings can be returned.
@@ -53,6 +58,58 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         except (ValueError, SemanticSearchUnavailable, QueryEmbeddingError) as error:
             raise ToolError(str(error)) from None
         return [candidate.foodstuff for candidate in candidates]
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=True,
+            destructive_hint=False,
+            idempotent_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def get_foodstuff(
+        foodstuff_id: Annotated[int, Field(strict=True, ge=1)],
+    ) -> FoodstuffOut:
+        """Retrieve a current foodstuff by ID, without requiring embeddings.
+
+        Returns the complete foodstuff, including recipe version references.
+        This operation is read-only and permits reading other users' entries.
+        """
+        with tool_errors("Foodstuff", "retrieval"):
+            with SessionLocal() as session:
+                return foodstuffs.foodstuff_out(
+                    foodstuffs.get_foodstuff(session, foodstuff_id)
+                )
+
+    @server.tool(
+        annotations=ToolAnnotations(
+            read_only_hint=False,
+            destructive_hint=False,
+            idempotent_hint=True,
+            open_world_hint=False,
+        )
+    )
+    def fill_foodstuff_nutrition(
+        foodstuff_id: Annotated[int, Field(strict=True, ge=1)],
+        expected: FoodstuffIdentity,
+        nutrition: NutritionFill,
+    ) -> NutritionFillResult:
+        """Fill only unknown nutrition in an owned catalogue foodstuff.
+
+        Rejects mismatched expected name, brand or unit. Values apply per 100 g
+        for G, per 100 ml for ML, or per piece for PIECE. Known values, including
+        zero, are retained. Returns current data and applied/retained field names.
+        Changes affect all referencing recipe versions.
+        """
+        with foodstuff_write_transaction("nutrition enrichment") as session:
+            result = foodstuffs.fill_foodstuff_nutrition(
+                session,
+                foodstuff_id,
+                expected,
+                nutrition,
+                owner_id=current_caller().user_id,
+            )
+        return result
 
     @server.tool(
         annotations=ToolAnnotations(
@@ -95,6 +152,7 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> FoodstuffOut:
         """Update an owned catalogue entry, affecting all recipes using it.
 
+        Supplied values may overwrite recorded data.
         Omitted fields stay unchanged; null clears optional fields. Name and unit
         cannot be cleared. Unit changes do not convert retained nutrition values.
         Returns the complete saved foodstuff with its recipe version references.

@@ -1,3 +1,4 @@
+import { nutritionSummary } from '../../../testing/nutrition.fixtures';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   NutritionSummary,
@@ -14,6 +15,7 @@ describe('NutritionCardComponent', () => {
     carbs: 40,
     protein: 20,
     fat: 10,
+    fiber: null,
   });
 
   beforeEach(() => {
@@ -37,12 +39,15 @@ describe('NutritionCardComponent', () => {
   }
 
   it('shows saved-recipe lower bounds and unknowns without misleading percentages', () => {
-    const element = render({
-      kcal: { status: 'minimum', value: 120.9 },
-      carbs: { status: 'exact', value: 15 },
-      protein: { status: 'minimum', value: 3.29 },
-      fat: { status: 'unknown', value: null },
-    });
+    const element = render(
+      nutritionSummary({
+        kcal: { status: 'minimum', value: 120.9 },
+        carbs: { status: 'exact', value: 15 },
+        protein: { status: 'minimum', value: 3.29 },
+        fat: { status: 'unknown', value: null },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
       .componentInstance as MacroChartComponent;
     expect(chart.dataIncompleteOrInvalid()).toBe(true);
@@ -51,38 +56,47 @@ describe('NutritionCardComponent', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—']);
+    ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—', '—']);
     expect(element.querySelector('.value-percentage')).toBeNull();
 
-    render({
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'exact', value: 15 },
-      protein: { status: 'exact', value: 3 },
-      fat: { status: 'exact', value: 2 },
-    });
+    render(
+      nutritionSummary({
+        kcal: { status: 'unknown', value: null },
+        carbs: { status: 'exact', value: 15 },
+        protein: { status: 'exact', value: 3 },
+        fat: { status: 'exact', value: 2 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     expect(chart.dataIncompleteOrInvalid()).toBe(false);
     expect(chart.displayedKcal()).toBe('— kcal');
     expect(element.querySelectorAll('.value-percentage').length).toBe(3);
   });
 
   it('keeps a gray ring for unknown or all-zero recipe macros and distinguishes minimum zero', () => {
-    const element = render({
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'unknown', value: null },
-      protein: { status: 'minimum', value: 0 },
-      fat: { status: 'exact', value: 0 },
-    });
+    const element = render(
+      nutritionSummary({
+        kcal: { status: 'unknown', value: null },
+        carbs: { status: 'unknown', value: null },
+        protein: { status: 'minimum', value: 0 },
+        fat: { status: 'exact', value: 0 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     expect(
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g']);
-    render({
-      kcal: { status: 'exact', value: 0 },
-      carbs: { status: 'exact', value: 0 },
-      protein: { status: 'exact', value: 0 },
-      fat: { status: 'exact', value: 0 },
-    });
+    ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g', '—']);
+    render(
+      nutritionSummary({
+        kcal: { status: 'exact', value: 0 },
+        carbs: { status: 'exact', value: 0 },
+        protein: { status: 'exact', value: 0 },
+        fat: { status: 'exact', value: 0 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
       .componentInstance as MacroChartComponent;
     expect(chart.dataIncompleteOrInvalid()).toBe(true);
@@ -104,6 +118,37 @@ describe('NutritionCardComponent', () => {
       'rgb(201, 92, 82)',
     ]);
   });
+
+  it.each([
+    [{ status: 'exact', value: 8.25 }, '8.3\u00a0g'],
+    [{ status: 'exact', value: 0 }, '0\u00a0g'],
+    [{ status: 'minimum', value: 8.25 }, '\u2265 8.2\u00a0g'],
+    [{ status: 'unknown', value: null }, '\u2014'],
+  ] as const)(
+    'shows fiber %j separately without changing macro percentages',
+    (fiber, expected) => {
+      const element = render({ ...nutrition, fiber });
+      const row = element.querySelector('app-nutrition-value');
+      expect(row?.textContent).toContain('Ballaststoffe');
+      expect(element.querySelectorAll('app-chart-legend-element')).toHaveLength(
+        3,
+      );
+      expect(
+        row?.previousElementSibling?.matches('hr.nutrition-separator'),
+      ).toBe(true);
+      expect(row?.querySelector('.value-absolute')?.textContent?.trim()).toBe(
+        expected,
+      );
+      expect(row?.querySelector('.color-indicator')).toBeNull();
+      expect(row?.querySelector('.value-percentage')).toBeNull();
+      expect(element.querySelectorAll('.value-percentage')).toHaveLength(3);
+      expect(renderedChart().dataIncompleteOrInvalid()).toBe(false);
+      expect(
+        row?.querySelector('[aria-label="Ballaststoffe: Angabe fehlt"]') !==
+          null,
+      ).toBe(fiber.status === 'unknown');
+    },
+  );
 
   it('accepts a foodstuff basis without recipe-specific input', () => {
     fixture.componentRef.setInput('basis', 'pro 100 ml');
@@ -131,7 +176,7 @@ describe('NutritionCardComponent', () => {
     expect(renderedChart().dataIncompleteOrInvalid()).toBe(true);
     expect(element.querySelector('.value-percentage')).toBeNull();
     expect(element.querySelectorAll('mat-icon').length).toBe(0);
-    expect(element.querySelectorAll('.value-absolute').length).toBe(3);
+    expect(element.querySelectorAll('.value-absolute').length).toBe(4);
     expect(renderedChart().nutrition().kcal.value).toBe(0);
   });
 
@@ -143,7 +188,7 @@ describe('NutritionCardComponent', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['—', '—', '—']);
+    ).toEqual(['—', '—', '—', '—']);
     expect(
       element.querySelector('[aria-label="Protein: Angabe fehlt"]'),
     ).not.toBeNull();
@@ -165,6 +210,7 @@ describe('NutritionCardComponent', () => {
       render({
         ...nutrition,
         fat: { status: 'unknown', value: null },
+        fiber: { status: 'unknown' as const, value: null },
       }).querySelector('.value-percentage'),
     ).toBeNull();
     render(toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));

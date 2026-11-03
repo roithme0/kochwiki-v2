@@ -1,13 +1,20 @@
 import * as z from 'zod/mini';
 import { zFoodstuffSummaryOut } from '../../core/api/generated/zod.gen';
 import { mapConversationArtifact } from '../../recipes/conversation/recipe-conversation-contract';
-import { conversationProposal } from '../../recipes/conversation/recipe-conversation.fixtures';
+import { conversationProposal } from '../../testing/conversation.fixtures';
 import {
   FOODSTUFF_ARTIFACT_CAPABILITY,
   isFoodstuffPresentation,
 } from './foodstuff-artifact';
 
-const payload = { unit: 'G', kcal: 0, carbs: null, protein: 12, fat: null };
+const payload = {
+  unit: 'G',
+  kcal: 0,
+  carbs: null,
+  protein: 12,
+  fat: null,
+  fiber: 3,
+};
 
 describe('Foodstuff artifact contract', () => {
   it('preserves explicit name/brand headers and nutrition without requiring an id or fetch', () => {
@@ -33,6 +40,7 @@ describe('Foodstuff artifact contract', () => {
       carbs: null,
       protein: null,
       fat: null,
+      fiber: null,
     };
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
@@ -48,6 +56,8 @@ describe('Foodstuff artifact contract', () => {
     {},
     { ...payload, unit: 'KG' },
     { ...payload, kcal: -1 },
+    { ...payload, fiber: -1 },
+    { ...payload, fiber: undefined },
     { ...payload, protein: '12' },
     { ...payload, carbs: undefined },
     { ...payload, extra: 'unexpected' },
@@ -72,7 +82,7 @@ describe('Foodstuff artifact contract', () => {
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['properties'];
     expect(properties).toEqual(
       Object.fromEntries(
-        ['unit', 'kcal', 'carbs', 'protein', 'fat'].map((key) => [
+        ['unit', 'kcal', 'carbs', 'protein', 'fat', 'fiber'].map((key) => [
           key,
           schema.properties?.[key],
         ]),
@@ -83,7 +93,7 @@ describe('Foodstuff artifact contract', () => {
     ).toBe(false);
     expect(
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['required'],
-    ).toHaveLength(5);
+    ).toHaveLength(6);
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('name');
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.subtitleDescription).toContain(
       'brand',

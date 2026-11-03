@@ -207,7 +207,7 @@ def test_logout_after_discovery_blocks_later_tool_calls(
                 streamable_http_client("http://localhost/mcp/", http_client=http)
             ) as client,
         ):
-            assert len((await client.list_tools()).tools) == 8
+            assert len((await client.list_tools()).tools) == 10
             with SessionLocal.begin() as session:
                 parent = session.scalars(select(ApplicationSession)).one()
                 session.delete(parent)
@@ -276,7 +276,7 @@ def test_tool_invocation_revalidates_after_http_admission(
                 mode=mode,
             ) as client,
         ):
-            assert len((await client.list_tools()).tools) == 8
+            assert len((await client.list_tools()).tools) == 10
             armed = True
             with pytest.raises(MCPError, match="Authentication required") as failure:
                 await client.call_tool(

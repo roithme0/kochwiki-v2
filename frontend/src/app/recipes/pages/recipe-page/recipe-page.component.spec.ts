@@ -1,3 +1,5 @@
+import { foodstuffSummary } from '../../../testing/foodstuff.fixtures';
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import { signal } from '@angular/core';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import type { RecipeVersionOut } from '../../../core/api/generated';
@@ -227,9 +229,7 @@ describe('RecipePageComponent', () => {
   });
 });
 
-const draftRecipeVersion: RecipeVersionOut = {
-  imageId: null,
-  imageDimensions: null,
+const draftRecipeVersion: RecipeVersionOut = recipeVersionOut({
   ownerId: 1,
   recipeLineageId: '00000000-0000-4000-8000-000000000007',
   recipeVersionId: '00000000-0000-0000-0000-000000000007',
@@ -238,14 +238,9 @@ const draftRecipeVersion: RecipeVersionOut = {
   lastModified: '2026-09-10T10:00:00Z',
   name: 'Draft',
   servings: 1,
-  preptime: null,
-  kcal: { status: 'unknown' as const, value: null },
-  carbs: { status: 'unknown' as const, value: null },
-  protein: { status: 'unknown' as const, value: null },
-  fat: { status: 'unknown' as const, value: null },
   ingredients: [],
   steps: [],
-};
+});
 
 describe('RecipePageComponent presentation integration', () => {
   it.each([false, true])(
@@ -338,18 +333,14 @@ describe('RecipePageComponent presentation integration', () => {
             index: 1,
             amount: 100,
             recipeVersionId: draftRecipeVersion.recipeVersionId,
-            foodstuff: {
+            foodstuff: foodstuffSummary({
               id: 42,
               imageId: 'ingredient-image',
               name: 'Recipe owner oats',
-              brand: null,
               unit: 'G',
               unitVerbose: 'g',
               kcal: 100,
-              carbs: null,
-              protein: null,
-              fat: null,
-            },
+            }),
           },
         ],
       };

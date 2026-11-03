@@ -1,3 +1,4 @@
+import { recipePresentation } from '../../../testing/recipe.fixtures';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { StepsGridComponent } from './steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
@@ -16,19 +17,14 @@ describe('StepsGridComponent', () => {
   });
 
   it('sorts steps by index without mutating the presentation input', () => {
-    const recipe: RecipePresentation = {
+    const recipe: RecipePresentation = recipePresentation({
       servings: 2,
-      preptime: null,
-      kcal: { status: 'unknown' as const, value: null },
-      carbs: { status: 'unknown' as const, value: null },
-      protein: { status: 'unknown' as const, value: null },
-      fat: { status: 'unknown' as const, value: null },
       ingredients: [],
       steps: [
         { index: 2, description: 'Second' },
         { index: 1, description: 'First' },
       ],
-    };
+    });
     fixture.componentRef.setInput('recipe', recipe);
     fixture.detectChanges();
 

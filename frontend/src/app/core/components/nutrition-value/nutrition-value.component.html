@@ -1,0 +1,13 @@
+<mat-card>
+  <mat-card-content class="value-content">
+    <p class="display-name" [title]="label()">{{ label() }}</p>
+    <p
+      class="value-absolute"
+      [attr.aria-label]="
+        value().status === 'unknown' ? label() + ': Angabe fehlt' : null
+      "
+    >
+      {{ displayedValue() }}
+    </p>
+  </mat-card-content>
+</mat-card>

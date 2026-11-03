@@ -35,6 +35,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { buildNutritionLegend } from '../../../../core/utils/nutrition-legend';
+import { NutritionValueComponent } from '../../../../core/components/nutrition-value/nutrition-value.component';
 import { ChartLegendElementComponent } from '../../../../core/components/chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../../../../core/components/macro-chart/macro-chart.component';
 import {
@@ -60,6 +61,7 @@ interface IngredientFormControls {
     MatIconModule,
     MatExpansionModule,
     ChartLegendElementComponent,
+    NutritionValueComponent,
     MacroChartComponent,
   ],
   templateUrl: './recipe-ingredients-form.component.html',

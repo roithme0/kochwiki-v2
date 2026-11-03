@@ -21,6 +21,7 @@ class FoodstuffSummaryOut(BaseModel):
     carbs: NonnegativeJsonDecimal | None
     protein: NonnegativeJsonDecimal | None
     fat: NonnegativeJsonDecimal | None
+    fiber: NonnegativeJsonDecimal | None
 
     @field_validator("unit", mode="before")
     @classmethod
@@ -40,6 +41,7 @@ class FoodstuffFields(BaseModel):
     carbs: Decimal | None = Field(default=None, ge=0)
     protein: Decimal | None = Field(default=None, ge=0)
     fat: Decimal | None = Field(default=None, ge=0)
+    fiber: Decimal | None = Field(default=None, ge=0)
 
     @field_validator("brand", mode="before")
     @classmethod
@@ -60,6 +62,7 @@ class FoodstuffUpdate(FoodstuffFields):
     carbs: Decimal | None = Field(default=None, ge=0)
     protein: Decimal | None = Field(default=None, ge=0)
     fat: Decimal | None = Field(default=None, ge=0)
+    fiber: Decimal | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_required_fields(self) -> Self:

@@ -1,3 +1,5 @@
+import { recipeVersionOut } from '../../testing/recipe.fixtures';
+import { foodstuffOut } from '../../testing/foodstuff.fixtures';
 import {
   Component,
   DebugElement,
@@ -55,38 +57,24 @@ const cases = [
 ] as const;
 describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
   const imageId = '00000000-0000-4000-8000-000000000010';
-  const existing: FoodstuffOut = {
+  const existing: FoodstuffOut = foodstuffOut({
     id: 3,
     name: 'Basilikum',
-    brand: null,
     unit: 'G',
     unitVerbose: 'g',
-    imageId: null,
-    kcal: null,
-    carbs: null,
-    protein: null,
-    fat: null,
-    recipeVersionIds: [],
-  };
-  const recipe: RecipeVersionOut = {
+  });
+  const recipe: RecipeVersionOut = recipeVersionOut({
     ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-4000-8000-000000000002',
     name: 'Basilikum',
     servings: 2,
-    preptime: null,
     ingredients: [],
     steps: [],
     state: 'active',
     createdAt: '2026-10-17T10:00:00Z',
     lastModified: '2026-10-17T10:00:00Z',
-    imageId: null,
-    imageDimensions: null,
-    kcal: { status: 'unknown', value: null },
-    carbs: { status: 'unknown', value: null },
-    protein: { status: 'unknown', value: null },
-    fat: { status: 'unknown', value: null },
-  };
+  });
   const record = domain === 'foodstuff' ? existing : recipe;
   const upload = vi.fn();
   const save = vi.fn();

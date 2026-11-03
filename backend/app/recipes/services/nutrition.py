@@ -15,7 +15,7 @@ from app.recipes.schemas.nutrition import (
     UnknownNutrition,
 )
 
-NutritionField = Literal["kcal", "carbs", "protein", "fat"]
+NutritionField = Literal["kcal", "carbs", "protein", "fat", "fiber"]
 NutritionFoodstuff = Foodstuff | FoodstuffSummaryOut | ResolvedProposalFoodstuffFields
 
 
@@ -65,4 +65,6 @@ def _nutrition_value(
         return foodstuff.carbs
     if attribute == "protein":
         return foodstuff.protein
-    return foodstuff.fat
+    if attribute == "fat":
+        return foodstuff.fat
+    return foodstuff.fiber

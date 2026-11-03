@@ -45,6 +45,10 @@ export type FoodstuffCreate = {
      */
     fat?: number | string | null;
     /**
+     * Fiber
+     */
+    fiber?: number | string | null;
+    /**
      * Imageid
      */
     imageId?: string | null;
@@ -152,6 +156,10 @@ export type FoodstuffOut = {
      */
     fat: number | null;
     /**
+     * Fiber
+     */
+    fiber: number | null;
+    /**
      * Id
      */
     id: number;
@@ -199,6 +207,10 @@ export type FoodstuffSummaryOut = {
      */
     fat: number | null;
     /**
+     * Fiber
+     */
+    fiber: number | null;
+    /**
      * Id
      */
     id: number;
@@ -241,6 +253,10 @@ export type FoodstuffUpdate = {
      * Fat
      */
     fat?: number | string | null;
+    /**
+     * Fiber
+     */
+    fiber?: number | string | null;
     /**
      * Imageid
      */
@@ -479,6 +495,16 @@ export type RecipePresentationOut = {
         status: 'unknown';
     } & UnknownNutrition);
     /**
+     * Fiber
+     */
+    fiber: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
+    /**
      * Ingredients
      */
     ingredients: Array<RecipePresentationIngredientOut>;
@@ -588,6 +614,16 @@ export type RecipeVersionOut = {
      * Fat
      */
     fat: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
+    /**
+     * Fiber
+     */
+    fiber: ({
         status: 'exact';
     } & ExactNutrition) | ({
         status: 'minimum';

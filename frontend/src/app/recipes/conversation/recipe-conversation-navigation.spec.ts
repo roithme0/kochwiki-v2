@@ -29,7 +29,7 @@ import {
   conversationProposal,
   conversationRecipe,
   conversationUsage,
-} from './recipe-conversation.fixtures';
+} from '../../testing/conversation.fixtures';
 import { routes } from '../../app.routes';
 
 describe('Version-specific conversation routing', () => {

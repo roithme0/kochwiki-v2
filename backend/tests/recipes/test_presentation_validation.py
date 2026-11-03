@@ -20,6 +20,7 @@ def presentation() -> dict[str, object]:
         "carbs": {"status": "unknown", "value": None},
         "protein": {"status": "exact", "value": 0},
         "fat": {"status": "unknown", "value": None},
+        "fiber": {"status": "unknown", "value": None},
         "ingredients": [
             {
                 "index": 1,
@@ -35,6 +36,7 @@ def presentation() -> dict[str, object]:
                     "carbs": None,
                     "protein": 0,
                     "fat": None,
+                    "fiber": None,
                 },
             }
         ],
@@ -62,7 +64,7 @@ class PresentationValidationTests(unittest.TestCase):
             (("steps", 0, "index"), (0, -1)),
             (("steps", 0, "description"), ("", "x" * 201)),
         ]
-        for field in ("kcal", "carbs", "protein", "fat"):
+        for field in ("kcal", "carbs", "protein", "fat", "fiber"):
             cases.extend(
                 [
                     ((field,), ({"status": "exact", "value": -1},)),
@@ -411,7 +413,7 @@ class PresentationValidationTests(unittest.TestCase):
                         model.model_validate(body)
                     with self.assertRaises(ValidationError):
                         model.model_validate_json(json.dumps(body))
-        for field in ("kcal", "carbs", "protein", "fat"):
+        for field in ("kcal", "carbs", "protein", "fat", "fiber"):
             for value in ("12.5", True, float("inf"), float("nan")):
                 body = presentation()
                 body[field] = value

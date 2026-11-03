@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import type { Mock } from 'vitest';
 import { ElementRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -14,19 +15,16 @@ import { FoodstuffTableControlService } from '../../services/foodstuff-table-con
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 
 describe('FoodstuffsTableComponent', () => {
-  const foodstuff: FoodstuffOut = {
+  const foodstuff: FoodstuffOut = foodstuffOut({
     id: 42,
     name: 'Tomate',
-    brand: null,
     unit: FoodstuffUnit.Gram,
-    imageId: null,
     unitVerbose: 'Gramm',
     kcal: 18,
     carbs: 3,
     protein: 1,
     fat: 0,
-    recipeVersionIds: [],
-  };
+  });
 
   let component: FoodstuffsTableComponent;
   let openDialog: Mock;

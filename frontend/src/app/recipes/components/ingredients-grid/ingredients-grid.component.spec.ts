@@ -1,3 +1,4 @@
+import { recipePresentation } from '../../../testing/recipe.fixtures';
 import { TestBed } from '@angular/core/testing';
 import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
 import type { RecipePresentation } from '../../models/recipe-presentation';
@@ -20,14 +21,11 @@ describe('IngredientsGridComponent foodstuff images', () => {
       carbs: 3,
       protein: 1,
       fat: 0,
+      fiber: null,
     };
-    const recipe: RecipePresentation = {
+    const recipe: RecipePresentation = recipePresentation({
       servings: 2,
-      preptime: null,
-      kcal: { value: null, status: 'unknown' },
-      carbs: { value: null, status: 'unknown' },
-      protein: { value: null, status: 'unknown' },
-      fat: { value: null, status: 'unknown' },
+
       ingredients: [
         { index: 2, amount: 10, foodstuff: { ...tomato, name: 'Salz' } },
         {
@@ -37,7 +35,7 @@ describe('IngredientsGridComponent foodstuff images', () => {
         },
       ],
       steps: [],
-    };
+    });
     const fixture = TestBed.createComponent(IngredientsGridComponent);
     fixture.componentRef.setInput('recipe', recipe);
     fixture.detectChanges();
