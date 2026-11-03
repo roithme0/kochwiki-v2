@@ -14,11 +14,15 @@
 }
 
 .character {
-  opacity: 0;
-  animation: reveal 1ms steps(1, end) forwards;
+  opacity: 1;
+  animation: reveal 1ms steps(1, end) backwards;
 }
 
 @keyframes reveal {
+  from {
+    opacity: 0;
+  }
+
   to {
     opacity: 1;
   }
