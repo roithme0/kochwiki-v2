@@ -16,7 +16,11 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
+from app.recipes.schemas.proposal import (
+    RecipeProposalCreate,
+    RecipeProposalOut,
+    TemporaryProposalFoodstuff,
+)
 from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.foodstuffs.services.foodstuffs import (
@@ -25,6 +29,9 @@ from app.foodstuffs.services.foodstuffs import (
     update_foodstuff,
 )
 from app.recipes.services.proposal_saves import save_recipe_proposal
+from app.recipes.services.proposal_presentations import (
+    resolve_recipe_proposal_presentation,
+)
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.recipes import (
@@ -104,6 +111,47 @@ def counts() -> list[int | None]:
                 Step,
             )
         ]
+
+
+@pytest.mark.parametrize("fiber", [None, Decimal(0), Decimal("8.5")])
+def test_fiber_survives_proposal_refinement_resolution_save_and_readback(
+    fiber: Decimal | None,
+) -> None:
+    store, original, lineage_id, foodstuff_id = prepare()
+    recipe = original.recipe.model_copy(deep=True)
+    temporary = recipe.ingredients[1].foodstuff
+    assert isinstance(temporary, TemporaryProposalFoodstuff)
+    temporary.definition.fiber = fiber
+    with SessionLocal.begin() as session:
+        update_foodstuff(
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(fiber=Decimal(4)),
+            owner_id=fixture_owner_id(session),
+        )
+        refined = store.create(
+            session,
+            RecipeProposalCreate(
+                sourceRecipeVersionId=original.sourceRecipeVersionId,
+                baseProposalId=original.proposalId,
+                recipe=recipe,
+            ),
+            user_id=recipe_owner_id(session),
+        )
+        presentation = resolve_recipe_proposal_presentation(
+            session, store, refined.proposalId, user_id=recipe_owner_id(session)
+        )
+    saved = save_recipe_proposal(
+        SessionLocal, store, refined.proposalId, user_id=recipe_owner_id()
+    )
+    assert presentation.fiber == saved.fiber
+    assert saved.fiber.status == ("minimum" if fiber is None else "exact")
+    assert saved.fiber.value == Decimal(1) + (fiber or Decimal(0)) / 2
+    assert saved.ingredients[0].foodstuff.fiber == fiber
+    assert saved.ingredients[1].foodstuff.fiber == 4
+    with SessionLocal() as session:
+        persisted = get_recipe_version_by_id(session, lineage_id, saved.recipeVersionId)
+        assert persisted.ingredients[0].foodstuff.fiber == fiber
 
 
 def test_atomic_save_and_repeat_returns_current_version() -> None:

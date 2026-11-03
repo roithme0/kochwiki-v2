@@ -37,6 +37,9 @@ class Foodstuff(Base):
             "protein IS NULL OR protein >= 0", name="ck_foodstuff_protein_nonnegative"
         ),
         CheckConstraint("fat IS NULL OR fat >= 0", name="ck_foodstuff_fat_nonnegative"),
+        CheckConstraint(
+            "fiber IS NULL OR fiber >= 0", name="ck_foodstuff_fiber_nonnegative"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -53,4 +56,5 @@ class Foodstuff(Base):
     carbs: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     protein: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     fat: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
+    fiber: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     ingredients: Mapped[list[Ingredient]] = relationship(back_populates="foodstuff")

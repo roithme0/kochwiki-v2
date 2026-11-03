@@ -64,6 +64,9 @@ def resolve_recipe_proposal_presentation(
             total_nutrition(nutrition_ingredients, "protein"), recipe.servings
         ),
         fat=per_serving(total_nutrition(nutrition_ingredients, "fat"), recipe.servings),
+        fiber=per_serving(
+            total_nutrition(nutrition_ingredients, "fiber"), recipe.servings
+        ),
         ingredients=ingredients,
         steps=[
             RecipePresentationStepOut(index=step.index, description=step.description)

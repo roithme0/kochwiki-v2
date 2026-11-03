@@ -114,6 +114,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                             "carbs": 6,
                             "protein": 1,
                             "fat": 0,
+                            "fiber": 1.5,
                         },
                     ]:
                         result = await client.call_tool(
@@ -157,11 +158,12 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                         {"name": "Missing unit"},
                         *(
                             {"name": "Missing unit", field: 0}
-                            for field in ["kcal", "carbs", "protein", "fat"]
+                            for field in ["kcal", "carbs", "protein", "fat", "fiber"]
                         ),
                         {"name": "Null unit", "unit": None, "protein": 1},
                         {"name": "Invalid unit", "unit": "KG"},
                         {"name": "Negative", "unit": "G", "kcal": -1},
+                        {"name": "Negative fiber", "unit": "G", "fiber": -1},
                         {"name": "Unknown field", "unit": "G", "unexpected": True},
                     ]:
                         assert (
@@ -302,7 +304,9 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                     assert tool.annotations.destructive_hint is True
                     for changes, expected_refresh in [
                         ({"protein": 0}, []),
+                        ({"fiber": 0}, []),
                         ({"unit": "PIECE"}, []),
+                        ({"fiber": None}, []),
                         ({"name": "Whole milk"}, [target_id]),
                         ({"brand": None, "kcal": None}, [target_id, target_id]),
                     ]:
@@ -325,6 +329,7 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                             assert persisted.protein == Decimal(0)
                             if "unit" in changes:
                                 assert persisted.unit == Unit.PIECE
+                                assert persisted.fiber == Decimal(0)
                                 assert persisted.kcal == Decimal(40)
                             for field, value in (
                                 FoodstuffUpdate.model_validate(changes)

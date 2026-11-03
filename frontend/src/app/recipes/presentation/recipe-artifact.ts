@@ -15,6 +15,7 @@ const foodstuffSchema = z.pick(zFoodstuffSummaryOut, {
   carbs: true,
   protein: true,
   fat: true,
+  fiber: true,
 });
 
 const recipePresentationSchema = z.extend(zRecipePresentationOut, {

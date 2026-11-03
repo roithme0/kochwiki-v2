@@ -1,3 +1,6 @@
+import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
+import { foodstuffSummary } from '../../../testing/foodstuff.fixtures';
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import { By } from '@angular/platform-browser';
 import { RecipeIngredientsFormComponent } from '../forms/recipe-ingredients-form/recipe-ingredients-form.component';
 import type { RecipeVersionOut } from '../../../core/api/generated';
@@ -30,9 +33,7 @@ describe('RecipeEditorComponent', () => {
   let closing: Subject<void>;
   const imageId = '00000000-0000-4000-8000-000000000003';
 
-  const recipeVersion: RecipeVersionOut = {
-    imageId: null,
-    imageDimensions: null,
+  const recipeVersion: RecipeVersionOut = recipeVersionOut({
     ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-0000-0000-000000000001',
@@ -42,13 +43,9 @@ describe('RecipeEditorComponent', () => {
     name: 'Linsensuppe',
     servings: 2,
     preptime: 20,
-    kcal: { status: 'unknown' as const, value: null },
-    carbs: { status: 'unknown' as const, value: null },
-    protein: { status: 'unknown' as const, value: null },
-    fat: { status: 'unknown' as const, value: null },
     ingredients: [],
     steps: [],
-  };
+  });
 
   beforeEach(async () => {
     revokeObjectURL.mockClear();
@@ -520,19 +517,13 @@ describe('RecipeEditorComponent', () => {
   it.each(['active', 'draft'] as const)(
     'preserves existing ingredients and amounts in %s mode with fixed foodstuffs',
     async (mode) => {
-      const foodstuff = {
+      const foodstuff = foodstuffOut({
         id: 1,
         name: 'Pasta',
         brand: 'Barilla',
-        unit: 'G' as const,
-        imageId: null,
+        unit: 'G',
         unitVerbose: 'g',
-        kcal: null,
-        carbs: null,
-        protein: null,
-        fat: null,
-        recipeVersionIds: [],
-      };
+      });
       const version = {
         ...recipeVersion,
         state: mode,
@@ -797,18 +788,9 @@ describe('RecipeEditorComponent', () => {
     const ingredientForm = fixture.debugElement.query(
       By.directive(RecipeIngredientsFormComponent),
     ).componentInstance as RecipeIngredientsFormComponent;
-    ingredientForm.addIngredient({
-      id: 1,
-      name: 'Pasta',
-      brand: null,
-      unit: 'G',
-      imageId: null,
-      unitVerbose: 'g',
-      kcal: null,
-      carbs: null,
-      protein: null,
-      fat: null,
-    });
+    ingredientForm.addIngredient(
+      foodstuffSummary({ id: 1, name: 'Pasta', unit: 'G', unitVerbose: 'g' }),
+    );
     fixture.detectChanges();
 
     (

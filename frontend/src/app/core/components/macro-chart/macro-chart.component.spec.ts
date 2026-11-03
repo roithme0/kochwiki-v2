@@ -1,3 +1,4 @@
+import { nutritionSummary } from '../../../testing/nutrition.fixtures';
 import { toNutritionSummary } from '../../models/nutrition-result';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import type { Chart } from 'chart.js';
@@ -30,6 +31,7 @@ describe('MacroChartComponent', () => {
         carbs: 40,
         protein: 20,
         fat: 10,
+        fiber: null,
       }),
     );
   });
@@ -37,6 +39,31 @@ describe('MacroChartComponent', () => {
   afterEach(() => {
     fixture.destroy();
     vi.restoreAllMocks();
+  });
+
+  it('keeps fiber out of the macro distribution and legend regardless of completeness', () => {
+    for (const fiber of [null, 0, 1000]) {
+      fixture.componentRef.setInput(
+        'nutrition',
+        toNutritionSummary({
+          kcal: 420,
+          carbs: 40,
+          protein: 20,
+          fat: 10,
+          fiber,
+        }),
+      );
+      fixture.detectChanges();
+      expect(fixture.componentInstance.dataIncompleteOrInvalid()).toBe(false);
+      expect(fixture.componentInstance.chart?.data.datasets[0].data).toEqual([
+        40, 20, 10,
+      ]);
+      expect(Object.keys(fixture.componentInstance.legend())).toEqual([
+        'carbs',
+        'protein',
+        'fat',
+      ]);
+    }
   });
 
   it('centers the kcal overlay across the full chart area', () => {
@@ -58,6 +85,7 @@ describe('MacroChartComponent', () => {
         carbs: 40,
         protein: 20,
         fat: 10,
+        fiber: null,
       }),
     );
     fixture.detectChanges();
@@ -69,12 +97,16 @@ describe('MacroChartComponent', () => {
   });
 
   it('formats calorie status internally and preserves minimum macros in the legend', () => {
-    fixture.componentRef.setInput('nutrition', {
-      kcal: { status: 'minimum', value: 420.9 },
-      carbs: { status: 'minimum', value: 12 },
-      protein: { status: 'exact', value: 6 },
-      fat: { status: 'exact', value: 2 },
-    });
+    fixture.componentRef.setInput(
+      'nutrition',
+      nutritionSummary({
+        kcal: { status: 'minimum', value: 420.9 },
+        carbs: { status: 'minimum', value: 12 },
+        protein: { status: 'exact', value: 6 },
+        fat: { status: 'exact', value: 2 },
+        fiber: { status: 'unknown' as const, value: null },
+      }),
+    );
     fixture.detectChanges();
     expect(
       (fixture.nativeElement as HTMLElement)
@@ -92,12 +124,16 @@ describe('MacroChartComponent', () => {
       ),
     ).toBe(true);
 
-    fixture.componentRef.setInput('nutrition', {
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'exact', value: 12 },
-      protein: { status: 'exact', value: 6 },
-      fat: { status: 'exact', value: 2 },
-    });
+    fixture.componentRef.setInput(
+      'nutrition',
+      nutritionSummary({
+        kcal: { status: 'unknown', value: null },
+        carbs: { status: 'exact', value: 12 },
+        protein: { status: 'exact', value: 6 },
+        fat: { status: 'exact', value: 2 },
+        fiber: { status: 'unknown' as const, value: null },
+      }),
+    );
     fixture.detectChanges();
     expect(
       (fixture.nativeElement as HTMLElement)

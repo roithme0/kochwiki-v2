@@ -110,6 +110,7 @@ describe('FoodstuffFormComponent', () => {
       carbs: { status: 'exact', value: 15 },
       protein: { status: 'exact', value: 7 },
       fat: { status: 'exact', value: 1 },
+      fiber: { status: 'unknown' as const, value: null },
     });
   });
 
@@ -118,6 +119,30 @@ describe('FoodstuffFormComponent', () => {
     Object.defineProperty(input, 'files', { value: { item: () => file } });
     component.image.selectImage(input);
   }
+
+  it('omits recorded fiber from manual edits rather than submitting a stale value', async () => {
+    fixture.componentRef.setInput('foodstuff', {
+      name: 'Oats',
+      unit: 'G',
+      fiber: 8.5,
+    });
+    const submitted = vi.fn();
+    component.submitted.subscribe(submitted);
+    fixture.detectChanges();
+    component.form.controls.name.setValue('Rolled oats');
+    await component.onSubmit();
+    expect(submitted).toHaveBeenCalledOnce();
+    expect(submitted.mock.calls[0][0]).toMatchObject({
+      name: 'Rolled oats',
+      unit: 'G',
+    });
+    expect(submitted.mock.calls[0][0]).not.toHaveProperty('fiber');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '[formControlName="fiber"]',
+      ),
+    ).toBeNull();
+  });
 
   function validForm(): void {
     fixture.detectChanges();

@@ -30,6 +30,7 @@ def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:
         carbs=foodstuff.carbs,
         protein=foodstuff.protein,
         fat=foodstuff.fat,
+        fiber=foodstuff.fiber,
     )
 
 
@@ -46,6 +47,7 @@ def foodstuff_out(foodstuff: Foodstuff) -> FoodstuffOut:
         carbs=summary.carbs,
         protein=summary.protein,
         fat=summary.fat,
+        fiber=summary.fiber,
         recipeVersionIds=sorted(
             {ingredient.recipe_version_id for ingredient in foodstuff.ingredients}
         ),

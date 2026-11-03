@@ -1,3 +1,4 @@
+import { nutritionSummary } from '../../../testing/nutrition.fixtures';
 import type { UserOut } from '../../../core/api/generated';
 import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -37,7 +38,7 @@ import {
   conversationRecipe,
   conversationUsage,
   proposalId,
-} from '../../conversation/recipe-conversation.fixtures';
+} from '../../../testing/conversation.fixtures';
 import { RecipeConversationPageComponent } from './recipe-conversation-page.component';
 
 function requestUrl(input: Parameters<typeof fetch>[0]): string {
@@ -277,7 +278,14 @@ describe('Recipe conversation page through published session controller and HTTP
         content: {
           title: 'Linsen',
           subtitle: 'Meine Marke',
-          payload: { unit: 'G', kcal: 200, carbs: 12, protein: 8, fat: 4 },
+          payload: {
+            unit: 'G',
+            kcal: 200,
+            carbs: 12,
+            protein: 8,
+            fat: 4,
+            fiber: 5,
+          },
         },
       },
     ]);
@@ -321,6 +329,7 @@ describe('Recipe conversation page through published session controller and HTTP
         carbs: { status: 'unknown', value: null },
         protein: { status: 'exact', value: 8 },
         fat: { status: 'minimum', value: 0 },
+        fiber: { status: 'unknown' as const, value: null },
       };
       await submitArtifacts(page, [
         {
@@ -367,12 +376,9 @@ describe('Recipe conversation page through published session controller and HTTP
   it('renders a recipe with temporary ingredients and preparation time without saving or fetching', async () => {
     const page = await open();
     const payload = {
+      ...nutritionSummary(),
       servings: 2,
       preptime: 25,
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'unknown', value: null },
-      protein: { status: 'unknown', value: null },
-      fat: { status: 'unknown', value: null },
       ingredients: [
         {
           index: 1,
@@ -385,6 +391,7 @@ describe('Recipe conversation page through published session controller and HTTP
             carbs: null,
             protein: null,
             fat: null,
+            fiber: null,
           },
         },
       ],

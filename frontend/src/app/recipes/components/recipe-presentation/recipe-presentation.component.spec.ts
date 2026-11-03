@@ -1,3 +1,4 @@
+import { recipePresentation } from '../../../testing/recipe.fixtures';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { IngredientsGridComponent } from '../ingredients-grid/ingredients-grid.component';
@@ -21,13 +22,13 @@ describe('RecipePresentationComponent', () => {
   });
 
   it('composes all recipe sections from persistence-independent display data', () => {
-    const recipe: RecipePresentation = {
+    const recipe: RecipePresentation = recipePresentation({
       servings: 2,
       preptime: 25,
-      kcal: { status: 'exact' as const, value: 450 },
-      carbs: { status: 'exact' as const, value: 50 },
-      protein: { status: 'exact' as const, value: 20 },
-      fat: { status: 'exact' as const, value: 12 },
+      kcal: { status: 'exact', value: 450 },
+      carbs: { status: 'exact', value: 50 },
+      protein: { status: 'exact', value: 20 },
+      fat: { status: 'exact', value: 12 },
       ingredients: [
         {
           index: 1,
@@ -40,11 +41,12 @@ describe('RecipePresentationComponent', () => {
             carbs: 3.9,
             protein: 0.9,
             fat: 0.2,
+            fiber: null,
           },
         },
       ],
       steps: [{ index: 1, description: 'Tomaten schneiden.' }],
-    };
+    });
     fixture.componentRef.setInput('recipe', recipe);
     fixture.detectChanges();
 

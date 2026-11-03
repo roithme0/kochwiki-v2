@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, input, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -228,9 +229,7 @@ function recipeVersion(
   lastModified: string,
   state: RecipeVersionOut['state'],
 ): RecipeVersionOut {
-  return {
-    imageId: null,
-    imageDimensions: null,
+  return recipeVersionOut({
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     ownerId: 1,
     recipeVersionId,
@@ -239,12 +238,7 @@ function recipeVersion(
     lastModified,
     name: 'Recipe',
     servings: 1,
-    preptime: null,
-    kcal: { status: 'unknown' as const, value: null },
-    carbs: { status: 'unknown' as const, value: null },
-    protein: { status: 'unknown' as const, value: null },
-    fat: { status: 'unknown' as const, value: null },
     ingredients: [],
     steps: [],
-  };
+  });
 }

@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../testing/foodstuff.fixtures';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -10,10 +11,9 @@ import { FoodstuffUnit } from '../models/foodstuff-unit';
 import { backendUrl } from '../../core/constants/api';
 import { ApiContractError } from '../../core/api/api-contract-error';
 
-const foodstuff: FoodstuffOut = {
+const foodstuff: FoodstuffOut = foodstuffOut({
   id: 7,
   name: 'Oats',
-  brand: null,
   unit: FoodstuffUnit.Gram,
   imageId: '00000000-0000-4000-8000-000000000002',
   unitVerbose: 'Gramm',
@@ -21,8 +21,9 @@ const foodstuff: FoodstuffOut = {
   carbs: 60,
   protein: null,
   fat: 7,
+  fiber: null,
   recipeVersionIds: ['00000000-0000-4000-8000-000000000001'],
-};
+});
 
 const operations: {
   method: string;
@@ -197,19 +198,17 @@ describe('FoodstuffBackendService', () => {
 
   it('sends foodstuff updates to the matching patch endpoint', async () => {
     const updates: FoodstuffUpdate = { name: 'Updated foodstuff' };
-    const foodstuff: FoodstuffOut = {
+    const foodstuff: FoodstuffOut = foodstuffOut({
       id: 7,
       name: 'Updated foodstuff',
-      brand: null,
       unit: FoodstuffUnit.Gram,
-      imageId: null,
       unitVerbose: 'Gramm',
       kcal: null,
       carbs: null,
       protein: null,
       fat: null,
-      recipeVersionIds: [],
-    };
+      fiber: null,
+    });
 
     const responsePromise = service.patchFoodstuff(foodstuff.id, updates);
 

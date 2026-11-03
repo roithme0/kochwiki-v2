@@ -109,6 +109,7 @@ class ResolvedProposalFoodstuffFields(BaseModel):
     carbs: NonnegativeJsonDecimal | None
     protein: NonnegativeJsonDecimal | None
     fat: NonnegativeJsonDecimal | None
+    fiber: NonnegativeJsonDecimal | None
 
 
 class ResolvedExistingProposalFoodstuff(ResolvedProposalFoodstuffFields):
@@ -136,6 +137,7 @@ class RecipeProposalPresentationOut(RecipeVersionFields):
     carbs: NutrientResult
     protein: NutrientResult
     fat: NutrientResult
+    fiber: NutrientResult
     ingredients: list[ProposalPresentationIngredientOut]
     steps: list[RecipePresentationStepOut]
 

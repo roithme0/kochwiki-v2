@@ -258,6 +258,7 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
     total_carbs = total_nutrition(version.ingredients, "carbs")
     total_protein = total_nutrition(version.ingredients, "protein")
     total_fat = total_nutrition(version.ingredients, "fat")
+    total_fiber = total_nutrition(version.ingredients, "fiber")
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
@@ -280,6 +281,7 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         carbs=per_serving(total_carbs, version.servings),
         protein=per_serving(total_protein, version.servings),
         fat=per_serving(total_fat, version.servings),
+        fiber=per_serving(total_fiber, version.servings),
         ingredients=[
             ingredient_out(item)
             for item in sorted(version.ingredients, key=lambda item: item.index)
@@ -325,6 +327,9 @@ def resolve_recipe_presentation(
         ),
         fat=per_serving(
             total_nutrition(nutrition_ingredients, "fat"), payload.servings
+        ),
+        fiber=per_serving(
+            total_nutrition(nutrition_ingredients, "fiber"), payload.servings
         ),
         ingredients=ingredients,
         steps=[

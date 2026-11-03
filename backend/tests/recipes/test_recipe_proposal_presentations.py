@@ -54,6 +54,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
                 carbs=Decimal(10),
                 protein=Decimal(0),
                 fat=Decimal(4),
+                fiber=Decimal(2),
             ),
             owner_id=fixture_owner_id(session),
         )
@@ -80,6 +81,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
                                         "carbs": 20,
                                         "protein": 0,
                                         "fat": 8,
+                                        "fiber": 6,
                                     },
                                 },
                             },
@@ -124,6 +126,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
     )
     assert presentation.kcal.value == expected and presentation.carbs.value == 25
     assert presentation.protein.value == 0 and presentation.fat.value == 10
+    assert presentation.fiber.status == "exact" and presentation.fiber.value == 7
     assert [ingredient.index for ingredient in presentation.ingredients] == [1, 2]
     assert [step.description for step in presentation.steps] == ["Mix", "Serve"]
     persisted = presentation.ingredients[0].foodstuff

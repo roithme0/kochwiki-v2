@@ -55,6 +55,7 @@ export function calculateDraftNutrition(
       carbs: calculate('carbs'),
       protein: calculate('protein'),
       fat: calculate('fat'),
+      fiber: calculate('fiber'),
     },
   };
 }

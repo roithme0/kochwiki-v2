@@ -28,6 +28,7 @@ def ingredient(
         carbs=value,
         protein=value,
         fat=value,
+        fiber=value,
     )
     return ResolvedNutritionIngredient(amount=Decimal(amount), foodstuff=foodstuff)
 
@@ -39,12 +40,14 @@ class NutritionTests(unittest.TestCase):
                 known = ingredient(unit, amount, 25)
                 missing = ingredient(unit, 100, None)
                 for ingredients in ([known, missing], [missing, known]):
-                    result = per_serving(total_nutrition(ingredients, "carbs"), 2)
-                    self.assertEqual(result.status, "minimum")
-                    self.assertEqual(result.value, Decimal(25))
-                exact = per_serving(total_nutrition([known], "carbs"), 2)
-                self.assertEqual(exact.status, "exact")
-                self.assertEqual(exact.value, Decimal(25))
+                    for field in ("carbs", "fiber"):
+                        result = per_serving(total_nutrition(ingredients, field), 2)
+                        self.assertEqual(result.status, "minimum")
+                        self.assertEqual(result.value, Decimal(25))
+                for field in ("carbs", "fiber"):
+                    exact = per_serving(total_nutrition([known], field), 2)
+                    self.assertEqual(exact.status, "exact")
+                    self.assertEqual(exact.value, Decimal(25))
 
     def test_zero_and_unknown_are_distinct(self) -> None:
         zero = ingredient(Unit.G, 100, 0)
@@ -56,14 +59,29 @@ class NutritionTests(unittest.TestCase):
             ([zero, missing], "minimum", Decimal(0)),
         ):
             with self.subTest(status=status, ingredients=ingredients):
-                result = per_serving(total_nutrition(ingredients, "fat"), 2)
-                self.assertEqual((result.status, result.value), (status, value))
+                for field in ("fat", "fiber"):
+                    result = per_serving(total_nutrition(ingredients, field), 2)
+                    self.assertEqual((result.status, result.value), (status, value))
+
+    def test_fiber_completeness_is_independent_of_recorded_macros(self) -> None:
+        first = ingredient(Unit.G, 100, 20)
+        second = ingredient(Unit.G, 100, 10)
+        first.foodstuff.fiber = None
+        fiber = per_serving(total_nutrition([first, second], "fiber"), 2)
+        self.assertEqual((fiber.status, fiber.value), ("minimum", Decimal(5)))
+        self.assertEqual(total_nutrition([first, second], "carbs").status, "exact")
 
     def test_completeness_is_independent_per_nutrient(self) -> None:
         first = ingredient(Unit.G, 100, 20)
         second = ingredient(Unit.G, 100, 10)
         second.foodstuff.protein = None
-        fields: tuple[NutritionField, ...] = ("kcal", "carbs", "protein", "fat")
+        fields: tuple[NutritionField, ...] = (
+            "kcal",
+            "carbs",
+            "protein",
+            "fat",
+            "fiber",
+        )
         for field in fields:
             result = per_serving(total_nutrition([first, second], field), 2)
             self.assertEqual(

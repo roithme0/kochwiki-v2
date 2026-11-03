@@ -9,7 +9,7 @@ Foodstuffs are user-owned catalogue entries used by [recipes](recipes.md) as ing
 | Foodstuff (`Foodstuff`, Lebensmittel) | A named food or product with a unit, optional brand, nutrition values, and image. |
 | Brand (`brand`, Marke) | Optional manufacturer or product brand distinguishing a foodstuff. |
 | Unit (`unit`, Einheit) | How an ingredient amount is measured: grams (`G`, g), millilitres (`ML`, ml), or pieces (`PIECE`, Stk.). |
-| Nutrition values (Nährwerte) | Energy (`kcal`) and amounts of carbohydrate (`carbs`), protein (`protein`), and fat (`fat`). Each value may be unknown independently. |
+| Nutrition values (Nährwerte) | Energy (`kcal`) and amounts of carbohydrate (`carbs`), protein (`protein`), fat (`fat`), and dietary fiber (`fiber`, grams). Each value may be unknown independently. |
 | Nutrition basis | Values apply per 100 g, per 100 ml, or per piece, according to the foodstuff's unit. |
 
 ## Important distinctions

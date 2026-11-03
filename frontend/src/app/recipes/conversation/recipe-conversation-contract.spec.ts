@@ -13,7 +13,7 @@ import {
 import {
   conversationProposal,
   conversationRecipe,
-} from './recipe-conversation.fixtures';
+} from '../../testing/conversation.fixtures';
 
 const validPayload = conversationProposal().content.payload;
 if (
@@ -35,6 +35,13 @@ describe('Recipe conversation contract', () => {
         RECIPE_ARTIFACT_CAPABILITY,
         NUTRITION_ARTIFACT_CAPABILITY,
       ],
+    });
+    source.ingredients[0].foodstuff.fiber = 99;
+    source.fiber.value = 99;
+    expect(input.initial_context.source.ingredients[0].foodstuff.fiber).toBe(7);
+    expect(input.initial_context.source.fiber).toEqual({
+      status: 'minimum',
+      value: 3.5,
     });
     source.ingredients[0].foodstuff.name = 'Changed';
     expect(input.initial_context.source.ingredients[0].foodstuff.name).toBe(
@@ -71,6 +78,12 @@ describe('Recipe conversation contract', () => {
     if (!isRecipePresentation(artifact.payload))
       throw new Error('Invalid fixture');
     expect(artifact.payload.kcal).toEqual({ status: 'exact', value: 987 });
+    expect(artifact.payload.fiber).toEqual({ status: 'minimum', value: 3.5 });
+    expect(artifact.payload.ingredients[0].foodstuff.fiber).toBe(7);
+    source.fiber.value = 99;
+    source.ingredients[0].foodstuff.fiber = 99;
+    expect(artifact.payload.fiber.value).toBe(3.5);
+    expect(artifact.payload.ingredients[0].foodstuff.fiber).toBe(7);
     source.kcal.value = 1;
     expect(artifact.payload.kcal).toEqual({ status: 'exact', value: 987 });
     expect(artifact.payload.ingredients[0].foodstuff.name).toBe('Linsen');

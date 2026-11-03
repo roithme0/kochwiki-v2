@@ -1,3 +1,4 @@
+import { nutritionSummary } from '../../../testing/nutrition.fixtures';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   NutritionSummary,
@@ -14,6 +15,7 @@ describe('NutritionCardComponent', () => {
     carbs: 40,
     protein: 20,
     fat: 10,
+    fiber: null,
   });
 
   beforeEach(() => {
@@ -37,12 +39,15 @@ describe('NutritionCardComponent', () => {
   }
 
   it('shows saved-recipe lower bounds and unknowns without misleading percentages', () => {
-    const element = render({
-      kcal: { status: 'minimum', value: 120.9 },
-      carbs: { status: 'exact', value: 15 },
-      protein: { status: 'minimum', value: 3.29 },
-      fat: { status: 'unknown', value: null },
-    });
+    const element = render(
+      nutritionSummary({
+        kcal: { status: 'minimum', value: 120.9 },
+        carbs: { status: 'exact', value: 15 },
+        protein: { status: 'minimum', value: 3.29 },
+        fat: { status: 'unknown', value: null },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
       .componentInstance as MacroChartComponent;
     expect(chart.dataIncompleteOrInvalid()).toBe(true);
@@ -54,35 +59,44 @@ describe('NutritionCardComponent', () => {
     ).toEqual(['15\u00a0g', '≥ 3.2\u00a0g', '—']);
     expect(element.querySelector('.value-percentage')).toBeNull();
 
-    render({
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'exact', value: 15 },
-      protein: { status: 'exact', value: 3 },
-      fat: { status: 'exact', value: 2 },
-    });
+    render(
+      nutritionSummary({
+        kcal: { status: 'unknown', value: null },
+        carbs: { status: 'exact', value: 15 },
+        protein: { status: 'exact', value: 3 },
+        fat: { status: 'exact', value: 2 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     expect(chart.dataIncompleteOrInvalid()).toBe(false);
     expect(chart.displayedKcal()).toBe('— kcal');
     expect(element.querySelectorAll('.value-percentage').length).toBe(3);
   });
 
   it('keeps a gray ring for unknown or all-zero recipe macros and distinguishes minimum zero', () => {
-    const element = render({
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'unknown', value: null },
-      protein: { status: 'minimum', value: 0 },
-      fat: { status: 'exact', value: 0 },
-    });
+    const element = render(
+      nutritionSummary({
+        kcal: { status: 'unknown', value: null },
+        carbs: { status: 'unknown', value: null },
+        protein: { status: 'minimum', value: 0 },
+        fat: { status: 'exact', value: 0 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     expect(
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
     ).toEqual(['—', '≥ 0\u00a0g', '0\u00a0g']);
-    render({
-      kcal: { status: 'exact', value: 0 },
-      carbs: { status: 'exact', value: 0 },
-      protein: { status: 'exact', value: 0 },
-      fat: { status: 'exact', value: 0 },
-    });
+    render(
+      nutritionSummary({
+        kcal: { status: 'exact', value: 0 },
+        carbs: { status: 'exact', value: 0 },
+        protein: { status: 'exact', value: 0 },
+        fat: { status: 'exact', value: 0 },
+        fiber: { status: 'unknown', value: null },
+      }),
+    );
     const chart = fixture.debugElement.query(By.directive(MacroChartComponent))
       .componentInstance as MacroChartComponent;
     expect(chart.dataIncompleteOrInvalid()).toBe(true);
@@ -165,6 +179,7 @@ describe('NutritionCardComponent', () => {
       render({
         ...nutrition,
         fat: { status: 'unknown', value: null },
+        fiber: { status: 'unknown' as const, value: null },
       }).querySelector('.value-percentage'),
     ).toBeNull();
     render(toNutritionSummary({ carbs: 0, protein: 0, fat: 0 }));

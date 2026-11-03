@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../../testing/foodstuff.fixtures';
 import { Subject } from 'rxjs';
 
 import { Component, input } from '@angular/core';
@@ -39,19 +40,16 @@ describe('RecipeIngredientsFormComponent', () => {
   let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
   let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
-  const foodstuff: FoodstuffOut = {
+  const foodstuff: FoodstuffOut = foodstuffOut({
     id: 1,
     name: 'Haferflocken',
-    brand: null,
     unit: FoodstuffUnit.Gram,
-    imageId: null,
     unitVerbose: 'g',
     kcal: 370,
     carbs: 60,
     protein: 13,
     fat: 7,
-    recipeVersionIds: [],
-  };
+  });
 
   beforeEach(async () => {
     download
