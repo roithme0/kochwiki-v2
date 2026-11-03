@@ -1,6 +1,11 @@
 import { BackendMetaService } from '../../core/services/backend-meta.service';
 import { PageHeaderComponent } from '../../core/components/page-header/page-header.component';
-import { signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  createEnvironmentInjector,
+  EnvironmentInjector,
+  signal,
+} from '@angular/core';
 import type { PresentedSession } from '@roithme0/chat-ui/conversation';
 import { provideHttpClient } from '@angular/common/http';
 import {
@@ -24,7 +29,7 @@ import {
   conversationProposal,
   conversationRecipe,
   conversationUsage,
-} from './recipe-conversation.fixtures';
+} from '../../testing/conversation.fixtures';
 import { routes } from '../../app.routes';
 
 describe('Version-specific conversation routing', () => {
@@ -226,8 +231,16 @@ describe('Version-specific conversation routing', () => {
     TestBed.overrideProvider(ActiveUserService, {
       useFactory: () => new ActiveUserService(),
     });
+    const assign = vi.fn();
     TestBed.overrideProvider(AuthNavigationService, {
-      useFactory: () => new AuthNavigationService(),
+      useFactory: () =>
+        createEnvironmentInjector(
+          [
+            { provide: DOCUMENT, useValue: { location: { assign } } },
+            AuthNavigationService,
+          ],
+          TestBed.inject(EnvironmentInjector),
+        ).get(AuthNavigationService),
     });
     const auth = TestBed.inject(ActiveUserService);
     const http = TestBed.inject(HttpTestingController);
@@ -258,9 +271,13 @@ describe('Version-specific conversation routing', () => {
     const logout = header.logout();
     http
       .expectOne('/api/auth/logout')
-      .flush(null, { status: 204, statusText: 'No Content' });
+      .flush({ redirect_url: 'https://idp.example/logout' });
     await logout;
-    expect(TestBed.inject(Router).url).toBe('/signed-out');
+    harness.detectChanges();
+    await harness.fixture.whenStable();
+    expect(assign).toHaveBeenCalledExactlyOnceWith(
+      'https://idp.example/logout',
+    );
     expect(auth.activeUser()).toBeNull();
     expect(confirm).not.toHaveBeenCalled();
     expect(dismiss).toHaveBeenCalled();

@@ -98,7 +98,7 @@ def test_reads_reject_invalid_sessions_and_spoofed_identity(
 
 
 @pytest.mark.parametrize(("method", "path"), READS)
-def test_other_users_can_read_and_renew_their_session(
+def test_other_users_can_read_persisted_recipes_but_not_resolve_foreign_ingredients(
     client: TestClient,
     readable_recipe: RecipeVersionOut,
     sign_in: Callable[[TestClient], UserOut],
@@ -137,11 +137,17 @@ def test_other_users_can_read_and_renew_their_session(
         )
     assert previous_activity is not None
     response = client.request(method, path, json=payload)
-    assert response.status_code == 200
-    assert response.json() == expected.json()
-    assert response.headers["cache-control"] == "no-store"
-    assert "HttpOnly" in response.headers["set-cookie"]
-    assert "Max-Age=0" not in response.headers["set-cookie"]
+    if method == "POST":
+        assert response.status_code == 403
+        assert response.json() == {
+            "detail": "Only the foodstuff owner may modify or use this foodstuff"
+        }
+    else:
+        assert response.status_code == 200
+        assert response.json() == expected.json()
+        assert response.headers["cache-control"] == "no-store"
+        assert "HttpOnly" in response.headers["set-cookie"]
+        assert "Max-Age=0" not in response.headers["set-cookie"]
     with SessionLocal() as session:
         renewed_activity = session.scalar(
             select(ApplicationSession.last_activity_at).where(

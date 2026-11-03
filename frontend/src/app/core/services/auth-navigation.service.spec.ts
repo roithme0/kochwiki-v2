@@ -1,23 +1,19 @@
 import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
 import { ActiveUserService } from './active-user.service';
 import { AuthNavigationService } from './auth-navigation.service';
 
 describe('Browser authentication navigation', () => {
   const location = { assign: vi.fn() };
   const activeUser = { logout: vi.fn<ActiveUserService['logout']>() };
-  const router = { navigate: vi.fn().mockResolvedValue(true) };
 
   beforeEach(() => {
     location.assign.mockReset();
     activeUser.logout.mockReset();
-    router.navigate.mockClear();
     TestBed.configureTestingModule({
       providers: [
         { provide: DOCUMENT, useValue: { location } },
         { provide: ActiveUserService, useValue: activeUser },
-        { provide: Router, useValue: router },
       ],
     });
   });
@@ -31,27 +27,29 @@ describe('Browser authentication navigation', () => {
     expect(service.redirecting()).toBe(true);
   });
 
-  it('waits for confirmed logout before navigating to the signed-out page', async () => {
-    let confirm: (value: boolean) => void = () => {
+  it('waits for confirmed logout before navigating to the provider logout', async () => {
+    let confirm: (value: string | null) => void = () => {
       throw new Error('Missing logout resolver');
     };
     activeUser.logout.mockImplementation(
       () =>
-        new Promise<boolean>((resolve) => {
+        new Promise<string | null>((resolve) => {
           confirm = resolve;
         }),
     );
     const logout = TestBed.inject(AuthNavigationService).logout();
     expect(activeUser.logout).toHaveBeenCalledTimes(1);
-    expect(router.navigate).not.toHaveBeenCalled();
-    confirm(true);
+    expect(location.assign).not.toHaveBeenCalled();
+    confirm('https://idp.example/logout');
     await logout;
-    expect(router.navigate).toHaveBeenCalledExactlyOnceWith(['/signed-out']);
+    expect(location.assign).toHaveBeenCalledExactlyOnceWith(
+      'https://idp.example/logout',
+    );
   });
 
   it('does not navigate when logout is not confirmed', async () => {
-    activeUser.logout.mockResolvedValue(false);
+    activeUser.logout.mockResolvedValue(null);
     await TestBed.inject(AuthNavigationService).logout();
-    expect(router.navigate).not.toHaveBeenCalled();
+    expect(location.assign).not.toHaveBeenCalled();
   });
 });

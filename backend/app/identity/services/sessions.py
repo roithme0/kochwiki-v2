@@ -27,7 +27,10 @@ def secret_hash(secret: str | None) -> str | None:
 
 
 def establish_session(
-    session: Session, user_id: int, previous_secret: str | None
+    session: Session,
+    user_id: int,
+    previous_secret: str | None,
+    id_token: str | None = None,
 ) -> tuple[str, datetime]:
     previous_hash = secret_hash(previous_secret)
     if previous_hash is not None:
@@ -45,6 +48,7 @@ def establish_session(
         ApplicationSession(
             secret_hash=hashed,
             user_id=user_id,
+            id_token=id_token,
             created_at=now,
             last_activity_at=now,
             last_provider_check_at=None,
@@ -80,19 +84,14 @@ def authenticated_user(
     return user, row.last_activity_at + SESSION_LIFETIME
 
 
-def invalidate_session(session: Session, secret: str | None) -> bool:
+def invalidate_session(
+    session: Session, secret: str | None
+) -> ApplicationSession | None:
     hashed = secret_hash(secret)
     if hashed is None:
-        return False
-    return (
-        session.scalar(
-            delete(ApplicationSession)
-            .where(
-                ApplicationSession.secret_hash == hashed,
-                ApplicationSession.last_activity_at
-                > func.statement_timestamp() - SESSION_LIFETIME,
-            )
-            .returning(ApplicationSession.id)
-        )
-        is not None
-    )
+        return None
+    return session.scalars(
+        delete(ApplicationSession)
+        .where(ApplicationSession.secret_hash == hashed)
+        .returning(ApplicationSession)
+    ).one_or_none()

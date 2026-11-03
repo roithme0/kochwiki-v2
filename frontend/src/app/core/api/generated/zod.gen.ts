@@ -58,6 +58,13 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * LogoutOut
+ */
+export const zLogoutOut = z.object({
+    redirect_url: z.string()
+});
+
+/**
  * MinimumNutrition
  */
 export const zMinimumNutrition = z.strictObject({
@@ -200,6 +207,10 @@ export const zFoodstuffCreate = z.strictObject({
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
+    fiber: z.nullish(z.union([
+        z.number().check(z.gte(0)),
+        z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
+    ])),
     imageId: z.nullish(z.uuid()),
     kcal: z.nullish(z.union([
         z.number().check(z.gte(0)),
@@ -220,6 +231,7 @@ export const zFoodstuffOut = z.strictObject({
     brand: z.nullable(z.string()),
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
+    fiber: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
     imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
@@ -237,6 +249,7 @@ export const zFoodstuffSummaryOut = z.strictObject({
     brand: z.nullable(z.string()),
     carbs: z.nullable(z.number().check(z.gte(0))),
     fat: z.nullable(z.number().check(z.gte(0))),
+    fiber: z.nullable(z.number().check(z.gte(0))),
     id: z.int().check(z.gt(0)),
     imageId: z.nullable(z.uuid()),
     kcal: z.nullable(z.number().check(z.gte(0))),
@@ -256,6 +269,10 @@ export const zFoodstuffUpdate = z.strictObject({
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
     fat: z.nullish(z.union([
+        z.number().check(z.gte(0)),
+        z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
+    ])),
+    fiber: z.nullish(z.union([
         z.number().check(z.gte(0)),
         z.string().check(z.regex(/^(?!^[-+.]*$)[+-]?0*\d*\.?\d*$/))
     ])),
@@ -314,6 +331,11 @@ export const zRecipePresentationOut = z.strictObject({
         zMinimumNutrition,
         zUnknownNutrition
     ]),
+    fiber: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
     ingredients: z.array(zRecipePresentationIngredientOut),
     kcal: z.discriminatedUnion('status', [
         zExactNutrition,
@@ -341,6 +363,11 @@ export const zRecipeVersionOut = z.strictObject({
     ]),
     createdAt: z.iso.datetime(),
     fat: z.discriminatedUnion('status', [
+        zExactNutrition,
+        zMinimumNutrition,
+        zUnknownNutrition
+    ]),
+    fiber: z.discriminatedUnion('status', [
         zExactNutrition,
         zMinimumNutrition,
         zUnknownNutrition

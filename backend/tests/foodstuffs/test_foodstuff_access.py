@@ -87,13 +87,14 @@ def test_invalid_sessions_cannot_access_or_mutate_foodstuffs(
     assert response.headers["cache-control"] == "no-store"
     assert "Max-Age=0" in response.headers["set-cookie"]
     with SessionLocal() as session:
-        assert [foodstuff_out(item) for item in list_foodstuffs(session)] == [
-            shared_foodstuff
-        ]
+        assert [
+            foodstuff_out(item)
+            for item in list_foodstuffs(session, owner_id=recipe_session.id)
+        ] == [shared_foodstuff]
 
 
 @pytest.mark.parametrize(("method", "path", "status"), OPERATIONS)
-def test_other_users_can_access_and_mutate_shared_foodstuffs_and_renew_sessions(
+def test_other_users_can_read_but_not_mutate_foodstuffs_and_renew_sessions(
     client: TestClient,
     shared_foodstuff: FoodstuffOut,
     recipe_session: UserOut,
@@ -118,41 +119,39 @@ def test_other_users_can_access_and_mutate_shared_foodstuffs_and_renew_sessions(
     response = client.request(
         method, path.format(foodstuff_id=shared_foodstuff.id), json=payload_for(method)
     )
-    assert response.status_code == status
-    assert response.headers["cache-control"] == "no-store"
-    assert "HttpOnly" in response.headers["set-cookie"]
-    assert "Max-Age=0" not in response.headers["set-cookie"]
+    assert response.status_code == (403 if method in {"PATCH", "DELETE"} else status)
+    if method not in {"PATCH", "DELETE"}:
+        assert response.headers["cache-control"] == "no-store"
+        assert "HttpOnly" in response.headers["set-cookie"]
+        assert "Max-Age=0" not in response.headers["set-cookie"]
     with SessionLocal() as session:
         renewed_activity = session.scalar(
             select(ApplicationSession.last_activity_at).where(
                 ApplicationSession.secret_hash == secret_hash(secret),
             )
         )
-        saved = [foodstuff_out(item) for item in list_foodstuffs(session)]
-    assert renewed_activity is not None and renewed_activity > previous_activity
-    if method == "DELETE":
-        assert response.content == b""
-        assert saved == []
-    elif method == "POST":
+        saved = [
+            foodstuff_out(item)
+            for item in list_foodstuffs(session, owner_id=recipe_session.id)
+        ]
+    assert renewed_activity is not None
+    assert renewed_activity > previous_activity
+    assert saved == [shared_foodstuff]
+    if method == "POST":
         created = FoodstuffOut.model_validate(response.json())
         assert created.name == "New foodstuff"
-        assert saved == [shared_foodstuff, created]
-    elif method == "PATCH":
-        changed = shared_foodstuff.model_copy(
-            update={"name": "Updated foodstuff", "kcal": 123}
-        )
-        assert FoodstuffOut.model_validate(response.json()) == changed
-        assert saved == [changed]
-    else:
+        with SessionLocal() as session:
+            assert [
+                foodstuff_out(item)
+                for item in list_foodstuffs(session, owner_id=caller.id)
+            ] == [created]
+    elif method == "GET":
         assert response.json() == (
-            shared_foodstuff.model_dump(mode="json")
-            if "{foodstuff_id}" in path
-            else [shared_foodstuff.model_dump(mode="json")]
+            shared_foodstuff.model_dump(mode="json") if "{foodstuff_id}" in path else []
         )
-        assert saved == [shared_foodstuff]
 
 
-def test_shared_mutation_retains_domain_constraints(
+def test_own_mutation_retains_domain_constraints(
     client: TestClient,
     shared_foodstuff: FoodstuffOut,
     sign_in: Callable[[TestClient], UserOut],
@@ -168,7 +167,6 @@ def test_shared_mutation_retains_domain_constraints(
         },
     )
     assert recipe.status_code == 201
-    sign_in(client)
     path = f"/foodstuffs/{shared_foodstuff.id}"
     assert client.patch(path, json={"kcal": 123}).status_code == 200
     lineage = recipe.json()["recipeLineageId"]

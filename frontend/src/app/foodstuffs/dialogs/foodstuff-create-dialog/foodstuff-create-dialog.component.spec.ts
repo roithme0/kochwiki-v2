@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import { TestBed } from '@angular/core/testing';
 import { MatDialogRef } from '@angular/material/dialog';
 import type {
@@ -10,18 +11,12 @@ import { FoodstuffCreateDialogComponent } from './foodstuff-create-dialog.compon
 
 describe('FoodstuffCreateDialogComponent', () => {
   const request: FoodstuffCreate = { name: 'Reis', unit: 'G' };
-  const created: FoodstuffOut = {
-    ...request,
+  const created: FoodstuffOut = foodstuffOut({
+    name: request.name,
+    unit: request.unit,
     id: 3,
-    brand: null,
-    imageId: null,
     unitVerbose: 'g',
-    kcal: null,
-    carbs: null,
-    protein: null,
-    fat: null,
-    recipeVersionIds: [],
-  };
+  });
   const postFoodstuff = vi.fn();
   const notifyFoodstuffsChanged = vi.fn();
   const close = vi.fn();

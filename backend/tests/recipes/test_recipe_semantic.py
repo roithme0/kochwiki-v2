@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -196,7 +197,9 @@ def test_search_filters_before_limit_and_returns_complete_current_recipe() -> No
         stale.name = "Renamed"
         wrong_profile.profile = "old"
         foodstuff = create_foodstuff(
-            session, FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20))
+            session,
+            FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20)),
+            owner_id=fixture_owner_id(session),
         )
         current = session.get(RecipeVersion, ids[3])
         assert current
@@ -219,7 +222,12 @@ def test_search_filters_before_limit_and_returns_complete_current_recipe() -> No
     refresh = RecipeEmbeddingService(SessionLocal, EmbeddingClient(provider))
     refresh.refresh_one(draft)
     with SessionLocal.begin() as session:
-        update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(40)))
+        update_foodstuff(
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(kcal=Decimal(40)),
+            owner_id=fixture_owner_id(session),
+        )
     search = RecipeSemanticSearch(SessionLocal, EmbeddingClient(provider))
     results = search.search("Noodles", 1)
     assert len(results) == 1 and results[0].recipe.recipeVersionId == draft
@@ -423,21 +431,25 @@ def test_recipe_worker_uuid_queue_nightly_and_shutdown() -> None:
 
 
 def test_commands_full_recipe_no_scores_and_refresh_failure_exit(
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     import json
     from app.recipes.semantic import format_candidate
-    from app.infrastructure.embeddings.commands import run_refresh, run_search
+    from app.infrastructure.embeddings.commands import (
+        run_refresh_command,
+        run_search_command,
+    )
 
     _, version_id = create()
     provider = Provider()
     embeddings = EmbeddingClient(provider)
-    refresh = RecipeEmbeddingService(SessionLocal, embeddings)
-    assert run_refresh(refresh) == 0
+    monkeypatch.setattr(EmbeddingClient, "from_settings", lambda settings: embeddings)
+    assert run_refresh_command(RecipeEmbeddingService) == 0
     capsys.readouterr()
     assert (
-        run_search(
-            RecipeSemanticSearch(SessionLocal, embeddings),
+        run_search_command(
+            RecipeSemanticSearch,
             "Noodles",
             5,
             format_candidate,
@@ -450,4 +462,4 @@ def test_commands_full_recipe_no_scores_and_refresh_failure_exit(
     assert "cosine_distance" not in result
     create("Bad")
     provider.failures.add("Bad")
-    assert run_refresh(refresh) == 1
+    assert run_refresh_command(RecipeEmbeddingService) == 1

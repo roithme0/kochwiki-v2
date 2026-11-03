@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import {
   createEnvironmentInjector,
@@ -13,19 +14,8 @@ import { FoodstuffBackendService } from '../../services/foodstuff-backend.servic
 import { FoodstuffsPageComponent } from './foodstuffs-page.component';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 
-const foodstuff = (id: number, name: string) => ({
-  id,
-  name,
-  brand: null,
-  unit: FoodstuffUnit.Gram,
-  imageId: null,
-  unitVerbose: 'Gramm',
-  kcal: null,
-  carbs: null,
-  protein: null,
-  fat: null,
-  recipeVersionIds: [],
-});
+const foodstuff = (id: number, name: string) =>
+  foodstuffOut({ id, name, unit: FoodstuffUnit.Gram, unitVerbose: 'Gramm' });
 
 interface Deferred<T> {
   promise: Promise<T>;

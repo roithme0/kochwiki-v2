@@ -4,6 +4,7 @@ from app.identity.models.application_session import ApplicationSession
 from app.identity.models.delegation_token import DelegationToken
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
 from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.image_upload import FoodstuffImageUpload
 from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
 from app.recipes.models.embedding import RecipeEmbedding
 from app.recipes.models.image_upload import RecipeImageUpload
@@ -16,6 +17,7 @@ __all__ = [
     "DelegationToken",
     "FoodstuffEmbedding",
     "Foodstuff",
+    "FoodstuffImageUpload",
     "Ingredient",
     "RecipeLineage",
     "RecipeVersion",

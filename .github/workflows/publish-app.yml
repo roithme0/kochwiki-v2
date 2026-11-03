@@ -4,7 +4,6 @@ on:
   pull_request:
   push:
     tags:
-
       - 'v*'
 
 permissions:
@@ -18,7 +17,6 @@ jobs:
       run:
         working-directory: frontend
     steps:
-
       - name: Check out repository
         uses: actions/checkout@v6
 
@@ -54,7 +52,6 @@ jobs:
       run:
         working-directory: frontend
     steps:
-
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
@@ -89,10 +86,94 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  build-app:
+    needs: [check-kochwiki-contract, frontend-tests]
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      channel: ${{ steps.release.outputs.channel }}
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            image: roithme0/kochwiki-v2-backend
+            context: ./backend
+            dockerfile: ./backend/Dockerfile
+            build_args: ''
+          - name: frontend
+            image: roithme0/kochwiki-v2-frontend
+            context: ./frontend
+            dockerfile: ./frontend/Dockerfile
+            build_args: CONFIGURATION=production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate release tag
+        if: github.event_name == 'push'
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          const match = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(-alpha(?:\.(?:0|[1-9]\d*))?)?)$/.exec(process.env.RELEASE_TAG ?? '');
+          if (!match) {
+            throw new Error('Expected v1.2.0, v1.2.0-alpha, or v1.2.0-alpha.123 (no leading zeros).');
+          }
+          const channel = match[2] ? 'alpha' : 'latest';
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${match[1]}\nchannel=${channel}\n`);
+          NODE
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ matrix.image }}
+          flavor: |
+            latest=false
+          tags: |
+            type=ref,event=pr
+            type=raw,value=${{ steps.release.outputs.version }},enable=${{ github.event_name == 'push' }}
+            type=raw,value=${{ steps.release.outputs.channel }},enable=${{ github.event_name == 'push' }}
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          build-args: |
+            ${{ matrix.build_args }}
+            VERSION=${{ github.event_name == 'push' && github.ref_name || '0.0.0' }}
+          secrets: |
+            npm_token=${{ secrets.GITHUB_TOKEN }}
+          platforms: linux/amd64
+          outputs: type=oci,dest=${{ runner.temp }}/app-image.tar
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      - name: Upload built image
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-image-${{ matrix.name }}
+          path: ${{ runner.temp }}/app-image.tar
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 7
+
   e2e:
+    needs: build-app
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v6
 
       - name: Read identity-provider revision
@@ -123,13 +204,27 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: frontend
 
-      - name: Provide private package build secret
+      - name: Download built images
+        uses: actions/download-artifact@v8
+        with:
+          pattern: app-image-*
+          path: ${{ runner.temp }}/app-images
+
+      - name: Load built images into Docker
         env:
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: printf '%s' "$NPM_TOKEN" > frontend/.npm-token
+          IMAGE_DIRECTORY: ${{ runner.temp }}/app-images
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+          for name in backend frontend; do
+            archive="$IMAGE_DIRECTORY/app-image-$name/app-image.tar"
+            reference=$(tar -xOf "$archive" index.json | jq -er '.manifests[0].annotations["org.opencontainers.image.ref.name"]')
+            skopeo copy "oci-archive:$archive:$reference" "docker-daemon:kochwiki-v2-$name:e2e"
+          done
 
       - name: Run isolated E2E
-        run: node .agents/validation/e2e.mts
+        run: node .agents/validation/e2e.mts --prebuilt-images
         env:
           IDENTITY_PROVIDER_REPOSITORY: ${{ github.workspace }}/.e2e-identity-provider
 
@@ -145,80 +240,42 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
-  build-and-publish:
-    needs: [check-kochwiki-contract, frontend-tests, e2e]
+  publish-app:
+    needs: [build-app, e2e]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - name: backend
             image: roithme0/kochwiki-v2-backend
-            context: ./backend
-            dockerfile: ./backend/Dockerfile
-            build_args: ''
           - name: frontend
             image: roithme0/kochwiki-v2-frontend
-            context: ./frontend
-            dockerfile: ./frontend/Dockerfile
-            build_args: CONFIGURATION=production
-
+    env:
+      APP_IMAGE: ${{ matrix.image }}
+      RELEASE_VERSION: ${{ needs.build-app.outputs.version }}
+      RELEASE_CHANNEL: ${{ needs.build-app.outputs.channel }}
     steps:
+      - name: Download built image
+        uses: actions/download-artifact@v8
+        with:
+          name: app-image-${{ matrix.name }}
+          path: ${{ runner.temp }}
 
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Validate release tag
-        if: github.event_name == 'push'
-        id: release
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          node --input-type=module <<'NODE'
-          import { appendFileSync } from 'node:fs';
-          const match = /^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(-alpha(?:\.(?:0|[1-9]\d*))?)?)$/.exec(process.env.RELEASE_TAG ?? '');
-          if (!match) {
-            throw new Error('Expected v1.2.0, v1.2.0-alpha, or v1.2.0-alpha.123 (no leading zeros).');
-          }
-          const channel = match[2] ? 'alpha' : 'latest';
-          appendFileSync(process.env.GITHUB_OUTPUT, `version=${match[1]}\nchannel=${channel}\n`);
-          NODE
+      - name: Install registry client
+        uses: regclient/actions/regctl-installer@v0.1.0
+        with:
+          release: v0.9.0
 
       - name: Log in to Docker Hub
-        if: github.event_name == 'push'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ matrix.image }}
-          flavor: |
-            latest=false
-          tags: |
-            type=ref,event=pr
-            type=raw,value=${{ steps.release.outputs.version }},enable=${{ github.event_name == 'push' }}
-            type=raw,value=${{ steps.release.outputs.channel }},enable=${{ github.event_name == 'push' }}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v7
-        with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          build-args: |
-            ${{ matrix.build_args }}
-            VERSION=${{ github.event_name == 'push' && github.ref_name || '0.0.0' }}
-          secrets: |
-            npm_token=${{ secrets.GITHUB_TOKEN }}
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
+      - name: Publish built image
+        env:
+          IMAGE_ARCHIVE: ${{ runner.temp }}/app-image.tar
+        run: |
+          regctl image import "$APP_IMAGE:$RELEASE_VERSION" "$IMAGE_ARCHIVE"
+          regctl image copy "$APP_IMAGE:$RELEASE_VERSION" "$APP_IMAGE:$RELEASE_CHANNEL"

@@ -44,7 +44,7 @@ def save_recipe_proposal(
                 raise NotFoundError(
                     f"Recipe version with id {proposal.sourceRecipeVersionId} not found"
                 )
-            payload = _materialize_recipe(session, proposal.recipe)
+            payload = _materialize_recipe(session, proposal.recipe, owner_id=user_id)
             payload.imageId = source.image_id
             draft = create_recipe_draft(session, source.lineage_id, payload)
             result = recipe_version_out(draft)
@@ -59,7 +59,9 @@ def _get_version(session: Session, version_id: UUID) -> RecipeVersion:
     return get_recipe_version_by_id(session, version.lineage_id, version_id)
 
 
-def _materialize_recipe(session: Session, recipe: ProposalRecipe) -> RecipeVersionWrite:
+def _materialize_recipe(
+    session: Session, recipe: ProposalRecipe, *, owner_id: int
+) -> RecipeVersionWrite:
     ingredients: list[IngredientWrite] = []
     for ingredient in recipe.ingredients:
         foodstuff = ingredient.foodstuff
@@ -69,6 +71,7 @@ def _materialize_recipe(session: Session, recipe: ProposalRecipe) -> RecipeVersi
             else create_foodstuff(
                 session,
                 FoodstuffCreate.model_validate(foodstuff.definition.model_dump()),
+                owner_id=owner_id,
             ).id
         )
         ingredients.append(

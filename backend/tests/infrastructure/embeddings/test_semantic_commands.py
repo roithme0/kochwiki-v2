@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 import json
 import subprocess
 import sys
@@ -80,7 +81,11 @@ def test_refresh_then_search_preserves_domain_output(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     with SessionLocal.begin() as session:
-        create_foodstuff(session, FoodstuffCreate(name="Tomato", unit=Unit.G))
+        create_foodstuff(
+            session,
+            FoodstuffCreate(name="Tomato", unit=Unit.G),
+            owner_id=fixture_owner_id(session),
+        )
         create_recipe(session, RecipeVersionWrite(name="Pasta", servings=2))
     provider = Provider()
     monkeypatch.setattr(
@@ -91,7 +96,17 @@ def test_refresh_then_search_preserves_domain_output(
     assert "Refreshed: 1" in capsys.readouterr().out
     assert provider.closed
     provider.closed = False
-    monkeypatch.setattr("sys.argv", ["semantic", "search", "query", "--limit", "1"])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "semantic",
+            "search",
+            "query",
+            "--limit",
+            "1",
+            *(["--owner-id", str(fixture_owner_id())] if kind == "foodstuff" else []),
+        ],
+    )
     assert main() == 0
     output = capsys.readouterr().out
     if kind == "foodstuff":
@@ -124,7 +139,14 @@ def test_search_empty_validation_and_client_cleanup(
     monkeypatch.setattr(
         EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider)
     )
-    monkeypatch.setattr("sys.argv", ["semantic", *arguments])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "semantic",
+            *arguments,
+            *(["--owner-id", "1"] if main is foodstuff_semantic.main else []),
+        ],
+    )
     assert main() == (0 if expected == "No current" else 1)
     assert expected in capsys.readouterr().out
     assert provider.closed
@@ -141,7 +163,15 @@ def test_provider_failure_and_missing_service_url_exit_nonzero(
     monkeypatch.setattr(
         EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider)
     )
-    monkeypatch.setattr("sys.argv", ["semantic", "search", "query"])
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "semantic",
+            "search",
+            "query",
+            *(["--owner-id", "1"] if main is foodstuff_semantic.main else []),
+        ],
+    )
     assert main() == 1
     output = capsys.readouterr().out
     assert "Query embedding failed" in output and "private diagnostic" not in output
@@ -152,3 +182,27 @@ def test_provider_failure_and_missing_service_url_exit_nonzero(
     monkeypatch.setattr("sys.argv", ["semantic", "refresh"])
     assert main() == 1
     assert "AI_GATEWAY_URL is missing" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("main", [foodstuff_semantic.main, recipe_semantic.main])
+def test_refresh_failure_exits_nonzero_and_closes_client(
+    main: Callable[[], int],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with SessionLocal.begin() as session:
+        create_foodstuff(
+            session,
+            FoodstuffCreate(name="Tomato", unit=Unit.G),
+            owner_id=fixture_owner_id(session),
+        )
+        create_recipe(session, RecipeVersionWrite(name="Pasta", servings=2))
+    provider = Provider(fail=True)
+    monkeypatch.setattr(
+        EmbeddingClient, "from_settings", lambda settings: EmbeddingClient(provider)
+    )
+    monkeypatch.setattr("sys.argv", ["semantic", "refresh"])
+
+    assert main() == 1
+    assert "failed: 1" in capsys.readouterr().out
+    assert provider.closed

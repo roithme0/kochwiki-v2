@@ -173,4 +173,4 @@ Every E2E test runs in two Chromium projects: `desktop-chromium` uses Desktop Ch
 
 Each isolated run prints its retained artifact directory under `.agents/.codex-validation/e2e/`, containing logs, `html-report/`, and failure traces/screenshots in `test-results/`. From **frontend/**, open a report with `npx playwright show-report <artifact-directory>/html-report`.
 
-Direct browser runs use `frontend/e2e/test-results/` and `frontend/playwright-report/`. CI uploads diagnostics on failure; see [the publish workflow](../.github/workflows/publish-app.yml).
+Direct browser runs use `frontend/e2e/test-results/` and `frontend/playwright-report/`. The [CI workflow](../.github/workflows/publish-app.yml) tests built application images before publishing them and uploads diagnostics on failure.

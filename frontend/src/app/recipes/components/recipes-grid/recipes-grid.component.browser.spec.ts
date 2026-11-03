@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import type { RecipeVersionOut } from '../../../core/api/generated';
@@ -11,7 +12,7 @@ describe('RecipesGridComponent browser layout', () => {
     });
     const fixture = TestBed.createComponent(RecipesGridComponent);
     const host = fixture.nativeElement as HTMLElement;
-    const recipe: RecipeVersionOut = {
+    const recipe: RecipeVersionOut = recipeVersionOut({
       recipeVersionId: 'version',
       recipeLineageId: 'lineage',
       ownerId: 1,
@@ -20,16 +21,9 @@ describe('RecipesGridComponent browser layout', () => {
       lastModified: '2026-10-01T10:00:00Z',
       name: 'Recipe',
       servings: 1,
-      imageId: null,
-      imageDimensions: null,
-      preptime: null,
-      kcal: { status: 'unknown', value: null },
-      carbs: { status: 'unknown', value: null },
-      protein: { status: 'unknown', value: null },
-      fat: { status: 'unknown', value: null },
       ingredients: [],
       steps: [],
-    };
+    });
     fixture.componentRef.setInput('recipeVersions', [recipe]);
     try {
       fixture.detectChanges();

@@ -14,6 +14,7 @@ export interface NutritionSummary {
   carbs: NutritionResult;
   protein: NutritionResult;
   fat: NutritionResult;
+  fiber: NutritionResult;
 }
 
 export function toNutritionSummary(
@@ -28,6 +29,7 @@ export function toNutritionSummary(
     carbs: result(nutrition.carbs),
     protein: result(nutrition.protein),
     fat: result(nutrition.fat),
+    fiber: result(nutrition.fiber),
   };
 }
 

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { signIn } from '../support/authentication';
 import { PageHeader } from '../../shared/support/page-header';
+import { IdentityProviderLoginPage } from '../support/identity-provider-login-page';
 import { SignedOutPage } from '../support/signed-out-page';
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -16,7 +17,7 @@ test.describe('Authentication', () => {
     await pageHeader.expectActiveUser('E2E User');
   });
 
-  test('authenticated visitor signs out and stays signed out after reload', async ({
+  test('authenticated visitor signs out and must enter credentials to sign in again', async ({
     page,
   }) => {
     await signIn(page);
@@ -34,5 +35,16 @@ test.describe('Authentication', () => {
 
     const session = await page.request.get('/api/auth/me');
     expect(session.status()).toBe(401);
+
+    await signedOutPage.signInButton.click();
+    const providerLogin = new IdentityProviderLoginPage(page);
+    await expect(providerLogin.emailInput).toBeVisible();
+    await expect(providerLogin.passwordInput).toBeVisible();
+    await providerLogin.signIn(
+      'e2e@example.invalid',
+      'disposable-e2e-password',
+    );
+    await expect(page).toHaveURL('/');
+    await pageHeader.expectActiveUser('E2E User');
   });
 });

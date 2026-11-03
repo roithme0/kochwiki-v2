@@ -1,6 +1,10 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
@@ -17,6 +21,16 @@ class FoodstuffSearchCandidate:
 
 
 class FoodstuffSemanticSearch(SemanticSearch[FoodstuffSearchCandidate]):
+    def __init__(
+        self,
+        sessions: Callable[[], Session],
+        embeddings: EmbeddingClient,
+        *,
+        owner_id: int,
+    ) -> None:
+        super().__init__(sessions, embeddings)
+        self.owner_id = owner_id
+
     def _retrieve(
         self, vector: list[float], limit: int
     ) -> list[FoodstuffSearchCandidate]:
@@ -25,6 +39,7 @@ class FoodstuffSemanticSearch(SemanticSearch[FoodstuffSearchCandidate]):
             select(Foodstuff, distance)
             .join(FoodstuffEmbedding, FoodstuffEmbedding.foodstuff_id == Foodstuff.id)
             .where(
+                Foodstuff.owner_id == self.owner_id,
                 FoodstuffEmbedding.profile == self.profile,
                 FoodstuffEmbedding.source_text == current_source_text(),
             )

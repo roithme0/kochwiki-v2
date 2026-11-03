@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../../testing/recipe.fixtures';
 import type { RecipeVersionOut } from '../../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import {
@@ -136,9 +137,7 @@ function createRecipeForm(): FormGroup {
 }
 
 function recipeVersionWithSteps(): RecipeVersionOut {
-  return {
-    imageId: null,
-    imageDimensions: null,
+  return recipeVersionOut({
     ownerId: 1,
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     recipeVersionId: '00000000-0000-0000-0000-000000000001',
@@ -148,10 +147,6 @@ function recipeVersionWithSteps(): RecipeVersionOut {
     name: 'Testrezept',
     servings: 2,
     preptime: 20,
-    kcal: { status: 'unknown' as const, value: null },
-    carbs: { status: 'unknown' as const, value: null },
-    protein: { status: 'unknown' as const, value: null },
-    fat: { status: 'unknown' as const, value: null },
     ingredients: [],
     steps: [
       {
@@ -167,5 +162,5 @@ function recipeVersionWithSteps(): RecipeVersionOut {
         recipeVersionId: '00000000-0000-0000-0000-000000000001',
       },
     ],
-  };
+  });
 }

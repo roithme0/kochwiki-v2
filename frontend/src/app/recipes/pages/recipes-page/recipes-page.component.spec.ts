@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import {
   ApplicationRef,
   createEnvironmentInjector,
@@ -19,25 +20,19 @@ import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipesPageComponent } from './recipes-page.component';
 
-const recipeVersion = (id: number, name: string) => ({
-  imageId: null,
-  imageDimensions: null,
-  ownerId: 1,
-  recipeLineageId: `00000000-0000-4000-8000-00000000000${id}`,
-  recipeVersionId: `00000000-0000-0000-0000-00000000000${id}`,
-  state: 'active' as const,
-  createdAt: '2026-09-10T10:00:00Z',
-  lastModified: '2026-09-10T10:00:00Z',
-  name,
-  servings: 1,
-  preptime: null,
-  kcal: { status: 'unknown' as const, value: null },
-  carbs: { status: 'unknown' as const, value: null },
-  protein: { status: 'unknown' as const, value: null },
-  fat: { status: 'unknown' as const, value: null },
-  ingredients: [],
-  steps: [],
-});
+const recipeVersion = (id: number, name: string) =>
+  recipeVersionOut({
+    ownerId: 1,
+    recipeLineageId: `00000000-0000-4000-8000-00000000000${id}`,
+    recipeVersionId: `00000000-0000-0000-0000-00000000000${id}`,
+    state: 'active',
+    createdAt: '2026-09-10T10:00:00Z',
+    lastModified: '2026-09-10T10:00:00Z',
+    name,
+    servings: 1,
+    ingredients: [],
+    steps: [],
+  });
 
 interface Deferred<T> {
   promise: Promise<T>;

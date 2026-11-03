@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from threading import Thread
 
@@ -50,7 +51,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(
     failure: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     provider = Provider()
-    bindings: list[FoodstuffSemanticSearch | None] = []
+    bindings: list[Callable[[int], FoodstuffSemanticSearch] | None] = []
     recipe_bindings: list[RecipeSemanticSearch | None] = []
     threads: list[Thread] = []
     original_start = Thread.start
@@ -59,7 +60,9 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(
     original_recipe_bind = MCPServices.bind_recipe_search
     nightly_calls = 0
 
-    def bind(services: MCPServices, search: FoodstuffSemanticSearch | None) -> None:
+    def bind(
+        services: MCPServices, search: Callable[[int], FoodstuffSemanticSearch] | None
+    ) -> None:
         bindings.append(search)
         original_bind(services, search)
 

@@ -1,3 +1,5 @@
+from tests.recipes.helpers import fixture_owner_headers
+from tests.recipes.helpers import fixture_owner_id
 import asyncio
 from decimal import Decimal
 from typing import Literal
@@ -39,7 +41,9 @@ def test_mcp_http_discovery_invocation_and_lifecycle(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 assert (await http.get("/")).json() == {"message": "Hello World"}
                 assert (await http.get("/api/openapi.json")).status_code == 200
@@ -55,6 +59,8 @@ def test_mcp_http_discovery_invocation_and_lifecycle(
                     tools = await client.list_tools()
                     assert [tool.name for tool in tools.tools] == [
                         "search_foodstuffs",
+                        "get_foodstuff",
+                        "fill_foodstuff_nutrition",
                         "create_foodstuff",
                         "update_foodstuff",
                         "search_recipes",
@@ -82,7 +88,9 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -108,6 +116,7 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                             "carbs": 6,
                             "protein": 1,
                             "fat": 0,
+                            "fiber": 1.5,
                         },
                     ]:
                         result = await client.call_tool(
@@ -151,11 +160,12 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                         {"name": "Missing unit"},
                         *(
                             {"name": "Missing unit", field: 0}
-                            for field in ["kcal", "carbs", "protein", "fat"]
+                            for field in ["kcal", "carbs", "protein", "fat", "fiber"]
                         ),
                         {"name": "Null unit", "unit": None, "protein": 1},
                         {"name": "Invalid unit", "unit": "KG"},
                         {"name": "Negative", "unit": "G", "kcal": -1},
+                        {"name": "Negative fiber", "unit": "G", "fiber": -1},
                         {"name": "Unknown field", "unit": "G", "unexpected": True},
                     ]:
                         assert (
@@ -164,7 +174,14 @@ def test_foodstuff_creation_over_mcp_commits_and_triggers_refresh() -> None:
                             )
                         ).is_error
                     with SessionLocal() as session:
-                        assert len(foodstuffs.list_foodstuffs(session)) == 2
+                        assert (
+                            len(
+                                foodstuffs.list_foodstuffs(
+                                    session, owner_id=fixture_owner_id(session)
+                                )
+                            )
+                            == 2
+                        )
                     assert len(refreshed) == 2
 
     foodstuff_refresh.subscribe(subscriber)
@@ -181,8 +198,10 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(
     refreshed: list[int] = []
     subscriber = refreshed.append
 
-    def fail_after_flush(session: Session, payload: FoodstuffCreate) -> Foodstuff:
-        original_create(session, payload)
+    def fail_after_flush(
+        session: Session, payload: FoodstuffCreate, *, owner_id: int
+    ) -> Foodstuff:
+        original_create(session, payload, owner_id=owner_id)
         raise SQLAlchemyError("secret database diagnostic")
 
     monkeypatch.setattr(foodstuffs, "create_foodstuff", fail_after_flush)
@@ -191,7 +210,9 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -206,7 +227,9 @@ def test_foodstuff_creation_failure_rolls_back_and_sanitizes_error(
                     assert "Foodstuff creation failed" in str(result)
                     assert "secret database diagnostic" not in str(result)
         with SessionLocal() as session:
-            assert not foodstuffs.list_foodstuffs(session)
+            assert not foodstuffs.list_foodstuffs(
+                session, owner_id=fixture_owner_id(session)
+            )
         assert refreshed == []
 
     foodstuff_refresh.subscribe(subscriber)
@@ -229,10 +252,13 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                 kcal=Decimal(40),
                 protein=Decimal(3),
             ),
+            owner_id=fixture_owner_id(session),
         )
         target_id = target.id
         create_foodstuff(
-            session, FoodstuffCreate(name="Other", brand="Test", unit=Unit.G)
+            session,
+            FoodstuffCreate(name="Other", brand="Test", unit=Unit.G),
+            owner_id=fixture_owner_id(session),
         )
         recipe = create_recipe(
             session,
@@ -253,16 +279,18 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
     original_update = foodstuffs.update_foodstuff
 
     def fail_after_flush(
-        session: Session, foodstuff_id: int, payload: FoodstuffUpdate
+        session: Session, foodstuff_id: int, payload: FoodstuffUpdate, *, owner_id: int
     ) -> Foodstuff:
-        original_update(session, foodstuff_id, payload)
+        original_update(session, foodstuff_id, payload, owner_id=owner_id)
         raise SQLAlchemyError("secret database diagnostic")
 
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -278,7 +306,9 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                     assert tool.annotations.destructive_hint is True
                     for changes, expected_refresh in [
                         ({"protein": 0}, []),
+                        ({"fiber": 0}, []),
                         ({"unit": "PIECE"}, []),
+                        ({"fiber": None}, []),
                         ({"name": "Whole milk"}, [target_id]),
                         ({"brand": None, "kcal": None}, [target_id, target_id]),
                     ]:
@@ -301,6 +331,7 @@ def test_foodstuff_update_over_mcp_preserves_partial_updates_and_rolls_back(
                             assert persisted.protein == Decimal(0)
                             if "unit" in changes:
                                 assert persisted.unit == Unit.PIECE
+                                assert persisted.fiber == Decimal(0)
                                 assert persisted.kcal == Decimal(40)
                             for field, value in (
                                 FoodstuffUpdate.model_validate(changes)
@@ -409,7 +440,9 @@ def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
     with SessionLocal.begin() as session:
         for name in ["Karotte", "Tomate", "Missing"]:
             foodstuff = create_foodstuff(
-                session, FoodstuffCreate(name=name, unit=Unit.G)
+                session,
+                FoodstuffCreate(name=name, unit=Unit.G),
+                owner_id=fixture_owner_id(session),
             )
             if name == "Missing":
                 continue
@@ -430,7 +463,9 @@ def test_foodstuff_search_over_mcp_returns_summaries_without_scores(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -499,7 +534,9 @@ def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
     recipes: list[dict[str, object]] = []
     with SessionLocal.begin() as session:
         foodstuff = create_foodstuff(
-            session, FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20))
+            session,
+            FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20)),
+            owner_id=fixture_owner_id(session),
         )
         write = RecipeVersionWrite.model_validate(
             {
@@ -534,7 +571,9 @@ def test_recipe_search_over_mcp_returns_complete_versions_without_scores(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -594,7 +633,9 @@ def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -606,7 +647,7 @@ def test_search_without_credentials_reports_tool_error(tool_name: str) -> None:
                         and "Semantic search unavailable" in item.text
                         for item in result.content
                     )
-                    assert len((await client.list_tools()).tools) == 8
+                    assert len((await client.list_tools()).tools) == 10
 
     asyncio.run(exercise())
 
@@ -616,7 +657,7 @@ def test_mcp_rejects_unconfigured_host() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app)
+                headers=fixture_owner_headers(), transport=httpx2.ASGITransport(app=app)
             ) as http:
                 response = await http.post(
                     "http://unconfigured.example/mcp/",

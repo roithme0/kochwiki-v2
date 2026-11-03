@@ -27,7 +27,9 @@ def semantic_search_services(
         embeddings = EmbeddingClient.from_settings(settings)
         cleanup.callback(embeddings.close)
         services.bind_foodstuff_search(
-            FoodstuffSemanticSearch(SessionLocal, embeddings)
+            lambda owner_id: FoodstuffSemanticSearch(
+                SessionLocal, embeddings, owner_id=owner_id
+            )
         )
         cleanup.callback(services.bind_foodstuff_search, None)
         services.bind_recipe_search(RecipeSemanticSearch(SessionLocal, embeddings))

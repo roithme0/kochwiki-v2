@@ -49,6 +49,7 @@ class Provider:
         self.invalid_signature = False
         self.calls = 0
         self.discovery_issuer = ISSUER
+        self.logout_endpoint = ISSUER + "/protocol/openid-connect/logout"
 
     def fetch(self, url: str, form: dict[str, str] | None = None) -> bytes:
         self.calls += 1
@@ -61,6 +62,7 @@ class Provider:
                     "authorization_endpoint": ISSUER + "/protocol/openid-connect/auth",
                     "token_endpoint": ISSUER + "/protocol/openid-connect/token",
                     "jwks_uri": ISSUER + "/protocol/openid-connect/certs",
+                    "end_session_endpoint": self.logout_endpoint,
                 }
             ).encode()
         if url.endswith("/token"):

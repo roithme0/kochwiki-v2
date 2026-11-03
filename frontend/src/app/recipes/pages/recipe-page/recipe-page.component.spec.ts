@@ -1,3 +1,5 @@
+import { foodstuffSummary } from '../../../testing/foodstuff.fixtures';
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import { signal } from '@angular/core';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import type { RecipeVersionOut } from '../../../core/api/generated';
@@ -23,6 +25,8 @@ import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
 import { RecipeImageComponent } from '../../components/recipe-image/recipe-image.component';
 import { RecipeImageService } from '../../services/recipe-image.service';
+import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
+import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
 
 describe('RecipePageComponent', () => {
   let component: RecipePageComponent;
@@ -225,9 +229,7 @@ describe('RecipePageComponent', () => {
   });
 });
 
-const draftRecipeVersion: RecipeVersionOut = {
-  imageId: null,
-  imageDimensions: null,
+const draftRecipeVersion: RecipeVersionOut = recipeVersionOut({
   ownerId: 1,
   recipeLineageId: '00000000-0000-4000-8000-000000000007',
   recipeVersionId: '00000000-0000-0000-0000-000000000007',
@@ -236,14 +238,9 @@ const draftRecipeVersion: RecipeVersionOut = {
   lastModified: '2026-09-10T10:00:00Z',
   name: 'Draft',
   servings: 1,
-  preptime: null,
-  kcal: { status: 'unknown' as const, value: null },
-  carbs: { status: 'unknown' as const, value: null },
-  protein: { status: 'unknown' as const, value: null },
-  fat: { status: 'unknown' as const, value: null },
   ingredients: [],
   steps: [],
-};
+});
 
 describe('RecipePageComponent presentation integration', () => {
   it.each([false, true])(
@@ -325,11 +322,33 @@ describe('RecipePageComponent presentation integration', () => {
   ] as const)(
     'displays the %s version for user %s with ownership-appropriate controls',
     async (state, userId) => {
-      const recipe = {
+      const recipe: RecipeVersionOut = {
         ...draftRecipeVersion,
         state,
         imageId: `${state}-image`,
+        kcal: { status: 'exact', value: 100 },
+        ingredients: [
+          {
+            id: 9,
+            index: 1,
+            amount: 100,
+            recipeVersionId: draftRecipeVersion.recipeVersionId,
+            foodstuff: foodstuffSummary({
+              id: 42,
+              imageId: 'ingredient-image',
+              name: 'Recipe owner oats',
+              unit: 'G',
+              unitVerbose: 'g',
+              kcal: 100,
+            }),
+          },
+        ],
       };
+      const getAllFoodstuffs = vi.fn().mockResolvedValue([]);
+      const downloadFoodstuffImage = vi.fn().mockResolvedValue({
+        url: '/storage/ingredient',
+        expiresIn: 300,
+      });
       const pageHeader = {
         updateHeader: vi.fn().mockName('updateHeader'),
         set headline(_value: string) {},
@@ -337,6 +356,14 @@ describe('RecipePageComponent presentation integration', () => {
       TestBed.configureTestingModule({
         imports: [RecipePageComponent],
         providers: [
+          {
+            provide: FoodstuffBackendService,
+            useValue: { getAllFoodstuffs },
+          },
+          {
+            provide: FoodstuffImageService,
+            useValue: { download: downloadFoodstuffImage },
+          },
           {
             provide: ActiveUserService,
             useValue: { activeUser: signal({ id: userId }) },
@@ -403,6 +430,16 @@ describe('RecipePageComponent presentation integration', () => {
       ).componentInstance as RecipePresentationComponent;
 
       expect(presentation.recipe()).toBe(recipe);
+      expect(getAllFoodstuffs).not.toHaveBeenCalled();
+      expect(downloadFoodstuffImage).toHaveBeenCalledExactlyOnceWith(
+        'ingredient-image',
+      );
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        'Recipe owner oats',
+      );
+      expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+        '100 g',
+      );
       const image = fixture.debugElement.query(
         By.directive(RecipeImageComponent),
       );

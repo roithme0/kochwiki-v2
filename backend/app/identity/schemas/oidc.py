@@ -9,6 +9,7 @@ class Discovery(BaseModel):
     authorization_endpoint: str
     token_endpoint: str
     jwks_uri: str
+    end_session_endpoint: str
 
 
 class TokenResponse(BaseModel):
@@ -43,3 +44,13 @@ class Identity(BaseModel):
 class LoginStart:
     url: str
     browser_binding: str
+
+
+@dataclass(frozen=True)
+class CompletedLogin:
+    identity: Identity
+    id_token: str
+
+
+class LogoutOut(BaseModel):
+    redirect_url: str

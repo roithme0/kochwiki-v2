@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { Subject } from 'rxjs';
 import { FoodstuffCreateDialogComponent } from '../foodstuff-create-dialog/foodstuff-create-dialog.component';
@@ -15,32 +16,19 @@ import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
 
 const foodstuffs: FoodstuffOut[] = [
-  {
+  foodstuffOut({
     id: 1,
     name: 'Pasta',
     brand: 'Barilla',
     unit: 'G',
-    imageId: null,
     unitVerbose: 'Gramm',
-    kcal: null,
-    carbs: null,
-    protein: null,
-    fat: null,
-    recipeVersionIds: [],
-  },
-  {
+  }),
+  foodstuffOut({
     id: 2,
     name: 'Olivenöl',
-    brand: null,
     unit: 'ML',
-    imageId: null,
     unitVerbose: 'Milliliter',
-    kcal: null,
-    carbs: null,
-    protein: null,
-    fat: null,
-    recipeVersionIds: [],
-  },
+  }),
 ];
 
 describe('FoodstuffSelectionDialogComponent', () => {

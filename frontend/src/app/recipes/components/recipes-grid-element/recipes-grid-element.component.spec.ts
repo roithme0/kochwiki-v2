@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import type {
   RecipeImageDownloadOut,
   RecipeVersionOut,
@@ -82,9 +83,7 @@ describe('RecipesGridElementComponent', () => {
   });
 });
 
-const draftRecipeVersion: RecipeVersionOut = {
-  imageId: null,
-  imageDimensions: null,
+const draftRecipeVersion: RecipeVersionOut = recipeVersionOut({
   ownerId: 1,
   recipeLineageId: '00000000-0000-4000-8000-000000000001',
   recipeVersionId: '00000000-0000-4000-8000-000000000002',
@@ -93,11 +92,6 @@ const draftRecipeVersion: RecipeVersionOut = {
   lastModified: '2026-09-10T11:00:00Z',
   name: 'Recipe',
   servings: 2,
-  preptime: null,
-  kcal: { status: 'unknown' as const, value: null },
-  carbs: { status: 'unknown' as const, value: null },
-  protein: { status: 'unknown' as const, value: null },
-  fat: { status: 'unknown' as const, value: null },
   ingredients: [],
   steps: [],
-};
+});

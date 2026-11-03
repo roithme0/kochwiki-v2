@@ -24,7 +24,10 @@ from app.recipes.schemas.recipe import (
     StepWrite,
 )
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
+from app.foodstuffs.services.foodstuffs import (
+    foodstuff_summary_out,
+    owned_foodstuffs_by_id,
+)
 from app.recipes.services.embeddings import mark_recipe_refresh, remove_recipe_embedding
 from app.recipes.services.nutrition import (
     ResolvedNutritionIngredient,
@@ -117,7 +120,9 @@ def create_recipe(
     session: Session, payload: RecipeVersionWrite, *, owner_id: int
 ) -> RecipeVersion:
     image_id = _resolve_image_id(session, payload, owner_id=owner_id)
-    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    foodstuffs = _foodstuffs_for_ingredients(
+        session, payload.ingredients, owner_id=owner_id
+    )
     now = _now()
     lineage = RecipeLineage(created_at=now, owner_id=owner_id)
     version = _new_recipe_version(
@@ -132,8 +137,10 @@ def create_recipe(
 def publish_active_recipe_edit(
     session: Session, lineage_id: UUID, payload: RecipeVersionWrite
 ) -> RecipeVersion:
-    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
+    foodstuffs = _foodstuffs_for_ingredients(
+        session, payload.ingredients, owner_id=active_version.lineage.owner_id
+    )
     image_id = _resolve_image_id(
         session,
         payload,
@@ -173,7 +180,9 @@ def create_recipe_draft(
     image_id = _resolve_image_id(
         session, payload, source_image_id, owner_id=lineage.owner_id
     )
-    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    foodstuffs = _foodstuffs_for_ingredients(
+        session, payload.ingredients, owner_id=lineage.owner_id
+    )
     version = _new_recipe_version(
         lineage, payload, foodstuffs, RecipeVersionState.DRAFT, _now(), image_id
     )
@@ -195,7 +204,9 @@ def update_recipe_draft(
         draft_version.image_id,
         owner_id=draft_version.lineage.owner_id,
     )
-    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    foodstuffs = _foodstuffs_for_ingredients(
+        session, payload.ingredients, owner_id=draft_version.lineage.owner_id
+    )
     previous_name = draft_version.name
     _apply_version_content(session, draft_version, payload, foodstuffs)
     draft_version.image_id = image_id
@@ -212,6 +223,11 @@ def publish_recipe_draft(
     draft_version = _get_recipe_version_for_update(session, lineage_id, version_id)
     if draft_version.state != RecipeVersionState.DRAFT:
         raise ConflictError("Only draft recipe versions can be published")
+    owned_foodstuffs_by_id(
+        session,
+        (ingredient.foodstuff_id for ingredient in draft_version.ingredients),
+        owner_id=draft_version.lineage.owner_id,
+    )
     active_version = _get_active_recipe_version_for_update(session, lineage_id)
     active_version.state = RecipeVersionState.HISTORICAL
     remove_recipe_embedding(session, active_version.version_id)
@@ -242,6 +258,7 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
     total_carbs = total_nutrition(version.ingredients, "carbs")
     total_protein = total_nutrition(version.ingredients, "protein")
     total_fat = total_nutrition(version.ingredients, "fat")
+    total_fiber = total_nutrition(version.ingredients, "fiber")
     return RecipeVersionOut(
         recipeLineageId=version.lineage_id,
         recipeVersionId=version.version_id,
@@ -264,6 +281,7 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
         carbs=per_serving(total_carbs, version.servings),
         protein=per_serving(total_protein, version.servings),
         fat=per_serving(total_fat, version.servings),
+        fiber=per_serving(total_fiber, version.servings),
         ingredients=[
             ingredient_out(item)
             for item in sorted(version.ingredients, key=lambda item: item.index)
@@ -276,9 +294,11 @@ def recipe_version_out(version: RecipeVersion) -> RecipeVersionOut:
 
 
 def resolve_recipe_presentation(
-    session: Session, payload: RecipePresentationResolve
+    session: Session, payload: RecipePresentationResolve, *, owner_id: int
 ) -> RecipePresentationOut:
-    foodstuffs = _foodstuffs_for_ingredients(session, payload.ingredients)
+    foodstuffs = _foodstuffs_for_ingredients(
+        session, payload.ingredients, owner_id=owner_id
+    )
     ingredients = [
         RecipePresentationIngredientOut(
             index=ingredient.index,
@@ -307,6 +327,9 @@ def resolve_recipe_presentation(
         ),
         fat=per_serving(
             total_nutrition(nutrition_ingredients, "fat"), payload.servings
+        ),
+        fiber=per_serving(
+            total_nutrition(nutrition_ingredients, "fiber"), payload.servings
         ),
         ingredients=ingredients,
         steps=[
@@ -460,21 +483,12 @@ def _apply_version_content(
 
 
 def _foodstuffs_for_ingredients(
-    session: Session, ingredients: Sequence[IngredientWrite]
+    session: Session, ingredients: Sequence[IngredientWrite], *, owner_id: int
 ) -> dict[int, Foodstuff]:
     foodstuff_ids = [ingredient.foodstuffId for ingredient in ingredients]
     if len(foodstuff_ids) != len(set(foodstuff_ids)):
         raise ConflictError("A foodstuff may only occur once per recipe")
-    if not foodstuff_ids:
-        return {}
-    foodstuffs = session.scalars(
-        select(Foodstuff).where(Foodstuff.id.in_(foodstuff_ids))
-    ).all()
-    by_id = {foodstuff.id: foodstuff for foodstuff in foodstuffs}
-    missing_ids = sorted(set(foodstuff_ids).difference(by_id))
-    if missing_ids:
-        raise NotFoundError(f"Foodstuff with id {missing_ids[0]} not found")
-    return by_id
+    return owned_foodstuffs_by_id(session, foodstuff_ids, owner_id=owner_id)
 
 
 def _new_ingredients(

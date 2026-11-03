@@ -1,3 +1,4 @@
+import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import type { Mock } from 'vitest';
 import { MatDialogRef } from '@angular/material/dialog';
@@ -227,9 +228,7 @@ function createRecipeVersion(
   state: RecipeVersionOut['state'],
   recipeVersionId: string,
 ): RecipeVersionOut {
-  return {
-    imageId: null,
-    imageDimensions: null,
+  return recipeVersionOut({
     recipeLineageId: '00000000-0000-4000-8000-000000000001',
     ownerId: 1,
     recipeVersionId,
@@ -241,9 +240,5 @@ function createRecipeVersion(
     preptime: recipeVersionWrite.preptime,
     ingredients: [],
     steps: [],
-    kcal: { status: 'unknown' as const, value: null },
-    carbs: { status: 'unknown' as const, value: null },
-    protein: { status: 'unknown' as const, value: null },
-    fat: { status: 'unknown' as const, value: null },
-  };
+  });
 }

@@ -1,5 +1,11 @@
 import { provideRouter, Router } from '@angular/router';
-import { signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  createEnvironmentInjector,
+  EnvironmentInjector,
+  signal,
+} from '@angular/core';
+import { AuthNavigationService } from '../../services/auth-navigation.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatMenuHarness } from '@angular/material/menu/testing';
@@ -18,6 +24,7 @@ const USER: UserOut = {
 };
 
 describe('PageHeaderComponent', () => {
+  const assign = vi.fn();
   const navigate = vi.fn<Router['navigate']>();
   let fixture: ComponentFixture<PageHeaderComponent>;
   let activeUserService: Pick<
@@ -28,7 +35,7 @@ describe('PageHeaderComponent', () => {
   beforeEach(async () => {
     activeUserService = {
       activeUser: signal<UserOut | null>(USER),
-      logout: vi.fn().mockResolvedValue(true),
+      logout: vi.fn().mockResolvedValue('https://idp.example/logout'),
       logoutPending: signal(false),
     };
 
@@ -36,6 +43,17 @@ describe('PageHeaderComponent', () => {
       imports: [PageHeaderComponent, NoopAnimationsModule],
       providers: [
         provideRouter([]),
+        {
+          provide: AuthNavigationService,
+          useFactory: () =>
+            createEnvironmentInjector(
+              [
+                { provide: DOCUMENT, useValue: { location: { assign } } },
+                AuthNavigationService,
+              ],
+              TestBed.inject(EnvironmentInjector),
+            ).get(AuthNavigationService),
+        },
         {
           provide: ActiveUserService,
           useValue: activeUserService,
@@ -55,6 +73,7 @@ describe('PageHeaderComponent', () => {
       ],
     }).compileComponents();
 
+    assign.mockReset();
     navigate.mockReset().mockResolvedValue(true);
     vi.spyOn(TestBed.inject(Router), 'navigate').mockImplementation(navigate);
     fixture = TestBed.createComponent(PageHeaderComponent);
@@ -87,14 +106,14 @@ describe('PageHeaderComponent', () => {
     await items[1].click();
     expect(activeUserService.logout).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
-      expect(navigate).toHaveBeenCalledWith(['/signed-out']),
+      expect(assign).toHaveBeenCalledWith('https://idp.example/logout'),
     );
   });
 
   it('stays on the current page when logout is not confirmed', async () => {
-    vi.mocked(activeUserService.logout).mockResolvedValue(false);
+    vi.mocked(activeUserService.logout).mockResolvedValue(null);
     await fixture.componentInstance.logout();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(assign).not.toHaveBeenCalled();
   });
 
   it('keeps the light theme action visible and disabled', async () => {

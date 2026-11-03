@@ -16,6 +16,7 @@ def presentation() -> dict[str, object]:
         "carbs": {"status": "unknown", "value": None},
         "protein": {"status": "exact", "value": 0},
         "fat": {"status": "unknown", "value": None},
+        "fiber": {"status": "unknown", "value": None},
         "ingredients": [
             {
                 "index": 1,
@@ -31,6 +32,7 @@ def presentation() -> dict[str, object]:
                     "carbs": None,
                     "protein": 0,
                     "fat": None,
+                    "fiber": None,
                 },
             }
         ],

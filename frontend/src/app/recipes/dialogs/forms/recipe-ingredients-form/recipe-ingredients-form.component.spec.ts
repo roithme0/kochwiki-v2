@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../../../testing/foodstuff.fixtures';
 import { Subject } from 'rxjs';
 
 import { Component, input } from '@angular/core';
@@ -11,6 +12,7 @@ import {
 } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { ChartLegendElementComponent } from '../../../../core/components/chart-legend-element/chart-legend-element.component';
+import { NutritionValueComponent } from '../../../../core/components/nutrition-value/nutrition-value.component';
 import { MacroChartComponent } from '../../../../core/components/macro-chart/macro-chart.component';
 import { ChartLegendElement } from '../../../../core/models/chart-legend-element';
 import type { NutritionSummary } from '../../../../core/models/nutrition-result';
@@ -39,19 +41,16 @@ describe('RecipeIngredientsFormComponent', () => {
   let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
   let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
-  const foodstuff: FoodstuffOut = {
+  const foodstuff: FoodstuffOut = foodstuffOut({
     id: 1,
     name: 'Haferflocken',
-    brand: null,
     unit: FoodstuffUnit.Gram,
-    imageId: null,
     unitVerbose: 'g',
     kcal: 370,
     carbs: 60,
     protein: 13,
     fat: 7,
-    recipeVersionIds: [],
-  };
+  });
 
   beforeEach(async () => {
     download
@@ -220,7 +219,18 @@ describe('RecipeIngredientsFormComponent', () => {
       getLegend()?.querySelectorAll('app-chart-legend-element').length,
     ).toBe(3);
     expect(getChartArea().querySelector('app-macro-chart')).not.toBeNull();
+    const fiber = fixture.debugElement.query(
+      By.directive(NutritionValueComponent),
+    ).componentInstance as NutritionValueComponent;
+    expect(fiber.label()).toBe('Ballaststoffe');
+    expect(fiber.value()).toEqual(chartNutrition().fiber);
+    expect(
+      getChartArea().querySelector(
+        '.nutrition-preview > hr.nutrition-separator + app-nutrition-value',
+      ),
+    ).not.toBeNull();
     expect(getChartArea().querySelector('.legend')).not.toBeNull();
+    expect(getLegend()?.querySelector('app-nutrition-value')).toBeNull();
     expect(
       (fixture.nativeElement as HTMLElement).querySelector('.details-button'),
     ).toBeNull();

@@ -45,6 +45,10 @@ export type FoodstuffCreate = {
      */
     fat?: number | string | null;
     /**
+     * Fiber
+     */
+    fiber?: number | string | null;
+    /**
      * Imageid
      */
     imageId?: string | null;
@@ -152,6 +156,10 @@ export type FoodstuffOut = {
      */
     fat: number | null;
     /**
+     * Fiber
+     */
+    fiber: number | null;
+    /**
      * Id
      */
     id: number;
@@ -199,6 +207,10 @@ export type FoodstuffSummaryOut = {
      */
     fat: number | null;
     /**
+     * Fiber
+     */
+    fiber: number | null;
+    /**
      * Id
      */
     id: number;
@@ -241,6 +253,10 @@ export type FoodstuffUpdate = {
      * Fat
      */
     fat?: number | string | null;
+    /**
+     * Fiber
+     */
+    fiber?: number | string | null;
     /**
      * Imageid
      */
@@ -309,6 +325,16 @@ export type IngredientWrite = {
      * Index
      */
     index: number;
+};
+
+/**
+ * LogoutOut
+ */
+export type LogoutOut = {
+    /**
+     * Redirect Url
+     */
+    redirect_url: string;
 };
 
 /**
@@ -469,6 +495,16 @@ export type RecipePresentationOut = {
         status: 'unknown';
     } & UnknownNutrition);
     /**
+     * Fiber
+     */
+    fiber: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
+    /**
      * Ingredients
      */
     ingredients: Array<RecipePresentationIngredientOut>;
@@ -578,6 +614,16 @@ export type RecipeVersionOut = {
      * Fat
      */
     fat: ({
+        status: 'exact';
+    } & ExactNutrition) | ({
+        status: 'minimum';
+    } & MinimumNutrition) | ({
+        status: 'unknown';
+    } & UnknownNutrition);
+    /**
+     * Fiber
+     */
+    fiber: ({
         status: 'exact';
     } & ExactNutrition) | ({
         status: 'minimum';
@@ -819,10 +865,6 @@ export type LogoutAuthLogoutPostData = {
 
 export type LogoutAuthLogoutPostErrors = {
     /**
-     * Invalid or expired session
-     */
-    401: unknown;
-    /**
      * Missing or untrusted Origin
      */
     403: unknown;
@@ -836,7 +878,7 @@ export type LogoutAuthLogoutPostResponses = {
     /**
      * Successful Response
      */
-    204: void;
+    200: LogoutOut;
 };
 
 export type LogoutAuthLogoutPostResponse = LogoutAuthLogoutPostResponses[keyof LogoutAuthLogoutPostResponses];

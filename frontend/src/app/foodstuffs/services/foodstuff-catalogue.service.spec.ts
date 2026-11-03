@@ -1,3 +1,4 @@
+import { foodstuffOut } from '../../testing/foodstuff.fixtures';
 import { createEnvironmentInjector, EnvironmentInjector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Subject } from 'rxjs';
@@ -5,19 +6,12 @@ import type { FoodstuffOut } from '../../core/api/generated';
 import { FoodstuffBackendService } from './foodstuff-backend.service';
 import { FoodstuffCatalogueService } from './foodstuff-catalogue.service';
 
-const foodstuff: FoodstuffOut = {
+const foodstuff: FoodstuffOut = foodstuffOut({
   id: 1,
   name: 'Pasta',
-  brand: null,
   unit: 'G',
-  imageId: null,
   unitVerbose: 'g',
-  kcal: null,
-  carbs: null,
-  protein: null,
-  fat: null,
-  recipeVersionIds: [],
-};
+});
 
 function deferred<T>(): {
   promise: Promise<T>;

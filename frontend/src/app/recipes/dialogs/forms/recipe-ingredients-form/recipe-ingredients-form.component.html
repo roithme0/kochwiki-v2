@@ -65,6 +65,12 @@
                 <app-chart-legend-element [legendElement]="element" />
               }
             </div>
+            <hr class="nutrition-separator" />
+            <app-nutrition-value
+              class="additional-nutrition"
+              label="Ballaststoffe"
+              [value]="state.nutrition.fiber"
+            />
           </div>
         </div>
       } @else {

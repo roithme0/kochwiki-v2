@@ -1,3 +1,5 @@
+import { recipeVersionOut } from '../../testing/recipe.fixtures';
+import { foodstuffSummary } from '../../testing/foodstuff.fixtures';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
@@ -14,7 +16,7 @@ import { RecipeBackendService } from './recipe-backend.service';
 
 const lineageId = '00000000-0000-4000-8000-000000000001';
 const versionId = '00000000-0000-4000-8000-000000000002';
-const recipe: RecipeVersionOut = {
+const recipe: RecipeVersionOut = recipeVersionOut({
   imageId: '00000000-0000-4000-8000-000000000003',
   imageDimensions: { width: 1254, height: 818 },
   ownerId: 1,
@@ -25,33 +27,32 @@ const recipe: RecipeVersionOut = {
   lastModified: '2026-09-30T10:00:00Z',
   name: 'Oats',
   servings: 2,
-  preptime: null,
-  kcal: { status: 'exact' as const, value: 46.25 },
-  carbs: { status: 'exact' as const, value: 7.5 },
-  protein: { status: 'unknown' as const, value: null },
-  fat: { status: 'unknown' as const, value: null },
+  kcal: { status: 'exact', value: 46.25 },
+  carbs: { status: 'exact', value: 7.5 },
+  protein: { status: 'unknown', value: null },
+  fat: { status: 'unknown', value: null },
+  fiber: { status: 'unknown', value: null },
   ingredients: [
     {
       id: 1,
       index: 1,
       amount: 12.5,
       recipeVersionId: versionId,
-      foodstuff: {
+      foodstuff: foodstuffSummary({
         id: 1,
         name: 'Oats',
-        brand: null,
         unit: 'G',
-        imageId: null,
         unitVerbose: 'g',
         kcal: 370,
         carbs: 60,
         protein: null,
         fat: null,
-      },
+        fiber: null,
+      }),
     },
   ],
   steps: [{ id: 1, index: 1, description: 'Cook', recipeVersionId: versionId }],
-};
+});
 const write: RecipeVersionWrite = {
   name: recipe.name,
   servings: recipe.servings,

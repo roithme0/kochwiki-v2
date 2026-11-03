@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -65,7 +66,9 @@ class FakeProvider:
 def create(name: str = "Karotte", brand: str | None = None) -> int:
     with SessionLocal.begin() as session:
         return create_foodstuff(
-            session, FoodstuffCreate(name=name, brand=brand, unit=Unit.G)
+            session,
+            FoodstuffCreate(name=name, brand=brand, unit=Unit.G),
+            owner_id=fixture_owner_id(session),
         ).id
 
 
@@ -73,8 +76,14 @@ def service(provider: FakeProvider) -> FoodstuffEmbeddingService:
     return FoodstuffEmbeddingService(SessionLocal, EmbeddingClient(provider))
 
 
-def search_service(provider: FakeProvider) -> FoodstuffSemanticSearch:
-    return FoodstuffSemanticSearch(SessionLocal, EmbeddingClient(provider))
+def search_service(
+    provider: FakeProvider, *, owner_id: int | None = None
+) -> FoodstuffSemanticSearch:
+    return FoodstuffSemanticSearch(
+        SessionLocal,
+        EmbeddingClient(provider),
+        owner_id=owner_id if owner_id is not None else fixture_owner_id(),
+    )
 
 
 def test_refresh_metadata_freshness_and_nutrition() -> None:
@@ -90,11 +99,19 @@ def test_refresh_metadata_freshness_and_nutrition() -> None:
         assert len(stored.vector) == STORAGE_DIMENSIONS
     assert search.refresh_one(foodstuff_id) == "skipped"
     with SessionLocal.begin() as session:
-        update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(20)))
+        update_foodstuff(
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(kcal=Decimal(20)),
+            owner_id=fixture_owner_id(session),
+        )
     assert search.refresh_one(foodstuff_id) == "skipped"
     with SessionLocal.begin() as session:
         update_foodstuff(
-            session, foodstuff_id, FoodstuffUpdate(name="Moehre", brand="New")
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(name="Moehre", brand="New"),
+            owner_id=fixture_owner_id(session),
         )
     assert search.refresh_one(foodstuff_id) == "refreshed"
     with SessionLocal.begin() as session:
@@ -143,11 +160,23 @@ def test_obsolete_generation_is_discarded(change: str) -> None:
             return
         with SessionLocal.begin() as session:
             if change == "delete":
-                delete_foodstuff(session, foodstuff_id)
+                delete_foodstuff(
+                    session, foodstuff_id, owner_id=fixture_owner_id(session)
+                )
             elif change == "name":
-                update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="new"))
+                update_foodstuff(
+                    session,
+                    foodstuff_id,
+                    FoodstuffUpdate(name="new"),
+                    owner_id=fixture_owner_id(session),
+                )
             else:
-                update_foodstuff(session, foodstuff_id, FoodstuffUpdate(brand="new"))
+                update_foodstuff(
+                    session,
+                    foodstuff_id,
+                    FoodstuffUpdate(brand="new"),
+                    owner_id=fixture_owner_id(session),
+                )
 
     provider.before_return = mutate
     assert search.refresh_one(foodstuff_id) == "skipped"
@@ -160,7 +189,7 @@ def test_delete_cascades_embedding() -> None:
     search = service(FakeProvider())
     assert search.refresh_one(foodstuff_id) == "refreshed"
     with SessionLocal.begin() as session:
-        delete_foodstuff(session, foodstuff_id)
+        delete_foodstuff(session, foodstuff_id, owner_id=fixture_owner_id(session))
     with SessionLocal() as session:
         assert session.get(FoodstuffEmbedding, foodstuff_id) is None
 
@@ -187,11 +216,21 @@ def test_exact_search_filters_before_limit_and_returns_authoritative_summaries()
                 )
             )
     with SessionLocal.begin() as session:
-        update_foodstuff(session, ids[0], FoodstuffUpdate(name="changed"))
+        update_foodstuff(
+            session,
+            ids[0],
+            FoodstuffUpdate(name="changed"),
+            owner_id=fixture_owner_id(session),
+        )
         stored = session.get(FoodstuffEmbedding, ids[1])
         assert stored
         stored.profile = "old"
-        update_foodstuff(session, ids[2], FoodstuffUpdate(kcal=Decimal(17)))
+        update_foodstuff(
+            session,
+            ids[2],
+            FoodstuffUpdate(kcal=Decimal(17)),
+            owner_id=fixture_owner_id(session),
+        )
     results = search.search("Moehre", 2)
     assert [item.foodstuff.id for item in results] == ids[2:4]
     assert results[0].foodstuff.kcal == Decimal(17)
@@ -227,7 +266,9 @@ def test_no_service_url_disables_capability(caplog: pytest.LogCaptureFixture) ->
     embeddings = EmbeddingClient.from_settings(settings)
     assert not embeddings.available
     refresh = FoodstuffEmbeddingService(SessionLocal, embeddings)
-    search = FoodstuffSemanticSearch(SessionLocal, embeddings)
+    search = FoodstuffSemanticSearch(
+        SessionLocal, embeddings, owner_id=fixture_owner_id()
+    )
     assert refresh.refresh_one(1) == "disabled"
     assert refresh.refresh_all().refreshed == 0
     with pytest.raises(SemanticSearchUnavailable):
@@ -242,26 +283,52 @@ def test_post_commit_creation_input_changes_rollback_and_nutrition() -> None:
     try:
         with SessionLocal() as session:
             foodstuff = create_foodstuff(
-                session, FoodstuffCreate(name="created", unit=Unit.G)
+                session,
+                FoodstuffCreate(name="created", unit=Unit.G),
+                owner_id=fixture_owner_id(session),
             )
             foodstuff_id = foodstuff.id
             assert captured == []
             session.commit()
             assert captured == [foodstuff_id]
         with SessionLocal.begin() as session:
-            update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(20)))
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(kcal=Decimal(20)),
+                owner_id=fixture_owner_id(session),
+            )
         assert captured == [foodstuff_id]
         with SessionLocal.begin() as session:
-            update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="renamed"))
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(name="renamed"),
+                owner_id=fixture_owner_id(session),
+            )
         with SessionLocal.begin() as session:
-            update_foodstuff(session, foodstuff_id, FoodstuffUpdate(brand="brand"))
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(brand="brand"),
+                owner_id=fixture_owner_id(session),
+            )
         assert captured == [foodstuff_id] * 3
         with SessionLocal() as session:
-            create_foodstuff(session, FoodstuffCreate(name="rollback", unit=Unit.G))
+            create_foodstuff(
+                session,
+                FoodstuffCreate(name="rollback", unit=Unit.G),
+                owner_id=fixture_owner_id(session),
+            )
             session.rollback()
         assert captured == [foodstuff_id] * 3
         with SessionLocal() as session:
-            update_foodstuff(session, foodstuff_id, FoodstuffUpdate(name="rollback"))
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(name="rollback"),
+                owner_id=fixture_owner_id(session),
+            )
             session.rollback()
         assert captured == [foodstuff_id] * 3
     finally:
@@ -274,15 +341,23 @@ def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() 
     try:
         with SessionLocal() as session:
             outer = create_foodstuff(
-                session, FoodstuffCreate(name="outer", unit=Unit.G)
+                session,
+                FoodstuffCreate(name="outer", unit=Unit.G),
+                owner_id=fixture_owner_id(session),
             )
             with session.begin_nested():
                 nested = create_foodstuff(
-                    session, FoodstuffCreate(name="nested", unit=Unit.G)
+                    session,
+                    FoodstuffCreate(name="nested", unit=Unit.G),
+                    owner_id=fixture_owner_id(session),
                 )
             assert captured == []
             savepoint = session.begin_nested()
-            create_foodstuff(session, FoodstuffCreate(name="rolled back", unit=Unit.G))
+            create_foodstuff(
+                session,
+                FoodstuffCreate(name="rolled back", unit=Unit.G),
+                owner_id=fixture_owner_id(session),
+            )
             savepoint.rollback()
             session.commit()
             assert set(captured) == {outer.id, nested.id}
@@ -290,7 +365,9 @@ def test_nested_commit_waits_for_outer_commit_and_nested_rollback_keeps_outer() 
         with SessionLocal() as session:
             with session.begin_nested():
                 create_foodstuff(
-                    session, FoodstuffCreate(name="outer rolled back", unit=Unit.G)
+                    session,
+                    FoodstuffCreate(name="outer rolled back", unit=Unit.G),
+                    owner_id=fixture_owner_id(session),
                 )
             session.rollback()
         assert captured == []

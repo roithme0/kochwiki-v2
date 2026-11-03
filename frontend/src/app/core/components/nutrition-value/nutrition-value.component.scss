@@ -1,0 +1,46 @@
+:host {
+  display: block;
+}
+
+mat-card {
+  --mdc-elevated-card-container-shape: 0.1rem;
+  --mdc-elevated-card-container-color: transparent;
+}
+
+.value-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+p {
+  margin: 0;
+}
+
+.display-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value-absolute {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+@container nutrition-legend (max-width: 14rem) {
+  .value-content {
+    padding: 0.25rem;
+  }
+
+  .display-name {
+    grid-column: 1 / -1;
+  }
+
+  .value-absolute {
+    grid-column: 2;
+  }
+}

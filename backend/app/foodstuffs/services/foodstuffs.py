@@ -1,4 +1,5 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -11,8 +12,14 @@ from app.foodstuffs.schemas.foodstuff import (
     FoodstuffSummaryOut,
     FoodstuffUpdate,
 )
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
+from app.foodstuffs.schemas.nutrition_enrichment import (
+    FoodstuffIdentity,
+    FoodstuffNutrient,
+    NutritionFill,
+    NutritionFillResult,
+)
 from app.infrastructure.database.integrity import flush_for_unique_conflict
 from app.images.models import ImageAsset, ImageKind
 
@@ -29,6 +36,7 @@ def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:
         carbs=foodstuff.carbs,
         protein=foodstuff.protein,
         fat=foodstuff.fat,
+        fiber=foodstuff.fiber,
     )
 
 
@@ -45,15 +53,17 @@ def foodstuff_out(foodstuff: Foodstuff) -> FoodstuffOut:
         carbs=summary.carbs,
         protein=summary.protein,
         fat=summary.fat,
+        fiber=summary.fiber,
         recipeVersionIds=sorted(
             {ingredient.recipe_version_id for ingredient in foodstuff.ingredients}
         ),
     )
 
 
-def list_foodstuffs(session: Session) -> Sequence[Foodstuff]:
+def list_foodstuffs(session: Session, *, owner_id: int) -> Sequence[Foodstuff]:
     statement = (
         select(Foodstuff)
+        .where(Foodstuff.owner_id == owner_id)
         .options(selectinload(Foodstuff.ingredients))
         .order_by(Foodstuff.id)
     )
@@ -72,15 +82,19 @@ def get_foodstuff(session: Session, foodstuff_id: int) -> Foodstuff:
     return foodstuff
 
 
-def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
-    _validate_image(session, payload)
+def create_foodstuff(
+    session: Session, payload: FoodstuffCreate, *, owner_id: int
+) -> Foodstuff:
+    _validate_image(session, payload.imageId, owner_id=owner_id)
     foodstuff = Foodstuff(
-        **payload.model_dump(exclude={"imageId"}), image_id=payload.imageId
+        **payload.model_dump(exclude={"imageId"}),
+        image_id=payload.imageId,
+        owner_id=owner_id,
     )
     session.add(foodstuff)
     flush_for_unique_conflict(
         session,
-        "uq_foodstuff_name_brand",
+        "uq_foodstuff_owner_name_brand",
         "A foodstuff with the same name and brand already exists",
     )
     mark_foodstuff_refresh(session, foodstuff.id)
@@ -88,10 +102,12 @@ def create_foodstuff(session: Session, payload: FoodstuffCreate) -> Foodstuff:
 
 
 def update_foodstuff(
-    session: Session, foodstuff_id: int, payload: FoodstuffUpdate
+    session: Session, foodstuff_id: int, payload: FoodstuffUpdate, *, owner_id: int
 ) -> Foodstuff:
-    foodstuff = get_foodstuff(session, foodstuff_id)
-    _validate_image(session, payload)
+    foodstuff = _get_foodstuff_for_update(session, foodstuff_id)
+    require_foodstuff_owner(foodstuff, owner_id)
+    if "imageId" in payload.model_fields_set and payload.imageId != foodstuff.image_id:
+        _validate_image(session, payload.imageId, owner_id=owner_id)
     previous_input = (foodstuff.name, foodstuff.brand or "")
     for field_name, value in payload.model_dump(
         exclude_unset=True, exclude={"imageId"}
@@ -101,7 +117,7 @@ def update_foodstuff(
         foodstuff.image_id = payload.imageId
     flush_for_unique_conflict(
         session,
-        "uq_foodstuff_name_brand",
+        "uq_foodstuff_owner_name_brand",
         "A foodstuff with the same name and brand already exists",
     )
     if previous_input != (foodstuff.name, foodstuff.brand or ""):
@@ -109,17 +125,92 @@ def update_foodstuff(
     return get_foodstuff(session, foodstuff.id)
 
 
-def _validate_image(
-    session: Session, payload: FoodstuffCreate | FoodstuffUpdate
-) -> None:
-    if payload.imageId is not None:
-        image = session.get(ImageAsset, payload.imageId)
+def _get_foodstuff_for_update(session: Session, foodstuff_id: int) -> Foodstuff:
+    foodstuff = session.scalar(
+        select(Foodstuff)
+        .where(Foodstuff.id == foodstuff_id)
+        .options(selectinload(Foodstuff.ingredients))
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if foodstuff is None:
+        raise NotFoundError(f"Foodstuff with id {foodstuff_id} not found")
+    return foodstuff
+
+
+def fill_foodstuff_nutrition(
+    session: Session,
+    foodstuff_id: int,
+    expected: FoodstuffIdentity,
+    nutrition: NutritionFill,
+    *,
+    owner_id: int,
+) -> NutritionFillResult:
+    foodstuff = _get_foodstuff_for_update(session, foodstuff_id)
+    require_foodstuff_owner(foodstuff, owner_id)
+    if (foodstuff.name, foodstuff.brand, foodstuff.unit) != (
+        expected.name,
+        expected.brand,
+        expected.unit,
+    ):
+        raise ConflictError(
+            "Foodstuff identity or unit changed; retrieve it and research again"
+        )
+    applied: list[FoodstuffNutrient] = []
+    retained: list[FoodstuffNutrient] = []
+    for name, value in nutrition.supplied_values():
+        if getattr(foodstuff, name) is None:
+            setattr(foodstuff, name, value)
+            applied.append(name)
+        else:
+            retained.append(name)
+    session.flush()
+    return NutritionFillResult(
+        foodstuff=foodstuff_out(foodstuff), applied=applied, retained=retained
+    )
+
+
+def require_foodstuff_owner(foodstuff: Foodstuff, owner_id: int) -> None:
+    if foodstuff.owner_id != owner_id:
+        raise ForbiddenError(
+            "Only the foodstuff owner may modify or use this foodstuff"
+        )
+
+
+def owned_foodstuffs_by_id(
+    session: Session, foodstuff_ids: Iterable[int], *, owner_id: int
+) -> dict[int, Foodstuff]:
+    requested = set(foodstuff_ids)
+    if not requested:
+        return {}
+    found = {
+        foodstuff.id: foodstuff
+        for foodstuff in session.scalars(
+            select(Foodstuff).where(Foodstuff.id.in_(requested))
+        )
+    }
+    missing = sorted(requested - found.keys())
+    if missing:
+        raise NotFoundError(f"Foodstuff with id {missing[0]} not found")
+    for foodstuff in found.values():
+        require_foodstuff_owner(foodstuff, owner_id)
+    return found
+
+
+def _validate_image(session: Session, image_id: UUID | None, *, owner_id: int) -> None:
+    if image_id is not None:
+        image = session.get(ImageAsset, image_id)
         if image is None or image.kind != ImageKind.FOODSTUFF:
-            raise NotFoundError(f"Foodstuff image with id {payload.imageId} not found")
+            raise NotFoundError(f"Foodstuff image with id {image_id} not found")
+        if image.uploader_id != owner_id:
+            raise ForbiddenError(
+                "Only images uploaded by the foodstuff owner may be attached"
+            )
 
 
-def delete_foodstuff(session: Session, foodstuff_id: int) -> None:
+def delete_foodstuff(session: Session, foodstuff_id: int, *, owner_id: int) -> None:
     foodstuff = get_foodstuff(session, foodstuff_id)
+    require_foodstuff_owner(foodstuff, owner_id)
     usage_count = session.scalar(
         select(func.count())
         .select_from(Ingredient)

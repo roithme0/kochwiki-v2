@@ -3,7 +3,7 @@ import { By } from '@angular/platform-browser';
 import { MacroChartComponent } from '../components/macro-chart/macro-chart.component';
 import { NutritionCardComponent } from '../components/nutrition-card/nutrition-card.component';
 import { mapConversationArtifact } from '../../recipes/conversation/recipe-conversation-contract';
-import { conversationProposal } from '../../recipes/conversation/recipe-conversation.fixtures';
+import { conversationProposal } from '../../testing/conversation.fixtures';
 import {
   isNutritionPresentation,
   nutritionBasisLabel,
@@ -25,6 +25,7 @@ describe('Standalone nutrition artifact rendering', () => {
           carbs: { status: 'exact', value: 12 },
           protein: { status: 'minimum', value: 0 },
           fat: { status: 'unknown', value: null },
+          fiber: { status: 'minimum', value: 8.25 },
         },
       },
     });
@@ -48,7 +49,7 @@ describe('Standalone nutrition artifact rendering', () => {
       Array.from(element.querySelectorAll('.value-absolute')).map((el) =>
         el.textContent?.trim(),
       ),
-    ).toEqual(['12\u00a0g', '≥ 0\u00a0g', '—']);
+    ).toEqual(['12\u00a0g', '≥ 0\u00a0g', '—', '≥ 8.2\u00a0g']);
     expect(element.querySelector('.value-percentage')).toBeNull();
   });
 });

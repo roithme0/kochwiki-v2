@@ -4,7 +4,7 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import jwt
@@ -12,10 +12,17 @@ from pydantic import ValidationError
 from sqlalchemy import delete
 
 from app.core.config import Settings
+from app.core.urls import validate_http_url
 from app.identity.config import LOGIN_TRANSACTION_LIFETIME_SECONDS
 from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
-from app.identity.schemas.oidc import Discovery, Identity, LoginStart, TokenResponse
+from app.identity.schemas.oidc import (
+    CompletedLogin,
+    Discovery,
+    Identity,
+    LoginStart,
+    TokenResponse,
+)
 
 
 class LoginRejected(Exception):
@@ -97,8 +104,15 @@ class OIDCLogin:
             metadata.authorization_endpoint,
             metadata.token_endpoint,
             metadata.jwks_uri,
+            metadata.end_session_endpoint,
         ):
             self.transport_url(url)
+        try:
+            endpoint = validate_http_url(metadata.end_session_endpoint)
+        except ValueError:
+            raise ProviderUnavailable() from None
+        if endpoint.query or endpoint.fragment:
+            raise ProviderUnavailable()
         return metadata
 
     def start(self) -> LoginStart:
@@ -158,7 +172,7 @@ class OIDCLogin:
             raise LoginRejected()
         return transaction
 
-    def finish(self, transaction: LoginTransaction, code: str) -> Identity:
+    def finish(self, transaction: LoginTransaction, code: str) -> CompletedLogin:
         metadata = self.discovery()
         try:
             token = TokenResponse.model_validate_json(
@@ -214,6 +228,16 @@ class OIDCLogin:
                 and claims.get("azp") != self.client_id
             ):
                 raise LoginRejected()
-            return identity
+            return CompletedLogin(identity, token.id_token)
         except (jwt.PyJWTError, ValidationError, UnicodeError):
             raise LoginRejected() from None
+
+    def logout_url(self, endpoint: str, id_token: str | None) -> str:
+        callback = urlsplit(self.callback_url)
+        parameters = {
+            "client_id": self.client_id,
+            "post_logout_redirect_uri": f"{callback.scheme}://{callback.netloc}/signed-out",
+        }
+        if id_token is not None:
+            parameters["id_token_hint"] = id_token
+        return endpoint + "?" + urlencode(parameters)

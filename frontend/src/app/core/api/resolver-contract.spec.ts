@@ -1,30 +1,30 @@
+import { nutritionSummary } from '../../testing/nutrition.fixtures';
+import { foodstuffSummary } from '../../testing/foodstuff.fixtures';
 import * as z from 'zod/mini';
 import type { RecipePresentationOut } from './generated';
 import { zRecipePresentationOut } from './generated/zod.gen';
 
 const presentation: RecipePresentationOut = {
-  servings: 100,
+  ...nutritionSummary(),
   preptime: null,
+  servings: 100,
   kcal: { status: 'exact' as const, value: 99980001 },
   carbs: { status: 'exact' as const, value: 0 },
-  protein: { status: 'unknown' as const, value: null },
   fat: { status: 'exact' as const, value: 0 },
+  fiber: { status: 'minimum' as const, value: 1.5 },
   ingredients: [
     {
       index: 100,
       amount: 10000,
-      foodstuff: {
+      foodstuff: foodstuffSummary({
         id: 7,
         name: 'Oats',
-        brand: null,
         unit: 'G',
-        imageId: null,
         unitVerbose: 'g',
         kcal: 100,
         carbs: 0,
-        protein: null,
         fat: 0,
-      },
+      }),
     },
   ],
   steps: [{ index: 100, description: 'x'.repeat(200) }],
@@ -36,6 +36,9 @@ describe('generated resolver response validation', () => {
   });
 
   const invalid: unknown[] = [
+    { ...presentation, fiber: undefined },
+    { ...presentation, fiber: { status: 'exact', value: -1 } },
+    { ...presentation, fiber: { status: 'unknown', value: 0 } },
     { ...presentation, servings: 0 },
     { ...presentation, preptime: 0 },
     { ...presentation, kcal: { status: 'exact', value: -1 } },
@@ -59,6 +62,7 @@ describe('generated resolver response validation', () => {
           foodstuff: {
             ...presentation.ingredients[0].foodstuff,
             fat: -1,
+            fiber: null,
           },
         },
       ],

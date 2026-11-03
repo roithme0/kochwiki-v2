@@ -36,9 +36,11 @@ router = APIRouter(
     responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
 )
 def resolve_recipe_presentation(
-    payload: RecipePresentationResolve, session: Session = Depends(get_db)
+    payload: RecipePresentationResolve,
+    session: Session = Depends(get_db),
+    user: User = Depends(require_current_user, scope="function"),
 ) -> RecipePresentationOut:
-    return recipes.resolve_recipe_presentation(session, payload)
+    return recipes.resolve_recipe_presentation(session, payload, owner_id=user.id)
 
 
 @router.get("/recipes", response_model=list[RecipeVersionOut])

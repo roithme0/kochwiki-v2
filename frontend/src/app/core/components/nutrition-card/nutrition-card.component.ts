@@ -2,12 +2,18 @@ import { Component, computed, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { NutritionSummary } from '../../models/nutrition-result';
 import { buildNutritionLegend } from '../../utils/nutrition-legend';
+import { NutritionValueComponent } from '../nutrition-value/nutrition-value.component';
 import { ChartLegendElementComponent } from '../chart-legend-element/chart-legend-element.component';
 import { MacroChartComponent } from '../macro-chart/macro-chart.component';
 
 @Component({
   selector: 'app-nutrition-card',
-  imports: [MatCardModule, ChartLegendElementComponent, MacroChartComponent],
+  imports: [
+    MatCardModule,
+    ChartLegendElementComponent,
+    NutritionValueComponent,
+    MacroChartComponent,
+  ],
   templateUrl: './nutrition-card.component.html',
   styleUrl: './nutrition-card.component.scss',
 })

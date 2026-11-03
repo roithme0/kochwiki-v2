@@ -1,6 +1,10 @@
 <mat-card>
   <mat-card-content class="legend-content">
-    <div class="color-indicator" [style.--color]="legendElement().color"></div>
+    <span
+      class="color-indicator"
+      [style.--color]="legendElement().color"
+      aria-hidden="true"
+    ></span>
     <p class="display-name" [title]="legendElement().displayName">
       {{ legendElement().displayName }}
     </p>

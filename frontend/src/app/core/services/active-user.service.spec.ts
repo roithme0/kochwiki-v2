@@ -103,26 +103,20 @@ describe('Authenticated current user', () => {
     expect(service.activeUser()).toBeNull();
   });
 
-  it.each([204, 401])(
-    'confirms logout and clears identity after status %s',
-    async (status) => {
-      const service = await authenticated();
-      const logout = service.logout();
-      expect(service.activeUser()).toEqual(USER);
-      expect(service.logoutPending()).toBe(true);
-      expect(await service.logout()).toBe(false);
-      const request = http.expectOne('/api/auth/logout');
-      expect(request.request.method).toBe('POST');
-      request.flush(null, {
-        status,
-        statusText: status === 204 ? 'No Content' : 'Unauthorized',
-      });
-      expect(await logout).toBe(true);
-      expect(service.activeUser()).toBeNull();
-      expect(service.restorationState()).toBe('signed-out');
-      expect(service.logoutPending()).toBe(false);
-    },
-  );
+  it('clears identity and returns the provider logout URL after confirmation', async () => {
+    const service = await authenticated();
+    const logout = service.logout();
+    expect(service.activeUser()).toEqual(USER);
+    expect(service.logoutPending()).toBe(true);
+    expect(await service.logout()).toBeNull();
+    const request = http.expectOne('/api/auth/logout');
+    expect(request.request.method).toBe('POST');
+    request.flush({ redirect_url: 'https://idp.example/logout' });
+    expect(await logout).toBe('https://idp.example/logout');
+    expect(service.activeUser()).toBeNull();
+    expect(service.restorationState()).toBe('signed-out');
+    expect(service.logoutPending()).toBe(false);
+  });
 
   it.each([0, 403, 503])(
     'retains identity and reports logout failure %s',
@@ -132,7 +126,7 @@ describe('Authenticated current user', () => {
       http
         .expectOne('/api/auth/logout')
         .flush(null, { status, statusText: 'Unavailable' });
-      expect(await logout).toBe(false);
+      expect(await logout).toBeNull();
       expect(service.activeUser()).toEqual(USER);
       expect(service.restorationState()).toBe('idle');
       expect(service.logoutError()).toBe(true);
@@ -147,8 +141,8 @@ describe('Authenticated current user', () => {
     const logout = service.logout();
     http
       .expectOne('/api/auth/logout')
-      .flush(null, { status: 204, statusText: 'No Content' });
-    expect(await logout).toBe(true);
+      .flush({ redirect_url: 'https://idp.example/logout' });
+    expect(await logout).toBe('https://idp.example/logout');
     current.flush(USER);
     await check;
     expect(service.activeUser()).toBeNull();

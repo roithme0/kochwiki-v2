@@ -74,6 +74,7 @@ test.describe('Foodstuffs', () => {
       brand: 'Updated brand',
       unit: 'Gramm',
       kcal: 123,
+      fiber: 8.5,
     };
     await seedFoodstuff(page, baseURL, name);
     const foodstuffsPage = new FoodstuffsPage(page);

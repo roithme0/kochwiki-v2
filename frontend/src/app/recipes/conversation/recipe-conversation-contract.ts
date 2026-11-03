@@ -76,6 +76,7 @@ export function recipeArtifact(
     carbs: { ...recipe.carbs },
     protein: { ...recipe.protein },
     fat: { ...recipe.fat },
+    fiber: { ...recipe.fiber },
     ingredients: recipe.ingredients.map(({ index, amount, foodstuff }) => ({
       index,
       amount,
@@ -87,6 +88,7 @@ export function recipeArtifact(
         carbs: foodstuff.carbs,
         protein: foodstuff.protein,
         fat: foodstuff.fat,
+        fiber: foodstuff.fiber,
       },
     })),
     steps: recipe.steps.map(({ index, description }) => ({
