@@ -3,6 +3,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier, Event
 from time import monotonic, sleep
+from urllib.parse import parse_qs, urlsplit
+
+import jwt
 
 import pytest
 from fastapi.testclient import TestClient
@@ -75,6 +78,7 @@ def test_session_cookie_hash_and_current_profile(
         assert set(ApplicationSession.__table__.columns.keys()) == {
             "id",
             "secret_hash",
+            "id_token",
             "user_id",
             "created_at",
             "last_activity_at",
@@ -268,13 +272,10 @@ def test_expired_cannot_be_revived(
         browser.post(
             "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
         ).status_code
-        == 401
+        == 200
     )
     with SessionLocal() as session:
-        assert (
-            session.scalars(select(ApplicationSession)).one().last_activity_at
-            == old_activity
-        )
+        assert session.scalars(select(ApplicationSession)).one_or_none() is None
 
 
 @pytest.mark.parametrize(
@@ -309,7 +310,7 @@ def test_logout_csrf_rejection_preserves_session(
     assert browser.get("/api/auth/me").status_code == 200
 
 
-def test_logout_invalidates_only_local_session_and_rejects_reuse(
+def test_logout_invalidates_session_and_returns_browser_provider_logout(
     browser: TestClient, provider: Provider
 ) -> None:
     assert finish(browser, begin(browser, provider)) == 302
@@ -329,8 +330,21 @@ def test_logout_invalidates_only_local_session_and_rejects_reuse(
     response = browser.post(
         "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
     )
-    assert response.status_code == 204 and "Max-Age=0" in response.headers["set-cookie"]
-    assert provider.calls == calls and SESSION_COOKIE not in browser.cookies
+    assert response.status_code == 200 and "Max-Age=0" in response.headers["set-cookie"]
+    assert provider.calls == calls + 1 and SESSION_COOKIE not in browser.cookies
+    target = urlsplit(response.json()["redirect_url"])
+    assert target.geturl().startswith(ISSUER + "/protocol/openid-connect/logout?")
+    parameters = parse_qs(target.query)
+    assert parameters["post_logout_redirect_uri"] == [
+        "http://localhost:8000/signed-out"
+    ]
+    assert parameters["client_id"] == ["kochwiki"]
+    claims = jwt.decode(
+        parameters["id_token_hint"][0], options={"verify_signature": False}
+    )
+    assert claims["nonce"] == provider.nonce
+    assert response.headers["cache-control"] == "no-store"
+    assert response.headers["referrer-policy"] == "no-referrer"
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 0
         assert session.scalar(select(func.count()).select_from(User)) == 1
@@ -343,7 +357,7 @@ def test_logout_invalidates_only_local_session_and_rejects_reuse(
         browser.post(
             "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
         ).status_code
-        == 401
+        == 200
     )
 
 
@@ -400,7 +414,7 @@ def test_https_cookie_and_default_origin_port(
             secure_browser.post(
                 "/api/auth/logout", headers={"Origin": "https://cook.example:443"}
             ).status_code
-            == 204
+            == 200
         )
 
 
@@ -451,3 +465,49 @@ def test_stored_hash_is_not_a_session_credential(
         SESSION_COOKIE, hashed, domain="localhost.local", path=SESSION_COOKIE_PATH
     )
     assert browser.get("/api/auth/me").status_code == 401
+
+
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        None,
+        "https://attacker.invalid/logout",
+        ISSUER + "/logout?injected=1",
+        ISSUER + "/logout#fragment",
+        ISSUER + "/log out",
+        ISSUER + "/log\nout",
+        ISSUER + "/logout\x7f",
+    ],
+)
+def test_logout_provider_failure_preserves_session_for_retry(
+    browser: TestClient, provider: Provider, endpoint: str | None
+) -> None:
+    assert finish(browser, begin(browser, provider)) == 302
+    if endpoint is None:
+        provider.unavailable = True
+    else:
+        provider.logout_endpoint = endpoint
+    response = browser.post(
+        "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
+    )
+    assert response.status_code == 503
+    assert "set-cookie" not in response.headers
+    assert browser.get("/api/auth/me").status_code == 200
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_logout_without_id_token_uses_provider_confirmation(
+    browser: TestClient, provider: Provider, legacy: bool
+) -> None:
+    if legacy:
+        assert finish(browser, begin(browser, provider)) == 302
+        with SessionLocal.begin() as session:
+            session.execute(update(ApplicationSession).values(id_token=None))
+    response = browser.post(
+        "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
+    )
+    assert response.status_code == 200
+    query = parse_qs(urlsplit(response.json()["redirect_url"]).query)
+    assert "id_token_hint" not in query
+    assert query["client_id"] == ["kochwiki"]
+    assert SESSION_COOKIE not in browser.cookies

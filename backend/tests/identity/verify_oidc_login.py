@@ -274,13 +274,15 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         )
     if browser.request(base_url + "/api/auth/logout", method="POST").status != 403:
         raise RuntimeError("Logout accepted a request without its CSRF Origin check.")
-    if (
-        browser.request(
-            base_url + "/api/auth/logout", method="POST", headers={"Origin": base_url}
-        ).status
-        != 204
-    ):
-        raise RuntimeError("Local logout failed.")
+    logout = browser.request(
+        base_url + "/api/auth/logout", method="POST", headers={"Origin": base_url}
+    )
+    if logout.status != 200:
+        raise RuntimeError("Logout failed.")
+    destination = json.loads(logout.body)["redirect_url"]
+    completed_logout = browser.follow(destination)
+    if completed_logout.status != 200:
+        raise RuntimeError("Browser provider logout failed.")
     if browser.request(base_url + "/api/auth/me").status != 401:
         raise RuntimeError("The application session survived logout.")
     if any(cookie.name == "kochwiki_session" for cookie in browser.cookies):
@@ -288,16 +290,11 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     if fresh_browser.request(base_url + "/api/auth/me").status != 200:
         raise RuntimeError("Logout unexpectedly invalidated another browser's session.")
     relogin = browser.follow(base_url + "/api/auth/login")
-    if (
-        relogin.status != 302
-        or relogin.location != "/"
-        or browser.request(base_url + "/api/auth/me").status != 200
-    ):
-        raise RuntimeError(
-            "Local logout unexpectedly ended the Keycloak browser session."
-        )
+    login_page = Page(relogin.body)
+    if relogin.status != 200 or "password" not in login_page.inputs:
+        raise RuntimeError("Keycloak reused the browser session after logout.")
     print(
-        "PASS: persistent local session, private current-user contract, CSRF logout and preserved Keycloak session"
+        "PASS: persistent local session, private current-user contract, CSRF logout and ended Keycloak session"
     )
     print(
         "PASS: temporary account created in the disposable provider; runner handles teardown"

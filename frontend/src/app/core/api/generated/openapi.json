@@ -660,6 +660,19 @@
         "title": "IngredientWrite",
         "type": "object"
       },
+      "LogoutOut": {
+        "properties": {
+          "redirect_url": {
+            "title": "Redirect Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "redirect_url"
+        ],
+        "title": "LogoutOut",
+        "type": "object"
+      },
       "MinimumNutrition": {
         "additionalProperties": false,
         "properties": {
@@ -1545,11 +1558,15 @@
       "post": {
         "operationId": "logout_auth_logout_post",
         "responses": {
-          "204": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutOut"
+                }
+              }
+            },
             "description": "Successful Response"
-          },
-          "401": {
-            "description": "Invalid or expired session"
           },
           "403": {
             "description": "Missing or untrusted Origin"

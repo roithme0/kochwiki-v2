@@ -20,6 +20,7 @@ from app.identity.dependencies import (
     unauthenticated,
 )
 from app.identity.schemas.user import UserOut
+from app.identity.schemas.oidc import LogoutOut
 from app.identity.services.oidc import (
     LoginRejected,
     ProviderUnavailable,
@@ -97,12 +98,15 @@ def callback(request: Request) -> Response:
             code = parameters.get("code")
             if not code or len(code) > 4096:
                 raise LoginRejected()
-            identity = service.finish(transaction, code)
+            completed = service.finish(transaction, code)
             with SessionLocal.begin() as session:
-                user = map_identity(session, identity)
+                user = map_identity(session, completed.identity)
                 user_id = user.id
                 secret, expires = establish_session(
-                    session, user_id, request.cookies.get(SESSION_COOKIE)
+                    session,
+                    user_id,
+                    request.cookies.get(SESSION_COOKIE),
+                    completed.id_token,
                 )
             response = RedirectResponse("/", status_code=302, headers=HEADERS)
             set_session_cookie(response, secret, expires, service.secure_cookie)
@@ -152,10 +156,8 @@ def current_user(secret: Annotated[str | None, Security(session_cookie)]) -> Res
 
 @router.post(
     "/logout",
-    status_code=204,
-    response_class=Response,
+    response_model=LogoutOut,
     responses={
-        401: {"description": "Invalid or expired session"},
         403: {"description": "Missing or untrusted Origin"},
         503: {"description": "Login not configured"},
     },
@@ -169,10 +171,24 @@ def logout(
             {"detail": "Login is not configured."}, status_code=503, headers=HEADERS
         )
     require_trusted_origin(request, service.callback_url)
+    try:
+        endpoint = service.discovery().end_session_endpoint
+    except ProviderUnavailable:
+        return JSONResponse(
+            {
+                "detail": "The identity provider is unavailable. Try signing out again later."
+            },
+            status_code=503,
+            headers=HEADERS,
+        )
     with SessionLocal.begin() as session:
-        if not invalidate_session(session, secret):
-            return unauthenticated(service.secure_cookie)
-    response = Response(status_code=204, headers=HEADERS)
+        previous = invalidate_session(session, secret)
+        redirect_url = service.logout_url(
+            endpoint, previous.id_token if previous else None
+        )
+    response = JSONResponse(
+        LogoutOut(redirect_url=redirect_url).model_dump(), headers=HEADERS
+    )
     response.delete_cookie(
         SESSION_COOKIE,
         path=SESSION_COOKIE_PATH,

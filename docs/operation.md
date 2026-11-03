@@ -16,6 +16,7 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 - Install Docker with Compose v2 and retain the `deployment/` directory structure, including gateway, Garage, and PostgreSQL configuration.
 - Create `deployment/.env` from [.env.example](../deployment/.env.example). Replace placeholders; the [development setup](development.md#run-locally) describes credential formats and integration settings.
 - Set `STORAGE_PUBLIC_ORIGIN` to the public application origin and `OIDC_CALLBACK_URL` to that origin plus `/api/auth/callback`. Configure the identity provider and any container-specific backchannel address.
+- In the identity-provider deployment, set `KOCHWIKI_LOGOUT_REDIRECT_URIS` to include the callback origin plus `/signed-out` and apply its client configuration. Logout returns there after ending the browser's Keycloak SSO session, which can affect other applications sharing that session. Use this setup for local environments too.
 - The callback origin is trusted for authenticated mutations. Add other frontend origins with `CSRF_TRUSTED_ORIGINS` (comma-separated exact HTTP(S) origins), for example `http://localhost:4202` for the Angular dev server. Login still returns to the configured callback origin.
 - Put HTTPS termination in front of the HTTP gateway. Staging currently defaults `OIDC_ALLOW_INSECURE_HTTP` to `true`; set it to `false` when HTTPS is configured.
 - Set `AI_GATEWAY_URL` to the AI service gateway origin reachable from both the gateway and backend containers. It serves browser conversations and backend embeddings; blank disables conversations, semantic search, and embedding refresh. Set `MCP_ALLOWED_HOSTS` for the hostnames used to access MCP.
@@ -50,6 +51,8 @@ Paths are relative to **deployment/**:
 Back up database and object storage together: database image references must match the stored objects. For a filesystem backup, stop the stack first with `docker compose --env-file .env -f docker-compose-production.yml stop`, then back up all three data directories and configuration using the host's backup tooling. Protect copied credentials and restart with the deployment command above.
 
 The repository has no automated backup or restore workflow. Verify recovery in an isolated deployment using a matched backup and its compatible application version before relying on it. Reverting application images alone does not reverse migrations. Unsaved proposals are held in backend memory and are lost on restart.
+
+Session records contain ID tokens with identity claims; restrict database and backup access. Exclude logout URLs containing `id_token_hint` from logs.
 
 ## Troubleshooting
 

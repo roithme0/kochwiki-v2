@@ -312,6 +312,16 @@ export type IngredientWrite = {
 };
 
 /**
+ * LogoutOut
+ */
+export type LogoutOut = {
+    /**
+     * Redirect Url
+     */
+    redirect_url: string;
+};
+
+/**
  * MinimumNutrition
  */
 export type MinimumNutrition = {
@@ -819,10 +829,6 @@ export type LogoutAuthLogoutPostData = {
 
 export type LogoutAuthLogoutPostErrors = {
     /**
-     * Invalid or expired session
-     */
-    401: unknown;
-    /**
      * Missing or untrusted Origin
      */
     403: unknown;
@@ -836,7 +842,7 @@ export type LogoutAuthLogoutPostResponses = {
     /**
      * Successful Response
      */
-    204: void;
+    200: LogoutOut;
 };
 
 export type LogoutAuthLogoutPostResponse = LogoutAuthLogoutPostResponses[keyof LogoutAuthLogoutPostResponses];
