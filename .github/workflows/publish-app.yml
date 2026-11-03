@@ -205,7 +205,7 @@ jobs:
         working-directory: frontend
 
       - name: Download built images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: app-image-*
           path: ${{ runner.temp }}/app-images
@@ -214,10 +214,13 @@ jobs:
         env:
           IMAGE_DIRECTORY: ${{ runner.temp }}/app-images
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y skopeo
+          sudo apt-get install -y skopeo jq
           for name in backend frontend; do
-            skopeo copy "oci-archive:$IMAGE_DIRECTORY/app-image-$name/app-image.tar" "docker-daemon:kochwiki-v2-$name:e2e"
+            archive="$IMAGE_DIRECTORY/app-image-$name/app-image.tar"
+            reference=$(tar -xOf "$archive" index.json | jq -er '.manifests[0].annotations["org.opencontainers.image.ref.name"]')
+            skopeo copy "oci-archive:$archive:$reference" "docker-daemon:kochwiki-v2-$name:e2e"
           done
 
       - name: Run isolated E2E
@@ -254,7 +257,7 @@ jobs:
       RELEASE_CHANNEL: ${{ needs.build-app.outputs.channel }}
     steps:
       - name: Download built image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-image-${{ matrix.name }}
           path: ${{ runner.temp }}
