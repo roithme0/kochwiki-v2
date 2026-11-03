@@ -98,17 +98,6 @@ app-ingredient-field {
   flex: 0 0 24px;
 }
 
-/* remove arrows from input number field */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-}
-
-/* remove arrows from input number field */
-input[type='number'] {
-  -moz-appearance: textfield;
-}
-
 .nutrition-separator,
 .additional-nutrition {
   grid-column: 1 / -1;

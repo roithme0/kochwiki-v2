@@ -33,14 +33,3 @@
 .amount-field {
   flex: 0 0 6rem;
 }
-
-/* remove arrows from input number field */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-}
-
-/* remove arrows from input number field */
-input[type='number'] {
-  -moz-appearance: textfield;
-}

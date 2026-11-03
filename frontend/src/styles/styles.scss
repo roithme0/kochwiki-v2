@@ -2,6 +2,15 @@
 @use './chat-ui-integration';
 @use './mat-card-styles';
 
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 // Material has no public token for horizontal form-field padding.
 .foodstuff-nutrition-input .mat-mdc-text-field-wrapper {
   padding-inline: 0.5rem;

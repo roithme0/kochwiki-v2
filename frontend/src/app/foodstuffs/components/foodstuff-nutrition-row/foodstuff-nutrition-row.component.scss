@@ -49,15 +49,6 @@ input {
   text-align: right;
 }
 
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-}
-
-input[type='number'] {
-  -moz-appearance: textfield;
-}
-
 @container nutrition-row (max-width: 14rem) {
   .nutrition-row {
     flex-wrap: wrap;

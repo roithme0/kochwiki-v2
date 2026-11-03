@@ -89,12 +89,3 @@ button[type='submit'] {
     grid-template-columns: 1fr;
   }
 }
-
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-}
-
-input[type='number'] {
-  -moz-appearance: textfield;
-}
