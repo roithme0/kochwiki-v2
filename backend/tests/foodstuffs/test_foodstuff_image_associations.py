@@ -15,6 +15,7 @@ from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.schemas.foodstuff import FoodstuffUpdate
 from app.foodstuffs.services import foodstuffs
 from app.foodstuffs.services.embeddings import foodstuff_refresh
+from app.identity.schemas.user import UserOut
 from app.images.models import ImageAsset, ImageKind
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
@@ -31,7 +32,7 @@ from tests.foodstuffs.test_foodstuff_semantic import (
 
 
 @pytest.fixture
-def images() -> tuple[UUID, UUID, UUID]:
+def images(recipe_session: UserOut) -> tuple[UUID, UUID, UUID]:
     ids = uuid4(), uuid4(), uuid4()
     with SessionLocal.begin() as session:
         for image_id, kind in zip(
@@ -42,6 +43,7 @@ def images() -> tuple[UUID, UUID, UUID]:
             session.add(
                 ImageAsset(
                     id=image_id,
+                    uploader_id=recipe_session.id,
                     kind=kind,
                     object_key=f"{kind.value}-images/{image_id}.png",
                     content_type="image/png",
@@ -143,9 +145,9 @@ def test_failure_after_flush_rolls_back_image_and_other_fields(
     update = foodstuffs.update_foodstuff
 
     def fail(
-        session: Session, foodstuff_id: int, payload: FoodstuffUpdate
+        session: Session, foodstuff_id: int, payload: FoodstuffUpdate, *, owner_id: int
     ) -> Foodstuff:
-        update(session, foodstuff_id, payload)
+        update(session, foodstuff_id, payload, owner_id=owner_id)
         raise SQLAlchemyError("database failure")
 
     monkeypatch.setattr(foodstuffs, "update_foodstuff", fail)
@@ -196,7 +198,10 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
         assert body["ingredients"][0]["foodstuff"]["imageId"] == str(images[1])
         assert body["imageId"] is None
     assert (
-        search_service(provider).search("Carrot", 5)[0].foodstuff.imageId == images[1]
+        search_service(provider, owner_id=recipe["ownerId"])
+        .search("Carrot", 5)[0]
+        .foodstuff.imageId
+        == images[1]
     )
 
 
@@ -272,8 +277,14 @@ def test_foreign_key_protects_referenced_metadata(
 
 
 def test_mcp_image_association_rules(
-    images: tuple[UUID, UUID, UUID], mcp_headers: dict[str, str]
+    images: tuple[UUID, UUID, UUID], mcp_headers: dict[str, str], mcp_user: UserOut
 ) -> None:
+    with SessionLocal.begin() as session:
+        for image_id in images:
+            image = session.get(ImageAsset, image_id)
+            assert image is not None
+            image.uploader_id = mcp_user.id
+
     async def exercise() -> None:
         app = create_app()
         async with app.router.lifespan_context(app):
@@ -327,6 +338,13 @@ def test_mcp_image_association_rules(
                     with SessionLocal() as session:
                         persisted = foodstuffs.get_foodstuff(session, saved["id"])
                         assert persisted.image_id is None and persisted.name == "Carrot"
-                        assert len(foodstuffs.list_foodstuffs(session)) == 1
+                        assert (
+                            len(
+                                foodstuffs.list_foodstuffs(
+                                    session, owner_id=mcp_user.id
+                                )
+                            )
+                            == 1
+                        )
 
     asyncio.run(exercise())

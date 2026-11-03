@@ -1,3 +1,5 @@
+from tests.recipes.helpers import fixture_owner_headers
+from tests.recipes.helpers import fixture_owner_id
 import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -27,7 +29,9 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
 ):
     with SessionLocal.begin() as session:
         foodstuff = create_foodstuff(
-            session, FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20))
+            session,
+            FoodstuffCreate(name="Tomato", unit=Unit.G, kcal=Decimal(20)),
+            owner_id=fixture_owner_id(session),
         )
         write = RecipeVersionWrite.model_validate(
             {
@@ -73,7 +77,9 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)
@@ -142,7 +148,9 @@ def test_lineage_mcp_database_failure_is_sanitized(
         app = create_app()
         async with app.router.lifespan_context(app):
             async with httpx2.AsyncClient(
-                transport=httpx2.ASGITransport(app=app), base_url="http://localhost"
+                headers=fixture_owner_headers(),
+                transport=httpx2.ASGITransport(app=app),
+                base_url="http://localhost",
             ) as http:
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http)

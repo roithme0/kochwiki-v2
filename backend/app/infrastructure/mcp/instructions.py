@@ -8,6 +8,12 @@ do not retrieve information already supplied. Search for additional ingredients
 with search_foodstuffs using a name or alias, and other relevant recipes with
 search_recipes using a recipe name.
 
+Foodstuffs belong to individual users. Search returns only the caller's catalogue;
+create and update tools act only on the caller's entries. Other users' recipe
+ingredients remain readable, but their foodstuff IDs cannot be reused in proposals
+or recipes. Find a suitable entry in the caller's catalogue or supply a temporary
+definition. Do not attempt to clone or modify another user's catalogue entry.
+
 Assess candidates using their returned details and the conversation. Choose a
 clear match without extra confirmation; clarify ambiguous targets in natural
 language. Ranking alone does not establish identity. Search coverage is incomplete:

@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import cast
@@ -73,7 +74,11 @@ def temporary(index: int = 2, **definition: object) -> dict[str, object]:
 def references() -> tuple[UUID, UUID, int]:
     with SessionLocal.begin() as session:
         source = create_recipe(session, RecipeVersionWrite(name="Original", servings=2))
-        foodstuff = create_foodstuff(session, FoodstuffCreate(name="Oats", unit=Unit.G))
+        foodstuff = create_foodstuff(
+            session,
+            FoodstuffCreate(name="Oats", unit=Unit.G),
+            owner_id=fixture_owner_id(session),
+        )
         return source.lineage_id, source.version_id, foodstuff.id
 
 
@@ -175,7 +180,7 @@ def test_reference_validation_does_not_autoflush_pending_records() -> None:
     _, source, _ = references()
     store = RecipeProposalStore()
     with SessionLocal() as session:
-        pending = Foodstuff(name="Pending", unit=Unit.G)
+        pending = Foodstuff(name="Pending", unit=Unit.G, owner_id=fixture_owner_id())
         session.add(pending)
         proposal = store.create(
             session, payload(source), user_id=recipe_owner_id(session)
@@ -238,7 +243,10 @@ def test_all_source_states_and_later_dependency_changes_and_deletion() -> None:
         ]
     with SessionLocal.begin() as session:
         update_foodstuff(
-            session, foodstuff_id, FoodstuffUpdate(name="Renamed", kcal=Decimal(1))
+            session,
+            foodstuff_id,
+            FoodstuffUpdate(name="Renamed", kcal=Decimal(1)),
+            owner_id=fixture_owner_id(session),
         )
         update_recipe_draft(
             session,
@@ -250,7 +258,7 @@ def test_all_source_states_and_later_dependency_changes_and_deletion() -> None:
         assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
     with SessionLocal.begin() as session:
         delete_recipe_lineage(session, lineage)
-        delete_foodstuff(session, foodstuff_id)
+        delete_foodstuff(session, foodstuff_id, owner_id=fixture_owner_id(session))
     for proposal in proposals:
         assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
 

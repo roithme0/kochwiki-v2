@@ -39,6 +39,10 @@ from app.images.transfers import (
 )
 from app.images.schemas import ImageUpload
 from app.recipes.models.image_upload import RecipeImageUpload
+from app.foodstuffs.models.image_upload import FoodstuffImageUpload
+from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
+from app.images.uploads import ImageUploads
+from app.foodstuffs.routes.images import get_foodstuff_image_uploads
 from app.recipes.services.image_uploads import RecipeImageUploads
 from app.infrastructure.storage.storage import (
     PresignedTransfer,
@@ -386,8 +390,7 @@ def test_image_operations_reject_invalid_sessions_before_storage_access(
     [
         operation
         for operation in AUTHENTICATED_IMAGE_OPERATIONS
-        if operation
-        != (ImageKind.RECIPE, "POST", "/recipe-image-uploads/{id}/complete")
+        if not operation[2].endswith("/complete")
     ],
 )
 def test_image_operations_are_shared_and_renew_sessions(
@@ -505,19 +508,23 @@ def test_image_operation_contract_declares_authentication(
     )
 
 
-@pytest.mark.parametrize("kind", [ImageKind.RECIPE])
+@pytest.mark.parametrize("kind", list(ImageKind))
 @pytest.mark.parametrize("caller", ["other", "missing", "expired", "revoked"])
 def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
     client: TestClient,
     storage: Mock,
+    kind: ImageKind,
     sign_in: Callable[[TestClient], UserOut],
     caller: str,
 ) -> None:
     owner = sign_in(client)
     secret = client.cookies.get(SESSION_COOKIE, path="/")
-    upload_id = start_upload(client, ImageKind.RECIPE)
+    upload_id = start_upload(client, kind)
     with SessionLocal() as session:
-        pending = session.get(RecipeImageUpload, upload_id)
+        pending = session.get(
+            RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+            upload_id,
+        )
         assert pending is not None and pending.uploader_id == owner.id
     if caller == "other":
         sign_in(client)
@@ -534,12 +541,18 @@ def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
         with SessionLocal.begin() as session:
             assert invalidate_session(session, secret)
     storage.reset_mock()
-    path = f"/recipe-image-uploads/{upload_id}/complete"
+    path = f"/{kind.value}-image-uploads/{upload_id}/complete"
     denied = client.post(path, headers={"X-Application-User": f"kochwiki:{owner.id}"})
     assert denied.status_code == (403 if caller == "other" else 401)
     assert storage.mock_calls == []
     with SessionLocal() as session:
-        assert session.get(RecipeImageUpload, upload_id) is not None
+        assert (
+            session.get(
+                RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+                upload_id,
+            )
+            is not None
+        )
         assert session.scalar(select(func.count()).select_from(ImageAsset)) == 0
     with SessionLocal.begin() as session:
         new_secret, _ = establish_session(session, owner.id, None)
@@ -552,41 +565,52 @@ def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
     with SessionLocal() as session:
         image = session.get(ImageAsset, UUID(completed.json()["id"]))
         assert image is not None and image.uploader_id == owner.id
-        assert session.get(RecipeImageUpload, upload_id) is None
+        assert (
+            session.get(
+                RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+                upload_id,
+            )
+            is None
+        )
     storage.reset_mock()
     assert client.post(path).status_code == 404
     assert storage.mock_calls == []
 
 
-@pytest.mark.parametrize("kind", [ImageKind.RECIPE])
+@pytest.mark.parametrize("kind", list(ImageKind))
 def test_unknown_recipe_upload_is_rejected_before_storage_access(
     authenticated_client: TestClient,
     storage: Mock,
+    kind: ImageKind,
 ) -> None:
     assert (
         authenticated_client.post(
-            f"/recipe-image-uploads/{uuid4()}/complete"
+            f"/{kind.value}-image-uploads/{uuid4()}/complete"
         ).status_code
         == 404
     )
     assert storage.mock_calls == []
 
 
-@pytest.mark.parametrize("kind", [ImageKind.RECIPE])
+@pytest.mark.parametrize("kind", list(ImageKind))
 def test_recipe_upload_can_retry_after_storage_failure_but_not_after_completion(
     authenticated_client: TestClient,
     storage: Mock,
+    kind: ImageKind,
     recipe_session: UserOut,
 ) -> None:
     client = authenticated_client
-    upload_id = start_upload(client, ImageKind.RECIPE)
-    path = f"/recipe-image-uploads/{upload_id}/complete"
+    upload_id = start_upload(client, kind)
+    path = f"/{kind.value}-image-uploads/{upload_id}/complete"
     storage.read.side_effect = StorageUnavailable("private storage error")
     failed = client.post(path)
     assert failed.status_code == 503
     assert failed.json() == {"detail": "Image upload could not be completed"}
     with SessionLocal() as session:
-        pending = session.get(RecipeImageUpload, upload_id)
+        pending = session.get(
+            RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+            upload_id,
+        )
         assert pending is not None and pending.uploader_id == recipe_session.id
         assert session.scalar(select(func.count()).select_from(ImageAsset)) == 0
     storage.read.side_effect = None
@@ -598,16 +622,17 @@ def test_recipe_upload_can_retry_after_storage_failure_but_not_after_completion(
     assert storage.mock_calls == []
 
 
-@pytest.mark.parametrize("kind", [ImageKind.RECIPE])
+@pytest.mark.parametrize("kind", list(ImageKind))
 def test_concurrent_recipe_completions_process_the_upload_once(
     authenticated_client: TestClient,
     storage: Mock,
+    kind: ImageKind,
     recipe_session: UserOut,
 ) -> None:
-    upload_id = start_upload(authenticated_client, ImageKind.RECIPE)
-    uploads = RecipeImageUploads(
-        ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE), SessionLocal
-    )
+    upload_id = start_upload(authenticated_client, kind)
+    uploads = (
+        RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
+    )(ImageTransfers(storage, SessionLocal, kind=kind), SessionLocal)
     reading, release, second_started = Event(), Event(), Event()
 
     def read(key: str, *, max_bytes: int) -> bytes:
@@ -637,42 +662,57 @@ def test_concurrent_recipe_completions_process_the_upload_once(
     storage.read.assert_called_once()
     storage.write.assert_called_once()
     with SessionLocal() as session:
-        assert session.get(RecipeImageUpload, upload_id) is None
+        assert (
+            session.get(
+                RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+                upload_id,
+            )
+            is None
+        )
         assert session.scalar(select(func.count()).select_from(ImageAsset)) == 1
 
 
-@pytest.mark.parametrize("kind", [ImageKind.RECIPE])
+@pytest.mark.parametrize("kind", list(ImageKind))
 @pytest.mark.parametrize("failure_stage", ["before_commit", "after_commit"])
 def test_recipe_image_and_pending_upload_have_one_commit_outcome(
     authenticated_client: TestClient,
     storage: Mock,
+    kind: ImageKind,
     recipe_session: UserOut,
     failure_stage: str,
 ) -> None:
     client = authenticated_client
-    upload_id = start_upload(client, ImageKind.RECIPE)
+    upload_id = start_upload(client, kind)
     sessions = sessionmaker(engine, autoflush=False, expire_on_commit=False)
-    uploads = RecipeImageUploads(
-        ImageTransfers(storage, sessions, kind=ImageKind.RECIPE), sessions
-    )
+    uploads = (
+        RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
+    )(ImageTransfers(storage, sessions, kind=kind), sessions)
 
     def fail(session: Session) -> None:
         raise OperationalError("commit", None, RuntimeError("private database error"))
 
-    def dependency() -> RecipeImageUploads:
+    def dependency() -> ImageUploads:
         return uploads
 
-    client.app.dependency_overrides[get_recipe_image_uploads] = dependency
+    upload_dependency = (
+        get_recipe_image_uploads
+        if kind == ImageKind.RECIPE
+        else get_foodstuff_image_uploads
+    )
+    client.app.dependency_overrides[upload_dependency] = dependency
     storage.read.return_value = png()
     event.listen(sessions, failure_stage, fail)
-    path = f"/recipe-image-uploads/{upload_id}/complete"
+    path = f"/{kind.value}-image-uploads/{upload_id}/complete"
     try:
         response = client.post(path)
     finally:
         event.remove(sessions, failure_stage, fail)
-        client.app.dependency_overrides.pop(get_recipe_image_uploads)
+        client.app.dependency_overrides.pop(upload_dependency)
     with SessionLocal() as session:
-        pending = session.get(RecipeImageUpload, upload_id)
+        pending = session.get(
+            RecipeImageUpload if kind == ImageKind.RECIPE else FoodstuffImageUpload,
+            upload_id,
+        )
         images = list(session.scalars(select(ImageAsset)))
         if failure_stage == "before_commit":
             assert response.status_code == 503
@@ -684,7 +724,9 @@ def test_recipe_image_and_pending_upload_have_one_commit_outcome(
             assert response.status_code == 200
             assert pending is None
             assert len(images) == 1 and images[0].uploader_id == recipe_session.id
-            storage.delete.assert_called_once_with(f"recipe-image-uploads/{upload_id}")
+            storage.delete.assert_called_once_with(
+                f"{kind.value}-image-uploads/{upload_id}"
+            )
     storage.reset_mock()
     if failure_stage == "before_commit":
         assert client.post(path).status_code == 200

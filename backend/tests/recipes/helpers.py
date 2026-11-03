@@ -11,18 +11,8 @@ from app.recipes.services.recipes import create_recipe
 
 
 def create_owned_recipe(session: Session, payload: RecipeVersionWrite) -> RecipeVersion:
-    owner = map_identity(
-        session,
-        Identity(
-            iss="http://localhost:8006/realms/services",
-            sub="recipe-fixture-owner",
-            email="recipe-owner@example.invalid",
-            email_verified=False,
-            displayName="Recipe owner",
-            nonce="test-fixture",
-        ),
-    )
-    return create_recipe(session, payload, owner_id=owner.id)
+    owner_id = fixture_owner_id(session)
+    return create_recipe(session, payload, owner_id=owner_id)
 
 
 def recipe_owner_id(session: Session | None = None) -> int:
@@ -35,3 +25,33 @@ def recipe_owner_id(session: Session | None = None) -> int:
         )
     assert owner_id is not None
     return owner_id
+
+
+def fixture_owner_id(session: Session | None = None) -> int:
+    if session is None:
+        with SessionLocal.begin() as connection:
+            return fixture_owner_id(connection)
+    owner = map_identity(
+        session,
+        Identity(
+            iss="http://localhost:8006/realms/services",
+            sub="recipe-fixture-owner",
+            email="recipe-owner@example.invalid",
+            email_verified=False,
+            displayName="Recipe owner",
+            nonce="test-fixture",
+        ),
+    )
+    return owner.id
+
+
+def fixture_owner_headers() -> dict[str, str]:
+    from urllib.parse import quote
+
+    with SessionLocal.begin() as session:
+        owner_id = fixture_owner_id(session)
+        owner = session.get(User, owner_id)
+        assert owner is not None
+        return {
+            "X-Application-User": f"{quote(owner.issuer, safe='')}:{quote(owner.subject, safe='')}"
+        }

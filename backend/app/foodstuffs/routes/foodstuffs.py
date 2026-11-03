@@ -17,6 +17,7 @@ from app.foodstuffs.schemas.foodstuff import (
 )
 from app.foodstuffs.services import foodstuffs
 from app.identity.dependencies import require_current_user
+from app.identity.models.user import User
 
 router = APIRouter(
     dependencies=[Depends(require_current_user, scope="function")],
@@ -25,10 +26,13 @@ router = APIRouter(
 
 
 @router.get("/foodstuffs", response_model=list[FoodstuffOut])
-def get_foodstuffs(session: Session = Depends(get_db)) -> Sequence[FoodstuffOut]:
+def get_foodstuffs(
+    session: Session = Depends(get_db),
+    user: User = Depends(require_current_user, scope="function"),
+) -> Sequence[FoodstuffOut]:
     return [
         foodstuffs.foodstuff_out(foodstuff)
-        for foodstuff in foodstuffs.list_foodstuffs(session)
+        for foodstuff in foodstuffs.list_foodstuffs(session, owner_id=user.id)
     ]
 
 
@@ -50,9 +54,11 @@ def get_foodstuff(
     responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def post_foodstuff(
-    payload: FoodstuffCreate, session: Session = Depends(get_write_db, scope="function")
+    payload: FoodstuffCreate,
+    session: Session = Depends(get_write_db, scope="function"),
+    user: User = Depends(require_current_user, scope="function"),
 ) -> FoodstuffOut:
-    foodstuff = foodstuffs.create_foodstuff(session, payload)
+    foodstuff = foodstuffs.create_foodstuff(session, payload, owner_id=user.id)
     return foodstuffs.foodstuff_out(foodstuff)
 
 
@@ -65,8 +71,11 @@ def patch_foodstuff(
     foodstuff_id: int,
     payload: FoodstuffUpdate,
     session: Session = Depends(get_write_db, scope="function"),
+    user: User = Depends(require_current_user, scope="function"),
 ) -> FoodstuffOut:
-    foodstuff = foodstuffs.update_foodstuff(session, foodstuff_id, payload)
+    foodstuff = foodstuffs.update_foodstuff(
+        session, foodstuff_id, payload, owner_id=user.id
+    )
     return foodstuffs.foodstuff_out(foodstuff)
 
 
@@ -76,6 +85,8 @@ def patch_foodstuff(
     responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
 )
 def delete_foodstuff(
-    foodstuff_id: int, session: Session = Depends(get_write_db, scope="function")
+    foodstuff_id: int,
+    session: Session = Depends(get_write_db, scope="function"),
+    user: User = Depends(require_current_user, scope="function"),
 ) -> None:
-    foodstuffs.delete_foodstuff(session, foodstuff_id)
+    foodstuffs.delete_foodstuff(session, foodstuff_id, owner_id=user.id)

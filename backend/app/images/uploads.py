@@ -1,12 +1,21 @@
 from dataclasses import replace
+from datetime import datetime, timezone
+from typing import ClassVar
 from uuid import UUID
 
+from sqlalchemy import delete, select
 from sqlalchemy.exc import DBAPIError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.images.models import ImageAsset
+from app.core.exceptions import ForbiddenError
+from app.images.models import ImageAsset, OwnedImageUpload
 from app.images.schemas import ImageUpload, ValidatedImage
-from app.images.transfers import ImagePersistenceFailed, ImageTransfers, InvalidImage
+from app.images.transfers import (
+    ImagePersistenceFailed,
+    ImageTransfers,
+    ImageUploadNotFound,
+    InvalidImage,
+)
 
 
 class ImageUploads:
@@ -73,3 +82,37 @@ class ImageUploads:
 
     def _consume_upload(self, session: Session, upload_id: UUID) -> None:
         pass
+
+
+class OwnedImageUploads(ImageUploads):
+    upload_model: ClassVar[type[OwnedImageUpload]]
+
+    def _register_upload(
+        self, session: Session, upload: ImageUpload, uploader_id: int
+    ) -> None:
+        session.add(
+            self.upload_model(
+                id=upload.id,
+                uploader_id=uploader_id,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+
+    def _authorize_upload(
+        self, session: Session, upload_id: UUID, uploader_id: int
+    ) -> int:
+        upload = session.scalar(
+            select(self.upload_model)
+            .where(self.upload_model.id == upload_id)
+            .with_for_update()
+        )
+        if upload is None:
+            raise ImageUploadNotFound("Upload has not been received")
+        if upload.uploader_id != uploader_id:
+            raise ForbiddenError("Only the uploader may complete this image upload")
+        return upload.uploader_id
+
+    def _consume_upload(self, session: Session, upload_id: UUID) -> None:
+        session.execute(
+            delete(self.upload_model).where(self.upload_model.id == upload_id)
+        )

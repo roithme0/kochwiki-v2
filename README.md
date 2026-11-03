@@ -7,7 +7,7 @@ Keep your recipes and foodstuffs together, see nutrition per serving, and explor
 ## Features
 
 - **Recipes that evolve:** organize ingredients and preparation steps, explore drafts, and keep previous versions.
-- **A shared foodstuff catalogue:** manage foods, brands, images, and nutrition values for use across recipes.
+- **Your foodstuff catalogue:** manage your own foods, brands, images, and nutrition values for use across your recipes.
 - **Nutrition per serving:** see energy and macronutrients, with missing values clearly distinguished from zero.
 - **AI-assisted improvements:** discuss recipe changes, review suggestions, and save them as drafts. Requires a connected AI service.
 

@@ -1,3 +1,4 @@
+from tests.recipes.helpers import fixture_owner_id
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from threading import Barrier
@@ -43,7 +44,9 @@ def prepare() -> tuple[RecipeProposalStore, RecipeProposalOut, UUID, int]:
     with SessionLocal.begin() as session:
         source = create_recipe(session, RecipeVersionWrite(name="Original", servings=1))
         foodstuff = create_foodstuff(
-            session, FoodstuffCreate(name="Oats", unit=Unit.G, kcal=Decimal(100))
+            session,
+            FoodstuffCreate(name="Oats", unit=Unit.G, kcal=Decimal(100)),
+            owner_id=fixture_owner_id(session),
         )
         lineage_id, foodstuff_id = source.lineage_id, foodstuff.id
         proposal = store.create(
@@ -111,7 +114,12 @@ def test_atomic_save_and_repeat_returns_current_version() -> None:
     recipe_refresh.subscribe(recipes.append)
     try:
         with SessionLocal.begin() as session:
-            update_foodstuff(session, foodstuff_id, FoodstuffUpdate(kcal=Decimal(120)))
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(kcal=Decimal(120)),
+                owner_id=fixture_owner_id(session),
+            )
         result = save_recipe_proposal(
             SessionLocal, store, proposal.proposalId, user_id=recipe_owner_id()
         )
@@ -179,12 +187,14 @@ def test_failure_rolls_back_and_keeps_proposal_unsaved(
         expected = NotFoundError
     elif failure == "foodstuff":
         with SessionLocal.begin() as session:
-            delete_foodstuff(session, foodstuff_id)
+            delete_foodstuff(session, foodstuff_id, owner_id=fixture_owner_id(session))
         expected = NotFoundError
     elif failure == "duplicate":
         with SessionLocal.begin() as session:
             create_foodstuff(
-                session, FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G)
+                session,
+                FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G),
+                owner_id=fixture_owner_id(session),
             )
         expected = ConflictError
     elif failure == "draft":
@@ -319,7 +329,9 @@ def test_later_temporary_conflict_rolls_back_earlier_foodstuff() -> None:
     store, proposal, _, _ = prepare()
     with SessionLocal.begin() as session:
         create_foodstuff(
-            session, FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G)
+            session,
+            FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G),
+            owner_id=fixture_owner_id(session),
         )
     with SessionLocal() as session:
         submitted = proposal.recipe.model_dump()
