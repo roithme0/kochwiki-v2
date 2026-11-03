@@ -1,3 +1,4 @@
+import { FoodstuffNutritionRowComponent } from '../foodstuff-nutrition-row/foodstuff-nutrition-row.component';
 import { ImageEditorComponent } from '../../../core/components/image-editor/image-editor.component';
 import {
   Component,
@@ -10,6 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
+import { buildNutritionLegend } from '../../../core/utils/nutrition-legend';
 import { toNutritionSummary } from '../../../core/models/nutrition-result';
 import { ImageEditorState } from '../../../core/services/image-editor-state.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -37,6 +39,7 @@ import { foodstuffImagePlaceholder } from '../../../core/constants/image-assets'
   imports: [
     ImageEditorComponent,
     MacroChartComponent,
+    FoodstuffNutritionRowComponent,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -77,12 +80,15 @@ export class FoodstuffFormComponent {
     carbs: this.fb.control<number | null>(null),
     protein: this.fb.control<number | null>(null),
     fat: this.fb.control<number | null>(null),
+    fiber: this.fb.control<number | null>(null),
   });
 
   private readonly formValue = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
   });
   readonly nutrition = computed(() => toNutritionSummary(this.formValue()));
+  readonly macroKeys = ['carbs', 'protein', 'fat'] as const;
+  readonly legend = computed(() => buildNutritionLegend(this.nutrition()));
 
   constructor() {
     effect(() => {
@@ -109,7 +115,7 @@ export class FoodstuffFormComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, brand, unit, kcal, carbs, protein, fat } =
+    const { name, brand, unit, kcal, carbs, protein, fat, fiber } =
       this.form.getRawValue();
     if (unit === null) return;
     await this.image.submit((imageIdChange) => {
@@ -121,6 +127,7 @@ export class FoodstuffFormComponent {
         carbs,
         protein,
         fat,
+        fiber,
         ...(imageIdChange === undefined ? {} : { imageId: imageIdChange }),
       });
     });

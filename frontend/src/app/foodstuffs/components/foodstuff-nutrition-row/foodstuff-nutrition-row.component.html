@@ -1,0 +1,28 @@
+<mat-card>
+  <mat-card-content class="nutrition-row">
+    <span class="nutrient-label">
+      @if (color(); as markerColor) {
+        <span
+          class="color-indicator"
+          [style.background-color]="markerColor"
+          aria-hidden="true"
+        ></span>
+      }
+      <span class="display-name" [title]="label()">{{ label() }}</span>
+    </span>
+    <mat-form-field
+      class="nutrient-input"
+      appearance="outline"
+      subscriptSizing="dynamic"
+    >
+      <input
+        matInput
+        type="number"
+        step="any"
+        [formControl]="control()"
+        [attr.aria-label]="label()"
+      />
+      <span matTextSuffix>g</span>
+    </mat-form-field>
+  </mat-card-content>
+</mat-card>
