@@ -58,6 +58,13 @@ export const zIngredientWrite = z.strictObject({
 });
 
 /**
+ * LogoutOut
+ */
+export const zLogoutOut = z.object({
+    redirect_url: z.string()
+});
+
+/**
  * MinimumNutrition
  */
 export const zMinimumNutrition = z.strictObject({

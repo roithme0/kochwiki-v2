@@ -1,8 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
 import type { UserOut } from '../api/generated';
-import { zUserOut } from '../api/generated/zod.gen';
+import { zLogoutOut, zUserOut } from '../api/generated/zod.gen';
 import { requestApiResponse } from '../api/request-api-response';
 import { backendUrl } from '../constants/api';
 
@@ -31,26 +30,29 @@ export class ActiveUserService {
       : Promise.resolve();
   }
 
-  async logout(): Promise<boolean> {
-    if (this.logoutPending()) return false;
+  async logout(): Promise<string | null> {
+    if (this.logoutPending()) return null;
     this.logoutPending.set(true);
     this.logoutError.set(false);
     ++this.requestEpoch;
+    let redirectUrl: string;
     try {
-      await firstValueFrom(
-        this.http.post<void>(`${backendUrl}/auth/logout`, null),
+      const response = await requestApiResponse(
+        this.http,
+        'POST',
+        `${backendUrl}/auth/logout`,
+        zLogoutOut,
       );
-    } catch (error: unknown) {
-      if (!(error instanceof HttpErrorResponse && error.status === 401)) {
-        this.logoutError.set(true);
-        this.logoutPending.set(false);
-        return false;
-      }
+      redirectUrl = response.redirect_url;
+    } catch {
+      this.logoutError.set(true);
+      this.logoutPending.set(false);
+      return null;
     }
     this.user.set(null);
     this.state.set('signed-out');
     this.logoutPending.set(false);
-    return true;
+    return redirectUrl;
   }
 
   private async restoreSession(): Promise<void> {

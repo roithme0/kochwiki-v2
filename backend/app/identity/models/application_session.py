@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.base import Base
@@ -11,6 +11,7 @@ class ApplicationSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     secret_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    id_token: Mapped[str | None] = mapped_column(Text, nullable=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
     )

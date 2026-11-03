@@ -92,7 +92,7 @@ def test_logout_accepts_additional_frontend_origin(
         client.post(
             "/auth/logout", headers={"Origin": "http://localhost:4202"}
         ).status_code
-        == 204
+        == 200
     )
     assert client.get("/recipes").status_code == 401
 
