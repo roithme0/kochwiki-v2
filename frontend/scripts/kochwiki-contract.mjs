@@ -66,7 +66,11 @@ try {
     const destination = join(contract, name);
     if (check) {
       const committed = await readFile(destination).catch(() => null);
-      if (!committed?.equals(generated)) {
+      if (
+        !committed ||
+        committed.toString('utf8').replaceAll('\r\n', '\n') !==
+          generated.toString('utf8').replaceAll('\r\n', '\n')
+      ) {
         throw new Error(
           `${destination} is stale. Run npm run generate:kochwiki-contract.`,
         );

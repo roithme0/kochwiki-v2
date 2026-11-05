@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, readFile, readdir } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdir, mkdtemp, readFile, readdir } from "node:fs/promises";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   changedFiles,
   fingerprint,
@@ -13,42 +13,42 @@ import {
   type ValidationProfile,
   type ValidationChecks,
   defaultChecks,
-} from './shared.mts';
+} from "./shared.mts";
 
 export function backendPython(root: string): string {
   return join(
     root,
-    'backend/.venv',
-    process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python',
+    "backend/.venv",
+    process.platform === "win32" ? "Scripts/python.exe" : "bin/python",
   );
 }
 
 export async function backendFingerprint(root: string): Promise<string> {
-  const backend = 'backend/';
+  const backend = "backend/";
   const libraries =
-    process.platform === 'win32'
-      ? ['backend/.venv/Lib/site-packages']
-      : ['backend/.venv/lib/python3.13/site-packages'];
+    process.platform === "win32"
+      ? ["backend/.venv/Lib/site-packages"]
+      : ["backend/.venv/lib/python3.13/site-packages"];
   const environment = [
-    'backend/.venv/pyvenv.cfg',
+    "backend/.venv/pyvenv.cfg",
     relative(root, backendPython(root)),
   ];
   for (const library of libraries) {
     const entries = await readdir(join(root, library), {
       withFileTypes: true,
     }).catch((error: unknown) => {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT')
+      if (error instanceof Error && "code" in error && error.code === "ENOENT")
         return [];
       throw error;
     });
     for (const entry of entries) {
-      if (entry.isDirectory() && entry.name.endsWith('.dist-info'))
-        environment.push(join(library, entry.name, 'METADATA'));
+      if (entry.isDirectory() && entry.name.endsWith(".dist-info"))
+        environment.push(join(library, entry.name, "METADATA"));
     }
   }
   return fingerprint(
     root,
-    [backend, '.codex/', '.agents/validation/'],
+    [backend, ".codex/", ".agents/validation/"],
     environment,
   );
 }
@@ -61,7 +61,7 @@ export async function formatBackend(
   await mkdir(cache, { recursive: true });
   const pending: PendingFormatting[] = [];
   const checked: string[] = [];
-  for (const name of changedFiles(root, 'backend/')) {
+  for (const name of changedFiles(root, "backend/")) {
     if (
       !/\.pyi?$/.test(name) ||
       /\/(?:\.venv|\.codex-validation|__pycache__|\.pytest_cache[^/]*|\.pytest_tmp[^/]*)\//.test(
@@ -69,30 +69,30 @@ export async function formatBackend(
       )
     )
       continue;
-    const path = await sourcePath(root, 'backend', name);
+    const path = await sourcePath(root, "backend", name);
     if (!path) continue;
-    const original = await readFile(path, 'utf8');
+    const original = await readFile(path, "utf8");
     const output = await runCheck(
-      join(root, 'backend'),
-      'Backend Black formatting',
+      join(root, "backend"),
+      "Backend Black formatting",
       [
-        '-X',
-        'utf8',
-        '-m',
-        'black',
-        '--config',
-        join(root, 'backend/pyproject.toml'),
-        '--quiet',
-        '--stdin-filename',
+        "-X",
+        "utf8",
+        "-m",
+        "black",
+        "--config",
+        join(root, "backend/pyproject.toml"),
+        "--quiet",
+        "--stdin-filename",
         path,
-        '-',
+        "-",
       ],
-      join(cache, 'format.log'),
+      join(cache, "format.log"),
       120_000,
       python,
       original,
     );
-    const newline = original.match(/\r?\n/)?.[0] ?? '\n';
+    const newline = original.match(/\r?\n/)?.[0] ?? "\n";
     const formatted = output.replace(/\r?\n/g, newline);
     checked.push(name);
     if (original !== formatted)
@@ -105,20 +105,23 @@ export async function runBackendPytest(
   root: string,
   cache: string,
   python: string = backendPython(root),
+  run: typeof runCheck = runCheck,
+  nativeArgs: readonly string[] = [],
 ): Promise<void> {
   await mkdir(cache, { recursive: true });
-  const run = await mkdtemp(join(cache, 'pytest-'));
-  await runCheck(
-    join(root, 'backend'),
-    'Backend pytest',
+  const artifacts = await mkdtemp(join(cache, "pytest-"));
+  await run(
+    join(root, "backend"),
+    "Backend pytest",
     [
-      '-m',
-      'pytest',
-      `--basetemp=${join(run, 'tmp')}`,
-      '-o',
-      `cache_dir=${join(run, 'cache')}`,
+      "-m",
+      "pytest",
+      `--basetemp=${join(artifacts, "tmp")}`,
+      "-o",
+      `cache_dir=${join(artifacts, "cache")}`,
+      ...nativeArgs,
     ],
-    join(cache, 'pytest.log'),
+    join(cache, "pytest.log"),
     300_000,
     python,
   );
@@ -129,37 +132,33 @@ export function backendProfile(
   checks: Readonly<ValidationChecks> = defaultChecks,
 ): ValidationProfile {
   return {
-    scope: 'backend',
+    scope: "backend",
     policy: {
-      label: 'Backend',
-      formatter: 'Black',
-      success: 'Selected backend checks passed.',
+      label: "Backend",
+      formatter: "Black",
+      success: "Selected backend checks passed.",
       retry:
-        'backend validation: node .agents/validation/backend.mts --format, node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts from the repository root, then .venv/Scripts/python.exe -m pytest from backend (use .venv/bin/python on Unix)',
+        "backend validation: node .agents/validation/backend.mts --format, node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts from the repository root, then .venv/Scripts/python.exe -m pytest from backend (use .venv/bin/python on Unix)",
     },
     dependencies: (cache) => ({
       fingerprint: () => backendFingerprint(root),
       hasChanges: () =>
         git(root, [
-          'status',
-          '--porcelain',
-          '-z',
-          '--',
-          'backend/',
-          '.codex/',
-          '.agents/validation/',
+          "status",
+          "--porcelain",
+          "-z",
+          "--",
+          "backend/",
+          ".codex/",
+          ".agents/validation/",
         ]).length > 0,
       format: () => formatBackend(root, cache),
       test: async () => {
-        if (checks.toolingTests)
-          await runCheck(
-            root,
-            'Backend tooling tests',
-            ['--test', '.agents/validation/backend.test.mts'],
-            join(cache, 'tooling-tests.log'),
-            120_000,
-          );
-        if (checks.appTests) await runBackendPytest(root, cache);
+        const { parseTestArguments, runTests } = await import("./test.mts");
+        const args: string[] = [];
+        if (checks.toolingTests) args.push("--group", "tooling-backend");
+        if (checks.appTests) args.push("--group", "backend");
+        if (args.length) await runTests(root, parseTestArguments(args));
       },
     }),
   };
@@ -169,12 +168,12 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  if (process.argv.length !== 3 || process.argv[2] !== '--format')
-    throw new Error('Usage: node .agents/validation/backend.mts --format');
-  const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+  if (process.argv.length !== 3 || process.argv[2] !== "--format")
+    throw new Error("Usage: node .agents/validation/backend.mts --format");
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   const result = await formatBackend(
     root,
-    join(root, '.agents/.codex-validation/backend/manual'),
+    join(root, ".agents/.codex-validation/backend/manual"),
   );
   process.stdout.write(
     `Checked ${result.checked.length} changed Python files; formatted ${result.formatted.length}.\n`,

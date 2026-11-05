@@ -103,6 +103,7 @@ export async function testE2E(
   artifactsRoot: string,
   run: typeof runCheck = runCheck,
   prebuiltImages = false,
+  nativeArgs: readonly string[] = [],
 ): Promise<void> {
   await mkdir(artifactsRoot, { recursive: true });
   const cache = await mkdtemp(join(artifactsRoot, 'run-'));
@@ -214,7 +215,7 @@ export async function testE2E(
     await run(
       frontend,
       'Playwright (install Chromium with npx playwright install chromium if missing)',
-      [cli, 'test', '--output', join(cache, 'test-results')],
+      [cli, 'test', '--output', join(cache, 'test-results'), ...nativeArgs],
       join(cache, 'playwright.log'),
       180_000,
       process.execPath,
