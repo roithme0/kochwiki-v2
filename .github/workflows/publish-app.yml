@@ -69,13 +69,13 @@ jobs:
         run: npm run test:tooling
 
       - name: Run frontend unit tests
-        run: npm run test -- --watch=false
+        run: node ../.agents/validation/test.mts --group frontend-app
 
       - name: Install Chromium for browser component tests
         run: npx playwright install --with-deps chromium
 
       - name: Run frontend browser component tests
-        run: npm run test:browser
+        run: node ../.agents/validation/test.mts --group frontend-browser
 
       - name: Upload browser component failure diagnostics
         if: failure()
@@ -86,8 +86,27 @@ jobs:
           include-hidden-files: true
           retention-days: 7
 
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install backend dependencies
+        run: |
+          python -m venv backend/.venv
+          backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
+      - name: Start dedicated test database
+        run: docker compose -f deployment/tests/docker-compose-test.yml up -d --wait db
+      - name: Run backend tests
+        run: node .agents/validation/test.mts --group tooling-backend --group backend
+
   build-app:
-    needs: [check-kochwiki-contract, frontend-tests]
+    needs: [check-kochwiki-contract, frontend-tests, backend-tests]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -224,7 +243,7 @@ jobs:
           done
 
       - name: Run isolated E2E
-        run: node .agents/validation/e2e.mts --prebuilt-images
+        run: node .agents/validation/test.mts --group e2e --prebuilt-images
         env:
           IDENTITY_PROVIDER_REPOSITORY: ${{ github.workspace }}/.e2e-identity-provider
 
