@@ -30,6 +30,7 @@ def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:
         imageId=foodstuff.image_id,
         name=foodstuff.name,
         brand=foodstuff.brand,
+        details=foodstuff.details,
         unit=foodstuff.unit,
         unitVerbose=foodstuff.unit.verbose_name,
         kcal=foodstuff.kcal,
@@ -47,6 +48,7 @@ def foodstuff_out(foodstuff: Foodstuff) -> FoodstuffOut:
         imageId=summary.imageId,
         name=summary.name,
         brand=summary.brand,
+        details=summary.details,
         unit=summary.unit,
         unitVerbose=summary.unitVerbose,
         kcal=summary.kcal,
@@ -108,7 +110,7 @@ def update_foodstuff(
     require_foodstuff_owner(foodstuff, owner_id)
     if "imageId" in payload.model_fields_set and payload.imageId != foodstuff.image_id:
         _validate_image(session, payload.imageId, owner_id=owner_id)
-    previous_input = (foodstuff.name, foodstuff.brand or "")
+    previous_input = (foodstuff.name, foodstuff.brand or "", foodstuff.details)
     for field_name, value in payload.model_dump(
         exclude_unset=True, exclude={"imageId"}
     ).items():
@@ -120,7 +122,7 @@ def update_foodstuff(
         "uq_foodstuff_owner_name_brand",
         "A foodstuff with the same name and brand already exists",
     )
-    if previous_input != (foodstuff.name, foodstuff.brand or ""):
+    if previous_input != (foodstuff.name, foodstuff.brand or "", foodstuff.details):
         mark_foodstuff_refresh(session, foodstuff.id)
     return get_foodstuff(session, foodstuff.id)
 
@@ -148,9 +150,10 @@ def fill_foodstuff_nutrition(
 ) -> NutritionFillResult:
     foodstuff = _get_foodstuff_for_update(session, foodstuff_id)
     require_foodstuff_owner(foodstuff, owner_id)
-    if (foodstuff.name, foodstuff.brand, foodstuff.unit) != (
+    if (foodstuff.name, foodstuff.brand, foodstuff.details, foodstuff.unit) != (
         expected.name,
         expected.brand,
+        expected.details,
         expected.unit,
     ):
         raise ConflictError(

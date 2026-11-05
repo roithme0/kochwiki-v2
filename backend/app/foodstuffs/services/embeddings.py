@@ -14,17 +14,31 @@ def mark_foodstuff_refresh(session: Session, foodstuff_id: int) -> None:
     foodstuff_refresh.mark(session, foodstuff_id)
 
 
-def source_text(name: str, brand: str | None) -> str:
-    return name + ("\nBrand: " + brand if brand else "")
+def source_text(name: str, brand: str | None, details: str | None = None) -> str:
+    return (
+        name
+        + ("\nBrand: " + brand if brand else "")
+        + ("\nDetails: " + details if details else "")
+    )
 
 
 def current_source_text() -> ColumnElement[str]:
-    return Foodstuff.name + case(
-        (
-            (Foodstuff.brand.is_not(None)) & (Foodstuff.brand != ""),
-            literal("\nBrand: ") + Foodstuff.brand,
-        ),
-        else_=literal(""),
+    return (
+        Foodstuff.name
+        + case(
+            (
+                (Foodstuff.brand.is_not(None)) & (Foodstuff.brand != ""),
+                literal("\nBrand: ") + Foodstuff.brand,
+            ),
+            else_=literal(""),
+        )
+        + case(
+            (
+                Foodstuff.details.is_not(None),
+                literal("\nDetails: ") + Foodstuff.details,
+            ),
+            else_=literal(""),
+        )
     )
 
 
@@ -39,7 +53,7 @@ class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
             statement = statement.with_for_update()
         foodstuff = session.scalar(statement)
         return (
-            source_text(foodstuff.name, foodstuff.brand)
+            source_text(foodstuff.name, foodstuff.brand, foodstuff.details)
             if foodstuff is not None
             else None
         )

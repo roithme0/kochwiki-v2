@@ -22,6 +22,7 @@ def ingredient(
         imageId=None,
         name="Ingredient",
         brand=None,
+        details=None,
         unit=unit,
         unitVerbose=unit.verbose_name,
         kcal=value,

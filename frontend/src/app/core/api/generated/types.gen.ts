@@ -41,6 +41,10 @@ export type FoodstuffCreate = {
      */
     carbs?: number | string | null;
     /**
+     * Details
+     */
+    details?: string | null;
+    /**
      * Fat
      */
     fat?: number | string | null;
@@ -152,6 +156,10 @@ export type FoodstuffOut = {
      */
     carbs: number | null;
     /**
+     * Details
+     */
+    details: string | null;
+    /**
      * Fat
      */
     fat: number | null;
@@ -203,6 +211,10 @@ export type FoodstuffSummaryOut = {
      */
     carbs: number | null;
     /**
+     * Details
+     */
+    details: string | null;
+    /**
      * Fat
      */
     fat: number | null;
@@ -249,6 +261,10 @@ export type FoodstuffUpdate = {
      * Carbs
      */
     carbs?: number | string | null;
+    /**
+     * Details
+     */
+    details?: string | null;
     /**
      * Fat
      */

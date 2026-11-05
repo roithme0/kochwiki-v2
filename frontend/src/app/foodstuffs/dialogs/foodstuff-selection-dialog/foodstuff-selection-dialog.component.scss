@@ -1,3 +1,4 @@
+@use '../../../../styles/style-tokens' as tokens;
 @use '../../../../styles/page-background';
 @use '../../../../styles/search-bar';
 @use '@angular/material' as mat;
@@ -43,7 +44,7 @@ mat-dialog-content.no-results {
   text-align: center;
 }
 
-.foodstuff {
+.foodstuff[mat-list-item] {
   @include mat.list-overrides(
     (
       list-item-disabled-label-text-opacity: 1,
@@ -56,22 +57,13 @@ mat-dialog-content.no-results {
   padding: 0;
 }
 
-.foodstuff app-foodstuff-image[matListItemAvatar] {
-  width: 40px;
-  height: 40px;
-  background: transparent;
-  border-radius: 0;
+app-foodstuff-display {
+  --foodstuff-image-size: 40px;
+  padding: 0.5rem 0;
 }
 
-.foodstuff-name,
-.foodstuff-description {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-
-.foodstuff-description,
 .empty-message {
-  color: var(--mat-sys-on-surface-variant);
+  color: tokens.$medium-emphasis-font-color;
 }
 
 .search-footer {

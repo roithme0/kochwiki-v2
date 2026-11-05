@@ -16,6 +16,8 @@ describe('IngredientsGridComponent foodstuff images', () => {
     const tomato = {
       imageId: null,
       name: 'Tomate',
+      details: null,
+      brand: 'Farm',
       unitVerbose: 'g',
       kcal: 18,
       carbs: 3,
@@ -61,5 +63,6 @@ describe('IngredientsGridComponent foodstuff images', () => {
     expect(element.textContent.indexOf('Tomate')).toBeLessThan(
       element.textContent.indexOf('Salz'),
     );
+    expect(element.querySelector('.foodstuff-brand')?.textContent).toBe('Farm');
   });
 });

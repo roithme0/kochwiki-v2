@@ -51,6 +51,7 @@ class Foodstuff(Base):
     )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     brand: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    details: Mapped[str | None] = mapped_column(String(250), nullable=True)
     unit: Mapped[Unit] = mapped_column(Enum(Unit, name="unit_enum"), nullable=False)
     kcal: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)
     carbs: Mapped[Decimal | None] = mapped_column(Numeric(12, 4), nullable=True)

@@ -12,6 +12,8 @@ import {
 const foodstuff = {
   imageId: null,
   name: 'Tomaten',
+  details: 'roh',
+  brand: 'Farm',
   unitVerbose: 'g',
   kcal: 18,
   carbs: 3.9,

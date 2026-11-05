@@ -67,6 +67,18 @@
             ],
             "title": "Carbs"
           },
+          "details": {
+            "anyOf": [
+              {
+                "maxLength": 250,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
           "fat": {
             "anyOf": [
               {
@@ -287,6 +299,17 @@
             ],
             "title": "Carbs"
           },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
           "fat": {
             "anyOf": [
               {
@@ -377,6 +400,7 @@
           "imageId",
           "name",
           "brand",
+          "details",
           "unit",
           "unitVerbose",
           "kcal",
@@ -414,6 +438,17 @@
               }
             ],
             "title": "Carbs"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
           },
           "fat": {
             "anyOf": [
@@ -497,6 +532,7 @@
           "imageId",
           "name",
           "brand",
+          "details",
           "unit",
           "unitVerbose",
           "kcal",
@@ -538,6 +574,18 @@
               }
             ],
             "title": "Carbs"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "maxLength": 250,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
           },
           "fat": {
             "anyOf": [

@@ -30,6 +30,7 @@ def presentation() -> dict[str, object]:
                     "imageId": None,
                     "name": "Oats",
                     "brand": None,
+                    "details": None,
                     "unit": "G",
                     "unitVerbose": "g",
                     "kcal": 100,
@@ -202,7 +203,7 @@ class PresentationValidationTests(unittest.TestCase):
                 del body[field]
                 with self.assertRaises(ValidationError):
                     RecipePresentationOut.model_validate(body)
-        for field in ("brand", "kcal", "carbs", "protein", "fat"):
+        for field in ("brand", "details", "kcal", "carbs", "protein", "fat"):
             with self.subTest(foodstuff_field=field):
                 parsed = RecipePresentationOut.model_validate(presentation())
                 body = parsed.model_dump(mode="json")

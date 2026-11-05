@@ -1,6 +1,6 @@
 import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import type { Mock } from 'vitest';
-import { ElementRef, signal } from '@angular/core';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogData } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
@@ -9,8 +9,6 @@ import { FoodstuffBackendService } from '../../services/foodstuff-backend.servic
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffUnit } from '../../models/foodstuff-unit';
 import { FoodstuffsTableComponent } from './foodstuffs-table.component';
-import { FoodstuffTableDisplayedFieldsService } from '../../services/foodstuff-table-displayed-fields.service';
-import { ElementWidthService } from '../../../core/services/element-width.service';
 import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 
@@ -49,18 +47,6 @@ describe('FoodstuffsTableComponent', () => {
           },
         },
         {
-          provide: ElementRef,
-          useValue: new ElementRef(document.createElement('div')),
-        },
-        {
-          provide: ElementWidthService,
-          useValue: { observe: () => signal(360) },
-        },
-        {
-          provide: FoodstuffTableDisplayedFieldsService,
-          useValue: { getDisplayedFields: () => signal(['unit']) },
-        },
-        {
           provide: FoodstuffTableControlService,
           useValue: { searchBy: signal('') },
         },
@@ -92,55 +78,73 @@ describe('FoodstuffsTableComponent', () => {
     expect(resizeObserver.disconnect).toHaveBeenCalledWith();
   });
 
-  it('renders frontend labels instead of the backend unit display text', () => {
+  it('renders only the primary display and row actions', () => {
     const fixture = TestBed.createComponent(FoodstuffsTableComponent);
     fixture.componentRef.setInput('foodstuffs', [
-      { ...foodstuff, unitVerbose: 'Backend label' },
+      { ...foodstuff, details: 'reif', brand: 'Farm' },
     ]);
     fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('th')?.textContent?.trim()).toBe('Einheit');
-    expect(element.querySelector('td')?.textContent?.trim()).toBe('Gramm');
-    expect(element.textContent).not.toContain('Backend label');
-  });
-
-  it('updates rendered columns using the table host width', () => {
-    const width = signal(480);
-    const observe = vi
-      .spyOn(TestBed.inject(ElementWidthService), 'observe')
-      .mockReturnValue(width);
-    vi.spyOn(
-      TestBed.inject(FoodstuffTableDisplayedFieldsService),
-      'getDisplayedFields',
-    ).mockImplementation((observedWidth) =>
-      new FoodstuffTableDisplayedFieldsService().getDisplayedFields(
-        observedWidth,
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelectorAll('th')).toHaveLength(3);
+    expect(element.querySelector('th')?.textContent?.trim()).toBe('Name');
+    expect(
+      element.querySelector('.mat-column-primary .foodstuff-name')?.textContent,
+    ).toBe('Tomate');
+    expect(
+      element.querySelector('.mat-column-primary .foodstuff-details')
+        ?.textContent,
+    ).toBe('reif');
+    expect(element.querySelector('td.mat-column-edit button')).not.toBeNull();
+    expect(element.querySelector('td.mat-column-delete button')).not.toBeNull();
+    expect(
+      element.querySelector(
+        '.mat-column-brand, .mat-column-kcal, .mat-column-unit',
       ),
-    );
-    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
-    fixture.componentRef.setInput('foodstuffs', [foodstuff]);
-    fixture.detectChanges();
-    const element: HTMLElement = fixture.nativeElement as HTMLElement;
-
-    expect(observe.mock.calls[0][0]).toBe(element);
-    expect(element.querySelectorAll('th')).toHaveLength(4);
-    width.set(1201);
-    fixture.detectChanges();
-    expect(element.querySelectorAll('th')).toHaveLength(10);
-    width.set(480);
-    fixture.detectChanges();
-    expect(element.querySelectorAll('th')).toHaveLength(4);
+    ).toBeNull();
   });
 
-  it('renders the catalogue image instead of a macro chart and retains it at narrow widths', async () => {
+  it('sorts the primary column by foodstuff name', async () => {
+    const fixture = TestBed.createComponent(FoodstuffsTableComponent);
+    fixture.componentRef.setInput('foodstuffs', [
+      foodstuff,
+      { ...foodstuff, id: 43, name: 'Apfel' },
+    ]);
+    fixture.detectChanges();
+    Object.defineProperty(
+      fixture.componentInstance.tableWrapper.nativeElement,
+      'offsetHeight',
+      { get: () => 246 },
+    );
+    fixture.componentInstance.contentChanged();
+    await fixture.whenStable();
+    const element = fixture.nativeElement as HTMLElement;
+    const header = element.querySelector<HTMLElement>('th.mat-column-primary');
+    if (!header) throw new Error('Expected primary column header');
+    header.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(
+      Array.from(
+        element.querySelectorAll('tbody .foodstuff-name'),
+        (name) => name.textContent,
+      ),
+    ).toEqual(['Apfel', 'Tomate']);
+    header.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(
+      Array.from(
+        element.querySelectorAll('tbody .foodstuff-name'),
+        (name) => name.textContent,
+      ),
+    ).toEqual(['Tomate', 'Apfel']);
+  });
+
+  it('renders the catalogue image in the primary column', async () => {
     const download = vi.spyOn(
       TestBed.inject(FoodstuffImageService),
       'download',
     );
-    vi.spyOn(
-      TestBed.inject(FoodstuffTableDisplayedFieldsService),
-      'getDisplayedFields',
-    ).mockReturnValue(signal(['image', 'name', 'edit', 'delete']));
     const fixture = TestBed.createComponent(FoodstuffsTableComponent);
     fixture.componentRef.setInput('foodstuffs', [
       { ...foodstuff, imageId: 'tomato-image' },
@@ -151,7 +155,7 @@ describe('FoodstuffsTableComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('app-macro-chart')).toBeNull();
     expect(
-      element.querySelector('.mat-column-image app-foodstuff-image'),
+      element.querySelector('.mat-column-primary app-foodstuff-image'),
     ).not.toBeNull();
     expect(download).toHaveBeenCalledWith('tomato-image');
     const image = element.querySelector<HTMLImageElement>(

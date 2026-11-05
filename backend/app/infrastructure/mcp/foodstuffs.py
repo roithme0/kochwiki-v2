@@ -42,13 +42,16 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     def search_foodstuffs(
         query: Annotated[
             str,
-            Field(min_length=1, description="Foodstuff name or alias to search for"),
+            Field(
+                min_length=1,
+                description="Foodstuff name, brand, details or alias to search for",
+            ),
         ],
         limit: Annotated[int, Field(strict=True, ge=1, le=20)] = 5,
     ) -> list[FoodstuffSummaryOut]:
-        """Find a ranked shortlist in the caller's catalogue by name or alias.
+        """Find a ranked shortlist in the caller's catalogue by name, brand, details or alias.
 
-        Returns foodstuff summaries with IDs, names, brands, units and nutrition.
+        Returns foodstuff summaries with IDs, names, brands, details, units and nutrition.
         Only foodstuffs with current embeddings can be returned.
         """
         try:
@@ -96,7 +99,7 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> NutritionFillResult:
         """Fill only unknown nutrition in an owned catalogue foodstuff.
 
-        Rejects mismatched expected name, brand or unit. Values apply per 100 g
+        Rejects mismatched expected name, brand, details or unit. Values apply per 100 g
         for G, per 100 ml for ML, or per piece for PIECE. Known values, including
         zero, are retained. Returns current data and applied/retained field names.
         Changes affect all referencing recipe versions.

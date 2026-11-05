@@ -3,7 +3,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import type { FoodstuffSummaryOut } from '../../../../../core/api/generated';
-import { FoodstuffImageComponent } from '../../../../../foodstuffs/components/foodstuff-image/foodstuff-image.component';
+import { FoodstuffDisplayComponent } from '../../../../../foodstuffs/components/foodstuff-display/foodstuff-display.component';
 
 @Component({
   selector: 'app-ingredient-field',
@@ -11,7 +11,7 @@ import { FoodstuffImageComponent } from '../../../../../foodstuffs/components/fo
     ReactiveFormsModule,
     MatInputModule,
     MatFormFieldModule,
-    FoodstuffImageComponent,
+    FoodstuffDisplayComponent,
   ],
   templateUrl: './ingredient-field.component.html',
   styleUrl: './ingredient-field.component.scss',

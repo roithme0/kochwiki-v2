@@ -69,7 +69,10 @@ class ProposalRecipe(RecipeVersionFields):
                     raise ValueError("foodstuffs must be unique per recipe")
                 existing_ids.add(foodstuff.foodstuffId)
             else:
-                identity = (foodstuff.definition.name, foodstuff.definition.brand)
+                identity = (
+                    foodstuff.definition.name,
+                    foodstuff.definition.brand,
+                )
                 if identity in temporary_names:
                     raise ValueError(
                         "temporary foodstuff names and brands must be unique per recipe"
@@ -103,6 +106,7 @@ class ResolvedProposalFoodstuffFields(BaseModel):
     name: str
     imageId: UUID | None
     brand: str | None
+    details: str | None
     unit: Unit = Field(strict=False)
     unitVerbose: str
     kcal: NonnegativeJsonDecimal | None

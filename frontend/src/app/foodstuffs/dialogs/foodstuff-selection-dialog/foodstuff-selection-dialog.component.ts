@@ -15,6 +15,7 @@ import { DialogHeaderComponent } from '../../../core/components/dialog-header/di
 import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
+import { FoodstuffDisplayComponent } from '../../components/foodstuff-display/foodstuff-display.component';
 import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
 
 export interface FoodstuffSelectionDialogData {
@@ -28,6 +29,7 @@ export interface FoodstuffSelectionDialogData {
     DialogHeaderComponent,
     FoodstuffsSearchComponent,
     FoodstuffImageComponent,
+    FoodstuffDisplayComponent,
     MatDialogModule,
     MatListModule,
     MatButtonModule,
@@ -69,7 +71,8 @@ export class FoodstuffSelectionDialogComponent {
     return this.foodstuffs().filter(
       (foodstuff) =>
         foodstuff.name.toLowerCase().includes(query) ||
-        (foodstuff.brand?.toLowerCase().includes(query) ?? false),
+        (foodstuff.brand?.toLowerCase().includes(query) ?? false) ||
+        (foodstuff.details?.toLowerCase().includes(query) ?? false),
     );
   });
 

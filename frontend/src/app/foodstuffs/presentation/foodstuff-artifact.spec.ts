@@ -17,23 +17,23 @@ const payload = {
 };
 
 describe('Foodstuff artifact contract', () => {
-  it('preserves explicit name/brand headers and nutrition without requiring an id or fetch', () => {
+  it('preserves the name and brand title, details subtitle and nutrition without an id or fetch', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: FOODSTUFF_ARTIFACT_CAPABILITY.type,
-      content: { title: 'Linsen', subtitle: 'Marke', payload },
+      content: { title: 'Linsen, Marke', subtitle: 'roh', payload },
     });
     expect(artifact).toEqual({
       kind: 'artifact',
       id: conversationProposal().artifact_id,
       type: 'kochwiki-foodstuff',
-      headline: 'Linsen',
-      subtitle: 'Marke',
+      headline: 'Linsen, Marke',
+      subtitle: 'roh',
       payload,
     });
   });
 
-  it('permits absent brand and completely unknown nutrition', () => {
+  it('permits absent brand and details with completely unknown nutrition', () => {
     const nutrition = {
       unit: 'PIECE',
       kcal: null,
@@ -54,6 +54,7 @@ describe('Foodstuff artifact contract', () => {
   it.each([
     null,
     {},
+    { ...payload, details: 'roh' },
     { ...payload, unit: 'KG' },
     { ...payload, kcal: -1 },
     { ...payload, fiber: -1 },
@@ -95,8 +96,9 @@ describe('Foodstuff artifact contract', () => {
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['required'],
     ).toHaveLength(6);
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('name');
+    expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('brand');
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.subtitleDescription).toContain(
-      'brand',
+      'details',
     );
   });
 });

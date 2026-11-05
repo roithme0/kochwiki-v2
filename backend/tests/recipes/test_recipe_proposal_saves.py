@@ -84,6 +84,7 @@ def prepare() -> tuple[RecipeProposalStore, RecipeProposalOut, UUID, int]:
                                         "unit": "G",
                                         "kcal": 200,
                                         "brand": "Farm",
+                                        "details": "cooked",
                                     },
                                 },
                             },
@@ -147,6 +148,7 @@ def test_fiber_survives_proposal_refinement_resolution_save_and_readback(
     assert presentation.fiber == saved.fiber
     assert saved.fiber.status == ("minimum" if fiber is None else "exact")
     assert saved.fiber.value == Decimal(1) + (fiber or Decimal(0)) / 2
+    assert saved.ingredients[0].foodstuff.details == "cooked"
     assert saved.ingredients[0].foodstuff.fiber == fiber
     assert saved.ingredients[1].foodstuff.fiber == 4
     with SessionLocal() as session:
@@ -241,7 +243,9 @@ def test_failure_rolls_back_and_keeps_proposal_unsaved(
         with SessionLocal.begin() as session:
             create_foodstuff(
                 session,
-                FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G),
+                FoodstuffCreate(
+                    name="Beans", brand="Farm", details="cooked", unit=Unit.G
+                ),
                 owner_id=fixture_owner_id(session),
             )
         expected = ConflictError
@@ -378,7 +382,7 @@ def test_later_temporary_conflict_rolls_back_earlier_foodstuff() -> None:
     with SessionLocal.begin() as session:
         create_foodstuff(
             session,
-            FoodstuffCreate(name="Beans", brand="Farm", unit=Unit.G),
+            FoodstuffCreate(name="Beans", brand="Farm", details="raw", unit=Unit.G),
             owner_id=fixture_owner_id(session),
         )
     with SessionLocal() as session:
@@ -397,7 +401,12 @@ def test_later_temporary_conflict_rolls_back_earlier_foodstuff() -> None:
                 "amount": 100,
                 "foodstuff": {
                     "kind": "temporary",
-                    "definition": {"name": "Beans", "brand": "Farm", "unit": "G"},
+                    "definition": {
+                        "name": "Beans",
+                        "brand": "Farm",
+                        "details": "cooked",
+                        "unit": "G",
+                    },
                 },
             },
         ]
