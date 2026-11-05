@@ -213,6 +213,34 @@ describe('Recipe conversation page through published session controller and HTTP
     return fixture.componentInstance;
   }
 
+  it('connects dictation to the AI transcription endpoint and chat composer', async () => {
+    const page = await open();
+    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
+      .componentInstance as ChatUiComponent;
+    expect(chat.dictation()).toBe(page.dictation);
+    expect(chat.dictationContextKey()).toBe(page.dictationContextKey());
+    const blob = new Blob(['audio'], { type: 'audio/webm' });
+    const abort = new AbortController();
+    fetchMock.mockResolvedValueOnce(response({ text: 'Mehr Gemüse' }));
+    await expect(
+      page.dictation.transcribe(
+        {
+          blob,
+          mimeType: 'audio/webm',
+          durationMs: 1000,
+          stopReason: 'manual',
+        },
+        abort.signal,
+      ),
+    ).resolves.toBe('Mehr Gemüse');
+    expect(fetchMock).toHaveBeenLastCalledWith('/ai/api/v1/transcriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/webm' },
+      body: blob,
+      signal: abort.signal,
+    });
+  });
+
   function complete(
     artifacts: RecipeSessionArtifact[],
     text = 'Mehr Gem?se',
