@@ -12,6 +12,7 @@ from app.foodstuffs.routes.images import get_foodstuff_image_storage
 from app.identity import dependencies
 from app.identity.models.application_session import ApplicationSession
 from app.identity.schemas.user import UserOut
+from app.identity.services.oidc import OIDCLogin
 from app.images.models import ImageAsset
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.storage.storage import Storage
@@ -88,6 +89,11 @@ def test_logout_accepts_additional_frontend_origin(
         }
     )
     monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        OIDCLogin,
+        "discovery",
+        Mock(return_value=Mock(end_session_endpoint="http://localhost:8006/logout")),
+    )
     assert (
         client.post(
             "/auth/logout", headers={"Origin": "http://localhost:4202"}

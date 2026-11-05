@@ -12,7 +12,7 @@
     "link:chat-ui": "npm link ../../ai-service/frontend/dist/chat-ui",
     "test": "node scripts/test.mts",
     "test:browser": "node scripts/test.mts --configuration browser --watch=false",
-    "test:tooling": "node --test ../.agents/validation/shared.test.mts ../.agents/validation/frontend.test.mts ../.agents/validation/e2e.test.mts ../.codex/validate.test.mts",
+    "test:tooling": "node ../.agents/validation/test.mts --group tooling-shared --group tooling-frontend --group tooling-e2e",
     "format:changed": "node ../.agents/validation/frontend.mts --format",
     "lint": "eslint . ../.agents/validation ../.codex --max-warnings=0",
     "lint:fix": "eslint . ../.agents/validation ../.codex --max-warnings=0 --fix",
