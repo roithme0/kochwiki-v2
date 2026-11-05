@@ -64,5 +64,6 @@ module.exports = {
   },
   '^/ai/api/v1/agents/[A-Za-z0-9_-]+/sessions(?:/[A-Za-z0-9_-]+(?:/(?:turns|events))?)?(?:\\?.*)?$':
     ai,
+  '^/ai/api/v1/transcriptions(?:\\?.*)?$': ai,
   '^/ai(?:/|\\?|$)': unsupported,
 };
