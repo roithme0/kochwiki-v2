@@ -23,7 +23,7 @@ from app.infrastructure.database.session import SessionLocal
 
 
 def identity() -> FoodstuffIdentity:
-    return FoodstuffIdentity(name="Oats", brand="Mill", unit=Unit.G)
+    return FoodstuffIdentity(details=None, name="Oats", brand="Mill", unit=Unit.G)
 
 
 def create_oats(owner_id: int) -> int:
@@ -88,9 +88,10 @@ def test_fill_preserves_known_values_and_is_idempotent(mcp_user: UserOut) -> Non
 @pytest.mark.parametrize(
     "expected",
     [
-        FoodstuffIdentity(name="Other", brand="Mill", unit=Unit.G),
-        FoodstuffIdentity(name="Oats", brand=None, unit=Unit.G),
-        FoodstuffIdentity(name="Oats", brand="Mill", unit=Unit.ML),
+        FoodstuffIdentity(details="raw", name="Oats", brand="Mill", unit=Unit.G),
+        FoodstuffIdentity(details=None, name="Other", brand="Mill", unit=Unit.G),
+        FoodstuffIdentity(details=None, name="Oats", brand=None, unit=Unit.G),
+        FoodstuffIdentity(details=None, name="Oats", brand="Mill", unit=Unit.ML),
     ],
 )
 def test_fill_rejects_changed_identity(

@@ -26,6 +26,7 @@ def presentation() -> dict[str, object]:
                     "imageId": None,
                     "name": "Oats",
                     "brand": None,
+                    "details": None,
                     "unit": "G",
                     "unitVerbose": "g",
                     "kcal": 100,

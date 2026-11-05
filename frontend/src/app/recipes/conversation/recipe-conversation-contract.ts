@@ -83,6 +83,8 @@ export function recipeArtifact(
       foodstuff: {
         imageId: foodstuff.imageId,
         name: foodstuff.name,
+        details: foodstuff.details,
+        brand: foodstuff.brand,
         unitVerbose: foodstuff.unitVerbose,
         kcal: foodstuff.kcal,
         carbs: foodstuff.carbs,

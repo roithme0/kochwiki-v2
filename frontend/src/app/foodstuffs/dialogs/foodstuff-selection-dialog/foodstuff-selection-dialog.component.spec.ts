@@ -67,6 +67,40 @@ describe('FoodstuffSelectionDialogComponent', () => {
       add: { providers: [{ provide: MatDialog, useValue: { open } }] },
     });
   });
+  it('distinguishes and filters same-name variants by descriptive details', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [] } },
+      ],
+    });
+    const raw = foodstuffOut({
+      id: 3,
+      name: 'Kartoffeln',
+      details: 'geschält, roh',
+    });
+    const cooked = foodstuffOut({
+      id: 4,
+      name: 'Kartoffeln',
+      details: 'gekocht',
+    });
+    getAllFoodstuffs.mockResolvedValueOnce([raw, cooked]);
+    const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'geschält, roh',
+    );
+    fixture.componentInstance.searchValue.set('ROH');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.displayedFoodstuffs()).toEqual([raw]);
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
+      'gekocht',
+    );
+    fixture.componentInstance.toggleFoodstuff(raw.id);
+    fixture.componentInstance.confirmSelection();
+    expect(close).toHaveBeenCalledWith([raw]);
+  });
   it('renders catalogue images in results and the basket, including newly created foodstuffs', async () => {
     TestBed.configureTestingModule({
       providers: [

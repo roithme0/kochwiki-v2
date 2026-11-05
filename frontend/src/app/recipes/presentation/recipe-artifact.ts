@@ -10,6 +10,8 @@ import type { RecipePresentation } from '../models/recipe-presentation';
 const foodstuffSchema = z.pick(zFoodstuffSummaryOut, {
   imageId: true,
   name: true,
+  details: true,
+  brand: true,
   unitVerbose: true,
   kcal: true,
   carbs: true,
@@ -38,7 +40,7 @@ const recipeMetadataSchema = z.strictObject({
 export const RECIPE_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   type: 'kochwiki-recipe',
   description:
-    'Display a complete existing recipe or resolved recipe proposal: servings, preparation time, ingredients, steps and per-serving nutrition. Supply only the presentation fields in the schema, using value/status objects (exact, minimum, unknown) for aggregate nutrition and null for unknown preparation time. Preserve minimum values as lower bounds; ingredient foodstuff nutrition remains numeric or null. Relay each supplied foodstuff imageId unchanged; use null when unavailable and never invent image IDs. Displaying a recipe does not create or save domain data.',
+    'Display a complete existing recipe or resolved recipe proposal: servings, preparation time, ingredients, steps and per-serving nutrition. Supply only the presentation fields in the schema, using value/status objects (exact, minimum, unknown) for aggregate nutrition and null for unknown preparation time. Preserve minimum values as lower bounds; ingredient foodstuff nutrition remains numeric or null. Keep descriptive foodstuff details separate from names. Relay each supplied foodstuff imageId unchanged; use null when unavailable and never invent image IDs. Displaying a recipe does not create or save domain data.',
   titleDescription: 'Use the recipe name as the title.',
   subtitleDescription: 'Omit the subtitle.',
   payloadSchema: z

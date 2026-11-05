@@ -36,6 +36,8 @@ describe('RecipePresentationComponent', () => {
           foodstuff: {
             name: 'Tomaten',
             imageId: null,
+            details: null,
+            brand: null,
             unitVerbose: 'g',
             kcal: 18,
             carbs: 3.9,

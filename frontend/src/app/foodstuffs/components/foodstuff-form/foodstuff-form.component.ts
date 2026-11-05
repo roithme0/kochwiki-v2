@@ -72,6 +72,7 @@ export class FoodstuffFormComponent {
   readonly form = this.fb.group({
     name: this.fb.nonNullable.control('', Validators.required.bind(Validators)),
     brand: this.fb.control<string | null>(''),
+    details: this.fb.control<string | null>(null, Validators.maxLength(250)),
     unit: this.fb.control<Unit | null>(
       null,
       Validators.required.bind(Validators),
@@ -115,13 +116,14 @@ export class FoodstuffFormComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, brand, unit, kcal, carbs, protein, fat, fiber } =
+    const { name, brand, details, unit, kcal, carbs, protein, fat, fiber } =
       this.form.getRawValue();
     if (unit === null) return;
     await this.image.submit((imageIdChange) => {
       this.submitted.emit({
         name,
         brand,
+        details: details?.trim() || null,
         unit,
         kcal,
         carbs,

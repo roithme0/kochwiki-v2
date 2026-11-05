@@ -70,7 +70,11 @@ export class FoodstuffsPage {
   }
 
   nameCell(name: string): Locator {
-    return this.page.getByRole('cell', { name, exact: true });
+    return this.page.getByRole('cell').filter({
+      has: this.page
+        .locator('.foodstuff-name')
+        .and(this.page.getByText(name, { exact: true })),
+    });
   }
 
   row(name: string): Locator {

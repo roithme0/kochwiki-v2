@@ -1,14 +1,14 @@
 <div class="ingredient-fields">
-  <app-foodstuff-image
-    class="foodstuff-image"
-    [imageId]="foodstuff()?.imageId ?? null"
+  <app-foodstuff-display
+    [showBrand]="true"
+    [foodstuff]="
+      foodstuff() ?? {
+        name: 'Lebensmittel nicht verfügbar',
+        imageId: null,
+        details: null,
+      }
+    "
   />
-  <div class="foodstuff-label">
-    <span>{{ foodstuff()?.name ?? 'Lebensmittel nicht verfügbar' }}</span>
-    @if (foodstuff()?.brand) {
-      <span class="foodstuff-brand">{{ foodstuff()?.brand }}</span>
-    }
-  </div>
   <mat-form-field
     appearance="outline"
     floatLabel="always"
@@ -21,7 +21,9 @@
       type="number"
       [formControl]="amountControl()"
       [attr.aria-label]="
-        'Menge für ' + (foodstuff()?.name ?? 'Zutat ' + (index() + 1))
+        'Menge für ' +
+        (foodstuff()?.name ?? 'Zutat ' + (index() + 1)) +
+        (foodstuff()?.details ? ', ' + foodstuff()?.details : '')
       "
     />
     <span matTextSuffix>{{ foodstuff()?.unitVerbose }}</span>

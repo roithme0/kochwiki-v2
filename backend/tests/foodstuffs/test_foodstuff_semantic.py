@@ -126,6 +126,47 @@ def test_refresh_metadata_freshness_and_nutrition() -> None:
     ]
 
 
+def test_details_change_invalidates_search_and_refreshes_descriptor_source() -> None:
+    provider = FakeProvider()
+    embedding = service(provider)
+    search = search_service(provider)
+    foodstuff_id = create(brand="Farm")
+    assert embedding.refresh_one(foodstuff_id) == "refreshed"
+    assert len(search.search("raw carrot")) == 1
+    refreshed: list[int] = []
+    subscriber = refreshed.append
+    foodstuff_refresh.subscribe(subscriber)
+    try:
+        with SessionLocal.begin() as session:
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(details="raw"),
+                owner_id=fixture_owner_id(session),
+            )
+        assert refreshed == [foodstuff_id]
+        assert search.search("raw carrot") == []
+        assert embedding.refresh_one(foodstuff_id) == "refreshed"
+        result = search.search("raw carrot")
+        assert len(result) == 1 and result[0].foodstuff.details == "raw"
+        with SessionLocal() as session:
+            stored = session.get(FoodstuffEmbedding, foodstuff_id)
+            assert stored is not None
+            assert stored.source_text == "Karotte\nBrand: Farm\nDetails: raw"
+        with SessionLocal.begin() as session:
+            update_foodstuff(
+                session,
+                foodstuff_id,
+                FoodstuffUpdate(details=None),
+                owner_id=fixture_owner_id(session),
+            )
+        assert search.search("carrot") == []
+        assert embedding.refresh_one(foodstuff_id) == "refreshed"
+        assert len(search.search("carrot")) == 1
+    finally:
+        foodstuff_refresh.unsubscribe(subscriber)
+
+
 def test_sweep_failure_skips_and_next_sweep_can_retry(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

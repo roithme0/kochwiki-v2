@@ -160,6 +160,7 @@ def test_recipe_presentation_resolver_returns_live_ordered_non_persisted_present
         "imageId": None,
         "name": "Egg",
         "brand": "Farm",
+        "details": None,
         "unit": "PIECE",
         "unitVerbose": "Stk.",
         "kcal": 78,

@@ -32,6 +32,32 @@ describe('FoodstuffFormComponent nutrition editor layout', () => {
 
   afterEach(() => fixture.destroy());
 
+  it('shows the details placeholder at lower emphasis than entered text', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const details = host.querySelector<HTMLInputElement>(
+      '[formControlName="details"]',
+    );
+    if (!details) throw new Error('Expected details input');
+    expect(details.value).toBe('');
+    expect(details.placeholder).not.toBe('');
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Expected canvas color sampling');
+    context.fillStyle = getComputedStyle(details, '::placeholder').color;
+    context.fillRect(0, 0, 1, 1);
+    expect(context.getImageData(0, 0, 1, 1).data[3]).toBeLessThan(200);
+
+    fixture.componentInstance.form.controls.details.setValue('roh');
+    fixture.detectChanges();
+    expect(details.value).toBe('roh');
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = getComputedStyle(details).color;
+    context.fillRect(0, 0, 1, 1);
+    expect(context.getImageData(0, 0, 1, 1).data[3]).toBe(255);
+  });
+
   it.each([280, 320, 400, 640])(
     'keeps editable calories inside the chart and fiber below at %i px',
     async (width) => {

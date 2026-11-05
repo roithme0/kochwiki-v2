@@ -6,86 +6,52 @@
       [dataSource]="tableDataSource"
       (contentChanged)="contentChanged()"
     >
-      @for (field of displayedFields(); track field) {
-        <!-- image -->
-        @if (field === 'image') {
-          <ng-container [matColumnDef]="field">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let foodstuff">
-              <app-foodstuff-image
-                class="foodstuff-image"
-                [imageId]="foodstuff.imageId"
+      <ng-container matColumnDef="primary">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="name">
+          {{ fieldLabels.name }}
+        </th>
+        <td mat-cell *matCellDef="let foodstuff">
+          <app-foodstuff-display [foodstuff]="foodstuff" [showBrand]="true" />
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="edit">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let foodstuff">
+          <button
+            mat-icon-button
+            class="button"
+            (click)="openEditFoodstuffDialog(foodstuff)"
+          >
+            <mat-icon
+              aria-hidden="false"
+              aria-label="Bearbeiten"
+              fontIcon="edit"
+            />
+          </button>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="delete">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let foodstuff">
+          @if (foodstuff.recipeVersionIds.length === 0) {
+            <button
+              mat-icon-button
+              color="warn"
+              class="button"
+              (click)="openDeleteFoodstuffDialog(foodstuff)"
+            >
+              <mat-icon
+                aria-hidden="false"
+                aria-label="Löschen"
+                fontIcon="delete"
               />
-            </td>
-          </ng-container>
-        }
+            </button>
+          }
+        </td>
+      </ng-container>
 
-        <!-- edit -->
-        @else if (field === 'edit') {
-          <ng-container [matColumnDef]="field">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let foodstuff">
-              <button
-                mat-icon-button
-                class="button"
-                (click)="openEditFoodstuffDialog(foodstuff)"
-              >
-                <mat-icon
-                  aria-hidden="false"
-                  aria-label="Bearbeiten"
-                  fontIcon="edit"
-                />
-              </button>
-            </td>
-          </ng-container>
-        }
-
-        <!-- delete -->
-        @else if (field === 'delete') {
-          <ng-container [matColumnDef]="field">
-            <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let foodstuff">
-              <!-- ony deletable if not used in any recipe -->
-              @if (foodstuff.recipeVersionIds.length === 0) {
-                <button
-                  mat-icon-button
-                  color="warn"
-                  class="button"
-                  (click)="openDeleteFoodstuffDialog(foodstuff)"
-                >
-                  <mat-icon
-                    aria-hidden="false"
-                    aria-label="Löschen"
-                    fontIcon="delete"
-                  />
-                </button>
-              }
-            </td>
-          </ng-container>
-        }
-
-        <!-- foodstuff properties -->
-        @else {
-          <ng-container [matColumnDef]="field">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>
-              {{ fieldLabels[field] }}
-            </th>
-            <td mat-cell *matCellDef="let foodstuff">
-              @if (field === 'unit') {
-                {{ unitLabel(foodstuff.unit) }}
-              } @else {
-                {{ foodstuff[field] }}
-              }
-            </td>
-          </ng-container>
-        }
-      }
-
-      <tr
-        mat-header-row
-        *matHeaderRowDef="displayedFields(); sticky: true"
-      ></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedFields()"></tr>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
     <div class="spacer"></div>
     <mat-paginator [hidePageSize]="true" [showFirstLastButtons]="false" />

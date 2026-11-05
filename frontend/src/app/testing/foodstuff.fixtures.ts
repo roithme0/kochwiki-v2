@@ -7,6 +7,7 @@ export function foodstuffSummary(
     id: 1,
     name: 'Foodstuff',
     brand: null,
+    details: null,
     unit: 'G',
     unitVerbose: 'g',
     imageId: null,
