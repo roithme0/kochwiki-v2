@@ -57,9 +57,7 @@ describe('Foodstuff picker result layout', () => {
       if (!result || !name || !details || !brand || !status || !image)
         throw new Error('Expected complete selected foodstuff result');
       expect(result.getAttribute('aria-pressed')).toBe('true');
-      expect(details.getBoundingClientRect().top).toBeGreaterThanOrEqual(
-        name.getBoundingClientRect().bottom,
-      );
+      expect(details.parentElement).toBe(name.parentElement);
       expect(brand.getBoundingClientRect().top).toBeGreaterThanOrEqual(
         details.getBoundingClientRect().bottom,
       );

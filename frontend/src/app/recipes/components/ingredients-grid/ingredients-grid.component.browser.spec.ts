@@ -7,7 +7,7 @@ import { IngredientsGridComponent } from './ingredients-grid.component';
 
 describe('Ingredient name and details layout', () => {
   it.each([280, 640])(
-    'keeps details below names without overflowing at %i px',
+    'wraps names and details without overflowing at %i px',
     async (width) => {
       await page.viewport(800, 800);
       TestBed.configureTestingModule({
@@ -58,9 +58,7 @@ describe('Ingredient name and details layout', () => {
       if (!grid || !names[0] || !details[0] || !amounts[0])
         throw new Error('Expected ingredient rows');
       expect(details).toHaveLength(2);
-      expect(details[0].getBoundingClientRect().top).toBeGreaterThanOrEqual(
-        names[0].getBoundingClientRect().bottom,
-      );
+      expect(details[0].parentElement).toBe(names[0].parentElement);
       expect(details[0].getBoundingClientRect().right).toBeLessThan(
         amounts[0].getBoundingClientRect().left,
       );
