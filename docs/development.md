@@ -55,7 +55,7 @@ node .agents/validation/run.mts
 node .agents/validation/run.mts --scope frontend
 ```
 
-The runner defaults to all non-E2E tests. Use `--scope frontend|backend` to narrow formatting and lint, and `--group NAME` to select tests. List groups with `node .agents/validation/test.mts --list`; use `--group all` to include [E2E](#end-to-end-tests). The test entrypoint runs groups without formatting or linting. Review formatting changes.
+The runner defaults to all scopes with app and tooling checks enabled; [E2E](#end-to-end-tests) is opt-in with `--e2e`. Use `--scope frontend|backend` to narrow validation or `--app-tests=false`, `--tooling-tests=false`, and `--shared-tooling-tests=false` to skip test groups. See [the runner](../.agents/validation/run.mts) for argument handling. Review formatting changes.
 
 ### Frontend checks
 

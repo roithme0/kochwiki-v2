@@ -30,7 +30,11 @@
 
 After edits, run the applicable commands in order:
 
-Run `node .agents/validation/run.mts` from the repository root for changed-file formatting, lint, and all non-E2E tests. Use `node .agents/validation/test.mts --list` to see test groups, and `--group NAME` to select relevant tests during implementation. Full validation remains required before completion.
+| Scope    | Working directory | Commands                                                                                                                             |
+| -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Frontend | `frontend`        | `npm run format:changed`, `npm run lint`, `npm run test:tooling`, `npm run test -- --watch=false`, `npm run test:browser`             |
+| Backend  | Repository root   | `node .agents/validation/backend.mts --format`, `node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts` |
+| Backend  | `backend`         | `.venv/Scripts/python.exe -m pytest` (`.venv/bin/python` on Unix)                                                                    |
 
 Backend pytest requires the dedicated PostgreSQL test database. See [development setup](docs/development.md#validate-changes) for the database command.
 
@@ -38,8 +42,8 @@ Use `npm.cmd` if PowerShell blocks `npm.ps1`. See [development setup and contrac
 
 - Format only changed staged, unstaged, and untracked files, respecting configured exclusions and leaving the Git index unchanged. Coordinate before formatting unrelated user edits and review the resulting diff. Full-backend formatting requires an explicit request.
 - Lint errors and warnings fail validation. Run `lint:fix` only deliberately and review its diff; hooks and CI never apply lint fixes.
-- Review and trust hooks before relying on them. They validate changed scopes automatically with all non-E2E test groups enabled, and skip isolated E2E. They reuse success only for identical content and selected checks after all checks pass. Shared hook changes validate both scopes; persistent failures request at most one continuation.
-- Run isolated E2E explicitly for changes to browser flows, frontend/backend integration, or deployment behavior: `node .agents/validation/e2e.mts` or `node .agents/validation/run.mts --group all` from the root. The runner rebuilds the isolated disposable Docker stack and runs Playwright; see the development guide for prerequisites. E2E success is not reused across changed turns.
+- Review and trust hooks before relying on them. They validate changed scopes automatically with app, tooling, and shared tooling checks enabled, and skip isolated E2E. They reuse success only for identical content and selected checks after all checks pass. Shared hook changes validate both scopes; persistent failures request at most one continuation.
+- Run isolated E2E explicitly for changes to browser flows, frontend/backend integration, or deployment behavior: `node .agents/validation/e2e.mts` or `node .agents/validation/run.mts --e2e` from the root. The runner rebuilds the isolated disposable Docker stack and runs Playwright; see the development guide for prerequisites. E2E success is not reused across changed turns.
 - Fix findings introduced by your work; broader cleanup requires authorization. Report missing dependencies or failed checks as incomplete validation. Hooks never install dependencies automatically.
 
 ## Communication Preferences
