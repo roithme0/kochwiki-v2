@@ -27,6 +27,7 @@ class FoodstuffIdentity(BaseModel):
 
     name: str = Field(min_length=1, max_length=50)
     brand: str | None = Field(max_length=100)
+    details: str | None = Field(max_length=250)
     unit: Unit
 
 

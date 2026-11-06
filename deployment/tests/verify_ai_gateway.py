@@ -105,6 +105,11 @@ def verify_mcp(port: int) -> None:
 
 def verify(port: int, delayed: bool) -> None:
     assert request(port, "/aide")[0] == 200, "Ordinary frontend prefix route blocked"
+    path = "/ai/api/v1/transcriptions?sample=a%20b"
+    before = len(REQUESTS)
+    status, payload = request(port, path, "POST", b"audio")
+    assert status == 200, (status, payload)
+    assert REQUESTS[before:] == [("POST", path[3:], b"audio")]
     for agent in ("kochwiki", "demo", "renamed-agent_2"):
         for method, suffix in (("POST", ""), ("GET", "/session-1"),
                                ("POST", "/session-1/turns"),
@@ -125,7 +130,7 @@ def verify(port: int, delayed: bool) -> None:
         else:
             assert json.loads(payload) == {"method": "POST", "path": path[3:], "body": "{}"}
     before = len(REQUESTS)
-    for path in ("/ai", "/ai/", "/ai/api/v1/agents/demo/configuration", "/ai/health",
+    for path in ("/ai", "/ai/", "/ai/api/v1/transcriptions/extra", "/ai/api/v1/transcriptions-extra", "/ai/api/v1/agents/demo/configuration", "/ai/health",
                  "/ai/api/v1/agents//sessions", "/ai/api/v1/agents/demo%2Fother/sessions",
                  BASE + "-lookalike", BASE + "/session-1/other", BASE + "/session-1/messages",
                  BASE + "/session-1/turns/turn-1/events", BASE + "/session-1/events/extra", BASE + "/session-1/turns/extra",

@@ -42,14 +42,16 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     def search_foodstuffs(
         query: Annotated[
             str,
-            Field(min_length=1, description="Foodstuff name or alias to search for"),
+            Field(
+                min_length=1,
+                description="Foodstuff name, brand, details or alias to search for",
+            ),
         ],
         limit: Annotated[int, Field(strict=True, ge=1, le=20)] = 5,
     ) -> list[FoodstuffSummaryOut]:
-        """Find a ranked shortlist in the caller's catalogue by name or alias.
+        """Find a ranked shortlist in the caller's catalogue by name, brand, details or alias.
 
-        Returns foodstuff summaries with IDs, names, brands, units and nutrition.
-        Only foodstuffs with current embeddings can be returned.
+        Returns summaries with nutrition; excludes entries without current embeddings.
         """
         try:
             candidates = services.get_foodstuff_search(
@@ -72,8 +74,8 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> FoodstuffOut:
         """Retrieve a current foodstuff by ID, without requiring embeddings.
 
-        Returns the complete foodstuff, including recipe version references.
-        This operation is read-only and permits reading other users' entries.
+        Returns the complete entry with recipe version references, including other
+        users' entries.
         """
         with tool_errors("Foodstuff", "retrieval"):
             with SessionLocal() as session:
@@ -96,9 +98,8 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> NutritionFillResult:
         """Fill only unknown nutrition in an owned catalogue foodstuff.
 
-        Rejects mismatched expected name, brand or unit. Values apply per 100 g
-        for G, per 100 ml for ML, or per piece for PIECE. Known values, including
-        zero, are retained. Returns current data and applied/retained field names.
+        Rejects mismatched expected name, brand, details or unit; retains known
+        values including zero. Returns current data and applied/retained field names.
         Changes affect all referencing recipe versions.
         """
         with foodstuff_write_transaction("nutrition enrichment") as session:
@@ -122,9 +123,7 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     def create_foodstuff(foodstuff: FoodstuffCreate) -> FoodstuffOut:
         """Persist a new foodstuff in the caller's catalogue.
 
-        Name and unit are required. Nutrition values apply per 100 g for G,
-        per 100 ml for ML, or per piece for PIECE. Returns the complete saved
-        foodstuff with its assigned ID and recipe version references.
+        Returns the complete saved entry with its assigned ID and recipe references.
         """
         with foodstuff_write_transaction("creation") as session:
             created = foodstuffs.create_foodstuff(
@@ -152,10 +151,9 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> FoodstuffOut:
         """Update an owned catalogue entry, affecting all recipes using it.
 
-        Supplied values may overwrite recorded data.
         Omitted fields stay unchanged; null clears optional fields. Name and unit
         cannot be cleared. Unit changes do not convert retained nutrition values.
-        Returns the complete saved foodstuff with its recipe version references.
+        Returns the complete saved entry with recipe version references.
         """
         with foodstuff_write_transaction("update") as session:
             updated = foodstuffs.update_foodstuff(

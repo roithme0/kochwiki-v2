@@ -1,3 +1,6 @@
+@use '@angular/material' as mat;
+@use '../../../../styles/style-tokens' as tokens;
+
 form,
 .fields,
 .nutrition-wrapper {
@@ -53,6 +56,11 @@ mat-card-content {
 }
 
 mat-form-field {
+  @include mat.form-field-overrides(
+    (
+      outlined-input-text-placeholder-color: tokens.$medium-emphasis-font-color,
+    )
+  );
   min-width: 0;
   width: 100%;
 }

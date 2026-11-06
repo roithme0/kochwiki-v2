@@ -27,6 +27,15 @@
         </mat-form-field>
       </div>
       <mat-form-field appearance="outline" floatLabel="always">
+        <mat-label>{{ fieldLabels.details }}</mat-label>
+        <input
+          matInput
+          formControlName="details"
+          maxlength="250"
+          placeholder="Zum Beispiel: geschält, roh"
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" floatLabel="always">
         <mat-label>{{ fieldLabels.brand }}</mat-label>
         <input matInput formControlName="brand" />
       </mat-form-field>

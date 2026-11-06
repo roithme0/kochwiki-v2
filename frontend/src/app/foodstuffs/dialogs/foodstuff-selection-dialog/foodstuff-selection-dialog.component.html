@@ -25,18 +25,11 @@
           [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
           (click)="toggleFoodstuff(foodstuff.id)"
         >
-          <app-foodstuff-image
-            matListItemAvatar
-            [imageId]="foodstuff.imageId"
+          <app-foodstuff-display
+            matListItemTitle
+            [foodstuff]="foodstuff"
+            [showBrand]="true"
           />
-          <span matListItemTitle class="foodstuff-name">{{
-            foodstuff.name
-          }}</span>
-          @if (foodstuff.brand) {
-            <span matListItemLine class="foodstuff-description">{{
-              foodstuff.brand
-            }}</span>
-          }
           @if (existingFoodstuffIds.has(foodstuff.id)) {
             <span matListItemMeta class="selection-status"
               >Bereits hinzugefügt</span
@@ -75,6 +68,7 @@
                 [imageId]="foodstuff.imageId"
                 [alt]="
                   foodstuff.name +
+                  (foodstuff.details ? ' · ' + foodstuff.details : '') +
                   (foodstuff.brand ? ' · ' + foodstuff.brand : '')
                 "
               />

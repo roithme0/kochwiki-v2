@@ -1,0 +1,33 @@
+﻿@use '../../../../styles/style-tokens' as tokens;
+
+:host {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+app-foodstuff-image {
+  width: var(--foodstuff-image-size, 24px);
+  height: var(--foodstuff-image-size, 24px);
+}
+
+.foodstuff-label {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  min-height: 2lh;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.foodstuff-details,
+.foodstuff-brand {
+  color: tokens.$medium-emphasis-font-color;
+  font-size: 0.875rem;
+}
+
+.foodstuff-details {
+  margin-inline-start: 0.25em;
+}

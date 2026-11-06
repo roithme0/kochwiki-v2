@@ -183,7 +183,14 @@ void test('E2E uses prebuilt images without app builds or pulls and retains diag
             throw new Error('diagnostics failed');
           return Promise.resolve('');
         };
-        const result = testE2E(root, join(root, 'artifacts'), run, prebuilt);
+        const nativeArgs = ['--grep', 'specific flow'];
+        const result = testE2E(
+          root,
+          join(root, 'artifacts'),
+          run,
+          prebuilt,
+          nativeArgs,
+        );
         if (failure)
           await assert.rejects(result, (error: unknown) => error === original);
         else await result;
@@ -254,6 +261,10 @@ void test('E2E uses prebuilt images without app builds or pulls and retains diag
           calls.some((args) => args[1].startsWith('Playwright')),
           !failure || failure === 'Playwright',
         );
+        const playwright = calls.find((args) =>
+          args[1].startsWith('Playwright'),
+        );
+        if (playwright) assert.deepEqual(playwright[2].slice(-2), nativeArgs);
         for (const call of calls.filter((args) => args[2][0] === 'compose')) {
           assert.equal(call[7]?.['IDENTITY_PROVIDER_REPOSITORY'], repository);
         }

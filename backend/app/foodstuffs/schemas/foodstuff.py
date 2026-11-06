@@ -15,6 +15,7 @@ class FoodstuffSummaryOut(BaseModel):
     imageId: UUID | None
     name: str
     brand: str | None
+    details: str | None
     unit: Unit = Field(strict=False)
     unitVerbose: str
     kcal: NonnegativeJsonDecimal | None
@@ -36,12 +37,18 @@ class FoodstuffFields(BaseModel):
 
     name: str = Field(min_length=1, max_length=50)
     brand: str | None = Field(default=None, max_length=100)
+    details: str | None = Field(default=None, max_length=250)
     unit: Unit
     kcal: Decimal | None = Field(default=None, ge=0)
     carbs: Decimal | None = Field(default=None, ge=0)
     protein: Decimal | None = Field(default=None, ge=0)
     fat: Decimal | None = Field(default=None, ge=0)
     fiber: Decimal | None = Field(default=None, ge=0)
+
+    @field_validator("details", mode="before")
+    @classmethod
+    def normalize_details(cls, value: object) -> object:
+        return value.strip() or None if isinstance(value, str) else value
 
     @field_validator("brand", mode="before")
     @classmethod

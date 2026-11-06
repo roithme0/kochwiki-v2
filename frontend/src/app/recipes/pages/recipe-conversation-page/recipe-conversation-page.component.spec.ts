@@ -95,7 +95,6 @@ describe('Recipe conversation page through published session controller and HTTP
     return {
       session_id: 'session-1',
       expires_at: '2026-10-23T00:00:00Z',
-      error: null,
       history: structuredClone(history),
       usage: conversationUsage(),
     };
@@ -214,6 +213,34 @@ describe('Recipe conversation page through published session controller and HTTP
     return fixture.componentInstance;
   }
 
+  it('connects dictation to the AI transcription endpoint and chat composer', async () => {
+    const page = await open();
+    const chat = fixture.debugElement.query(By.directive(ChatUiComponent))
+      .componentInstance as ChatUiComponent;
+    expect(chat.dictation()).toBe(page.dictation);
+    expect(chat.dictationContextKey()).toBe(page.dictationContextKey());
+    const blob = new Blob(['audio'], { type: 'audio/webm' });
+    const abort = new AbortController();
+    fetchMock.mockResolvedValueOnce(response({ text: 'Mehr Gemüse' }));
+    await expect(
+      page.dictation.transcribe(
+        {
+          blob,
+          mimeType: 'audio/webm',
+          durationMs: 1000,
+          stopReason: 'manual',
+        },
+        abort.signal,
+      ),
+    ).resolves.toBe('Mehr Gemüse');
+    expect(fetchMock).toHaveBeenLastCalledWith('/ai/api/v1/transcriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/webm' },
+      body: blob,
+      signal: abort.signal,
+    });
+  });
+
   function complete(
     artifacts: RecipeSessionArtifact[],
     text = 'Mehr Gem?se',
@@ -269,15 +296,15 @@ describe('Recipe conversation page through published session controller and HTTP
     ]);
   }
 
-  it('renders explicitly presented foodstuff name, brand and nutrition without writes or enrichment fetches', async () => {
+  it('renders the foodstuff name and brand title, details subtitle and nutrition-only body without fetches', async () => {
     const page = await open();
     await submitArtifacts(page, [
       {
         ...conversationProposal(),
         type: 'kochwiki-foodstuff',
         content: {
-          title: 'Linsen',
-          subtitle: 'Meine Marke',
+          title: 'Linsen, Meine Marke',
+          subtitle: 'gekocht',
           payload: {
             unit: 'G',
             kcal: 200,
@@ -295,8 +322,15 @@ describe('Recipe conversation page through published session controller and HTTP
       ),
     ).toHaveLength(1);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Meine Marke',
+      'Linsen, Meine Marke',
     );
+    expect((fixture.nativeElement as HTMLElement).textContent).toContain(
+      'gekocht',
+    );
+    const foodstuffBody = fixture.debugElement.query(
+      By.directive(FoodstuffPresentationComponent),
+    ).nativeElement as HTMLElement;
+    expect(foodstuffBody.textContent).not.toContain('gekocht');
     const cards = fixture.debugElement.queryAll(
       By.directive(NutritionCardComponent),
     );
@@ -385,6 +419,8 @@ describe('Recipe conversation page through published session controller and HTTP
           amount: 100,
           foodstuff: {
             name: 'Neue Zutat',
+            details: 'roh',
+            brand: null,
             imageId: null,
             unitVerbose: 'g',
             kcal: null,
@@ -577,17 +613,12 @@ describe('Recipe conversation page through published session controller and HTTP
     expect(acknowledge).not.toHaveBeenCalled();
   });
 
-  it('shows conversation exhaustion without losing presented artifacts or offering a retry', async () => {
+  it('shows a failed turn without losing presented artifacts and allows a new message', async () => {
     const page = await open();
     await submit(page);
-    emit({
-      kind: 'snapshot',
-      snapshot: { ...snapshot(), error: 'conversation_limit_reached' },
-    });
-    await vi.waitFor(() =>
-      expect(page.view().status?.message).toBe('Conversation limit reached'),
-    );
-    expect(page.view().composerDisabled).toBe(true);
+    complete([], 'Another message', 'failed');
+    await vi.waitFor(() => expect(page.view().status?.kind).toBe('error'));
+    expect(page.view().composerDisabled).toBe(false);
     expect(page.view().status?.action).toBeUndefined();
     expect(
       page

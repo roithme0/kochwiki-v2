@@ -4,7 +4,7 @@ mat-card {
 
 .grid {
   display: grid;
-  grid-template-columns: min-content 1fr min-content;
+  grid-template-columns: minmax(0, 1fr) min-content;
   align-items: center;
   gap: 0.25rem 0.75rem;
 }
@@ -13,14 +13,9 @@ mat-card {
   margin: 0 5px;
 }
 
-.foodstuff-image {
-  width: 24px;
-  height: 24px;
-}
-
 .no-ingredients,
 .error {
-  grid-column: span 3;
+  grid-column: span 2;
 }
 
 .amount {

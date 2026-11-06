@@ -332,6 +332,7 @@ describe('FoodstuffFormComponent', () => {
     component.form.setValue({
       name: 'Linsen',
       brand: null,
+      details: '  gekocht  ',
       unit: FoodstuffUnit.Gram,
       kcal: 100,
       carbs: 12,
@@ -347,6 +348,7 @@ describe('FoodstuffFormComponent', () => {
     expect(Array.from(labels, (label) => label.textContent?.trim())).toEqual([
       'Name',
       'Einheit',
+      'Details',
       'Marke',
       'Kohlenhydrate',
       'Proteine',
@@ -357,6 +359,7 @@ describe('FoodstuffFormComponent', () => {
     expect(submitted).toHaveBeenCalledWith({
       name: 'Linsen',
       brand: null,
+      details: 'gekocht',
       unit: FoodstuffUnit.Gram,
       kcal: 100,
       carbs: 12,
@@ -370,6 +373,7 @@ describe('FoodstuffFormComponent', () => {
     fixture.componentRef.setInput('foodstuff', {
       name: 'Bohnen',
       brand: 'Bio',
+      details: 'gekocht',
       unit: FoodstuffUnit.Gram,
       kcal: 110,
       carbs: 15,
@@ -382,6 +386,7 @@ describe('FoodstuffFormComponent', () => {
     expect(component.form.getRawValue()).toEqual({
       name: 'Bohnen',
       brand: 'Bio',
+      details: 'gekocht',
       unit: FoodstuffUnit.Gram,
       kcal: 110,
       carbs: 15,

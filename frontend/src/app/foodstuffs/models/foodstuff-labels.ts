@@ -3,6 +3,7 @@ import type { FoodstuffCreate, Unit } from '../../core/api/generated';
 export const foodstuffFieldLabels = {
   name: 'Name',
   brand: 'Marke',
+  details: 'Details',
   unit: 'Einheit',
   kcal: 'Kalorien',
   carbs: 'Kohlenhydrate',
@@ -10,8 +11,6 @@ export const foodstuffFieldLabels = {
   fat: 'Fett',
   fiber: 'Ballaststoffe',
 } satisfies Record<Exclude<keyof FoodstuffCreate, 'imageId'>, string>;
-
-export type FoodstuffField = keyof typeof foodstuffFieldLabels;
 
 const unitLabels = {
   G: 'Gramm',
@@ -22,7 +21,3 @@ const unitLabels = {
 export const foodstuffUnitChoices = Object.entries(unitLabels).map(
   ([value, label]) => ({ value, label }),
 );
-
-export function foodstuffUnitLabel(unit: Unit): string {
-  return unitLabels[unit];
-}

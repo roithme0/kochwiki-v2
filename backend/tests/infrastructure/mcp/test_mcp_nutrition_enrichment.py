@@ -127,7 +127,12 @@ def test_enrichment_mcp_refreshes_historical_source_and_shared_proposal(
             )
             arguments = {
                 "foodstuff_id": foodstuff_id,
-                "expected": {"name": "Oats", "brand": None, "unit": "G"},
+                "expected": {
+                    "details": None,
+                    "name": "Oats",
+                    "brand": None,
+                    "unit": "G",
+                },
                 "nutrition": {
                     "kcal": 370,
                     "protein": 12,
@@ -217,14 +222,26 @@ def test_enrichment_mcp_errors_are_atomic_and_sanitized(
         async with mcp_client(mcp_headers) as client:
             arguments: dict[str, object] = {
                 "foodstuff_id": target_id,
-                "expected": {"name": "Oats", "brand": None, "unit": "G"},
+                "expected": {
+                    "details": None,
+                    "name": "Oats",
+                    "brand": None,
+                    "unit": "G",
+                },
                 "nutrition": {"fiber": 10},
             }
             for changes, message in [
                 ({"foodstuff_id": 999999}, "not found"),
                 ({"foodstuff_id": foreign_id}, "owner"),
                 (
-                    {"expected": {"name": "Oats", "brand": None, "unit": "ML"}},
+                    {
+                        "expected": {
+                            "details": None,
+                            "name": "Oats",
+                            "brand": None,
+                            "unit": "ML",
+                        }
+                    },
                     "identity or unit changed",
                 ),
                 ({"nutrition": {}}, "at least one"),

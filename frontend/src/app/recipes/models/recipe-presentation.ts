@@ -4,6 +4,8 @@ import type { FoodstuffSummaryOut } from '../../core/api/generated';
 export type RecipePresentationFoodstuff = Pick<
   FoodstuffSummaryOut,
   | 'name'
+  | 'details'
+  | 'brand'
   | 'unitVerbose'
   | 'kcal'
   | 'carbs'

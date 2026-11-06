@@ -1,0 +1,12 @@
+﻿<app-foodstuff-image [imageId]="foodstuff().imageId" />
+<div class="foodstuff-label">
+  <div>
+    <span class="foodstuff-name">{{ foodstuff().name }}</span>
+    @if (foodstuff().details) {
+      <span class="foodstuff-details">{{ foodstuff().details }}</span>
+    }
+  </div>
+  @if (showBrand() && foodstuff().brand) {
+    <span class="foodstuff-brand">{{ foodstuff().brand }}</span>
+  }
+</div>

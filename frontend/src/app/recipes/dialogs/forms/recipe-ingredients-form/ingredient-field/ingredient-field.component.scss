@@ -11,23 +11,9 @@
   gap: 0.5rem;
 }
 
-.foodstuff-label {
+app-foodstuff-display {
   flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-wrap: anywhere;
-}
-
-.foodstuff-image {
-  width: 2rem;
-  height: 2rem;
-  flex-shrink: 0;
-}
-
-.foodstuff-brand {
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.875rem;
+  --foodstuff-image-size: 2rem;
 }
 
 .amount-field {

@@ -71,6 +71,23 @@ def temporary(index: int = 2, **definition: object) -> dict[str, object]:
     }
 
 
+@pytest.mark.parametrize("details", [None, "raw", "cooked", " "])
+def test_temporary_identity_ignores_details(details: str | None) -> None:
+    with pytest.raises(ValidationError, match="names and brands"):
+        payload(
+            uuid4(),
+            ingredients=[temporary(1, details="raw"), temporary(2, details=details)],
+        )
+    accepted = payload(
+        uuid4(),
+        ingredients=[
+            temporary(1, brand="Farm", details="raw"),
+            temporary(2, brand="Other", details=details),
+        ],
+    )
+    assert len(accepted.recipe.ingredients) == 2
+
+
 def references() -> tuple[UUID, UUID, int]:
     with SessionLocal.begin() as session:
         source = create_recipe(session, RecipeVersionWrite(name="Original", servings=2))

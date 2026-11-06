@@ -49,6 +49,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
             session,
             FoodstuffCreate(
                 name="Milk",
+                details="whole",
                 unit=Unit.ML,
                 kcal=Decimal(100),
                 carbs=Decimal(10),
@@ -76,6 +77,7 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
                                     "definition": {
                                         "name": "New ingredient",
                                         "brand": "Farm",
+                                        "details": "raw",
                                         "unit": unit,
                                         "kcal": 200,
                                         "carbs": 20,
@@ -133,6 +135,8 @@ def test_mixed_presentation_calculates_nutrition_without_writing(
     temporary = presentation.ingredients[1].foodstuff
     assert isinstance(persisted, ResolvedExistingProposalFoodstuff)
     assert persisted.id == existing.id and persisted.name == "Milk"
+    assert persisted.details == "whole"
+    assert temporary.details == "raw"
     assert isinstance(temporary, ResolvedTemporaryProposalFoodstuff)
     assert temporary.name == "New ingredient" and temporary.brand == "Farm"
     assert temporary.unitVerbose == unit.verbose_name

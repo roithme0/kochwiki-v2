@@ -37,10 +37,9 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> list[RecipeVersionOut]:
         """Find a bounded, ranked shortlist of existing recipes by name.
 
-        Results include complete active versions and drafts with per-serving
-        nutrition; historical versions are excluded.
-        Multiple versions of one recipe may appear. Only versions with current
-        embeddings can be returned. This operation is read-only.
+        Returns complete active versions and drafts with per-serving nutrition;
+        excludes historical versions and versions without current embeddings.
+        Multiple versions of one recipe may appear.
         """
         try:
             candidates = services.get_recipe_search().search(query, limit)
@@ -63,13 +62,10 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
     ) -> RecipeLineageOut:
         """Retrieve the complete lineage containing the supplied recipe version.
 
-        Returns the lineage ID and all related active, draft and historical
-        versions as complete objects, including the supplied
-        version, ordered by last modification time descending and version ID
-        descending for ties. Results are not filtered or truncated and include
-        ingredients, steps and per-serving nutrition. Unsaved proposals are
-        excluded. An unknown or deleted version produces an error.
-        This operation is read-only and requires no embedding credentials.
+        Returns all active, draft and historical versions with ingredients, steps
+        and per-serving nutrition, ordered by modification time then version ID,
+        both descending. Excludes unsaved proposals; unknown/deleted IDs error.
+        Requires no embeddings.
         """
         with tool_errors("Recipe lineage", "retrieval"), SessionLocal() as session:
             return recipes.get_recipe_lineage(session, recipe_version_id)
@@ -85,12 +81,10 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
     def create_recipe_proposal(proposal: RecipeProposalCreate) -> RecipeProposalOut:
         """Register a private candidate for a recipe owned by the caller.
 
-        Ingredients reference catalogue IDs or contain inline temporary definitions.
-        baseProposalId references a stored proposal; sourceRecipeVersionId must
-        match that proposal's source version and recipe supplies the complete
-        candidate. Returns the stored input with a new proposal ID and creation
-        time. Proposals are lost on backend
-        restart. No database records are written.
+        Accepts a complete candidate with catalogue or temporary ingredients.
+        Refinements require baseProposalId and its matching sourceRecipeVersionId.
+        Returns stored input with a new proposal ID and creation time, without
+        resolved nutrition. Stored in memory until restart; no database writes.
         """
         with tool_errors("Recipe proposal", "creation"), SessionLocal() as session:
             return services.recipe_proposals.create(
@@ -108,10 +102,9 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
     def get_recipe_proposal(proposal_id: UUID) -> RecipeProposalDetailsOut:
         """Retrieve the caller's stored proposal and its resolved presentation.
 
-        The proposal contains the original input and stored identifiers.
-        The presentation enriches existing foodstuffs from the current catalogue,
-        includes inline temporary foodstuffs and calculates per-serving nutrition.
-        Missing referenced foodstuffs cause an error. This operation is read-only.
+        Returns original input plus ingredients resolved from the live catalogue
+        or temporary definitions and backend-calculated per-serving nutrition.
+        Missing catalogue references error.
         """
         with tool_errors("Recipe proposal", "retrieval"), SessionLocal() as session:
             return RecipeProposalDetailsOut(
@@ -137,11 +130,9 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
     def save_recipe_proposal(proposal_id: UUID) -> RecipeVersionOut:
         """Save the caller's proposal as a draft in their owned recipe lineage.
 
-        All creations commit atomically or roll back together. The draft preserves
-        the source recipe's lineage. Repeated saves return the same created
-        version in its current state; a deleted saved version is an error and is
-        never recreated. Returns the complete saved recipe version with
-        per-serving nutrition.
+        Atomically creates the draft and any temporary catalogue foodstuffs.
+        Repeated saves return the same draft in its current state; a deleted saved
+        version errors. Returns the complete saved version with per-serving nutrition.
         """
         with tool_errors("Recipe proposal", "saving"):
             return save_proposal(

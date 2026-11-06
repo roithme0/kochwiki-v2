@@ -70,7 +70,6 @@ describe('Version-specific conversation routing', () => {
                         snapshot: {
                           session_id: 'test',
                           expires_at: '2026-10-23T00:00:00Z',
-                          error: null,
                           history: [],
                           usage: conversationUsage(),
                         } satisfies PresentedSession,

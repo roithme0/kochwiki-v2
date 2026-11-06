@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
-import { FoodstuffImageComponent } from '../../../foodstuffs/components/foodstuff-image/foodstuff-image.component';
+import { FoodstuffDisplayComponent } from '../../../foodstuffs/components/foodstuff-display/foodstuff-display.component';
 import {
   RecipePresentation,
   RecipePresentationIngredient,
@@ -9,7 +9,7 @@ import {
 
 @Component({
   selector: 'app-ingredients-grid',
-  imports: [MatCardModule, FoodstuffImageComponent],
+  imports: [MatCardModule, FoodstuffDisplayComponent],
   templateUrl: './ingredients-grid.component.html',
   styleUrl: './ingredients-grid.component.scss',
 })

@@ -1,5 +1,6 @@
 import {
   Component,
+  ChangeDetectorRef,
   DestroyRef,
   NgZone,
   computed,
@@ -11,6 +12,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { BrowserAudioRecorder } from '@roithme0/chat-ui/recording';
+import { HttpTranscriber } from '@roithme0/chat-ui/transcription';
 import {
   SessionController,
   SessionViewState,
@@ -23,6 +27,7 @@ import {
   ChatUsage,
   ChatUiComponent,
   artifactRenderer,
+  type DictationConfig,
 } from '@roithme0/chat-ui/ui';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
@@ -89,6 +94,28 @@ export class RecipeConversationPageComponent {
   private readonly activeUser = inject(ActiveUserService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(SnackBarService);
+  private readonly dictationSnackbar = inject(MatSnackBar);
+  private readonly changeDetector = inject(ChangeDetectorRef);
+  private readonly transcriber = new HttpTranscriber('/ai/api/v1');
+
+  readonly dictationContextKey = signal('0');
+  readonly dictation: DictationConfig = {
+    createRecorder: (publish) => new BrowserAudioRecorder(publish),
+    transcribe: (recording, signal) =>
+      this.transcriber.transcribe(recording, signal),
+    onError: (error) => {
+      let message = 'Die Aufnahme konnte nicht abgeschlossen werden.';
+      if (error.kind === 'transcription') {
+        message = 'Die Aufnahme konnte nicht transkribiert werden.';
+      } else if (error.reason === 'permission-denied') {
+        message = 'Der Zugriff auf das Mikrofon wurde verweigert.';
+      }
+      this.dictationSnackbar.open(message, 'OK', {
+        duration: 6000,
+        politeness: 'assertive',
+      });
+    },
+  };
 
   private saveEpoch = 0;
   private saveFeedback: SnackBarHandle | null = null;
@@ -304,6 +331,10 @@ export class RecipeConversationPageComponent {
     )
       return;
     this.actionPending = true;
+    if (action === 'new-session') {
+      this.dictationContextKey.update((key) => String(Number(key) + 1));
+      this.changeDetector.detectChanges();
+    }
     await controller.performAction(action);
     if (!this.isCurrent(generation, userId)) return;
     if (action === 'new-session' && controller.state.observation !== 'lost') {
