@@ -62,19 +62,23 @@ def register_workflow_resources(server: MCPServer) -> None:
     )
 
 
-NUTRITION = """For nutrition questions, including calories, macros and fiber, clarify ambiguous
-targets or bases. Preserve the foodstuff's catalogue basis; recipes default to per
-serving. For whole-recipe requests, multiply known per-serving values by servings,
-preserving nutrient statuses. Follow kochwiki://reference/presentation for artifact
-selection and where scaled values may be displayed.
+NUTRITION = """Clarify ambiguous nutrition targets or bases. Preserve the foodstuff's catalogue basis:
+G is per 100 g, ML per 100 ml, PIECE per piece. Recipes default to per serving; for
+whole-recipe requests, multiply known per-serving values by servings.
 
 Recipe nutrients are value/status objects: exact, minimum (a lower bound), or unknown
 (null value). Preserve statuses when scaling. Nutrient completeness is independent,
 including fiber; never infer one nutrient from another or invent unspecified values.
-Support fiber goals with these same rules.
 Do not claim exact improvements, rankings or satisfied upper targets from incomplete
 values. A minimum establishes a lower target only if its bound meets the target;
-explain incompleteness.
+explain incompleteness. Accepting gaps does not authorize guessing. If explicitly
+asked to estimate, label each estimate and resulting conclusion with assumptions and
+limits; distinguish them from research, recorded facts and backend results.
+
+Use backend-calculated recipe/proposal nutrition; do not independently calculate
+replacement recipe totals. Follow kochwiki://reference/presentation for artifacts,
+kochwiki://reference/foodstuff-units for conversions and
+kochwiki://workflows/nutrition-research for evidence, including the BLS fiber fallback.
 """
 
 
@@ -95,8 +99,7 @@ records merely to display data.
 Present each foodstuff or recipe with net updates this turn exactly once as a final
 result artifact, including supporting nutrition fills. Consolidate multiple writes
 regardless of tool; wait until updates are complete and use the final saved state.
-That result satisfies source and nutrition presentation for the same item and basis;
-do not also present intermediate states or duplicate artifacts unless requested.
+That result satisfies source and nutrition presentation for the same item and basis.
 Present directly requested creations too; temporary foodstuffs created by proposal
 saving need no separate artifacts unless requested or required as sources.
 Only stored proposals may enable saving, for that exact proposal under the host's
@@ -119,51 +122,53 @@ retrieval or presentation, never a successful write merely to repair display.
 
 
 FOODSTUFF_CREATION = """Create a catalogue entry only on an explicit creation request.
+Identify it using kochwiki://reference/foodstuff-naming and choose its storage unit
+using kochwiki://reference/foodstuff-units.
 
-First check duplicates, clarifying identity only as needed for meaningful search.
-Follow shared retrieval guidance when assessing matches. Consult the user about reuse
-versus creation for every plausible duplicate, even a clear match. If search is
-unavailable, explain the unknown duplicate risk and ask whether to proceed.
+Check search_foodstuffs for duplicates. Consult the user about reuse versus creation
+for every plausible duplicate, even a clear match. If search is unavailable, explain
+the unknown duplicate risk and ask whether to proceed.
 
-Apply the foodstuff naming and unit resources, and always use the nutrition research
-resource before creation, including its conflict policy. Create with all supported values found; unsuccessful or incomplete
-research can leave unknowns, which must be disclosed. Use returned saved data and
-follow the presentation resource's final-result policy.
+Always follow kochwiki://workflows/nutrition-research before creation, including its
+conflict policy. Use create_foodstuff with all supported values found; disclose
+unknowns from incomplete, unsuccessful or declined research. Present the saved result under
+kochwiki://reference/presentation.
 """
 
 FOODSTUFF_UPDATES = """Identify the target and intended fields unambiguously and send only intended
 changes. Use fill_foodstuff_nutrition for missing-value enrichment, preserving known
 values including zero; use update_foodstuff for explicit replacements and other edits.
-Explicit clearing uses the tool's optional-field semantics. Updates change the existing
-entry without a version and can affect all referencing recipes.
+For enrichment, follow kochwiki://workflows/nutrition-research. Compare research with
+retained fields, including concurrently populated values. Report actual additions,
+not attempted fills. If identity or unit changed, retrieve and reassess before retrying.
 
-For name, brand or details edits, apply the foodstuff naming resource and search the
-resulting identity for duplicates, excluding the target. Consult about plausible
-matches or unavailable required search. Nutrition-only edits need target identification,
-not another duplicate search.
+For name, brand or details edits, apply kochwiki://reference/foodstuff-naming and use
+search_foodstuffs on the resulting identity, excluding the target. Consult about
+plausible matches or unavailable required search. Nutrition-only edits need target
+identification, not another duplicate search.
 
 For an identity change affecting nutrition interpretation, such as raw to cooked,
 drained to undrained or a different product, resolve duplicate checks first and use
-the nutrition research resource for the resulting identity. Cosmetic corrections need
-no research. Consult before any meaning change, even if numbers are unchanged. Present
-relevant findings, sources, estimates and gaps and obtain approval for the resulting
-identity and nutrition together. An identity edit alone does not authorize replacing
-nutrition. If suitable replacement values cannot be established, offer clearing
+kochwiki://workflows/nutrition-research for the resulting identity. Cosmetic corrections
+need no research. Consult before any meaning change, even if numbers are unchanged.
+Present findings, sources, estimates and gaps; obtain approval for identity and
+nutrition together. An identity edit alone does not authorize replacing nutrition.
+If suitable replacement values cannot be established, offer clearing
 affected values to unknown or cancelling; never silently retain potentially invalid
 values. Apply confirmed identity and nutrition changes together where supported.
 
-Unit changes follow the same meaning-change gate. Use the foodstuff unit resource,
-show converted values and confirm before saving; do not relabel numbers. Compare
-research with retained fields, including concurrently populated values. If identity or
-unit changed, retrieve and reassess before retrying. Report actual additions, not
-attempted fills. Consolidate writes under the presentation resource's final-result
-policy; before/after comparison is needed only when requested.
+Unit changes follow the same meaning-change gate. Use kochwiki://reference/foodstuff-units,
+show converted values and confirm before saving; do not relabel numbers.
+Present results under kochwiki://reference/presentation; compare before/after only
+when requested.
 """
 
 NUTRITION_RESEARCH = """Identify the food, concrete branded product, preparation state and nutrition
-basis; clarify ambiguity. Research calories, carbs, protein, fat and fiber. Standalone
+basis using kochwiki://reference/foodstuff-naming and kochwiki://reference/foodstuff-units;
+clarify ambiguity. Research calories, carbs, protein, fat and fiber. Standalone
 research reports findings, evidence, estimates and gaps without catalogue writes or a
-duplicate-creation gate. A later mutation follows the creation or update workflow.
+duplicate-creation gate. Catalogue writes follow kochwiki://workflows/foodstuff-creation
+or kochwiki://workflows/foodstuff-updates.
 
 For branded foods, prefer matching manufacturer information. If unavailable or
 incomplete, check an exact-product retailer without additional confirmation and
@@ -181,9 +186,8 @@ preparation match. If BLS lacks a suitable match or values, stop and report gaps
 rather than searching additional sources.
 
 Missing values, source failures and unsupported conversions remain unknown; labeling
-rules and database completeness are not evidence. Declining further research still
-permits creation with disclosed unknowns under the creation workflow. After checking
-identity, state, basis and rounding, consult before saving values conflicting with
+rules and database completeness are not evidence. After checking identity, state,
+basis and rounding, consult before saving values conflicting with
 user-supplied or recorded data. Manufacturer priority does not override those data.
 Preserve recorded values pending explicit replacement; temporary copies must not
 bypass conflicts.
@@ -191,12 +195,14 @@ bypass conflicts.
 Cite actual evidence pages accurately. Disclose source merging, retailer supplementation,
 fiber estimates, material discrepancies and gaps once in concise chat without repeating
 an artifact nutrition table. Do not store provenance or estimate notes in names,
-details or other substitute fields.
+details or other substitute fields. Interpret values under kochwiki://reference/nutrition
+and present Kochwiki data under kochwiki://reference/presentation.
 """
 
-FOODSTUFF_UNITS = """Honor explicit storage-unit preferences. Otherwise use ML for liquids (per 100 ml),
-PIECE for explicitly packaged pieces or portions such as bread slices (per piece), and
-G otherwise (per 100 g). Being countable alone does not justify PIECE.
+FOODSTUFF_UNITS = """Honor explicit storage-unit preferences. Otherwise use ML for liquids,
+PIECE for explicitly packaged pieces or portions such as bread slices, and G otherwise.
+Being countable alone does not justify PIECE. Nutrition bases are defined in
+kochwiki://reference/nutrition.
 
 Research the concrete portion weight where required. A matching package weight and
 piece count can establish it. Convert mass-based values using
@@ -225,46 +231,39 @@ Fat in dry matter is descriptive information, not a structured fat nutrient valu
 """
 
 RECIPE_UPDATES = """Use an explicitly selected existing source recipe and preserve selection through
-lineage retrieval. Use supplied context; do not infer draft ancestry from shared
-lineage. Recipe creation and fabricated source versions are unsupported. Proposals
+get_recipe_lineage. Do not infer draft ancestry from shared lineage.
+Recipe creation and fabricated source versions are unsupported. Proposals
 require a caller-owned source lineage. Other users' recipes remain readable but cannot
 be update-proposal sources; ingredient remapping cannot bypass ownership.
 
 An update request authorizes a proposal, not persisting a draft. Create the complete
 candidate with create_recipe_proposal, resolve it with get_recipe_proposal, then
 present the resolved artifact with the host's save action. Save only the explicitly
-identified proposal on explicit save intent, and present the saved version without the
-proposal action. Refinement creates a new proposal using baseProposalId while retaining
-the original sourceRecipeVersionId; retrieve the prior proposal when needed. Keep the
+identified proposal on explicit save intent, using save_recipe_proposal. Refinement
+creates a new proposal using baseProposalId while retaining the original
+sourceRecipeVersionId; retrieve the prior proposal when needed. Keep the
 original source as comparison baseline unless the user explicitly selects a different
-update task. Unsaved proposals are not persisted drafts.
+update task.
 
-Reuse suitable caller-owned catalogue entries. For missing ingredients, check for
-foodstuff duplicates before introducing inline temporary definitions; consult about
-plausible duplicates or unavailable search. Apply the foodstuff naming and unit
-resources and, where applicable, nutrition research. No separate recipe-duplicate
-search is needed to revise the selected source. Do not modify or clone another user's
-catalogue entries. Do not create catalogue entries merely to propose ingredients. For existing entries,
-follow the nutrition research conflict policy. Temporary definitions become catalogue entries only when the identified
-proposal is explicitly saved.
+Reuse suitable caller-owned catalogue entries. For missing ingredients, use
+search_foodstuffs before introducing inline temporary definitions; consult about
+plausible duplicates or unavailable search. Apply kochwiki://reference/foodstuff-naming
+and kochwiki://reference/foodstuff-units. No recipe-duplicate search is needed.
+Do not modify or clone another user's catalogue entries or create catalogue entries
+merely to propose ingredients;
+temporary definitions become catalogue entries on proposal save.
 
 Before nutrition optimization, assess ingredient completeness, summarize gaps and
-offer completion through the foodstuff update workflow. The user may proceed with
-gaps, including negligible gaps. Apply the same policy to additional ingredients and
-follow shared authorization guidance. Taste-only updates do not require nutrition
-research, including for new temporary ingredients; unavailable nutrition remains
-unknown. Any explicitly requested research follows the nutrition research resource.
+offer completion through kochwiki://workflows/foodstuff-updates. The user may proceed
+with gaps, including negligible gaps. Apply the same policy to additional ingredients.
+Taste-only updates do not require nutrition research, including for new temporary
+ingredients; unavailable nutrition remains unknown. For research, including conflicts
+with existing entries, follow kochwiki://workflows/nutrition-research.
 
 Use backend-calculated proposal nutrition from get_recipe_proposal, not submitted
-input returned by creation. Do not independently calculate replacement recipe totals.
-Existing ingredients resolve against live catalogue values.
-After authorized fills, refresh the selected source through get_recipe_lineage and
-proposals through get_recipe_proposal before comparison. Read and follow
-kochwiki://reference/nutrition for nutrient statuses and limits on comparisons.
-
-Accepting gaps does not authorize guessing. If explicitly pushed to estimate, identify
-every estimate and estimate-based conclusion, including assumptions and limits; do not
-present them as research, recorded facts or backend results. The separate BLS fiber
-policy remains applicable. Explain changes, intended benefits and uncertainties briefly
-after the resolved artifact, without repeating its details.
+input returned by creation. After authorized fills, refresh the selected source through
+get_recipe_lineage and proposals through get_recipe_proposal before comparison. Follow
+kochwiki://reference/nutrition for statuses, comparisons and estimates. Present under
+kochwiki://reference/presentation, then briefly explain changes, benefits and
+uncertainties without repeating artifact details.
 """

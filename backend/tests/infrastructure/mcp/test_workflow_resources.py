@@ -39,6 +39,8 @@ def test_static_workflow_resources_are_discoverable_and_readable() -> None:
                 content = first.contents[0]
                 assert isinstance(content, TextResourceContents)
                 assert content.text.strip()
+                linked_uris = set(re.findall(r"kochwiki://[\w/-]+", content.text))
+                assert linked_uris <= resource_uris, linked_uris - resource_uris
             assert not (await client.list_resource_templates()).resource_templates
             assert not (await client.list_prompts()).prompts
 
@@ -114,7 +116,9 @@ def test_representative_workflow_policy_contracts() -> None:
     assert normalized("explicit creation request") in creation
     assert normalized("every plausible duplicate, even a clear match") in creation
     assert (
-        normalized("always use the nutrition research resource before creation")
+        normalized(
+            "always follow kochwiki://workflows/nutrition-research before creation"
+        )
         in creation
     )
     assert normalized("unknowns") in creation
@@ -159,7 +163,6 @@ def test_representative_workflow_policy_contracts() -> None:
         )
         in recipe
     )
-    assert normalized("follow shared authorization guidance") in recipe
     assert (
         normalized("backend-calculated proposal nutrition from get_recipe_proposal")
         in recipe
@@ -173,7 +176,7 @@ def test_representative_workflow_policy_contracts() -> None:
     assert normalized("before starting an applicable task, read and follow") in shared
     assert (
         normalized(
-            "apply all relevant resources, including those referenced by a workflow"
+            "apply all relevant resources, including applicable linked references and workflows"
         )
         in shared
     )
@@ -196,9 +199,6 @@ def test_representative_workflow_policy_contracts() -> None:
     )
     assert normalized("preserve source facts and unknowns") in shared
     assert "kochwiki://reference/nutrition" in KOCHWIKI_INSTRUCTIONS
-    assert (
-        normalized("do not independently calculate replacement recipe totals") in recipe
-    )
     assert "kochwiki://reference/nutrition" in raw_content["Recipe updates"]
     assert normalized("only in the nutrition artifact") in presentation
     assert normalized("full recipe artifacts retain per-serving values") in presentation
@@ -206,6 +206,11 @@ def test_representative_workflow_policy_contracts() -> None:
     assert normalized("missing values as unknown/null") in presentation
     assert "kochwiki://reference/nutrition" in raw_content["Presentation"]
     nutrition = content["Nutrition"]
+    assert (
+        normalized("do not independently calculate replacement recipe totals")
+        in nutrition
+    )
+    assert normalized("accepting gaps does not authorize guessing") in nutrition
     assert normalized("minimum (a lower bound), or unknown") in nutrition
     assert normalized("preserve the foodstuff's catalogue basis") in nutrition
     assert normalized("multiply known per-serving values by servings") in nutrition
