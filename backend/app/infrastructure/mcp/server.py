@@ -7,6 +7,7 @@ from app.infrastructure.mcp.asserted_identity import capture_identity
 from app.infrastructure.mcp.foodstuffs import register_foodstuff_tools
 from app.infrastructure.mcp.instructions import KOCHWIKI_INSTRUCTIONS
 from app.infrastructure.mcp.recipes import register_recipe_tools
+from app.infrastructure.mcp.resources import register_workflow_resources
 from app.infrastructure.mcp.services import MCPServices
 
 
@@ -23,6 +24,7 @@ def create_mcp_server(
 
     register_foodstuff_tools(server, services)
     register_recipe_tools(server, services)
+    register_workflow_resources(server)
 
     mcp_app = server.streamable_http_app(
         streamable_http_path="/",

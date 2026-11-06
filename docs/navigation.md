@@ -18,7 +18,7 @@ flowchart LR
     Backend --> Embeddings[OpenAI API]
 ```
 
-The gateway routes are defined in [nginx.conf](../deployment/gateway/nginx.conf). The AI service and identity provider live outside this repository; their connections are configured per environment. The backend exposes Model Context Protocol (MCP) tools for recipe and foodstuff operations.
+The gateway routes are defined in [nginx.conf](../deployment/gateway/nginx.conf). The AI service and identity provider live outside this repository; their connections are configured per environment. The backend exposes Model Context Protocol (MCP) tools for recipe and foodstuff operations and static workflow resources for AI guidance.
 
 ## Code map
 
