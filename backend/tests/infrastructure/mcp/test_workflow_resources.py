@@ -22,8 +22,13 @@ def test_static_workflow_resources_are_discoverable_and_readable() -> None:
         register_workflow_resources(server)
         async with Client(server) as client:
             resources = (await client.list_resources()).resources
-            assert len(resources) == 6
-            assert len({str(resource.uri) for resource in resources}) == 6
+            assert len(resources) == 8
+            resource_uris = {str(resource.uri) for resource in resources}
+            assert len(resource_uris) == 8
+            instruction_uris = set(
+                re.findall(r"kochwiki://[\w/-]+", KOCHWIKI_INSTRUCTIONS)
+            )
+            assert instruction_uris == resource_uris
             assert all(resource.name and resource.description for resource in resources)
             for resource in resources:
                 first = await client.read_resource(str(resource.uri))
@@ -56,7 +61,7 @@ def test_workflow_resources_over_http_across_lifecycles(
                     mode=mode,
                 ) as client:
                     resources = (await client.list_resources()).resources
-                    assert len(resources) == 6
+                    assert len(resources) == 8
                     contents: dict[str, str] = {}
                     for resource in resources:
                         uri = str(resource.uri)
@@ -67,6 +72,8 @@ def test_workflow_resources_over_http_across_lifecycles(
                         assert content.text.strip()
                         contents[uri] = content.text
                     assert set(contents) == {
+                        "kochwiki://reference/presentation",
+                        "kochwiki://reference/nutrition",
                         "kochwiki://workflows/foodstuff-creation",
                         "kochwiki://workflows/foodstuff-updates",
                         "kochwiki://workflows/nutrition-research",
@@ -163,5 +170,54 @@ def test_representative_workflow_policy_contracts() -> None:
         normalized("reading instructions or research does not authorize writes")
         in shared
     )
-    assert normalized("never a successful write merely to repair display") in shared
-    assert normalized("minimum (a lower bound), or unknown") in shared
+    assert normalized("before starting an applicable task, read and follow") in shared
+    assert (
+        normalized(
+            "apply all relevant resources, including those referenced by a workflow"
+        )
+        in shared
+    )
+    assert "kochwiki://reference/presentation" in KOCHWIKI_INSTRUCTIONS
+    presentation = content["Presentation"]
+    assert (
+        normalized("never a successful write merely to repair display") in presentation
+    )
+    assert normalized("never invent IDs or expose internal IDs") in presentation
+    assert normalized("relay ingredient imageId unchanged, or null") in presentation
+    assert (
+        normalized("as full kochwiki-recipe/kochwiki-foodstuff source artifacts")
+        in presentation
+    )
+    assert normalized("exactly once as a final result artifact") in presentation
+    assert normalized("use the final saved state") in presentation
+    assert normalized("only stored proposals may enable saving") in presentation
+    assert (
+        normalized("text and Markdown tables do not replace artifacts") in presentation
+    )
+    assert normalized("preserve source facts and unknowns") in shared
+    assert "kochwiki://reference/nutrition" in KOCHWIKI_INSTRUCTIONS
+    assert (
+        normalized("do not independently calculate replacement recipe totals") in recipe
+    )
+    assert "kochwiki://reference/nutrition" in raw_content["Recipe updates"]
+    assert normalized("only in the nutrition artifact") in presentation
+    assert normalized("full recipe artifacts retain per-serving values") in presentation
+    assert normalized("including zero, as exact") in presentation
+    assert normalized("missing values as unknown/null") in presentation
+    assert "kochwiki://reference/nutrition" in raw_content["Presentation"]
+    nutrition = content["Nutrition"]
+    assert normalized("minimum (a lower bound), or unknown") in nutrition
+    assert normalized("preserve the foodstuff's catalogue basis") in nutrition
+    assert normalized("multiply known per-serving values by servings") in nutrition
+    assert normalized("preserve statuses when scaling") in nutrition
+    assert (
+        normalized("nutrient completeness is independent, including fiber") in nutrition
+    )
+    assert normalized("never infer one nutrient from another") in nutrition
+    assert (
+        normalized(
+            "do not claim exact improvements, rankings or satisfied upper targets"
+        )
+        in nutrition
+    )
+    assert normalized("only if its bound meets the target") in nutrition
