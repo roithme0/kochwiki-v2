@@ -29,7 +29,7 @@ describe('RecipeEditorComponent', () => {
     getRecipeVersion: Mock;
   };
   const revokeObjectURL = vi.fn<typeof URL.revokeObjectURL>();
-  let imageService: { upload: Mock; download: Mock };
+  let imageService: { upload: Mock; contentUrl: Mock };
   let closing: Subject<void>;
   const imageId = '00000000-0000-4000-8000-000000000003';
 
@@ -52,10 +52,7 @@ describe('RecipeEditorComponent', () => {
     closing = new Subject<void>();
     imageService = {
       upload: vi.fn().mockResolvedValue({ id: imageId }),
-      download: vi.fn().mockResolvedValue({
-        url: '/storage/saved.png?signature=test',
-        expiresIn: 300,
-      }),
+      contentUrl: vi.fn().mockReturnValue('/storage/saved.png?signature=test'),
     };
     vi.stubGlobal(
       'URL',
@@ -294,7 +291,7 @@ describe('RecipeEditorComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(imageService.download).toHaveBeenCalledWith(imageId);
+    expect(imageService.contentUrl).toHaveBeenCalledWith(imageId);
     await fixture.whenStable();
     fixture.detectChanges();
     const image = (fixture.nativeElement as HTMLElement).querySelector(
@@ -308,33 +305,52 @@ describe('RecipeEditorComponent', () => {
         .querySelector('.image-preview img')
         ?.getAttribute('src'),
     ).toBe('images/recipe-image-placeholder.png');
-    expect(imageService.download).toHaveBeenCalledTimes(1);
+    expect(imageService.contentUrl).toHaveBeenCalledTimes(1);
     const retry = Array.from(
       (
         fixture.nativeElement as HTMLElement
       ).querySelectorAll<HTMLButtonElement>('button'),
-    ).find((button) => button.textContent?.includes('Bild erneut laden'))!;
+    ).find(
+      (button) => button.getAttribute('aria-label') === 'Bild erneut laden',
+    )!;
     retry.click();
     await fixture.whenStable();
-    expect(imageService.download).toHaveBeenCalledTimes(2);
+    expect(imageService.contentUrl).toHaveBeenCalledTimes(2);
     expect(component.image.imageAccessFailed()).toBe(false);
   });
 
-  it('does not let a late saved-image request overwrite a selected replacement or removal', async () => {
-    let finish!: (value: { url: string; expiresIn: number }) => void;
-    imageService.download.mockReturnValue(
-      new Promise<{ url: string; expiresIn: number }>((resolve) => {
-        finish = resolve;
-      }),
-    );
+  it('does not let a late saved-image request overwrite a selected replacement or removal', () => {
     component.recipeVersion.set({ ...recipeVersion, imageId });
-    const load = component.image.loadImagePreview();
+    component.image.loadImagePreview();
+    const generation = component.image.previewGeneration();
     selectFile(new File(['png'], 'recipe.png', { type: 'image/png' }));
-    finish({ url: '/storage/old.png', expiresIn: 300 });
-    await load;
+    component.image.imageLoadFailed(
+      '/storage/saved.png?signature=test',
+      generation,
+    );
     expect(component.image.imagePreview()).toBe('blob:preview');
     component.image.removeImage();
     expect(component.image.imagePreview()).toBeNull();
+  });
+
+  it('ignores saved preview events after the dialog begins closing', () => {
+    component.recipeVersion.set({ ...recipeVersion, imageId });
+    component.image.loadImagePreview();
+    const generation = component.image.previewGeneration();
+    closing.next();
+    component.image.imageLoaded(
+      '/storage/saved.png?signature=test',
+      generation,
+    );
+    component.image.imageLoadFailed(
+      '/storage/saved.png?signature=test',
+      generation,
+    );
+    expect(component.image.imagePreview()).toBe(
+      '/storage/saved.png?signature=test',
+    );
+    expect(component.image.loadingImage()).toBe(true);
+    expect(component.image.imageAccessFailed()).toBe(false);
   });
 
   it('preserves an existing image reference when preview access fails', async () => {
@@ -342,8 +358,11 @@ describe('RecipeEditorComponent', () => {
     component.recipeForm.controls.metaFormGroup.controls.name.setValue(
       'Recipe',
     );
-    imageService.download.mockRejectedValue(new Error('Unavailable'));
-    await component.image.loadImagePreview();
+    component.image.loadImagePreview();
+    component.image.imageLoadFailed(
+      '/storage/saved.png?signature=test',
+      component.image.previewGeneration(),
+    );
     expect(component.image.imageAccessFailed()).toBe(true);
     const emitted = vi.fn();
     component.submitted.subscribe(emitted);

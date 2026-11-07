@@ -7,11 +7,13 @@ import { IngredientsGridComponent } from './ingredients-grid.component';
 describe('IngredientsGridComponent foodstuff images', () => {
   it('renders catalogue images in ingredient order and uses the placeholder for null image references', async () => {
     const download = vi
-      .fn<(id: string) => Promise<{ url: string; expiresIn: number }>>()
-      .mockResolvedValue({ url: '/storage/tomato', expiresIn: 300 });
+      .fn<(id: string) => string>()
+      .mockReturnValue('/storage/tomato');
     TestBed.configureTestingModule({
       imports: [IngredientsGridComponent],
-      providers: [{ provide: FoodstuffImageService, useValue: { download } }],
+      providers: [
+        { provide: FoodstuffImageService, useValue: { contentUrl: download } },
+      ],
     });
     const tomato = {
       imageId: null,
@@ -51,7 +53,7 @@ describe('IngredientsGridComponent foodstuff images', () => {
     fixture.detectChanges();
     expect(download).toHaveBeenCalledExactlyOnceWith('tomato-image');
     expect(element.querySelector('app-macro-chart')).toBeNull();
-    const images = element.querySelectorAll('app-foodstuff-image img');
+    const images = element.querySelectorAll('app-display-image img');
     expect(
       Array.from(images).map((image) => image.getAttribute('src')),
     ).toEqual(['/storage/tomato', 'images/question-mark.png']);

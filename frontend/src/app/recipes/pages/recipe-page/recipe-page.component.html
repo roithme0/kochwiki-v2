@@ -10,9 +10,15 @@
           class="version-state-badge"
           [state]="recipeVersion.state"
         />
-        <app-recipe-image
-          [imageId]="recipeVersion.imageId"
-          [imageDimensions]="recipeVersion.imageDimensions"
+        <app-display-image
+          alt="Rezeptbild"
+          [placeholder]="placeholder"
+          [src]="
+            recipeVersion.imageId === null
+              ? null
+              : images.contentUrl(recipeVersion.imageId)
+          "
+          [dimensions]="recipeVersion.imageDimensions"
         />
         <app-recipe-presentation [recipe]="recipeVersion" />
         <div class="spacer"></div>

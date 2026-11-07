@@ -23,7 +23,7 @@ import { RecipeBackendService } from '../../services/recipe-backend.service';
 import { RecipePageComponent } from './recipe-page.component';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { RecipeImageComponent } from '../../components/recipe-image/recipe-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 import { RecipeImageService } from '../../services/recipe-image.service';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
@@ -345,10 +345,9 @@ describe('RecipePageComponent presentation integration', () => {
         ],
       };
       const getAllFoodstuffs = vi.fn().mockResolvedValue([]);
-      const downloadFoodstuffImage = vi.fn().mockResolvedValue({
-        url: '/storage/ingredient',
-        expiresIn: 300,
-      });
+      const downloadFoodstuffImage = vi
+        .fn()
+        .mockReturnValue('/storage/ingredient');
       const pageHeader = {
         updateHeader: vi.fn().mockName('updateHeader'),
         set headline(_value: string) {},
@@ -362,7 +361,7 @@ describe('RecipePageComponent presentation integration', () => {
           },
           {
             provide: FoodstuffImageService,
-            useValue: { download: downloadFoodstuffImage },
+            useValue: { contentUrl: downloadFoodstuffImage },
           },
           {
             provide: ActiveUserService,
@@ -371,9 +370,7 @@ describe('RecipePageComponent presentation integration', () => {
           {
             provide: RecipeImageService,
             useValue: {
-              download: vi
-                .fn()
-                .mockResolvedValue({ url: '/storage/image', expiresIn: 300 }),
+              contentUrl: vi.fn().mockReturnValue('/storage/image'),
             },
           },
           {
@@ -441,14 +438,14 @@ describe('RecipePageComponent presentation integration', () => {
         '100 g',
       );
       const image = fixture.debugElement.query(
-        By.directive(RecipeImageComponent),
+        By.directive(DisplayImageComponent),
       );
-      expect((image.componentInstance as RecipeImageComponent).imageId()).toBe(
-        recipe.imageId,
+      expect((image.componentInstance as DisplayImageComponent).src()).toBe(
+        '/storage/image',
       );
       expect(
         (fixture.nativeElement as HTMLElement).querySelector(
-          'app-recipe-image',
+          'app-display-image',
         )!.nextElementSibling?.tagName,
       ).toBe('APP-RECIPE-PRESENTATION');
       expect(

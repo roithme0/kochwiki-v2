@@ -9,7 +9,7 @@ import { RecipeImageService } from './recipe-image.service';
 import { FoodstuffImageService } from '../../foodstuffs/services/foodstuff-image.service';
 import type { Type } from '@angular/core';
 
-type ImageClient = Pick<RecipeImageService, 'upload' | 'download'>;
+type ImageClient = Pick<RecipeImageService, 'upload' | 'contentUrl'>;
 const cases: { domain: string; serviceType: Type<ImageClient> }[] = [
   { domain: 'recipe', serviceType: RecipeImageService },
   { domain: 'foodstuff', serviceType: FoodstuffImageService },
@@ -137,93 +137,20 @@ describe.each(cases)('$domain image transfers', ({ domain, serviceType }) => {
     });
   });
 
-  const imageId = '00000000-0000-4000-8000-000000000001';
-  const endpoint = `${backendUrl}/${domain}-images/${imageId}/download`;
-  const downloadInstructions = {
-    url: `/storage/${domain}-images/image.png?signature=test`,
-    expiresIn: 300,
-  };
-
-  describe('download', () => {
-    let service: ImageClient;
-    let http: HttpTestingController;
-
-    beforeEach(() => {
+  describe('content URL', () => {
+    it('derives the stable URL synchronously without HTTP requests', () => {
       TestBed.configureTestingModule({
         providers: [provideHttpClient(), provideHttpClientTesting()],
       });
-      service = TestBed.inject(serviceType);
-      http = TestBed.inject(HttpTestingController);
-    });
-    afterEach(() => {
-      try {
-        http.verify();
-      } finally {
-        TestBed.resetTestingModule();
-      }
-    });
-
-    it('requests fresh instructions on each call without downloading image bytes', async () => {
-      for (const url of [
-        downloadInstructions.url,
-        downloadInstructions.url + '2',
-      ]) {
-        const result = service.download(imageId);
-        const request = http.expectOne(endpoint);
-        expect(request.request.method).toBe('GET');
-        request.flush({ ...downloadInstructions, url });
-        await expect(result).resolves.toEqual({ ...downloadInstructions, url });
-      }
-      http.expectNone(downloadInstructions.url);
-    });
-
-    it('routes absolute signed download URLs through the app origin without changing encoding', async () => {
-      const result = service.download(imageId);
-      http
-        .expectOne(endpoint)
-        .flush({ ...downloadInstructions, url: signedUrl });
-      await expect(result).resolves.toEqual({
-        ...downloadInstructions,
-        url: storageUrl,
-      });
-      http.expectNone(signedUrl);
-      http.expectNone(storageUrl);
-    });
-
-    it.each([
-      'https://example.invalid/api/private',
-      'javascript:alert(1)',
-      'https://user:secret@example.invalid/storage/image.png',
-    ])('rejects invalid storage access URL %s', async (url) => {
-      const result = service.download(imageId);
-      const rejected = expect(result).rejects.toThrow(
-        'Invalid image storage URL',
+      const service = TestBed.inject(serviceType);
+      const http = TestBed.inject(HttpTestingController);
+      const id = '00000000-0000-4000-8000-000000000001';
+      expect(service.contentUrl(id)).toBe(
+        `${backendUrl}/${domain}-images/${id}/content`,
       );
-      http.expectOne(endpoint).flush({ ...downloadInstructions, url });
-      await rejected;
-    });
-
-    it.each([404, 503])('surfaces HTTP %s without retrying', async (status) => {
-      const result = service.download(imageId);
-      const rejected = expect(result).rejects.toBeInstanceOf(HttpErrorResponse);
-      http
-        .expectOne(endpoint)
-        .flush({ detail: 'Unavailable' }, { status, statusText: 'Error' });
-      await rejected;
-      http.expectNone(endpoint);
-    });
-
-    it.each([
-      { expiresIn: 300 },
-      { ...downloadInstructions, expiresIn: 0 },
-      { ...downloadInstructions, objectKey: 'private/key' },
-    ])('rejects malformed download instructions %j', async (body) => {
-      const result = service.download(imageId);
-      const rejected = expect(result).rejects.toMatchObject({
-        name: 'ApiContractError',
-      });
-      http.expectOne(endpoint).flush(body);
-      await rejected;
+      expect(service.contentUrl(id)).toBe(service.contentUrl(id));
+      http.verify();
+      TestBed.resetTestingModule();
     });
   });
 });

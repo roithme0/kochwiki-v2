@@ -15,7 +15,6 @@ from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
 from app.recipes.services.image_uploads import RecipeImageUploads
 from app.recipes.schemas.image import (
-    RecipeImageDownloadOut,
     RecipeImageOut,
     RecipeImageUploadOut,
 )
@@ -56,26 +55,30 @@ def get_recipe_image_uploads(
 
 
 @router.get(
-    "/recipe-images/{image_id}/download",
-    response_model=RecipeImageDownloadOut,
-    responses={404: {"model": ErrorResponse}},
+    "/recipe-images/{image_id}/content",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}
+        },
+        404: {"model": ErrorResponse},
+    },
 )
-def download_image(
+def image_content(
     image_id: UUID,
-    response: Response,
-    uploads: ImageTransfers = Depends(get_recipe_image_transfers),
-) -> RecipeImageDownloadOut:
-    headers = {"Cache-Control": "no-store"}
+    transfers: ImageTransfers = Depends(get_recipe_image_transfers),
+) -> Response:
     try:
-        transfer = uploads.download(image_id)
+        target = transfers.content_handoff(image_id)
     except StorageUnavailable:
         raise HTTPException(
-            503, "Image storage is unavailable", headers=headers
+            503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
         ) from None
-    if transfer is None:
-        raise HTTPException(404, "Recipe image not found", headers=headers)
-    response.headers.update(headers)
-    return RecipeImageDownloadOut(url=transfer.url, expiresIn=transfer.expires_in)
+    if target is None:
+        raise HTTPException(
+            404, "Recipe image not found", headers={"Cache-Control": "no-store"}
+        )
+    return Response(headers={"X-Accel-Redirect": target})
 
 
 @router.post(

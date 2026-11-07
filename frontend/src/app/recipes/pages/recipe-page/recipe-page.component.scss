@@ -58,3 +58,8 @@ article {
   align-items: center;
   gap: 0.5rem;
 }
+
+app-display-image {
+  height: clamp(12rem, 40vw, 22rem);
+  width: 100%;
+}

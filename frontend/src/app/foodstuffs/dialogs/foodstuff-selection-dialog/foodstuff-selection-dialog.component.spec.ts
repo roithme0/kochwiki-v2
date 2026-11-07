@@ -13,7 +13,7 @@ import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
-import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 
 const foodstuffs: FoodstuffOut[] = [
   foodstuffOut({
@@ -36,17 +36,11 @@ describe('FoodstuffSelectionDialogComponent', () => {
   let creationResult: Subject<FoodstuffOut | undefined>;
   const open = vi.fn();
   const getAllFoodstuffs = vi.fn();
-  const download =
-    vi.fn<(id: string) => Promise<{ url: string; expiresIn: number }>>();
+  const download = vi.fn<(id: string) => string>();
   let foodstuffsChanged: Subject<void>;
   beforeEach(() => {
     close.mockReset();
-    download.mockReset().mockImplementation((id) =>
-      Promise.resolve({
-        url: '/storage/' + id,
-        expiresIn: 300,
-      }),
-    );
+    download.mockReset().mockImplementation((id) => '/storage/' + id);
     foodstuffsChanged = new Subject<void>();
     getAllFoodstuffs.mockReset().mockResolvedValue([...foodstuffs].reverse());
     creationResult = new Subject<FoodstuffOut | undefined>();
@@ -55,7 +49,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
       .mockReturnValue({ afterClosed: () => creationResult.asObservable() });
     TestBed.configureTestingModule({
       providers: [
-        { provide: FoodstuffImageService, useValue: { download } },
+        { provide: FoodstuffImageService, useValue: { contentUrl: download } },
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: FoodstuffBackendService,
@@ -116,13 +110,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const resultImages = fixture.debugElement.queryAll(
-      By.css('button[mat-list-item] app-foodstuff-image'),
+      By.css('button[mat-list-item] app-display-image'),
     );
     expect(
       resultImages.map((item) =>
-        (item.componentInstance as FoodstuffImageComponent).imageId(),
+        (item.componentInstance as DisplayImageComponent).src(),
       ),
-    ).toEqual([null, 'pasta-image']);
+    ).toEqual([null, '/storage/pasta-image']);
     fixture.componentInstance.toggleFoodstuff(1);
     fixture.componentInstance.openCreateFoodstuffDialog();
     const created = {
@@ -137,13 +131,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const basketImages = fixture.debugElement.queryAll(
-      By.css('.basket-preview app-foodstuff-image'),
+      By.css('.basket-preview app-display-image'),
     );
     expect(
       basketImages.map((item) =>
-        (item.componentInstance as FoodstuffImageComponent).imageId(),
+        (item.componentInstance as DisplayImageComponent).src(),
       ),
-    ).toEqual(['pasta-image', 'rice-image']);
+    ).toEqual(['/storage/pasta-image', '/storage/rice-image']);
     expect(download).toHaveBeenCalledWith('rice-image');
     fixture.componentInstance.confirmSelection();
     expect(close).toHaveBeenCalledWith([

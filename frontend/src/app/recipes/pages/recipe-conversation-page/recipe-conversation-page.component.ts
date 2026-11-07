@@ -179,6 +179,12 @@ export class RecipeConversationPageComponent {
         }
       : null;
   });
+  readonly model = computed(() => {
+    const model = this.view().snapshot?.model;
+    return model
+      ? { name: model.name, reasoningEffort: model.reasoning_effort }
+      : null;
+  });
   readonly artifactRenderer = artifactRenderer;
   readonly isRecipePresentation = isRecipePresentation;
   readonly isFoodstuffPresentation = isFoodstuffPresentation;

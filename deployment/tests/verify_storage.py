@@ -68,14 +68,46 @@ def presign(
     return f"/storage{path}?{query}&X-Amz-Signature={signature}"
 
 
-def request(method: str, path: str, body: bytes | None = None) -> tuple[int, bytes]:
+def request(method: str, path: str, body: bytes | None = None, *, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
     connection = http.client.HTTPConnection(HOST, timeout=15)
     try:
-        connection.request(method, path, body=body)
+        connection.request(method, path, body=body, headers=headers or {})
         response = connection.getresponse()
         return response.status, response.read()
     finally:
         connection.close()
+
+
+def verify_image_handoff(path: str, payload: bytes) -> None:
+    target = presign("GET", path).removeprefix("/storage")
+    handoff = f"/_image/{HOST}?{target}"
+    connection = http.client.HTTPConnection(HOST, timeout=15)
+    try:
+        connection.request("GET", "/api/recipe-images/example/content", headers={
+            "X-Test-Handoff": handoff, "Cookie": "session=test", "Authorization": "Bearer unrelated",
+        })
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.read() == payload
+        cache = response.getheaders()
+        assert [value for name, value in cache if name.lower() == "cache-control"] == ["private, max-age=31536000, immutable"], [value for name, value in cache if name.lower() == "cache-control"]
+        assert "cookie" not in (response.getheader("Vary") or "").lower()
+        assert response.getheader("X-Accel-Redirect") is None
+        assert response.getheader("Location") is None
+    finally:
+        connection.close()
+    assert request("GET", handoff)[0] == 404
+    missing = presign("GET", path + "-missing").removeprefix("/storage")
+    connection = http.client.HTTPConnection(HOST, timeout=15)
+    try:
+        connection.request("GET", "/api/foodstuff-images/example/content", headers={"X-Test-Handoff": f"/_image/{HOST}?{missing}"})
+        response = connection.getresponse()
+        assert response.status == 404
+        assert response.getheader("Cache-Control") == "no-store"
+        response.read()
+    finally:
+        connection.close()
+    print("Internal signed image handoff, encoded key, cache policy and missing object passed", flush=True)
 
 
 def ready() -> None:
@@ -194,6 +226,7 @@ def verify_domain_buckets() -> dict[str, bytes]:
         assert request("PUT", "/storage" + path, b"anonymous")[0] == 403
     for path, payload in objects.items():
         assert request("GET", presign("GET", path)) == (200, payload)
+        verify_image_handoff(path, payload)
     print("Both domain buckets accept shared credentials, isolate identical keys, and deny unsigned access", flush=True)
     return objects
 
@@ -244,6 +277,24 @@ def verify() -> None:
         for object_path, object_bytes in domain_objects.items():
             assert request("GET", presign("GET", object_path)) == (200, object_bytes)
         print("Bucket, key, and object survived restart and container recreation", flush=True)
+
+        target = presign("GET", path).removeprefix("/storage")
+        compose("stop", "file-storage")
+        try:
+            connection = http.client.HTTPConnection(HOST, timeout=15)
+            try:
+                connection.request("GET", "/api/recipe-images/example/content", headers={
+                    "X-Test-Handoff": f"/_image/{HOST}?{target}",
+                })
+                response = connection.getresponse()
+                assert response.status == 502
+                assert [value for name, value in response.getheaders() if name.lower() == "cache-control"] == ["no-store"]
+                response.read()
+            finally:
+                connection.close()
+        finally:
+            compose("up", "-d", "--wait", "file-storage")
+        print("Unavailable storage produces a non-cacheable gateway failure", flush=True)
 
         logs = subprocess.run(
             ["docker", "compose", "-f", str(COMPOSE), "logs", "gateway", "file-storage"],

@@ -100,7 +100,7 @@ describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
       providers: [
         {
           provide: RecipeImageService,
-          useValue: { upload, download: vi.fn() },
+          useValue: { upload, contentUrl: vi.fn() },
         },
         {
           provide: RecipeBackendService,
@@ -117,7 +117,7 @@ describe.each(cases)('$domain $mode image dialog', ({ domain, mode }) => {
         },
         {
           provide: FoodstuffImageService,
-          useValue: { upload, download: vi.fn() },
+          useValue: { upload, contentUrl: vi.fn() },
         },
         {
           provide: FoodstuffBackendService,

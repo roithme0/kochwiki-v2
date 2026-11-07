@@ -18,9 +18,9 @@ export const FOODSTUFF_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   description:
     'Display foodstuff nutrition using the unit and all nutrition values, using null for missing values. Nutrition is per 100 g for G, per 100 ml for ML, and per piece for PIECE.',
   titleDescription:
-    'Use the foodstuff name followed by a comma and space and its brand as the title (name, brand). When there is no brand, use only the name without a trailing comma.',
+    'Use the foodstuff name followed by a comma and space and its details as the title (name, details). When there are no details, use only the name without a trailing comma.',
   subtitleDescription:
-    'Use the foodstuff details as the subtitle. Omit the subtitle when there are no details.',
+    'Use the foodstuff brand as the subtitle. Omit the subtitle when there is no brand.',
   payloadSchema: z
     .record(z.string(), z.json())
     .parse(z.toJSONSchema(foodstuffPresentationSchema)),

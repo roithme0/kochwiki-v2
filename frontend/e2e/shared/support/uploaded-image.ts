@@ -6,7 +6,10 @@ export async function expectUploadedImage(
   height: number,
 ): Promise<void> {
   await expect(image).toBeVisible();
-  await expect(image).toHaveAttribute('src', /^\/storage\//);
+  await expect(image).toHaveAttribute(
+    'src',
+    /^\/api\/(?:recipe|foodstuff)-images\/[^/]+\/content$/,
+  );
   await expect
     .poll(() =>
       image.evaluate((element: HTMLImageElement) => ({

@@ -1,3 +1,5 @@
+import { FoodstuffImageService } from '../../services/foodstuff-image.service';
+import { foodstuffImagePlaceholder } from '../../../core/constants/image-assets';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FoodstuffCreateDialogComponent } from '../foodstuff-create-dialog/foodstuff-create-dialog.component';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
@@ -16,7 +18,7 @@ import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.se
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffDisplayComponent } from '../../components/foodstuff-display/foodstuff-display.component';
-import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 
 export interface FoodstuffSelectionDialogData {
   existingFoodstuffIds: number[];
@@ -28,7 +30,7 @@ export interface FoodstuffSelectionDialogData {
   imports: [
     DialogHeaderComponent,
     FoodstuffsSearchComponent,
-    FoodstuffImageComponent,
+    DisplayImageComponent,
     FoodstuffDisplayComponent,
     MatDialogModule,
     MatListModule,
@@ -40,6 +42,9 @@ export interface FoodstuffSelectionDialogData {
   styleUrl: './foodstuff-selection-dialog.component.scss',
 })
 export class FoodstuffSelectionDialogComponent {
+  readonly images = inject(FoodstuffImageService);
+  readonly placeholder = foodstuffImagePlaceholder;
+
   readonly data = inject<FoodstuffSelectionDialogData>(MAT_DIALOG_DATA);
   private readonly dialogRef =
     inject<MatDialogRef<FoodstuffSelectionDialogComponent, FoodstuffOut[]>>(

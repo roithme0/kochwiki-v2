@@ -64,8 +64,13 @@
         <ul class="basket-preview" aria-label="Lebensmittel im Korb">
           @for (foodstuff of selectedFoodstuffs(); track foodstuff.id) {
             <li>
-              <app-foodstuff-image
-                [imageId]="foodstuff.imageId"
+              <app-display-image
+                [src]="
+                  foodstuff.imageId === null
+                    ? null
+                    : images.contentUrl(foodstuff.imageId)
+                "
+                [placeholder]="placeholder"
                 [alt]="
                   foodstuff.name +
                   (foodstuff.details ? ' · ' + foodstuff.details : '') +

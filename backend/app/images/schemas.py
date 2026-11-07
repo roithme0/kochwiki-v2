@@ -30,13 +30,6 @@ class ImageOut(BaseModel):
     createdAt: datetime
 
 
-class ImageDownloadOut(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    url: str = Field(repr=False)
-    expiresIn: int = Field(gt=0)
-
-
 @dataclass(frozen=True)
 class ImageUpload:
     id: UUID

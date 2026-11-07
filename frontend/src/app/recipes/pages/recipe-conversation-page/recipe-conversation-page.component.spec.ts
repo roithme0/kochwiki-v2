@@ -96,6 +96,7 @@ describe('Recipe conversation page through published session controller and HTTP
       session_id: 'session-1',
       expires_at: '2026-10-23T00:00:00Z',
       history: structuredClone(history),
+      model: { name: 'test-model', reasoning_effort: 'high' },
       usage: conversationUsage(),
     };
   }
@@ -520,6 +521,10 @@ describe('Recipe conversation page through published session controller and HTTP
         estimatedCostUsd: '0.0123',
         requests: 2,
         toolCalls: 3,
+      });
+      expect(chat.model()).toEqual({
+        name: 'test-model',
+        reasoningEffort: 'high',
       });
     });
     const element = fixture.nativeElement as HTMLElement;

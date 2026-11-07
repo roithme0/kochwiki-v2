@@ -71,6 +71,7 @@ describe('Version-specific conversation routing', () => {
                           session_id: 'test',
                           expires_at: '2026-10-23T00:00:00Z',
                           history: [],
+                          model: null,
                           usage: conversationUsage(),
                         } satisfies PresentedSession,
                       })}\n\n`,

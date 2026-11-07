@@ -105,6 +105,14 @@ class StorageTests(unittest.TestCase):
             self.storage._internal.meta.endpoint_url, "http://file-storage:3900"
         )
 
+    def test_image_handoff_preserves_signed_path_query_and_host(self) -> None:
+        key = "folder/plate +%?#ä.png"
+        target = self.storage.image_handoff(key)
+        prefix, path, query = target.split("?", 2)
+        self.assertEqual(prefix, "/_image/example.invalid:8443")
+        self.assertEqual(path, "/explicit-bucket/" + quote(key, safe="/"))
+        self.assertEqual(parse_qs(query)["X-Amz-SignedHeaders"], ["host"])
+
     def test_inspect_and_delete_use_explicit_bucket(self) -> None:
         with Stubber(self.storage._internal) as stub:
             stub.add_response(
