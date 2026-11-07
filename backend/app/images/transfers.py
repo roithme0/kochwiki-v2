@@ -17,7 +17,6 @@ from app.infrastructure.storage.storage import (
     Storage,
     StorageObjectTooLarge,
     StorageUnavailable,
-    PresignedTransfer,
 )
 
 
@@ -49,12 +48,12 @@ class ImageTransfers:
         self._sessions = sessions
         self._kind = kind
 
-    def download(self, image_id: UUID) -> PresignedTransfer | None:
+    def content_handoff(self, image_id: UUID) -> str | None:
         with self._sessions() as session:
             image = session.get(ImageAsset, image_id)
             if image is None or image.kind != self._kind:
                 return None
-            return self._storage.presign_download(image.object_key)
+            return self._storage.image_handoff(image.object_key)
 
     def begin(self) -> ImageUpload:
         upload_id = uuid4()

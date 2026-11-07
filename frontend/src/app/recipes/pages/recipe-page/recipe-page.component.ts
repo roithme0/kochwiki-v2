@@ -1,3 +1,5 @@
+import { RecipeImageService } from '../../services/recipe-image.service';
+import { recipeImagePlaceholder } from '../../../core/constants/image-assets';
 import { ActiveUserService } from '../../../core/services/active-user.service';
 import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
@@ -18,7 +20,7 @@ import { isUnconfirmedRecipeWrite } from '../../services/recipe-write-error';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { RecipePresentationComponent } from '../../components/recipe-presentation/recipe-presentation.component';
-import { RecipeImageComponent } from '../../components/recipe-image/recipe-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 import { RecipePatchDialogComponent } from '../../dialogs/recipe-patch-dialog/recipe-patch-dialog.component';
 import {
   ConfirmationDialogComponent,
@@ -31,7 +33,7 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
   selector: 'app-recipe-page',
   imports: [
     RecipePresentationComponent,
-    RecipeImageComponent,
+    DisplayImageComponent,
     RouterLink,
     MatIconModule,
     MatButtonModule,
@@ -42,6 +44,9 @@ import { RecipeVersionStateBadgeComponent } from '../../components/recipe-versio
   styleUrl: './recipe-page.component.scss',
 })
 export class RecipePageComponent implements OnInit {
+  readonly images = inject(RecipeImageService);
+  readonly placeholder = recipeImagePlaceholder;
+
   private readonly destroyRef = inject(DestroyRef);
   readonly route = inject(ActivatedRoute);
   readonly router = inject(Router);

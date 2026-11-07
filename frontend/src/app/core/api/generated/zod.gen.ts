@@ -18,14 +18,6 @@ export const zExactNutrition = z.strictObject({
 });
 
 /**
- * FoodstuffImageDownloadOut
- */
-export const zFoodstuffImageDownloadOut = z.strictObject({
-    expiresIn: z.int().check(z.gt(0)),
-    url: z.string()
-});
-
-/**
  * FoodstuffImageOut
  */
 export const zFoodstuffImageOut = z.strictObject({
@@ -78,14 +70,6 @@ export const zMinimumNutrition = z.strictObject({
 export const zRecipeImageDimensionsOut = z.strictObject({
     height: z.int().check(z.gt(0)),
     width: z.int().check(z.gt(0))
-});
-
-/**
- * RecipeImageDownloadOut
- */
-export const zRecipeImageDownloadOut = z.strictObject({
-    expiresIn: z.int().check(z.gt(0)),
-    url: z.string()
 });
 
 /**

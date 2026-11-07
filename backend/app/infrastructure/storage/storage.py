@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlsplit, urlunsplit
@@ -79,6 +80,20 @@ class Storage:
 
     def presign_download(self, key: str, *, expires_in: int = 300) -> PresignedTransfer:
         return self._presign(key, "GET", expires_in)
+
+    def image_handoff(self, key: str) -> str:
+        signed = urlsplit(self.presign_download(key).url)
+        if (
+            not re.fullmatch(
+                r"(?:[A-Za-z0-9.\-]+|\[[0-9A-Fa-f:.]+\])(?::[0-9]+)?",
+                signed.netloc,
+            )
+            or not signed.path.startswith("/storage/")
+            or not signed.query
+            or any(c in signed.path + signed.query for c in "\r\n#")
+        ):
+            raise StorageUnavailable("Invalid signed storage target")
+        return f"/_image/{signed.netloc}?{signed.path[8:]}?{signed.query}"
 
     def _presign(
         self,

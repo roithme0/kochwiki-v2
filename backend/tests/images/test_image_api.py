@@ -71,6 +71,9 @@ def storage(client: TestClient, kind: ImageKind) -> Iterator[Mock]:
         method="GET",
         expires_in=300,
     )
+    adapter.image_handoff.return_value = (
+        "/_image/localhost?/private/key?signature=download"
+    )
 
     def storage_dependency() -> Storage:
         return adapter
@@ -95,6 +98,78 @@ def storage(client: TestClient, kind: ImageKind) -> Iterator[Mock]:
     finally:
         client.app.dependency_overrides.pop(upload_dependency)
         client.app.dependency_overrides.pop(adapter_dependency)
+
+
+@pytest.mark.usefixtures("recipe_session")
+def test_content_handoff_respects_image_kind(
+    client: TestClient, kind: ImageKind, storage: Mock
+) -> None:
+    upload_id = start_upload(client, kind)
+    storage.read.return_value = png()
+    completed = client.post(f"/{kind.value}-image-uploads/{upload_id}/complete")
+    image_id = completed.json()["id"]
+    response = client.get(f"/{kind.value}-images/{image_id}/content")
+    assert response.status_code == 200
+    assert response.content == b""
+    assert response.headers["x-accel-redirect"].startswith("/_image/")
+    assert "cache-control" not in response.headers
+    assert "vary" not in response.headers
+    assert "set-cookie" not in response.headers
+    storage.image_handoff.assert_called_once()
+    storage.read.reset_mock()
+    client.get(f"/{kind.value}-images/{image_id}/content")
+    storage.read.assert_not_called()
+    other = ImageKind.FOODSTUFF if kind == ImageKind.RECIPE else ImageKind.RECIPE
+    other_dependency = (
+        get_foodstuff_image_transfers
+        if other == ImageKind.FOODSTUFF
+        else get_recipe_image_transfers
+    )
+    client.app.dependency_overrides[other_dependency] = lambda: ImageTransfers(
+        storage, SessionLocal, kind=other
+    )
+    try:
+        assert (
+            client.get(f"/{other.value}-images/{image_id}/content").status_code == 404
+        )
+    finally:
+        client.app.dependency_overrides.pop(other_dependency)
+    assert client.get(f"/{kind.value}-images/invalid/content").status_code == 422
+
+
+def test_content_requires_authentication(
+    client: TestClient,
+    kind: ImageKind,
+    storage: Mock,
+    sign_in: Callable[[TestClient], UserOut],
+) -> None:
+    sign_in(client)
+    client.cookies.clear()
+    response = client.get(f"/{kind.value}-images/{uuid4()}/content")
+    assert response.status_code == 401
+    assert response.headers["cache-control"] == "no-store"
+    storage.image_handoff.assert_not_called()
+
+
+@pytest.mark.usefixtures("recipe_session")
+def test_content_missing_and_signing_failure(
+    client: TestClient, kind: ImageKind, storage: Mock
+) -> None:
+    missing = client.get(f"/{kind.value}-images/{uuid4()}/content")
+    assert missing.status_code == 404
+    assert missing.headers["cache-control"] == "no-store"
+    storage.image_handoff.assert_not_called()
+
+    upload_id = start_upload(client, kind)
+    storage.read.return_value = png()
+    image_id = client.post(f"/{kind.value}-image-uploads/{upload_id}/complete").json()[
+        "id"
+    ]
+    storage.image_handoff.side_effect = StorageUnavailable("secret")
+    response = client.get(f"/{kind.value}-images/{image_id}/content")
+    assert response.status_code == 503
+    assert response.headers["cache-control"] == "no-store"
+    assert "secret" not in response.text
 
 
 def start_upload(client: TestClient, kind: ImageKind) -> UUID:
@@ -225,7 +300,7 @@ def test_storage_not_configured(
         monkeypatch.setattr(get_settings(), name, None)
     response = client.post(f"/{kind.value}-image-uploads")
     assert response.status_code == 503
-    response = client.get(f"/{kind.value}-images/{uuid4()}/download")
+    response = client.get(f"/{kind.value}-images/{uuid4()}/content")
     assert response.status_code == 503
     assert response.headers["cache-control"] == "no-store"
 
@@ -241,7 +316,7 @@ def test_malformed_upload_id(
 
 
 @pytest.mark.usefixtures("recipe_session")
-def test_download_uses_persisted_key_without_reading_object(
+def test_content_uses_persisted_key_without_reading_object(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     storage.read.return_value = png()
@@ -255,33 +330,32 @@ def test_download_uses_persisted_key_without_reading_object(
         key = image.object_key
     storage.reset_mock()
     for _ in range(2):
-        response = client.get(f"/{kind.value}-images/{image_id}/download")
+        response = client.get(f"/{kind.value}-images/{image_id}/content")
         assert response.status_code == 200
-        assert response.headers["cache-control"] == "no-store"
-        assert response.json() == {
-            "url": "http://localhost/storage/private/key?signature=download",
-            "expiresIn": 300,
-        }
-    assert storage.presign_download.call_count == 2
-    storage.presign_download.assert_called_with(key)
+        assert (
+            response.headers["x-accel-redirect"] == storage.image_handoff.return_value
+        )
+        assert response.content == b""
+    assert storage.image_handoff.call_count == 2
+    storage.image_handoff.assert_called_with(key)
     storage.read.assert_not_called()
     storage.inspect.assert_not_called()
 
 
 @pytest.mark.usefixtures("recipe_session")
-def test_download_missing_image_and_invalid_id(
+def test_content_missing_image_and_invalid_id(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
-    response = client.get(f"/{kind.value}-images/{uuid4()}/download")
+    response = client.get(f"/{kind.value}-images/{uuid4()}/content")
     assert response.status_code == 404
     assert response.json() == {"detail": f"{kind.value.capitalize()} image not found"}
     assert response.headers["cache-control"] == "no-store"
-    assert client.get(f"/{kind.value}-images/invalid/download").status_code == 422
-    storage.presign_download.assert_not_called()
+    assert client.get(f"/{kind.value}-images/invalid/content").status_code == 422
+    storage.image_handoff.assert_not_called()
 
 
 @pytest.mark.usefixtures("recipe_session")
-def test_download_rejects_other_kind(
+def test_content_rejects_other_kind(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     storage.read.return_value = png()
@@ -295,25 +369,23 @@ def test_download_rejects_other_kind(
         image.kind = (
             ImageKind.FOODSTUFF if kind == ImageKind.RECIPE else ImageKind.RECIPE
         )
-    response = client.get(f"/{kind.value}-images/{image_id}/download")
+    response = client.get(f"/{kind.value}-images/{image_id}/content")
     assert response.status_code == 404
     assert response.json() == {"detail": f"{kind.value.capitalize()} image not found"}
     assert response.headers["cache-control"] == "no-store"
-    storage.presign_download.assert_not_called()
+    storage.image_handoff.assert_not_called()
 
 
 @pytest.mark.usefixtures("recipe_session")
-def test_download_signing_failure_is_sanitized(
+def test_content_signing_failure_is_sanitized(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     storage.read.return_value = png()
     completed = client.post(
         f"/{kind.value}-image-uploads/{start_upload(client, kind)}/complete"
     )
-    storage.presign_download.side_effect = StorageUnavailable(
-        "credentials and signed URL"
-    )
-    response = client.get(f"/{kind.value}-images/{completed.json()['id']}/download")
+    storage.image_handoff.side_effect = StorageUnavailable("credentials and signed URL")
+    response = client.get(f"/{kind.value}-images/{completed.json()['id']}/content")
     assert response.status_code == 503
     assert response.json() == {"detail": "Image storage is unavailable"}
     assert response.headers["cache-control"] == "no-store"
@@ -322,14 +394,14 @@ def test_download_signing_failure_is_sanitized(
 FOODSTUFF_IMAGE_OPERATIONS: list[tuple[str, str]] = [
     ("POST", "/foodstuff-image-uploads"),
     ("POST", "/foodstuff-image-uploads/{id}/complete"),
-    ("GET", "/foodstuff-images/{id}/download"),
+    ("GET", "/foodstuff-images/{id}/content"),
 ]
 AUTHENTICATED_IMAGE_OPERATIONS: list[tuple[ImageKind, str, str]] = [
     (ImageKind.FOODSTUFF, method, path) for method, path in FOODSTUFF_IMAGE_OPERATIONS
 ] + [
     (ImageKind.RECIPE, "POST", "/recipe-image-uploads"),
     (ImageKind.RECIPE, "POST", "/recipe-image-uploads/{id}/complete"),
-    (ImageKind.RECIPE, "GET", "/recipe-images/{id}/download"),
+    (ImageKind.RECIPE, "GET", "/recipe-images/{id}/content"),
 ]
 
 
@@ -437,9 +509,13 @@ def test_image_operations_are_shared_and_renew_sessions(
     storage.reset_mock()
     response = client.request(method, path.format(id=resource_id))
     assert response.status_code == 200
-    assert response.headers["cache-control"] == "no-store"
-    assert "HttpOnly" in response.headers["set-cookie"]
-    assert "Max-Age=0" not in response.headers["set-cookie"]
+    if method == "GET":
+        assert "cache-control" not in response.headers
+        assert "set-cookie" not in response.headers
+    else:
+        assert response.headers["cache-control"] == "no-store"
+        assert "HttpOnly" in response.headers["set-cookie"]
+        assert "Max-Age=0" not in response.headers["set-cookie"]
     with SessionLocal() as session:
         renewed_activity = session.scalar(
             select(ApplicationSession.last_activity_at).where(
@@ -456,12 +532,12 @@ def test_image_operations_are_shared_and_renew_sessions(
         elif method == "GET":
             saved = session.get(ImageAsset, resource_id)
             assert saved is not None
-            storage.presign_download.assert_called_once_with(saved.object_key)
+            storage.image_handoff.assert_called_once_with(saved.object_key)
             storage.read.assert_not_called()
-            assert response.json() == {
-                "url": "http://localhost/storage/private/key?signature=download",
-                "expiresIn": 300,
-            }
+            assert (
+                response.headers["x-accel-redirect"]
+                == storage.image_handoff.return_value
+            )
         else:
             storage.presign_upload.assert_called_once_with(
                 f"{kind.value}-image-uploads/{response.json()['uploadId']}"

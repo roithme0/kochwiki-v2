@@ -14,7 +14,7 @@ import { MatDialogRef } from '@angular/material/dialog';
 
 export interface ImageEditorClient {
   upload(file: File): Promise<{ id: string }>;
-  download(imageId: string): Promise<{ url: string }>;
+  contentUrl(imageId: string): string;
 }
 
 interface ImageEditorContext {
@@ -39,6 +39,7 @@ export class ImageEditorState {
   readonly invalidImageSelection = signal(false);
   readonly imageAccessFailed = signal(false);
   readonly loadingImage = signal(false);
+  readonly previewGeneration = signal(0);
   private readonly selectedImageId = signal<string | null | undefined>(
     undefined,
   );
@@ -79,7 +80,7 @@ export class ImageEditorState {
         this.imagePreview.set(null);
         this.imageAccessFailed.set(false);
         this.loadingImage.set(false);
-        if (source) void this.loadImagePreview();
+        if (source) this.loadImagePreview();
       });
     });
     this.destroyRef.onDestroy(() => {
@@ -154,6 +155,7 @@ export class ImageEditorState {
       return;
     }
     this.previewRequest++;
+    this.previewGeneration.set(this.previewRequest);
     this.releaseLocalPreview();
     this.localPreviewUrl = URL.createObjectURL(file);
     this.imagePreview.set(this.localPreviewUrl);
@@ -178,8 +180,27 @@ export class ImageEditorState {
     this.imageError.set(null);
   }
 
-  imageLoadFailed(): void {
+  imageLoaded(url: string, generation: number): void {
+    if (
+      this.destroyRef.destroyed ||
+      this.closing ||
+      this.imagePreview() !== url ||
+      this.previewGeneration() !== generation
+    )
+      return;
+    this.loadingImage.set(false);
+  }
+
+  imageLoadFailed(url: string, generation: number): void {
+    if (
+      this.destroyRef.destroyed ||
+      this.closing ||
+      this.imagePreview() !== url ||
+      this.previewGeneration() !== generation
+    )
+      return;
     this.imagePreview.set(null);
+    this.loadingImage.set(false);
     if (this.localPreviewUrl !== null)
       this.imageError.set(
         'Bildvorschau nicht verfügbar. Beim Speichern wird das PNG geprüft.',
@@ -187,7 +208,7 @@ export class ImageEditorState {
     else this.imageAccessFailed.set(true);
   }
 
-  async loadImagePreview(): Promise<void> {
+  loadImagePreview(): void {
     const imageId = this.imageId();
     const client = this.context()?.client;
     if (
@@ -199,20 +220,10 @@ export class ImageEditorState {
       this.closing
     )
       return;
-    const request = ++this.previewRequest;
+    this.previewGeneration.set(++this.previewRequest);
     this.loadingImage.set(true);
     this.imageAccessFailed.set(false);
-    try {
-      const download = await client.download(imageId);
-      if (!this.destroyRef.destroyed && request === this.previewRequest)
-        this.imagePreview.set(download.url);
-    } catch {
-      if (!this.destroyRef.destroyed && request === this.previewRequest)
-        this.imageAccessFailed.set(true);
-    } finally {
-      if (!this.destroyRef.destroyed && request === this.previewRequest)
-        this.loadingImage.set(false);
-    }
+    this.imagePreview.set(client.contentUrl(imageId));
   }
 
   private clearErrors(): void {

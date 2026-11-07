@@ -15,14 +15,6 @@ interface UploadInstructions {
 export class ImageTransferService {
   private readonly http = inject(HttpClient);
 
-  async download<T extends { url: string }>(
-    url: string,
-    schema: ZodMiniType<T>,
-  ): Promise<T> {
-    const download = await requestApiResponse(this.http, 'GET', url, schema);
-    return { ...download, url: this.storageUrl(download.url) };
-  }
-
   async upload<T>(
     file: File,
     url: string,

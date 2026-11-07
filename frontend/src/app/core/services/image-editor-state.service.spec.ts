@@ -52,12 +52,12 @@ describe('ImageEditorState ownership and lifecycle', () => {
     const secondUpload = vi.fn();
     const saving = signal(false);
     firstImage.connect(
-      { upload, download: vi.fn() },
+      { upload, contentUrl: vi.fn() },
       signal(null),
       signal(false),
     );
     secondImage.connect(
-      { upload: secondUpload, download: vi.fn() },
+      { upload: secondUpload, contentUrl: vi.fn() },
       signal(null),
       saving,
     );
@@ -85,24 +85,18 @@ describe('ImageEditorState ownership and lifecycle', () => {
     expect(revokeObjectURL).toHaveBeenLastCalledWith('blob:first.png');
   });
 
-  it('clears a removed source image and ignores its pending download', async () => {
+  it('ignores stale events after removing the source image', () => {
     const fixture = TestBed.createComponent(EditorHost);
     const image = fixture.componentInstance.image;
     const source = signal<string | null>('source');
-    let complete!: (download: { url: string }) => void;
-    const download = vi.fn(
-      () =>
-        new Promise<{ url: string }>((resolve) => {
-          complete = resolve;
-        }),
-    );
-    image.connect({ upload: vi.fn(), download }, source, signal(false));
+    const contentUrl = vi.fn(() => '/api/source/content');
+    image.connect({ upload: vi.fn(), contentUrl }, source, signal(false));
     fixture.detectChanges();
-    expect(download).toHaveBeenCalledExactlyOnceWith('source');
+    const generation = image.previewGeneration();
     source.set(null);
     fixture.detectChanges();
-    complete({ url: '/stale.png' });
-    await fixture.whenStable();
+    image.imageLoaded('/api/source/content', generation);
+    image.imageLoadFailed('/api/source/content', generation);
     expect(image.imagePreview()).toBeNull();
     expect(image.imageId()).toBeNull();
     expect(image.loadingImage()).toBe(false);

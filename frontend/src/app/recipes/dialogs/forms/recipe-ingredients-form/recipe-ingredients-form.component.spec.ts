@@ -36,8 +36,7 @@ class ChartLegendElementStubComponent {
 
 describe('RecipeIngredientsFormComponent', () => {
   const openDialog = vi.fn();
-  const download =
-    vi.fn<(id: string) => Promise<{ url: string; expiresIn: number }>>();
+  const download = vi.fn<(id: string) => string>();
   let fixture: ComponentFixture<RecipeIngredientsFormComponent>;
   let dialogResult: Subject<FoodstuffOut[] | undefined>;
 
@@ -53,16 +52,14 @@ describe('RecipeIngredientsFormComponent', () => {
   });
 
   beforeEach(async () => {
-    download
-      .mockReset()
-      .mockResolvedValue({ url: '/storage/rice', expiresIn: 300 });
+    download.mockReset().mockReturnValue('/storage/rice');
     const recipeForm = createRecipeForm();
     dialogResult = new Subject<FoodstuffOut[] | undefined>();
 
     await TestBed.configureTestingModule({
       imports: [RecipeIngredientsFormComponent],
       providers: [
-        { provide: FoodstuffImageService, useValue: { download } },
+        { provide: FoodstuffImageService, useValue: { contentUrl: download } },
         { provide: FormGroupDirective, useValue: { control: recipeForm } },
         {
           provide: MatDialog,

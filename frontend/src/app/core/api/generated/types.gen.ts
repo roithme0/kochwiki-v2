@@ -72,20 +72,6 @@ export type FoodstuffCreate = {
 };
 
 /**
- * FoodstuffImageDownloadOut
- */
-export type FoodstuffImageDownloadOut = {
-    /**
-     * Expiresin
-     */
-    expiresIn: number;
-    /**
-     * Url
-     */
-    url: string;
-};
-
-/**
  * FoodstuffImageOut
  */
 export type FoodstuffImageOut = {
@@ -379,20 +365,6 @@ export type RecipeImageDimensionsOut = {
      * Width
      */
     width: number;
-};
-
-/**
- * RecipeImageDownloadOut
- */
-export type RecipeImageDownloadOut = {
-    /**
-     * Expiresin
-     */
-    expiresIn: number;
-    /**
-     * Url
-     */
-    url: string;
 };
 
 /**
@@ -1009,7 +981,7 @@ export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses = {
 
 export type CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponse = CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadFoodstuffImageUploadsUploadIdCompletePostResponses];
 
-export type DownloadImageFoodstuffImagesImageIdDownloadGetData = {
+export type ImageContentFoodstuffImagesImageIdContentGetData = {
     body?: never;
     path: {
         /**
@@ -1018,10 +990,10 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetData = {
         image_id: string;
     };
     query?: never;
-    url: '/foodstuff-images/{image_id}/download';
+    url: '/foodstuff-images/{image_id}/content';
 };
 
-export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
+export type ImageContentFoodstuffImagesImageIdContentGetErrors = {
     /**
      * Invalid or expired session
      */
@@ -1040,16 +1012,16 @@ export type DownloadImageFoodstuffImagesImageIdDownloadGetErrors = {
     503: ErrorResponse;
 };
 
-export type DownloadImageFoodstuffImagesImageIdDownloadGetError = DownloadImageFoodstuffImagesImageIdDownloadGetErrors[keyof DownloadImageFoodstuffImagesImageIdDownloadGetErrors];
+export type ImageContentFoodstuffImagesImageIdContentGetError = ImageContentFoodstuffImagesImageIdContentGetErrors[keyof ImageContentFoodstuffImagesImageIdContentGetErrors];
 
-export type DownloadImageFoodstuffImagesImageIdDownloadGetResponses = {
+export type ImageContentFoodstuffImagesImageIdContentGetResponses = {
     /**
      * Successful Response
      */
-    200: FoodstuffImageDownloadOut;
+    200: Blob | File;
 };
 
-export type DownloadImageFoodstuffImagesImageIdDownloadGetResponse = DownloadImageFoodstuffImagesImageIdDownloadGetResponses[keyof DownloadImageFoodstuffImagesImageIdDownloadGetResponses];
+export type ImageContentFoodstuffImagesImageIdContentGetResponse = ImageContentFoodstuffImagesImageIdContentGetResponses[keyof ImageContentFoodstuffImagesImageIdContentGetResponses];
 
 export type GetFoodstuffsFoodstuffsGetData = {
     body?: never;
@@ -1399,7 +1371,7 @@ export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses = {
 
 export type CompleteUploadRecipeImageUploadsUploadIdCompletePostResponse = CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses[keyof CompleteUploadRecipeImageUploadsUploadIdCompletePostResponses];
 
-export type DownloadImageRecipeImagesImageIdDownloadGetData = {
+export type ImageContentRecipeImagesImageIdContentGetData = {
     body?: never;
     path: {
         /**
@@ -1408,10 +1380,10 @@ export type DownloadImageRecipeImagesImageIdDownloadGetData = {
         image_id: string;
     };
     query?: never;
-    url: '/recipe-images/{image_id}/download';
+    url: '/recipe-images/{image_id}/content';
 };
 
-export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
+export type ImageContentRecipeImagesImageIdContentGetErrors = {
     /**
      * Invalid or expired session
      */
@@ -1430,16 +1402,16 @@ export type DownloadImageRecipeImagesImageIdDownloadGetErrors = {
     503: ErrorResponse;
 };
 
-export type DownloadImageRecipeImagesImageIdDownloadGetError = DownloadImageRecipeImagesImageIdDownloadGetErrors[keyof DownloadImageRecipeImagesImageIdDownloadGetErrors];
+export type ImageContentRecipeImagesImageIdContentGetError = ImageContentRecipeImagesImageIdContentGetErrors[keyof ImageContentRecipeImagesImageIdContentGetErrors];
 
-export type DownloadImageRecipeImagesImageIdDownloadGetResponses = {
+export type ImageContentRecipeImagesImageIdContentGetResponses = {
     /**
      * Successful Response
      */
-    200: RecipeImageDownloadOut;
+    200: Blob | File;
 };
 
-export type DownloadImageRecipeImagesImageIdDownloadGetResponse = DownloadImageRecipeImagesImageIdDownloadGetResponses[keyof DownloadImageRecipeImagesImageIdDownloadGetResponses];
+export type ImageContentRecipeImagesImageIdContentGetResponse = ImageContentRecipeImagesImageIdContentGetResponses[keyof ImageContentRecipeImagesImageIdContentGetResponses];
 
 export type ResolveRecipePresentationRecipePresentationsResolvePostData = {
     body: RecipePresentationResolve;

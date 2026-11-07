@@ -1,4 +1,4 @@
-from app.images.schemas import ImageDownloadOut, ImageOut, ImageUploadOut
+from app.images.schemas import ImageOut, ImageUploadOut
 
 
 class FoodstuffImageUploadOut(ImageUploadOut):
@@ -6,8 +6,4 @@ class FoodstuffImageUploadOut(ImageUploadOut):
 
 
 class FoodstuffImageOut(ImageOut):
-    pass
-
-
-class FoodstuffImageDownloadOut(ImageDownloadOut):
     pass

@@ -13,7 +13,6 @@ from app.identity.services.sessions import secret_hash
 from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageAsset
 from app.recipes.schemas.image import (
-    RecipeImageDownloadOut,
     RecipeImageOut,
     RecipeImageUploadOut,
 )
@@ -26,7 +25,8 @@ def request(
     data: bytes | None = None,
     headers: dict[str, str] | None = None,
     *,
-    no_store: bool = False,
+    cache_control: str | None = None,
+    content_type: str | None = None,
 ) -> tuple[int, bytes]:
     public = urlsplit(url)
     connect = urlsplit(
@@ -48,10 +48,13 @@ def request(
             headers={**(headers or {}), "Host": public.netloc},
         )
         response = connection.getresponse()
-        if no_store:
-            assert (
-                response.getheader("Cache-Control") == "no-store"
-            ), "Download instructions must not be cached"
+        if cache_control is not None:
+            assert response.getheader("Cache-Control") == cache_control
+            assert "cookie" not in (response.getheader("Vary") or "").lower()
+            assert response.getheader("X-Accel-Redirect") is None
+            assert response.getheader("Location") is None
+        if content_type is not None:
+            assert response.getheader("Content-Type") == content_type
         return response.status, response.read()
     finally:
         connection.close()
@@ -105,20 +108,35 @@ def main() -> None:
                     assert saved is not None, "Completion did not persist metadata"
                     keys.append(saved.object_key)
                     assert storage.read(saved.object_key, max_bytes=len(png)) == png
-                status, body = request(
-                    f"{config.public_origin}/api/recipe-images/{image.id}/download",
+                content_url = (
+                    f"{config.public_origin}/api/recipe-images/{image.id}/content"
+                )
+                status, downloaded = request(
+                    content_url,
                     "GET",
                     headers=api_headers,
-                    no_store=True,
+                    cache_control="private, max-age=31536000, immutable",
+                    content_type="image/png",
                 )
-                assert status == 200, f"Download instructions failed: {status}"
-                download = RecipeImageDownloadOut.model_validate_json(body)
-                assert download.expiresIn == 300
-                status, downloaded = request(download.url, "GET")
                 assert status == 200, f"Download failed: {status}"
                 assert downloaded == png, "Downloaded image differs from validated PNG"
-                status, _ = request(download.url.split("?", 1)[0], "GET")
-                assert status == 403, "Image unexpectedly allows anonymous download"
+                status, _ = request(content_url, "GET", cache_control="no-store")
+                assert status in (
+                    401,
+                    503,
+                ), "Image unexpectedly allows anonymous download"
+                status, _ = request(
+                    f"{config.public_origin}/api/foodstuff-images/{image.id}/content",
+                    "GET",
+                    headers=api_headers,
+                    cache_control="no-store",
+                )
+                assert status == 404, "Wrong image kind unexpectedly available"
+                storage.delete(saved.object_key)
+                status, _ = request(
+                    content_url, "GET", headers=api_headers, cache_control="no-store"
+                )
+                assert status == 404, f"Missing storage object returned {status}"
             else:
                 assert json.loads(body) == {"detail": "Image must be a valid PNG"}
             assert storage.inspect(temporary) is None
@@ -138,7 +156,7 @@ def main() -> None:
         finally:
             storage.close()
     print(
-        "Recipe image API verified through gateway: PNG upload/download, no-store instructions, private objects, persistence, invalid rejection and temporary cleanup."
+        "Recipe image API verified through gateway: PNG upload/content, cache policy, private objects, persistence, invalid rejection and temporary cleanup."
     )
 
 

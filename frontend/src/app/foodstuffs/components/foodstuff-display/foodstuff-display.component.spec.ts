@@ -9,7 +9,12 @@ describe('FoodstuffDisplayComponent', () => {
       const download = vi.fn();
       TestBed.configureTestingModule({
         imports: [FoodstuffDisplayComponent],
-        providers: [{ provide: FoodstuffImageService, useValue: { download } }],
+        providers: [
+          {
+            provide: FoodstuffImageService,
+            useValue: { contentUrl: download },
+          },
+        ],
       });
       const fixture = TestBed.createComponent(FoodstuffDisplayComponent);
       fixture.componentRef.setInput('showBrand', showBrand);

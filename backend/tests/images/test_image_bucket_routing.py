@@ -20,7 +20,7 @@ from tests.infrastructure.storage.test_storage_adapter import configuration
 
 @pytest.mark.parametrize("kind", list(ImageKind))
 @pytest.mark.usefixtures("recipe_session")
-def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
+def test_routes_isolate_uploads_and_content_by_configured_bucket(
     client: TestClient,
     kind: ImageKind,
 ) -> None:
@@ -101,17 +101,16 @@ def test_routes_isolate_uploads_and_downloads_by_configured_bucket(
                 assert image is not None
                 assert (image.kind, image.object_key) == (kind, permanent_key)
 
-            wrong_download = client.get(f"/{other.value}-images/{image_id}/download")
+            wrong_download = client.get(f"/{other.value}-images/{image_id}/content")
             assert wrong_download.status_code == 404
             assert wrong_download.headers["cache-control"] == "no-store"
-            download = client.get(f"/{kind.value}-images/{image_id}/download")
+            download = client.get(f"/{kind.value}-images/{image_id}/content")
             assert download.status_code == 200
-            assert download.headers["cache-control"] == "no-store"
-            assert (
-                urlsplit(download.json()["url"]).path
-                == f"/storage/{source_bucket}/{permanent_key}"
+            handoff = download.headers["x-accel-redirect"]
+            assert handoff.startswith(
+                f"/_image/example.invalid:8443?/{source_bucket}/{permanent_key}?"
             )
-            assert download.json()["expiresIn"] == 300
+            assert download.content == b""
             assert (
                 client.post(
                     f"/{kind.value}-image-uploads/{upload_id}/complete"
