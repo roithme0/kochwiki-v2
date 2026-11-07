@@ -13,7 +13,7 @@ import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
-import { FoodstuffImageComponent } from '../../components/foodstuff-image/foodstuff-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 
 const foodstuffs: FoodstuffOut[] = [
   foodstuffOut({
@@ -110,13 +110,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const resultImages = fixture.debugElement.queryAll(
-      By.css('button[mat-list-item] app-foodstuff-image'),
+      By.css('button[mat-list-item] app-display-image'),
     );
     expect(
       resultImages.map((item) =>
-        (item.componentInstance as FoodstuffImageComponent).imageId(),
+        (item.componentInstance as DisplayImageComponent).src(),
       ),
-    ).toEqual([null, 'pasta-image']);
+    ).toEqual([null, '/storage/pasta-image']);
     fixture.componentInstance.toggleFoodstuff(1);
     fixture.componentInstance.openCreateFoodstuffDialog();
     const created = {
@@ -131,13 +131,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const basketImages = fixture.debugElement.queryAll(
-      By.css('.basket-preview app-foodstuff-image'),
+      By.css('.basket-preview app-display-image'),
     );
     expect(
       basketImages.map((item) =>
-        (item.componentInstance as FoodstuffImageComponent).imageId(),
+        (item.componentInstance as DisplayImageComponent).src(),
       ),
-    ).toEqual(['pasta-image', 'rice-image']);
+    ).toEqual(['/storage/pasta-image', '/storage/rice-image']);
     expect(download).toHaveBeenCalledWith('rice-image');
     fixture.componentInstance.confirmSelection();
     expect(close).toHaveBeenCalledWith([

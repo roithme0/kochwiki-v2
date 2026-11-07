@@ -1,9 +1,8 @@
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
-import { FoodstuffImageService } from '../../services/foodstuff-image.service';
-import { FoodstuffImageComponent } from './foodstuff-image.component';
+import { DisplayImageComponent } from './display-image.component';
 
-describe('FoodstuffImageComponent', () => {
-  let fixture: ComponentFixture<FoodstuffImageComponent>;
+describe('DisplayImageComponent', () => {
+  let fixture: ComponentFixture<DisplayImageComponent>;
   const contentUrl = vi.fn(
     (id: string) => `/api/foodstuff-images/${id}/content`,
   );
@@ -14,26 +13,29 @@ describe('FoodstuffImageComponent', () => {
   beforeEach(() => {
     contentUrl.mockClear();
     TestBed.configureTestingModule({
-      imports: [FoodstuffImageComponent],
-      providers: [{ provide: FoodstuffImageService, useValue: { contentUrl } }],
+      imports: [DisplayImageComponent],
     });
-    fixture = TestBed.createComponent(FoodstuffImageComponent);
+    fixture = TestBed.createComponent(DisplayImageComponent);
+    fixture.componentRef.setInput('placeholder', 'images/question-mark.png');
   });
 
-  it('shows the placeholder for no image without deriving a URL', () => {
-    fixture.componentRef.setInput('imageId', null);
+  it('shows the placeholder and uses the supplied alt text', () => {
+    fixture.componentRef.setInput('alt', 'Pasta');
+    fixture.componentRef.setInput('src', null);
     fixture.detectChanges();
     expect(element().querySelector('img')!.getAttribute('src')).toBe(
       'images/question-mark.png',
     );
-    expect(contentUrl).not.toHaveBeenCalled();
+    expect(element().querySelector('img')!.alt).toBe('Pasta');
   });
 
   it('shows the placeholder while loading and responds to native load and error', () => {
-    fixture.componentRef.setInput('imageId', 'a');
+    fixture.componentRef.setInput('src', contentUrl('a'));
     fixture.detectChanges();
-    expect(contentUrl).toHaveBeenCalledExactlyOnceWith('a');
     expect(fixture.componentInstance.loading()).toBe(true);
+    fixture.componentRef.setInput('alt', 'Pasta');
+    fixture.detectChanges();
+    expect(image('a').alt).toBe('Pasta');
     expect(
       element().querySelector('img[src="images/question-mark.png"]'),
     ).not.toBeNull();
@@ -48,10 +50,10 @@ describe('FoodstuffImageComponent', () => {
   });
 
   it('ignores events for a previous image and after destruction', () => {
-    fixture.componentRef.setInput('imageId', 'a');
+    fixture.componentRef.setInput('src', contentUrl('a'));
     fixture.detectChanges();
     const generation = fixture.componentInstance.generation();
-    fixture.componentRef.setInput('imageId', 'b');
+    fixture.componentRef.setInput('src', contentUrl('b'));
     fixture.detectChanges();
     fixture.componentInstance.imageLoaded(
       '/api/foodstuff-images/a/content',

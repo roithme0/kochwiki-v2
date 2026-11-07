@@ -53,7 +53,7 @@ describe('Foodstuff picker result layout', () => {
       const details = result?.querySelector<HTMLElement>('.foodstuff-details');
       const brand = result?.querySelector<HTMLElement>('.foodstuff-brand');
       const status = result?.querySelector<HTMLElement>('.selection-status');
-      const image = result?.querySelector<HTMLElement>('app-foodstuff-image');
+      const image = result?.querySelector<HTMLElement>('app-display-image');
       if (!result || !name || !details || !brand || !status || !image)
         throw new Error('Expected complete selected foodstuff result');
       expect(result.getAttribute('aria-pressed')).toBe('true');

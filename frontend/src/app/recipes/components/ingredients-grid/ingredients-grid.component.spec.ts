@@ -53,7 +53,7 @@ describe('IngredientsGridComponent foodstuff images', () => {
     fixture.detectChanges();
     expect(download).toHaveBeenCalledExactlyOnceWith('tomato-image');
     expect(element.querySelector('app-macro-chart')).toBeNull();
-    const images = element.querySelectorAll('app-foodstuff-image img');
+    const images = element.querySelectorAll('app-display-image img');
     expect(
       Array.from(images).map((image) => image.getAttribute('src')),
     ).toEqual(['/storage/tomato', 'images/question-mark.png']);

@@ -165,3 +165,7 @@ app-foodstuffs-search {
 .create-foodstuff-button > mat-icon {
   margin: 0;
 }
+
+.basket-preview app-display-image {
+  aspect-ratio: 1;
+}

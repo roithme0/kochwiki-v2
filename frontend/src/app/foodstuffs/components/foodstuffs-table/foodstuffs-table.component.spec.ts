@@ -153,7 +153,7 @@ describe('FoodstuffsTableComponent', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('app-macro-chart')).toBeNull();
     expect(
-      element.querySelector('.mat-column-primary app-foodstuff-image'),
+      element.querySelector('.mat-column-primary app-display-image'),
     ).not.toBeNull();
     expect(download).toHaveBeenCalledWith('tomato-image');
     const image = element.querySelector<HTMLImageElement>(

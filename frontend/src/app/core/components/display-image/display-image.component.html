@@ -1,16 +1,18 @@
 <div class="image-area" [attr.aria-busy]="loading()">
-  @if (!imageUrl() || loading()) {
-    <img [src]="placeholder" [alt]="alt()" />
-  }
   @if (imageUrl(); as url) {
     @for (attempt of [generation()]; track attempt) {
       <img
         [src]="url"
         [alt]="alt()"
+        [attr.width]="dimensions()?.width"
+        [attr.height]="dimensions()?.height"
         [style.visibility]="loading() ? 'hidden' : 'visible'"
         (load)="imageLoaded(url, attempt)"
         (error)="imageLoadFailed(url, attempt)"
       />
     }
+  }
+  @if (!imageUrl() || loading()) {
+    <img [src]="placeholder()" [alt]="alt()" />
   }
 </div>

@@ -2,7 +2,7 @@ import { recipeVersionOut } from '../../../testing/recipe.fixtures';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { RecipeImageComponent } from '../recipe-image/recipe-image.component';
+import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 import { RecipeImageService } from '../../services/recipe-image.service';
 
 import { RecipesGridElementComponent } from './recipes-grid-element.component';
@@ -65,11 +65,11 @@ describe('RecipesGridElementComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
-    const image = fixture.debugElement.query(By.directive(RecipeImageComponent))
-      .componentInstance as RecipeImageComponent;
-    expect(image.imageId()).toBe('draft-image');
-    expect(image.naturalHeight()).toBe(true);
-    expect(image.imageDimensions()).toEqual({ width: 1254, height: 818 });
+    const image = fixture.debugElement.query(
+      By.directive(DisplayImageComponent),
+    ).componentInstance as DisplayImageComponent;
+    expect(image.src()).toBe('/storage/image');
+    expect(image.dimensions()).toEqual({ width: 1254, height: 818 });
     expect(
       (fixture.nativeElement as HTMLElement)
         .querySelector('img')!

@@ -1,9 +1,11 @@
 <mat-card>
   <mat-card-content>
-    <app-recipe-image
-      [imageId]="recipeVersion().imageId"
-      [imageDimensions]="recipeVersion().imageDimensions"
-      [naturalHeight]="true"
+    <app-display-image
+      alt="Rezeptbild"
+      [placeholder]="placeholder"
+      [src]="imageUrl()"
+      [dimensions]="recipeVersion().imageDimensions"
+      [style.aspect-ratio]="aspectRatio()"
     />
     <app-recipe-version-state-badge
       class="version-state-badge"
