@@ -310,7 +310,9 @@ describe('RecipeEditorComponent', () => {
       (
         fixture.nativeElement as HTMLElement
       ).querySelectorAll<HTMLButtonElement>('button'),
-    ).find((button) => button.textContent?.includes('Bild erneut laden'))!;
+    ).find(
+      (button) => button.getAttribute('aria-label') === 'Bild erneut laden',
+    )!;
     retry.click();
     await fixture.whenStable();
     expect(imageService.contentUrl).toHaveBeenCalledTimes(2);

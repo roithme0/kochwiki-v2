@@ -130,6 +130,9 @@ describe('ImageEditorComponent', () => {
     expect(element.querySelector('img')?.getAttribute('src')).toBe(
       host.placeholder(),
     );
+    expect(element.querySelector('.image-controls button')).toBe(
+      button('Bild erneut laden'),
+    );
     button('Bild erneut laden').click();
     await fixture.whenStable();
     fixture.detectChanges();

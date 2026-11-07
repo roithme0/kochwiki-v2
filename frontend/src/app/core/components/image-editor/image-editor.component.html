@@ -16,57 +16,27 @@
     <img [src]="placeholder()" alt="Kein Bild vorhanden" />
   }
   <div class="image-actions">
-    <div class="image-feedback" [class.has-feedback]="feedback()">
-      <p [attr.role]="state().imageError() ? 'alert' : 'status'">
-        {{ feedback() }}
+    @if (feedback(); as message) {
+      <p
+        class="image-feedback"
+        [attr.role]="state().imageError() ? 'alert' : 'status'"
+      >
+        {{ message }}
       </p>
-      @if (state().imageAccessFailed()) {
-        <button
-          mat-button
-          type="button"
-          [disabled]="state().busy()"
-          (click)="state().loadImagePreview()"
-        >
-          Bild erneut laden
-        </button>
-      }
-      @if (state().invalidImageSelection()) {
-        <button
-          mat-button
-          type="button"
-          [disabled]="state().busy()"
-          (click)="state().discardInvalidSelection()"
-        >
-          Ungültige Auswahl verwerfen
-        </button>
-      }
-    </div>
+    }
     <div class="image-controls">
-      @if (state().hasImage()) {
+      @for (action of actions(); track action.id) {
         <button
           mat-mini-fab
           type="button"
-          aria-label="Bild entfernen"
+          [attr.aria-label]="action.label"
+          [matTooltip]="action.label"
           [disabled]="state().busy()"
-          (click)="state().removeImage()"
+          (click)="action.run(imageInput)"
         >
-          <mat-icon aria-hidden="true" fontIcon="delete" />
+          <mat-icon aria-hidden="true" [fontIcon]="action.icon" />
         </button>
       }
-      <button
-        mat-mini-fab
-        type="button"
-        [attr.aria-label]="
-          state().hasImage() ? 'Bild ersetzen' : 'Bild auswählen'
-        "
-        [disabled]="state().busy()"
-        (click)="imageInput.click()"
-      >
-        <mat-icon
-          aria-hidden="true"
-          [fontIcon]="state().hasImage() ? 'edit' : 'add_photo_alternate'"
-        />
-      </button>
     </div>
   </div>
   <input
