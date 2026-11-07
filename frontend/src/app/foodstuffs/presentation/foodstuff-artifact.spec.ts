@@ -17,18 +17,18 @@ const payload = {
 };
 
 describe('Foodstuff artifact contract', () => {
-  it('preserves the name and brand title, details subtitle and nutrition without an id or fetch', () => {
+  it('preserves the name and details title, brand subtitle and nutrition without an id or fetch', () => {
     const artifact = mapConversationArtifact({
       ...conversationProposal(),
       type: FOODSTUFF_ARTIFACT_CAPABILITY.type,
-      content: { title: 'Linsen, Marke', subtitle: 'roh', payload },
+      content: { title: 'Linsen, roh', subtitle: 'Marke', payload },
     });
     expect(artifact).toEqual({
       kind: 'artifact',
       id: conversationProposal().artifact_id,
       type: 'kochwiki-foodstuff',
-      headline: 'Linsen, Marke',
-      subtitle: 'roh',
+      headline: 'Linsen, roh',
+      subtitle: 'Marke',
       payload,
     });
   });
@@ -96,9 +96,9 @@ describe('Foodstuff artifact contract', () => {
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['required'],
     ).toHaveLength(6);
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('name');
-    expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('brand');
+    expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('details');
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.subtitleDescription).toContain(
-      'details',
+      'brand',
     );
   });
 });
