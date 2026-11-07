@@ -13,7 +13,7 @@ describe('FoodstuffFormComponent', () => {
   let fixture: ComponentFixture<FoodstuffFormComponent>;
   const imageId = '00000000-0000-4000-8000-000000000010';
   const upload = vi.fn();
-  const download = vi.fn();
+  const contentUrl = vi.fn();
   const revokeObjectURL = vi.fn();
 
   beforeEach(async () => {
@@ -23,7 +23,7 @@ describe('FoodstuffFormComponent', () => {
       'ngAfterViewInit',
     ).mockImplementation(() => {});
     upload.mockResolvedValue({ id: imageId });
-    download.mockResolvedValue({ url: '/storage/saved.png', expiresIn: 300 });
+    contentUrl.mockReturnValue('/storage/saved.png');
     vi.stubGlobal(
       'URL',
       class extends URL {
@@ -36,7 +36,7 @@ describe('FoodstuffFormComponent', () => {
     await TestBed.configureTestingModule({
       imports: [FoodstuffFormComponent],
       providers: [
-        { provide: FoodstuffImageService, useValue: { upload, download } },
+        { provide: FoodstuffImageService, useValue: { upload, contentUrl } },
       ],
     }).compileComponents();
 
@@ -243,25 +243,23 @@ describe('FoodstuffFormComponent', () => {
   });
 
   it.each(['selection', 'removal', 'destruction'])(
-    'ignores late download results after %s',
+    'ignores late contentUrl results after %s',
     async (action) => {
-      let resolve!: (value: { url: string }) => void;
-      download.mockImplementation(
-        () =>
-          new Promise<{ url: string }>((done) => {
-            resolve = done;
-          }),
-      );
       fixture.componentRef.setInput('foodstuff', { imageId });
       fixture.detectChanges();
+      const generation = component.image.previewGeneration();
       if (action === 'selection')
         select(new File(['png'], 'basil.png', { type: 'image/png' }));
       else if (action === 'removal') component.image.removeImage();
       else fixture.destroy();
-      resolve({ url: '/storage/stale.png' });
+      component.image.imageLoadFailed('/storage/saved.png', generation);
       await Promise.resolve();
       expect(component.image.imagePreview()).toBe(
-        action === 'selection' ? 'blob:preview' : null,
+        action === 'selection'
+          ? 'blob:preview'
+          : action === 'destruction'
+            ? '/storage/saved.png'
+            : null,
       );
     },
   );
@@ -276,13 +274,16 @@ describe('FoodstuffFormComponent', () => {
   });
 
   it('offers explicit fresh access retry without modifying the saved reference', async () => {
-    download.mockRejectedValueOnce(new Error('expired'));
     fixture.componentRef.setInput('foodstuff', { imageId });
     fixture.detectChanges();
     await fixture.whenStable();
+    component.image.imageLoadFailed(
+      '/storage/saved.png',
+      component.image.previewGeneration(),
+    );
     expect(component.image.imageAccessFailed()).toBe(true);
-    await component.image.loadImagePreview();
-    expect(download).toHaveBeenCalledTimes(2);
+    component.image.loadImagePreview();
+    expect(contentUrl).toHaveBeenCalledTimes(2);
     expect(component.image.imagePreview()).toBe('/storage/saved.png');
     expect(component.image.imageAccessFailed()).toBe(false);
   });

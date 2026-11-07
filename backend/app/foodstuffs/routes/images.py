@@ -15,7 +15,6 @@ from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
 from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.foodstuffs.schemas.image import (
-    FoodstuffImageDownloadOut,
     FoodstuffImageOut,
     FoodstuffImageUploadOut,
 )
@@ -56,26 +55,30 @@ def get_foodstuff_image_uploads(
 
 
 @router.get(
-    "/foodstuff-images/{image_id}/download",
-    response_model=FoodstuffImageDownloadOut,
-    responses={404: {"model": ErrorResponse}},
+    "/foodstuff-images/{image_id}/content",
+    response_class=Response,
+    responses={
+        200: {
+            "content": {"image/png": {"schema": {"type": "string", "format": "binary"}}}
+        },
+        404: {"model": ErrorResponse},
+    },
 )
-def download_image(
+def image_content(
     image_id: UUID,
-    response: Response,
-    uploads: ImageTransfers = Depends(get_foodstuff_image_transfers),
-) -> FoodstuffImageDownloadOut:
-    headers = {"Cache-Control": "no-store"}
+    transfers: ImageTransfers = Depends(get_foodstuff_image_transfers),
+) -> Response:
     try:
-        transfer = uploads.download(image_id)
+        target = transfers.content_handoff(image_id)
     except StorageUnavailable:
         raise HTTPException(
-            503, "Image storage is unavailable", headers=headers
+            503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
         ) from None
-    if transfer is None:
-        raise HTTPException(404, "Foodstuff image not found", headers=headers)
-    response.headers.update(headers)
-    return FoodstuffImageDownloadOut(url=transfer.url, expiresIn=transfer.expires_in)
+    if target is None:
+        raise HTTPException(
+            404, "Foodstuff image not found", headers={"Cache-Control": "no-store"}
+        )
+    return Response(headers={"X-Accel-Redirect": target})
 
 
 @router.post(

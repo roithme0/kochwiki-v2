@@ -1,8 +1,5 @@
 import { recipeVersionOut } from '../../../testing/recipe.fixtures';
-import type {
-  RecipeImageDownloadOut,
-  RecipeVersionOut,
-} from '../../../core/api/generated';
+import type { RecipeVersionOut } from '../../../core/api/generated';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { RecipeImageComponent } from '../recipe-image/recipe-image.component';
@@ -12,14 +9,12 @@ import { RecipesGridElementComponent } from './recipes-grid-element.component';
 
 describe('RecipesGridElementComponent', () => {
   let fixture: ComponentFixture<RecipesGridElementComponent>;
-  const download = vi
-    .fn<(imageId: string) => Promise<RecipeImageDownloadOut>>()
-    .mockResolvedValue({ url: '/storage/image', expiresIn: 300 });
+  const contentUrl = vi.fn(() => '/storage/image');
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RecipesGridElementComponent],
-      providers: [{ provide: RecipeImageService, useValue: { download } }],
+      providers: [{ provide: RecipeImageService, useValue: { contentUrl } }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(RecipesGridElementComponent);

@@ -3,12 +3,14 @@
     <img [src]="placeholder" [alt]="alt()" />
   }
   @if (imageUrl(); as url) {
-    <img
-      [src]="url"
-      [alt]="alt()"
-      [style.visibility]="loading() ? 'hidden' : 'visible'"
-      (load)="imageLoaded(url)"
-      (error)="imageLoadFailed(url)"
-    />
+    @for (attempt of [generation()]; track attempt) {
+      <img
+        [src]="url"
+        [alt]="alt()"
+        [style.visibility]="loading() ? 'hidden' : 'visible'"
+        (load)="imageLoaded(url, attempt)"
+        (error)="imageLoadFailed(url, attempt)"
+      />
+    }
   }
 </div>

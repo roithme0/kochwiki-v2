@@ -7,11 +7,13 @@ import { IngredientsGridComponent } from './ingredients-grid.component';
 describe('IngredientsGridComponent foodstuff images', () => {
   it('renders catalogue images in ingredient order and uses the placeholder for null image references', async () => {
     const download = vi
-      .fn<(id: string) => Promise<{ url: string; expiresIn: number }>>()
-      .mockResolvedValue({ url: '/storage/tomato', expiresIn: 300 });
+      .fn<(id: string) => string>()
+      .mockReturnValue('/storage/tomato');
     TestBed.configureTestingModule({
       imports: [IngredientsGridComponent],
-      providers: [{ provide: FoodstuffImageService, useValue: { download } }],
+      providers: [
+        { provide: FoodstuffImageService, useValue: { contentUrl: download } },
+      ],
     });
     const tomato = {
       imageId: null,

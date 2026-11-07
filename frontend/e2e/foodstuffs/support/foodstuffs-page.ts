@@ -93,6 +93,6 @@ export class FoodstuffsPage {
   }
 
   image(name: string): Locator {
-    return this.row(name).locator('img[src^="/storage/"]');
+    return this.row(name).locator('img[src^="/api/foodstuff-images/"]');
   }
 }

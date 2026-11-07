@@ -36,17 +36,11 @@ describe('FoodstuffSelectionDialogComponent', () => {
   let creationResult: Subject<FoodstuffOut | undefined>;
   const open = vi.fn();
   const getAllFoodstuffs = vi.fn();
-  const download =
-    vi.fn<(id: string) => Promise<{ url: string; expiresIn: number }>>();
+  const download = vi.fn<(id: string) => string>();
   let foodstuffsChanged: Subject<void>;
   beforeEach(() => {
     close.mockReset();
-    download.mockReset().mockImplementation((id) =>
-      Promise.resolve({
-        url: '/storage/' + id,
-        expiresIn: 300,
-      }),
-    );
+    download.mockReset().mockImplementation((id) => '/storage/' + id);
     foodstuffsChanged = new Subject<void>();
     getAllFoodstuffs.mockReset().mockResolvedValue([...foodstuffs].reverse());
     creationResult = new Subject<FoodstuffOut | undefined>();
@@ -55,7 +49,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
       .mockReturnValue({ afterClosed: () => creationResult.asObservable() });
     TestBed.configureTestingModule({
       providers: [
-        { provide: FoodstuffImageService, useValue: { download } },
+        { provide: FoodstuffImageService, useValue: { contentUrl: download } },
         { provide: MatDialogRef, useValue: { close } },
         {
           provide: FoodstuffBackendService,

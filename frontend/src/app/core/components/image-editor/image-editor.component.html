@@ -4,11 +4,14 @@
   [attr.aria-busy]="state().loadingImage() || state().busy()"
 >
   @if (state().imagePreview(); as preview) {
-    <img
-      [src]="preview"
-      alt="Bildvorschau"
-      (error)="state().imageLoadFailed()"
-    />
+    @for (attempt of [state().previewGeneration()]; track attempt) {
+      <img
+        [src]="preview"
+        alt="Bildvorschau"
+        (load)="state().imageLoaded(preview, attempt)"
+        (error)="state().imageLoadFailed(preview, attempt)"
+      />
+    }
   } @else {
     <img [src]="placeholder()" alt="Kein Bild vorhanden" />
   }

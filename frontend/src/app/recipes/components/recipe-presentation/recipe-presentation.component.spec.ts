@@ -15,7 +15,7 @@ describe('RecipePresentationComponent', () => {
     TestBed.configureTestingModule({
       imports: [RecipePresentationComponent],
       providers: [
-        { provide: FoodstuffImageService, useValue: { download: vi.fn() } },
+        { provide: FoodstuffImageService, useValue: { contentUrl: vi.fn() } },
       ],
     });
     fixture = TestBed.createComponent(RecipePresentationComponent);

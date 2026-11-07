@@ -19,6 +19,7 @@ export class FoodstuffImageComponent {
   readonly alt = input('');
   readonly imageUrl = signal<string | null>(null);
   readonly loading = signal(false);
+  readonly generation = signal(0);
   private readonly images = inject(FoodstuffImageService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -28,34 +29,37 @@ export class FoodstuffImageComponent {
 
   constructor() {
     effect(() => {
-      void this.load(this.imageId());
+      this.load(this.imageId());
     });
   }
 
-  imageLoaded(url: string): void {
-    if (this.destroyRef.destroyed || this.imageUrl() !== url) return;
+  imageLoaded(url: string, generation: number): void {
+    if (
+      this.destroyRef.destroyed ||
+      this.imageUrl() !== url ||
+      this.generation() !== generation
+    )
+      return;
     this.loading.set(false);
   }
 
-  imageLoadFailed(url: string): void {
-    if (this.destroyRef.destroyed || this.imageUrl() !== url) return;
+  imageLoadFailed(url: string, generation: number): void {
+    if (
+      this.destroyRef.destroyed ||
+      this.imageUrl() !== url ||
+      this.generation() !== generation
+    )
+      return;
     this.imageUrl.set(null);
     this.loading.set(false);
   }
 
-  private async load(imageId: string | null): Promise<void> {
-    const request = ++this.request;
+  private load(imageId: string | null): void {
+    this.generation.set(++this.request);
     this.imageUrl.set(null);
     this.loading.set(imageId !== null);
     if (imageId === null) return;
 
-    try {
-      const download = await this.images.download(imageId);
-      if (this.destroyRef.destroyed || request !== this.request) return;
-      this.imageUrl.set(download.url);
-    } catch {
-      if (this.destroyRef.destroyed || request !== this.request) return;
-      this.loading.set(false);
-    }
+    this.imageUrl.set(this.images.contentUrl(imageId));
   }
 }

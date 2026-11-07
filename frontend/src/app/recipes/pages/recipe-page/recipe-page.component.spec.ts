@@ -345,10 +345,9 @@ describe('RecipePageComponent presentation integration', () => {
         ],
       };
       const getAllFoodstuffs = vi.fn().mockResolvedValue([]);
-      const downloadFoodstuffImage = vi.fn().mockResolvedValue({
-        url: '/storage/ingredient',
-        expiresIn: 300,
-      });
+      const downloadFoodstuffImage = vi
+        .fn()
+        .mockReturnValue('/storage/ingredient');
       const pageHeader = {
         updateHeader: vi.fn().mockName('updateHeader'),
         set headline(_value: string) {},
@@ -362,7 +361,7 @@ describe('RecipePageComponent presentation integration', () => {
           },
           {
             provide: FoodstuffImageService,
-            useValue: { download: downloadFoodstuffImage },
+            useValue: { contentUrl: downloadFoodstuffImage },
           },
           {
             provide: ActiveUserService,
@@ -371,9 +370,7 @@ describe('RecipePageComponent presentation integration', () => {
           {
             provide: RecipeImageService,
             useValue: {
-              download: vi
-                .fn()
-                .mockResolvedValue({ url: '/storage/image', expiresIn: 300 }),
+              contentUrl: vi.fn().mockReturnValue('/storage/image'),
             },
           },
           {

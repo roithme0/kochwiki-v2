@@ -41,9 +41,7 @@ describe('FoodstuffsTableComponent', () => {
         {
           provide: FoodstuffImageService,
           useValue: {
-            download: vi
-              .fn()
-              .mockResolvedValue({ url: '/storage/tomato', expiresIn: 300 }),
+            contentUrl: vi.fn().mockReturnValue('/storage/tomato'),
           },
         },
         {
@@ -143,7 +141,7 @@ describe('FoodstuffsTableComponent', () => {
   it('renders the catalogue image in the primary column', async () => {
     const download = vi.spyOn(
       TestBed.inject(FoodstuffImageService),
-      'download',
+      'contentUrl',
     );
     const fixture = TestBed.createComponent(FoodstuffsTableComponent);
     fixture.componentRef.setInput('foodstuffs', [

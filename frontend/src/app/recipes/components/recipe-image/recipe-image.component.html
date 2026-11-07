@@ -5,15 +5,17 @@
   [attr.aria-busy]="loading()"
 >
   @if (imageUrl(); as url) {
-    <img
-      [src]="url"
-      [attr.width]="dimensions()?.width"
-      [attr.height]="dimensions()?.height"
-      [style.visibility]="loading() ? 'hidden' : 'visible'"
-      alt="Rezeptbild"
-      (load)="imageLoaded(url)"
-      (error)="imageLoadFailed(url)"
-    />
+    @for (attempt of [generation()]; track attempt) {
+      <img
+        [src]="url"
+        [attr.width]="dimensions()?.width"
+        [attr.height]="dimensions()?.height"
+        [style.visibility]="loading() ? 'hidden' : 'visible'"
+        alt="Rezeptbild"
+        (load)="imageLoaded(url, attempt)"
+        (error)="imageLoadFailed(url, attempt)"
+      />
+    }
   }
   @if (!imageUrl() || loading()) {
     <img

@@ -1,10 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import type {
-  FoodstuffImageDownloadOut,
-  FoodstuffImageOut,
-} from '../../core/api/generated';
+import type { FoodstuffImageOut } from '../../core/api/generated';
 import {
-  zFoodstuffImageDownloadOut,
   zFoodstuffImageOut,
   zFoodstuffImageUploadOut,
 } from '../../core/api/generated/zod.gen';
@@ -15,11 +11,8 @@ import { ImageTransferService } from '../../core/services/image-transfer.service
 export class FoodstuffImageService {
   private readonly transfers = inject(ImageTransferService);
 
-  download(imageId: string): Promise<FoodstuffImageDownloadOut> {
-    return this.transfers.download(
-      `${backendUrl}/foodstuff-images/${encodeURIComponent(imageId)}/download`,
-      zFoodstuffImageDownloadOut,
-    );
+  contentUrl(imageId: string): string {
+    return `${backendUrl}/foodstuff-images/${encodeURIComponent(imageId)}/content`;
   }
 
   upload(file: File): Promise<FoodstuffImageOut> {

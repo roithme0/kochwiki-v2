@@ -16,7 +16,9 @@ class EditorHost {
   readonly source = signal<string | null>(null);
   readonly saving = signal(false);
   readonly upload = vi.fn<(file: File) => Promise<{ id: string }>>();
-  readonly download = vi.fn<(id: string) => Promise<{ url: string }>>();
+  readonly contentUrl = vi.fn<(id: string) => string>(
+    () => '/storage/first.png',
+  );
 
   constructor() {
     this.image.connect(this, this.source, this.saving);
@@ -114,10 +116,7 @@ describe('ImageEditorComponent', () => {
     expect(revokeObjectURL).toHaveBeenCalledExactlyOnceWith('blob:preview');
   });
 
-  it('shows image delivery errors inline and retries with fresh download instructions', async () => {
-    host.download
-      .mockResolvedValueOnce({ url: '/storage/first.png' })
-      .mockResolvedValueOnce({ url: '/storage/retry.png' });
+  it('shows image delivery errors inline and retries with the same URL', async () => {
     host.source.set('saved-image');
     fixture.detectChanges();
     await fixture.whenStable();
@@ -134,9 +133,9 @@ describe('ImageEditorComponent', () => {
     button('Bild erneut laden').click();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(host.download).toHaveBeenCalledTimes(2);
+    expect(host.contentUrl).toHaveBeenCalledTimes(2);
     expect(element.querySelector('img')?.getAttribute('src')).toBe(
-      '/storage/retry.png',
+      '/storage/first.png',
     );
     expect(host.image.imageAccessFailed()).toBe(false);
   });
