@@ -9,7 +9,10 @@ import {
   MatDialogModule,
   MatDialogRef,
 } from '@angular/material/dialog';
-import { MatListModule } from '@angular/material/list';
+import {
+  FoodstuffsListComponent,
+  FoodstuffListStatusDirective,
+} from '../../components/foodstuffs-list/foodstuffs-list.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type { FoodstuffOut } from '../../../core/api/generated';
@@ -17,7 +20,6 @@ import { DialogHeaderComponent } from '../../../core/components/dialog-header/di
 import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
-import { FoodstuffDisplayComponent } from '../../components/foodstuff-display/foodstuff-display.component';
 import { DisplayImageComponent } from '../../../core/components/display-image/display-image.component';
 
 export interface FoodstuffSelectionDialogData {
@@ -31,9 +33,9 @@ export interface FoodstuffSelectionDialogData {
     DialogHeaderComponent,
     FoodstuffsSearchComponent,
     DisplayImageComponent,
-    FoodstuffDisplayComponent,
+    FoodstuffsListComponent,
+    FoodstuffListStatusDirective,
     MatDialogModule,
-    MatListModule,
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
@@ -54,12 +56,6 @@ export class FoodstuffSelectionDialogComponent {
   private readonly destroyRef = inject(DestroyRef);
   readonly catalogue = inject(FoodstuffCatalogueService);
 
-  readonly foodstuffs = computed(() =>
-    [...this.catalogue.foodstuffs()].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
-    ),
-  );
-
   readonly searchValue = signal('');
   readonly existingFoodstuffIds = new Set(this.data.existingFoodstuffIds);
   private readonly pendingFoodstuffs = signal<
@@ -71,16 +67,6 @@ export class FoodstuffSelectionDialogComponent {
   readonly selectedFoodstuffs = computed(() => [
     ...this.pendingFoodstuffs().values(),
   ]);
-  readonly displayedFoodstuffs = computed((): FoodstuffOut[] => {
-    const query = this.searchValue().toLowerCase();
-    return this.foodstuffs().filter(
-      (foodstuff) =>
-        foodstuff.name.toLowerCase().includes(query) ||
-        (foodstuff.brand?.toLowerCase().includes(query) ?? false) ||
-        (foodstuff.details?.toLowerCase().includes(query) ?? false),
-    );
-  });
-
   openCreateFoodstuffDialog(): void {
     this.dialog
       .open<FoodstuffCreateDialogComponent, undefined, FoodstuffOut>(
@@ -114,7 +100,9 @@ export class FoodstuffSelectionDialogComponent {
   toggleFoodstuff(id: number): void {
     if (this.existingFoodstuffIds.has(id)) return;
 
-    const foodstuff = this.foodstuffs().find((item) => item.id === id);
+    const foodstuff = this.catalogue
+      .foodstuffs()
+      .find((item) => item.id === id);
     this.pendingFoodstuffs.update((pending) => {
       const next = new Map(pending);
       if (next.has(id)) next.delete(id);

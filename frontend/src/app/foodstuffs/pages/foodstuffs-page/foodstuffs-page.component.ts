@@ -10,15 +10,17 @@ import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.service';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
-import { FoodstuffTableControlService } from '../../services/foodstuff-table-control.service';
-import { FoodstuffsTableComponent } from '../../components/foodstuffs-table/foodstuffs-table.component';
+import { FoodstuffSearchStateService } from '../../services/foodstuff-search-state.service';
+import { FoodstuffsListComponent } from '../../components/foodstuffs-list/foodstuffs-list.component';
+import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
+import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 
 @Component({
   selector: 'app-foodstuffs-page',
   providers: [FoodstuffCatalogueService],
   imports: [
-    FoodstuffsTableComponent,
+    FoodstuffsListComponent,
     MatButtonModule,
     MatProgressSpinnerModule,
     MatIconModule,
@@ -34,7 +36,7 @@ export class FoodstuffsPageComponent implements OnInit {
   private readonly snackBarService = inject(SnackBarService);
   readonly pageHeaderService = inject(PageHeaderService);
   readonly dialog = inject(MatDialog);
-  readonly foodstuffTableControlsService = inject(FoodstuffTableControlService);
+  readonly foodstuffSearchState = inject(FoodstuffSearchStateService);
 
   ngOnInit(): void {
     this.pageHeaderService.updateHeader(true, 'Lebensmittel', '', true);
@@ -46,6 +48,19 @@ export class FoodstuffsPageComponent implements OnInit {
     this.recipeBackendService.recipesChanged$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => void this.catalogue.refresh());
+  }
+
+  openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
+    this.dialog.open(FoodstuffPatchDialogComponent, {
+      data: { id: foodstuff.id },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
+      autoFocus: false,
+      disableClose: true,
+    });
   }
 
   openCreateFoodstuffDialog(): void {

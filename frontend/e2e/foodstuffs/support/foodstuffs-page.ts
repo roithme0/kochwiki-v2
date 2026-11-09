@@ -12,7 +12,7 @@ export class FoodstuffsPage {
 
   constructor(private readonly page: Page) {
     this.pageHeader = new PageHeader(page);
-    this.rows = page.getByRole('row').filter({ has: page.getByRole('cell') });
+    this.rows = page.locator('app-foodstuffs-list button[mat-list-item]');
     this.addButton = page.getByRole('button', {
       name: 'Lebensmittel hinzufügen',
       exact: true,
@@ -70,26 +70,13 @@ export class FoodstuffsPage {
   }
 
   nameCell(name: string): Locator {
-    return this.page.getByRole('cell').filter({
-      has: this.page
-        .locator('.foodstuff-name')
-        .and(this.page.getByText(name, { exact: true })),
-    });
+    return this.page
+      .locator('.foodstuff-name')
+      .and(this.page.getByText(name, { exact: true }));
   }
 
   row(name: string): Locator {
-    return this.page.getByRole('row').filter({ has: this.nameCell(name) });
-  }
-
-  editButton(name: string): Locator {
-    return this.row(name).getByRole('button', {
-      name: 'Bearbeiten',
-      exact: true,
-    });
-  }
-
-  deleteButton(name: string): Locator {
-    return this.row(name).getByRole('button', { name: 'Löschen', exact: true });
+    return this.rows.filter({ has: this.nameCell(name) });
   }
 
   image(name: string): Locator {

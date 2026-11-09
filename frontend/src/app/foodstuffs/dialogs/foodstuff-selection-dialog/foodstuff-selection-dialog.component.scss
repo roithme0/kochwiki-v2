@@ -19,21 +19,20 @@ app-dialog-header,
 }
 
 mat-dialog-content {
+  position: relative;
   flex: 1;
   min-height: 0;
   max-height: none;
+  overflow: hidden;
   padding: 0.75rem 0 !important;
 }
 
-mat-action-list {
-  padding: 0;
-}
-
-mat-dialog-content.no-results {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+.loading-state,
+mat-dialog-content > .empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .empty-state {
@@ -44,33 +43,11 @@ mat-dialog-content.no-results {
   text-align: center;
 }
 
-.foodstuff[mat-list-item] {
-  @include mat.list-overrides(
-    (
-      list-item-disabled-label-text-opacity: 1,
-      list-item-disabled-label-text-color: var(--mat-sys-on-surface),
-      list-item-disabled-state-layer-opacity: 0,
-    )
-  );
-  height: auto;
-  min-height: 64px;
-  padding: 0;
-}
-
-app-foodstuff-display {
-  --foodstuff-image-size: 40px;
-  padding: 0.5rem 0;
-}
-
-.empty-message {
-  color: tokens.$medium-emphasis-font-color;
-}
-
 .search-footer {
   padding-top: 0.5rem;
 }
 
-.foodstuff .selection-status[matListItemMeta] {
+.selection-status {
   color: #c5e1a5;
   align-self: center;
   max-width: 6rem;
@@ -81,7 +58,7 @@ app-foodstuff-display {
   line-height: 1.25;
 }
 
-.foodstuff .selected-status[matListItemMeta] {
+.selected-status {
   display: flex;
   align-items: center;
   gap: 0.25rem;
