@@ -5,7 +5,7 @@ export const DEFAULT_SEARCH_BY: string = '';
 @Injectable({
   providedIn: 'root',
 })
-export class FoodstuffTableControlService {
+export class FoodstuffSearchStateService {
   private _searchBy: WritableSignal<string> = signal(DEFAULT_SEARCH_BY);
 
   set searchBy(value: string) {

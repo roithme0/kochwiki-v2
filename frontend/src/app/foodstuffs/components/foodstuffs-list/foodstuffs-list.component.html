@@ -1,0 +1,36 @@
+﻿<mat-action-list aria-label="Lebensmittel">
+  @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
+    <button
+      mat-list-item
+      type="button"
+      class="foodstuff"
+      [disabled]="disabledIds().has(foodstuff.id)"
+      [attr.aria-pressed]="pressedIds()?.has(foodstuff.id) ?? null"
+      (click)="activated.emit(foodstuff)"
+    >
+      <app-foodstuff-display
+        matListItemTitle
+        [foodstuff]="foodstuff"
+        [showBrand]="true"
+      />
+      @if (status) {
+        <span matListItemMeta class="status"
+          ><ng-container
+            [ngTemplateOutlet]="status.template"
+            [ngTemplateOutletContext]="{ $implicit: foodstuff }"
+        /></span>
+      }
+    </button>
+  }
+</mat-action-list>
+@if (displayedFoodstuffs().length === 0) {
+  <div class="empty-state">
+    <p>{{ searchValue() ? emptyMessage() : emptyCatalogueMessage() }}</p>
+    @if (searchValue() || showResetWhenEmpty()) {
+      <button mat-button type="button" (click)="resetSearch.emit()">
+        Suche zurücksetzen
+      </button>
+    }
+  </div>
+}
+<ng-content />

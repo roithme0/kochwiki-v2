@@ -1,12 +1,12 @@
 <app-dialog-header title="Zutat hinzufügen" [showCloseButon]="true" />
 
-<mat-dialog-content
-  [class.no-results]="
-    catalogue.state().status !== 'success' || displayedFoodstuffs().length === 0
-  "
->
+<mat-dialog-content>
   @if (catalogue.state().status === 'loading') {
-    <mat-spinner diameter="25" aria-label="Lebensmittel werden geladen" />
+    <mat-spinner
+      class="loading-state"
+      diameter="25"
+      aria-label="Lebensmittel werden geladen"
+    />
   } @else if (catalogue.state().status === 'error') {
     <div class="empty-state" role="alert">
       <p>Lebensmittel konnten nicht geladen werden.</p>
@@ -14,44 +14,28 @@
         Erneut laden
       </button>
     </div>
-  } @else {
-    <mat-action-list aria-label="Lebensmittel">
-      @for (foodstuff of displayedFoodstuffs(); track foodstuff.id) {
-        <button
-          mat-list-item
-          type="button"
-          class="foodstuff"
-          [disabled]="existingFoodstuffIds.has(foodstuff.id)"
-          [attr.aria-pressed]="selectedFoodstuffIds().has(foodstuff.id)"
-          (click)="toggleFoodstuff(foodstuff.id)"
-        >
-          <app-foodstuff-display
-            matListItemTitle
-            [foodstuff]="foodstuff"
-            [showBrand]="true"
-          />
-          @if (existingFoodstuffIds.has(foodstuff.id)) {
-            <span matListItemMeta class="selection-status"
-              >Bereits hinzugefügt</span
-            >
-          } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
-            <span matListItemMeta class="selection-status selected-status">
-              <mat-icon aria-hidden="true">check_circle</mat-icon>
-              <span>Im Korb</span>
-            </span>
-          }
-        </button>
-      }
-    </mat-action-list>
-    @if (displayedFoodstuffs().length === 0) {
-      <div class="empty-state">
-        <p class="empty-message">Keine Lebensmittel gefunden.</p>
-        <button mat-button type="button" (click)="searchValue.set('')">
-          Suche zurücksetzen
-        </button>
-      </div>
-    }
   }
+  <app-foodstuffs-list
+    [class.viewport-hidden]="catalogue.state().status !== 'success'"
+    [attr.aria-hidden]="catalogue.state().status !== 'success' ? true : null"
+    [foodstuffs]="catalogue.foodstuffs()"
+    [searchValue]="searchValue()"
+    [disabledIds]="existingFoodstuffIds"
+    [pressedIds]="selectedFoodstuffIds()"
+    (activated)="toggleFoodstuff($event.id)"
+    (resetSearch)="searchValue.set('')"
+  >
+    <ng-template foodstuffListStatus let-foodstuff>
+      @if (existingFoodstuffIds.has(foodstuff.id)) {
+        <span class="selection-status">Bereits hinzugefügt</span>
+      } @else if (selectedFoodstuffIds().has(foodstuff.id)) {
+        <span class="selection-status selected-status"
+          ><mat-icon aria-hidden="true">check_circle</mat-icon
+          ><span>Im Korb</span></span
+        >
+      }
+    </ng-template>
+  </app-foodstuffs-list>
 </mat-dialog-content>
 
 <div class="search-footer">

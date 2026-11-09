@@ -1,6 +1,5 @@
 import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
-import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,7 +18,6 @@ import { RecipesGridControlsService } from '../../services/recipes-grid-controls
 @Component({
   selector: 'app-recipes-page',
   imports: [
-    CommonModule,
     RecipesGridComponent,
     RecipesSearchComponent,
     MatButtonModule,
@@ -38,7 +36,6 @@ export class RecipesPageComponent implements OnInit {
   readonly pageHeaderService = inject(PageHeaderService);
   readonly recipesGridControlsService = inject(RecipesGridControlsService);
 
-  readonly showSearch = signal(false);
   readonly recipeVersionsState = signal<LoadState<RecipeVersionOut[]>>({
     status: 'loading',
     data: [],
