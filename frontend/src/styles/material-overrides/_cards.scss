@@ -1,0 +1,65 @@
+@use '@angular/material' as mat;
+@use '../style-tokens' as tokens;
+
+@mixin styles() {
+  html {
+    @include mat.card-overrides(
+      (
+        elevated-container-color: #3b3028,
+        filled-container-color: #3b3028,
+        outlined-container-color: #3b3028,
+      )
+    );
+  }
+
+  mat-card {
+    @include mat.card-overrides(
+      (
+        title-text-size: 18px,
+        title-text-line-height: 18px,
+      )
+    );
+
+    --mdc-elevated-card-container-shape: 1rem;
+    --mat-card-subtitle-text-line-height: #{tokens.$primary-font-size};
+    --mat-card-subtitle-text-size: #{tokens.$primary-font-size};
+    display: flex;
+    flex-direction: column;
+  }
+
+  mat-card-content.mat-mdc-card-content {
+    padding: 0 1rem 1rem;
+    font-size: tokens.$primary-font-size;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  mat-card-header.mat-mdc-card-header {
+    padding: 1rem 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  mat-card-title.mat-mdc-card-title {
+    color: tokens.$high-emphasis-font-color;
+    height: 1lh;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    :is(h1, h2, h3, h4, h5, h6) {
+      margin: 0;
+      font: inherit;
+    }
+  }
+
+  mat-card-subtitle.mat-mdc-card-subtitle {
+    color: tokens.$medium-emphasis-font-color;
+    padding: 0.25rem 0 0 !important;
+  }
+}

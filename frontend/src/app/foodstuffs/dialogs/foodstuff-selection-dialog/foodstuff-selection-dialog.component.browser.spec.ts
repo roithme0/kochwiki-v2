@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Subject } from 'rxjs';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
 import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
@@ -78,4 +78,80 @@ describe('Foodstuff picker result layout', () => {
       fixture.destroy();
     },
   );
+});
+
+it('keeps disabled rows inactive and resets the actual scrolling results only when search changes', async () => {
+  await page.viewport(640, 800);
+  const records = Array.from({ length: 30 }, (_, id) =>
+    foodstuffOut({ id, name: `Item ${String(id).padStart(2, '0')}` }),
+  );
+  let resolveRefresh!: (value: typeof records) => void;
+  const getAllFoodstuffs = vi.fn().mockResolvedValue(records);
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: MAT_DIALOG_DATA, useValue: { existingFoodstuffIds: [0] } },
+      { provide: MatDialogRef, useValue: { close: vi.fn() } },
+      { provide: FoodstuffImageService, useValue: {} },
+      {
+        provide: FoodstuffBackendService,
+        useValue: { getAllFoodstuffs, foodstuffsChanged$: new Subject<void>() },
+      },
+    ],
+  });
+  const fixture = TestBed.createComponent(FoodstuffSelectionDialogComponent);
+  const host = fixture.nativeElement as HTMLElement;
+  host.style.height = '600px';
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+  const viewport = host.querySelector<HTMLElement>('app-foodstuffs-list')!;
+  const rows = host.querySelectorAll<HTMLButtonElement>(
+    'button[mat-list-item]',
+  );
+  expect(rows[0].disabled).toBe(true);
+  rows[0].click();
+  rows[0].focus();
+  await userEvent.keyboard('{Enter}');
+  await userEvent.keyboard(' ');
+  expect(fixture.componentInstance.selectedFoodstuffIds().size).toBe(0);
+  expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+  viewport.scrollTop = viewport.scrollHeight;
+  const beforeRefresh = viewport.scrollTop;
+  const beforeRect = viewport.getBoundingClientRect();
+  getAllFoodstuffs.mockReturnValueOnce(
+    new Promise<typeof records>((resolve) => {
+      resolveRefresh = resolve;
+    }),
+  );
+  const refresh = fixture.componentInstance.catalogue.refresh();
+  fixture.detectChanges();
+  expect(viewport.scrollTop).toBe(beforeRefresh);
+  const duringRect = viewport.getBoundingClientRect();
+  expect(duringRect.top).toBeCloseTo(beforeRect.top, 0);
+  expect(duringRect.height).toBeCloseTo(beforeRect.height, 0);
+  expect(duringRect.width).toBeCloseTo(beforeRect.width, 0);
+  resolveRefresh(records);
+  await refresh;
+  fixture.detectChanges();
+  await fixture.whenStable();
+  expect(viewport.scrollTop).toBe(beforeRefresh);
+  viewport.scrollTop = viewport.scrollHeight;
+  const previous = viewport.scrollTop;
+  rows[29].click();
+  rows[28].click();
+  fixture.detectChanges();
+  await fixture.whenStable();
+  expect(viewport.scrollTop).toBe(previous);
+  expect(host.querySelectorAll('.basket-preview li')).toHaveLength(2);
+  expect(
+    host.querySelector<HTMLButtonElement>('.basket-summary button')?.disabled,
+  ).toBe(false);
+  expect(
+    host.querySelector<HTMLButtonElement>('.create-foodstuff-button')?.disabled,
+  ).toBe(false);
+  fixture.componentInstance.searchValue.set('Item');
+  fixture.detectChanges();
+  await fixture.whenStable();
+  expect(viewport.scrollTop).toBe(0);
+  fixture.destroy();
 });

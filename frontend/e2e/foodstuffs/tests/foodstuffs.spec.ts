@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
 import { expectUploadedImage } from '../../shared/support/uploaded-image';
 import { FoodstuffCreateDialog } from '../support/foodstuff-create-dialog';
-import { FoodstuffDeleteDialog } from '../support/foodstuff-delete-dialog';
 import { FoodstuffEditDialog } from '../support/foodstuff-edit-dialog';
 import { seedFoodstuff } from '../support/foodstuff-seed';
 import { FoodstuffsPage } from '../support/foodstuffs-page';
@@ -41,7 +40,7 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.goto();
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
-    await foodstuffsPage.editButton(name).click();
+    await foodstuffsPage.row(name).click();
     await editDialog.expectLoaded({ name }, 'empty');
 
     await imageInput.chooseFile(
@@ -58,7 +57,7 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
     await expectUploadedImage(foodstuffsPage.image(name), 13, 7);
-    await foodstuffsPage.editButton(name).click();
+    await foodstuffsPage.row(name).click();
     await editDialog.expectLoaded({ name }, 'image');
     await expectUploadedImage(imageInput.preview, 13, 7);
   });
@@ -83,7 +82,7 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.goto();
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
-    await foodstuffsPage.editButton(name).click();
+    await foodstuffsPage.row(name).click();
     await editDialog.expectLoaded(
       { name, brand: 'Seed brand', unit: 'Stück', kcal: 42 },
       'empty',
@@ -99,35 +98,7 @@ test.describe('Foodstuffs', () => {
     await page.reload();
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(updatedName, [updatedName]);
-    await foodstuffsPage.editButton(updatedName).click();
+    await foodstuffsPage.row(updatedName).click();
     await editDialog.expectLoaded(updatedValues, 'empty');
-  });
-
-  test('authenticated visitor cancels then confirms foodstuff deletion and it stays deleted', async ({
-    page,
-    baseURL,
-  }) => {
-    const name = `E2E Delete ${randomUUID()}`;
-    await seedFoodstuff(page, baseURL, name);
-    const foodstuffsPage = new FoodstuffsPage(page);
-    const deleteDialog = new FoodstuffDeleteDialog(page);
-
-    await foodstuffsPage.goto();
-    await foodstuffsPage.expectLoaded();
-    await foodstuffsPage.search(name, [name]);
-    await foodstuffsPage.deleteButton(name).click();
-    await deleteDialog.expectLoaded();
-
-    await deleteDialog.cancel();
-    await expect(foodstuffsPage.row(name)).toBeVisible();
-
-    await foodstuffsPage.deleteButton(name).click();
-    await deleteDialog.expectLoaded();
-    await deleteDialog.delete();
-    await foodstuffsPage.expectEmpty('filtered');
-
-    await page.reload();
-    await foodstuffsPage.expectLoaded();
-    await foodstuffsPage.search(name, []);
   });
 });

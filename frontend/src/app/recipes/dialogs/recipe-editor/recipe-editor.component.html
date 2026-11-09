@@ -83,28 +83,28 @@
             </mat-card-content>
           </mat-card>
         </section>
-      </div>
-      <div class="button-wrapper">
-        <button
-          mat-flat-button
-          type="button"
-          color="primary"
-          [disabled]="busy() || image.invalidImageSelection()"
-          (click)="onSubmit('publish')"
-        >
-          <mat-icon aria-hidden="true" fontIcon="save" />
-          {{ mode() === 'draft' ? 'Entwurf speichern' : 'Speichern' }}
-        </button>
-        @if (mode() === 'active') {
+        <div class="button-wrapper">
           <button
-            mat-button
+            mat-flat-button
             type="button"
+            color="primary"
             [disabled]="busy() || image.invalidImageSelection()"
-            (click)="onSubmit('draft')"
+            (click)="onSubmit('publish')"
           >
-            Als Entwurf speichern
+            <mat-icon aria-hidden="true" fontIcon="save" />
+            {{ mode() === 'draft' ? 'Entwurf speichern' : 'Speichern' }}
           </button>
-        }
+          @if (mode() === 'active') {
+            <button
+              mat-button
+              type="button"
+              [disabled]="busy() || image.invalidImageSelection()"
+              (click)="onSubmit('draft')"
+            >
+              Als Entwurf speichern
+            </button>
+          }
+        </div>
       </div>
     </form>
   }

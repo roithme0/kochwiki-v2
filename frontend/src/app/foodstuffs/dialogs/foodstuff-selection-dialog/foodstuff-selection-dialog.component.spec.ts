@@ -10,6 +10,7 @@ import {
   MatDialogRef,
 } from '@angular/material/dialog';
 import type { FoodstuffOut } from '../../../core/api/generated';
+import { FoodstuffsListComponent } from '../../components/foodstuffs-list/foodstuffs-list.component';
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.component';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
@@ -87,7 +88,12 @@ describe('FoodstuffSelectionDialogComponent', () => {
     );
     fixture.componentInstance.searchValue.set('ROH');
     fixture.detectChanges();
-    expect(fixture.componentInstance.displayedFoodstuffs()).toEqual([raw]);
+    expect(
+      (
+        fixture.debugElement.query(By.directive(FoodstuffsListComponent))
+          .componentInstance as FoodstuffsListComponent
+      ).displayedFoodstuffs(),
+    ).toEqual([raw]);
     expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(
       'gekocht',
     );
@@ -167,7 +173,10 @@ describe('FoodstuffSelectionDialogComponent', () => {
       fixture.detectChanges();
       const element: HTMLElement = fixture.nativeElement as HTMLElement;
       expect(element.querySelector('mat-spinner')).not.toBeNull();
-      expect(element.textContent).not.toContain('Keine Lebensmittel gefunden.');
+      expect(
+        getComputedStyle(element.querySelector('app-foodstuffs-list')!)
+          .visibility,
+      ).toBe('hidden');
       expect(
         element.querySelector<HTMLButtonElement>('.create-foodstuff-button')
           ?.disabled,
@@ -210,7 +219,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     fixture.destroy();
     resolveLoad(foodstuffs);
     await pending;
-    expect(fixture.componentInstance.foodstuffs()).toEqual([]);
+    expect(fixture.componentInstance.catalogue.foodstuffs()).toEqual([]);
   });
 
   it('refreshes on catalogue changes while preserving search and pending records, then unsubscribes on close', async () => {
@@ -231,9 +240,15 @@ describe('FoodstuffSelectionDialogComponent', () => {
     foodstuffsChanged.next();
     await fixture.whenStable();
     expect(getAllFoodstuffs).toHaveBeenCalledTimes(2);
-    expect(component.foodstuffs()).toEqual([updated]);
+    expect(component.catalogue.foodstuffs()).toEqual([updated]);
     expect(component.searchValue()).toBe('pasta');
-    expect(component.displayedFoodstuffs()).toEqual([updated]);
+    fixture.detectChanges();
+    expect(
+      (
+        fixture.debugElement.query(By.directive(FoodstuffsListComponent))
+          .componentInstance as FoodstuffsListComponent
+      ).displayedFoodstuffs(),
+    ).toEqual([updated]);
     expect(component.selectedFoodstuffs()).toEqual([
       foodstuffs[1],
       foodstuffs[0],
@@ -282,7 +297,9 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await fixture.whenStable();
     creationResult.next(created);
     expect(
-      component.foodstuffs().filter((foodstuff) => foodstuff.id === created.id),
+      component.catalogue
+        .foodstuffs()
+        .filter((foodstuff) => foodstuff.id === created.id),
     ).toHaveLength(1);
     expect(component.selectedFoodstuffs()).toEqual([foodstuffs[0], created]);
   });
@@ -310,7 +327,7 @@ describe('FoodstuffSelectionDialogComponent', () => {
     await component.catalogue.refresh();
     resolveOlder([]);
     await fixture.whenStable();
-    expect(component.foodstuffs()).toEqual([updated]);
+    expect(component.catalogue.foodstuffs()).toEqual([updated]);
     expect(component.catalogue.state().status).toBe('success');
     const error = vi
       .spyOn(console, 'error')
@@ -438,7 +455,13 @@ describe('FoodstuffSelectionDialogComponent', () => {
     creationResult.complete();
     fixture.detectChanges();
     expect(component.searchValue()).toBe('pasta');
-    expect(component.displayedFoodstuffs()).toEqual([foodstuffs[0]]);
+    fixture.detectChanges();
+    expect(
+      (
+        fixture.debugElement.query(By.directive(FoodstuffsListComponent))
+          .componentInstance as FoodstuffsListComponent
+      ).displayedFoodstuffs(),
+    ).toEqual([foodstuffs[0]]);
     expect(component.selectedFoodstuffs()).toEqual([foodstuffs[1], created]);
     expect(foodstuffs).toHaveLength(2);
     component.confirmSelection();
@@ -470,7 +493,10 @@ describe('FoodstuffSelectionDialogComponent', () => {
     creationResult.complete();
     expect(component.searchValue()).toBe('missing');
     expect(component.selectedFoodstuffs()).toEqual([foodstuffs[0]]);
-    expect(component.foodstuffs()).toEqual([foodstuffs[1], foodstuffs[0]]);
+    expect(component.catalogue.foodstuffs()).toEqual([
+      foodstuffs[1],
+      foodstuffs[0],
+    ]);
     expect(close).not.toHaveBeenCalled();
   });
 
