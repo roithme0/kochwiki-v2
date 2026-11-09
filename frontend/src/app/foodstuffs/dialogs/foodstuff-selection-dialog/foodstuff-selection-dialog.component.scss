@@ -112,7 +112,6 @@ app-foodstuff-display {
 .basket-summary > button {
   @include mat.button-overrides(
     (
-      filled-container-shape: 0.75rem,
       filled-container-height: 3rem,
     )
   );
@@ -154,11 +153,9 @@ app-foodstuffs-search {
   @include search-bar.add-button();
   @include mat.button-overrides(
     (
-      filled-container-shape: 0.75rem,
       filled-container-height: 3.5rem,
     )
   );
-  min-width: 0;
   padding: 0;
 }
 
