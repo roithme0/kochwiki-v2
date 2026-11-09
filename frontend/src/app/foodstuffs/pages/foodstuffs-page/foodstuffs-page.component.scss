@@ -50,7 +50,7 @@ main {
   gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-  padding: tokens.$floating-button-position;
+  padding: tokens.$floating-button-position 0;
   align-self: flex-end;
   flex-shrink: 0;
   max-width: 30rem;
