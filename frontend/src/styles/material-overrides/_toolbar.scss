@@ -1,0 +1,10 @@
+@use '@angular/material' as mat;
+@use '../style-tokens' as tokens;
+
+@mixin styles() {
+  @include mat.toolbar-overrides(
+    (
+      container-text-color: tokens.$high-emphasis-font-color,
+    )
+  );
+}

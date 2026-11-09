@@ -1,5 +1,10 @@
 @use '@angular/material' as mat;
 @use './style-tokens' as tokens;
+@use './material-overrides/buttons';
+@use './material-overrides/cards';
+@use './material-overrides/paginator';
+@use './material-overrides/table';
+@use './material-overrides/toolbar';
 
 @include mat.elevation-classes();
 @include mat.app-background();
@@ -32,27 +37,10 @@ html {
 
   @include mat.all-component-themes($dark-theme);
   --mat-app-text-color: #efe7db;
-  @include mat.toolbar-overrides(
-    (
-      container-text-color: tokens.$high-emphasis-font-color,
-    )
-  );
-  @include mat.table-overrides(
-    (
-      header-headline-color: tokens.$high-emphasis-font-color,
-      row-item-label-text-color: tokens.$high-emphasis-font-color,
-    )
-  );
-  @include mat.paginator-overrides(
-    (
-      container-text-color: tokens.$high-emphasis-font-color,
-    )
-  );
-  @include mat.card-overrides(
-    (
-      elevated-container-color: #3b3028,
-      filled-container-color: #3b3028,
-      outlined-container-color: #3b3028,
-    )
-  );
+  @include toolbar.styles();
+  @include table.styles();
+  @include paginator.styles();
 }
+
+@include buttons.styles();
+@include cards.styles();

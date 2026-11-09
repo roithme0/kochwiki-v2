@@ -1,0 +1,65 @@
+@use '@angular/material' as mat;
+
+@mixin styles() {
+  html {
+    @include mat.button-overrides(
+      (
+        filled-container-color: var(--mat-fab-small-container-color),
+        filled-label-text-color: var(--mat-fab-small-foreground-color),
+        filled-container-shape: var(--mat-fab-small-container-shape),
+        tonal-container-shape: var(--mat-fab-small-container-shape),
+        filled-state-layer-color: var(--mat-fab-small-state-layer-color),
+        filled-ripple-color: var(--mat-fab-small-ripple-color),
+        filled-hover-state-layer-opacity: var(
+            --mat-fab-small-hover-state-layer-opacity
+          ),
+        filled-focus-state-layer-opacity: var(
+            --mat-fab-small-focus-state-layer-opacity
+          ),
+        filled-pressed-state-layer-opacity: var(
+            --mat-fab-small-pressed-state-layer-opacity
+          ),
+        filled-disabled-container-color: var(
+            --mat-fab-small-disabled-state-container-color
+          ),
+        filled-disabled-label-text-color: var(
+            --mat-fab-small-disabled-state-foreground-color
+          ),
+        filled-progress-active-indicator-color: var(
+            --mat-fab-small-foreground-color
+          ),
+      )
+    );
+  }
+
+  .mat-mdc-unelevated-button[mat-flat-button] {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .mat-mdc-unelevated-button[mat-flat-button] {
+    box-shadow: var(--mat-fab-small-container-elevation-shadow);
+
+    @media (hover: hover) {
+      &:hover {
+        box-shadow: var(--mat-fab-small-hover-container-elevation-shadow);
+      }
+    }
+
+    &:focus {
+      box-shadow: var(--mat-fab-small-focus-container-elevation-shadow);
+    }
+
+    &:active,
+    &:focus:active {
+      box-shadow: var(--mat-fab-small-pressed-container-elevation-shadow);
+    }
+
+    &[disabled],
+    &[disabled]:focus,
+    &.mat-mdc-button-disabled,
+    &.mat-mdc-button-disabled:focus {
+      box-shadow: none;
+    }
+  }
+}
