@@ -133,7 +133,7 @@ export async function validate(
     };
   }
   const session = hash(request.sessionId);
-  const cache = join(root, ".agents/.codex-validation/aggregate-v2", session);
+  const cache = join(root, ".codex-validation/aggregate-v2", session);
   await mkdir(cache, { recursive: true });
   const path = join(cache, "state.json");
   const state = await readState(path);

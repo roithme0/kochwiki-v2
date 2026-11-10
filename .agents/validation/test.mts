@@ -133,7 +133,7 @@ export async function runTests(
   selection: TestSelection,
   run: typeof runCheck = runCheck,
 ): Promise<void> {
-  const cache = join(root, ".agents/.codex-validation/tests/manual");
+  const cache = join(root, ".codex-validation/tests/manual");
   await mkdir(cache, { recursive: true });
   for (const group of selection.groups) {
     const log = join(cache, `${group}.log`);
@@ -164,7 +164,7 @@ export async function runTests(
       const { testE2E } = await import("./e2e.mts");
       await testE2E(
         root,
-        join(root, ".agents/.codex-validation/e2e/manual"),
+        join(root, ".codex-validation/e2e/manual"),
         run,
         selection.prebuiltImages,
         selection.nativeArgs,

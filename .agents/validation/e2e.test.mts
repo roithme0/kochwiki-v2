@@ -42,12 +42,12 @@ void test('E2E fingerprints deployment and tooling changes, ignores artifacts, a
   execFileSync('git', ['init', '-q'], { cwd: root });
   await mkdir(join(root, 'deployment/tests'), { recursive: true });
   await mkdir(join(root, '.agents/validation'), { recursive: true });
-  await mkdir(join(root, '.agents/.codex-validation'), { recursive: true });
-  await writeFile(join(root, '.agents/.gitignore'), '/.codex-validation/\n');
+  await mkdir(join(root, '.codex-validation'), { recursive: true });
+  await writeFile(join(root, '.gitignore'), '/.codex-validation/\n');
   const dependencies = e2eProfile(root).dependencies(join(root, 'cache'));
   assert.equal(dependencies.reuseSuccess, false);
   const initial = await dependencies.fingerprint();
-  await writeFile(join(root, '.agents/.codex-validation/state.json'), '{}');
+  await writeFile(join(root, '.codex-validation/state.json'), '{}');
   assert.equal(await dependencies.fingerprint(), initial);
   await writeFile(
     join(root, 'deployment/tests/identity-provider.ref'),

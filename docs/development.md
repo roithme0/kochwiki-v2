@@ -153,7 +153,7 @@ For larger changes, the available workflow is `concept-creator` → `prepare-spe
 
 Temporary concepts, specs, and plans belong under `.agents/`, as defined in `AGENTS.md`. Keep them out of commits and permanent documentation.
 
-Review and trust hooks in Codex before relying on them. They run affected [frontend and backend checks](#validate-changes), excluding [E2E](#end-to-end-tests); prepare the same dependencies first. Logs are under `.agents/.codex-validation/`. Update absolute paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the checkout. If hooks are unavailable, run validation manually.
+Review and trust hooks in Codex before relying on them. They run affected [frontend and backend checks](#validate-changes), excluding [E2E](#end-to-end-tests); prepare the same dependencies first. Logs are under `.codex-validation/` at the repository root. Update absolute paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the checkout. If hooks are unavailable, run validation manually.
 
 Use `/skills` and `/hooks` to inspect them in the Codex CLI; see the [official command reference](https://learn.chatgpt.com/docs/developer-commands).
 
@@ -173,6 +173,6 @@ The runner rebuilds and recreates the isolated `kochwiki-e2e` stack using [the E
 
 Every E2E test runs in two Chromium projects: `desktop-chromium` uses Desktop Chrome settings, and `mobile-chromium` uses Pixel 7 settings. To rerun only the browser tests against the prepared stack, run `npm run test:e2e:browser` from **frontend/**. Select one project with `npm run test:e2e:browser -- --project=mobile-chromium` (or `desktop-chromium`). See [the browser tests](../frontend/e2e/) for the login and navigation flows and [the Playwright configuration](../frontend/playwright.config.ts) for browser settings.
 
-Each isolated run prints its retained artifact directory under `.agents/.codex-validation/e2e/`, containing logs, `html-report/`, and failure traces/screenshots in `test-results/`. From **frontend/**, open a report with `npx playwright show-report <artifact-directory>/html-report`.
+Each isolated run prints its retained artifact directory under `.codex-validation/e2e/`, containing logs, `html-report/`, and failure traces/screenshots in `test-results/`. From **frontend/**, open a report with `npx playwright show-report <artifact-directory>/html-report`.
 
 Direct browser runs use `frontend/e2e/test-results/` and `frontend/playwright-report/`. The [CI workflow](../.github/workflows/publish-app.yml) tests built application images before publishing them and uploads diagnostics on failure.

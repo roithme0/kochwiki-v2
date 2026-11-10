@@ -294,7 +294,7 @@ if (
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
   await testE2E(
     root,
-    join(root, '.agents/.codex-validation/e2e/manual'),
+    join(root, '.codex-validation/e2e/manual'),
     runCheck,
     args[0] === '--prebuilt-images',
   );
