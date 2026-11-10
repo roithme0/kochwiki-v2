@@ -1,0 +1,25 @@
+@use '@angular/material' as mat;
+
+@mixin rows {
+  mat-action-list {
+    padding: 0;
+  }
+
+  .foodstuff[mat-list-item] {
+    @include mat.list-overrides(
+      (
+        list-item-disabled-label-text-opacity: 1,
+        list-item-disabled-label-text-color: var(--mat-sys-on-surface),
+        list-item-disabled-state-layer-opacity: 0,
+      )
+    );
+    height: auto;
+    min-height: 64px;
+    padding: 0;
+  }
+
+  app-foodstuff-display {
+    --foodstuff-image-size: 40px;
+    padding: 0.5rem 0;
+  }
+}

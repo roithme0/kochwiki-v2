@@ -1,0 +1,9 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Zutaten</mat-card-title>
+    <mat-card-subtitle>{{ recipe().servings }} Portionen</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    <app-ingredients-list [ingredients]="recipe().ingredients" />
+  </mat-card-content>
+</mat-card>

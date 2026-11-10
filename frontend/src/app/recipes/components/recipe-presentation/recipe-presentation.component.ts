@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { IngredientsGridComponent } from '../ingredients-grid/ingredients-grid.component';
+import { IngredientsCardComponent } from '../ingredients-card/ingredients-card.component';
 import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
@@ -7,7 +7,7 @@ import { RecipePresentation } from '../../models/recipe-presentation';
 @Component({
   selector: 'app-recipe-presentation',
   imports: [
-    IngredientsGridComponent,
+    IngredientsCardComponent,
     StepsGridComponent,
     NutritionCardComponent,
   ],

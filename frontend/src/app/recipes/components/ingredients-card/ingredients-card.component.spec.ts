@@ -2,15 +2,15 @@ import { recipePresentation } from '../../../testing/recipe.fixtures';
 import { TestBed } from '@angular/core/testing';
 import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
 import type { RecipePresentation } from '../../models/recipe-presentation';
-import { IngredientsGridComponent } from './ingredients-grid.component';
+import { IngredientsCardComponent } from './ingredients-card.component';
 
-describe('IngredientsGridComponent foodstuff images', () => {
+describe('IngredientsCardComponent foodstuff images', () => {
   it('renders catalogue images in ingredient order and uses the placeholder for null image references', async () => {
     const download = vi
       .fn<(id: string) => string>()
       .mockReturnValue('/storage/tomato');
     TestBed.configureTestingModule({
-      imports: [IngredientsGridComponent],
+      imports: [IngredientsCardComponent],
       providers: [
         { provide: FoodstuffImageService, useValue: { contentUrl: download } },
       ],
@@ -40,7 +40,7 @@ describe('IngredientsGridComponent foodstuff images', () => {
       ],
       steps: [],
     });
-    const fixture = TestBed.createComponent(IngredientsGridComponent);
+    const fixture = TestBed.createComponent(IngredientsCardComponent);
     fixture.componentRef.setInput('recipe', recipe);
     fixture.detectChanges();
     await fixture.whenStable();

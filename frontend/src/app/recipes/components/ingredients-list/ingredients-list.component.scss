@@ -1,0 +1,18 @@
+@use '../../../../styles/foodstuff-list' as list;
+@use '../../../../styles/style-tokens' as tokens;
+
+@include list.rows;
+
+.foodstuff .amount {
+  align-self: center;
+  max-width: 35%;
+  margin-inline-start: 0.75rem;
+  font-family: tokens.$primary-font-family;
+  font-size: tokens.$primary-font-size;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: normal;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: end;
+}
