@@ -1,0 +1,18 @@
+@if (ingredientsSorted().length) {
+  <mat-action-list aria-label="Zutaten">
+    @for (ingredient of ingredientsSorted(); track ingredient.index) {
+      <button mat-list-item type="button" class="foodstuff" disabled>
+        <app-foodstuff-display
+          matListItemTitle
+          [foodstuff]="ingredient.foodstuff"
+          [showBrand]="true"
+        />
+        <span matListItemMeta class="amount"
+          >{{ ingredient.amount }} {{ ingredient.foodstuff.unitVerbose }}</span
+        >
+      </button>
+    }
+  </mat-action-list>
+} @else {
+  <span>Keine Zutaten vorhanden</span>
+}

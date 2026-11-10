@@ -16,12 +16,12 @@
     @include mat.card-overrides(
       (
         title-text-size: 18px,
-        title-text-line-height: 18px,
+        title-text-line-height: 24px,
       )
     );
 
     --mdc-elevated-card-container-shape: 1rem;
-    --mat-card-subtitle-text-line-height: #{tokens.$primary-font-size};
+    --mat-card-subtitle-text-line-height: 24px;
     --mat-card-subtitle-text-size: #{tokens.$primary-font-size};
     display: flex;
     flex-direction: column;
@@ -60,6 +60,6 @@
 
   mat-card-subtitle.mat-mdc-card-subtitle {
     color: tokens.$medium-emphasis-font-color;
-    padding: 0.25rem 0 0 !important;
+    padding: 0;
   }
 }
