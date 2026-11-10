@@ -173,7 +173,7 @@ if (
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
   const result = await formatBackend(
     root,
-    join(root, ".agents/.codex-validation/backend/manual"),
+    join(root, ".codex-validation/backend/manual"),
   );
   process.stdout.write(
     `Checked ${result.checked.length} changed Python files; formatted ${result.formatted.length}.\n`,

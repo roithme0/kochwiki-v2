@@ -56,7 +56,7 @@ async function fixture(): Promise<string> {
 function format(root: string): ReturnType<typeof formatBackend> {
   return formatBackend(
     root,
-    join(root, '.agents/.codex-validation/backend/manual'),
+    join(root, '.codex-validation/backend/manual'),
     python,
   );
 }
@@ -155,7 +155,7 @@ void test('missing Python reports a formatting failure without changing files', 
   await assert.rejects(
     formatBackend(
       root,
-      join(root, '.agents/.codex-validation/backend/manual'),
+      join(root, '.codex-validation/backend/manual'),
       join(root, 'missing-python'),
     ),
     /Backend Black formatting failed/,
@@ -169,11 +169,11 @@ void test('missing Python reports a formatting failure without changing files', 
 void test('backend fingerprints track shared tooling and environment metadata while ignoring test output', async () => {
   const root = await fixture();
   const before = await backendFingerprint(root);
-  await mkdir(join(root, '.agents/.codex-validation/backend/manual'), {
+  await mkdir(join(root, '.codex-validation/backend/manual'), {
     recursive: true,
   });
   await writeFile(
-    join(root, '.agents/.codex-validation/backend/manual/log'),
+    join(root, '.codex-validation/backend/manual/log'),
     'output',
   );
   await mkdir(join(root, 'backend/tests/.pytest_cache_old'), {
@@ -233,10 +233,10 @@ def test_paths(tmp_path: Path, pytestconfig: Config) -> None:
     assert temporary.name == "tmp"
     assert cache.name == "cache"
     assert temporary.parent == cache.parent
-    assert temporary.parent.parent == pytestconfig.rootpath.parent / ".agents" / ".codex-validation" / "backend" / "checks"
+    assert temporary.parent.parent == pytestconfig.rootpath.parent / ".codex-validation" / "backend" / "checks"
 `,
   );
-  const cache = join(root, '.agents/.codex-validation/backend/checks');
+  const cache = join(root, '.codex-validation/backend/checks');
   await runBackendPytest(root, cache, python);
   await runBackendPytest(root, cache, python);
   const runs = (await readdir(cache)).filter((name) =>
