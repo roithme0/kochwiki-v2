@@ -10,6 +10,7 @@
 app-display-image {
   width: var(--foodstuff-image-size, 24px);
   height: var(--foodstuff-image-size, 24px);
+  flex: none;
 }
 
 .foodstuff-label {
@@ -18,8 +19,7 @@ app-display-image {
   justify-content: center;
   min-width: 0;
   min-height: 2lh;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  overflow: hidden;
 }
 
 .foodstuff-details,
@@ -30,4 +30,11 @@ app-display-image {
 
 .foodstuff-details {
   margin-inline-start: 0.25em;
+}
+
+.foodstuff-primary,
+.foodstuff-brand {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

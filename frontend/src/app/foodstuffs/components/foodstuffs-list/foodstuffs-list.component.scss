@@ -1,4 +1,5 @@
-﻿@use '@angular/material' as mat;
+﻿@use '../../../../styles/foodstuff-list' as list;
+
 :host {
   display: block;
   min-width: 0;
@@ -7,25 +8,9 @@
   box-sizing: border-box;
   overflow-y: auto;
 }
-mat-action-list {
-  padding: 0;
-}
-.foodstuff[mat-list-item] {
-  @include mat.list-overrides(
-    (
-      list-item-disabled-label-text-opacity: 1,
-      list-item-disabled-label-text-color: var(--mat-sys-on-surface),
-      list-item-disabled-state-layer-opacity: 0,
-    )
-  );
-  height: auto;
-  min-height: 64px;
-  padding: 0;
-}
-app-foodstuff-display {
-  --foodstuff-image-size: 40px;
-  padding: 0.5rem 0;
-}
+
+@include list.rows;
+
 .status {
   align-self: center;
   max-width: 6rem;

@@ -307,8 +307,9 @@ void test('validation sessions isolate state, check affected scopes, and aggrega
   for (const scope of ['frontend', 'backend'])
     await writeFile(join(root, `${scope}.txt`), 'before');
   assert.deepEqual(invoke('start'), {});
+  await assert.rejects(readdir(join(root, '.agents')), { code: 'ENOENT' });
   for (const scope of ['frontend', 'backend']) {
-    const directory = join(root, '.agents/.codex-validation', scope);
+    const directory = join(root, '.codex-validation', scope);
     const sessions = await readdir(directory);
     assert.equal(sessions.length, 1);
     const state = JSON.parse(

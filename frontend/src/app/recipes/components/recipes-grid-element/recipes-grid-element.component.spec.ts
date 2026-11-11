@@ -56,6 +56,31 @@ describe('RecipesGridElementComponent', () => {
     );
   });
 
+  it('omits the preparation time subtitle when no time is provided', () => {
+    fixture.componentRef.setInput('recipeVersion', {
+      ...draftRecipeVersion,
+      preptime: null,
+    });
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('mat-card-subtitle'),
+    ).toBeNull();
+  });
+
+  it('displays a preparation time of zero', () => {
+    fixture.componentRef.setInput('recipeVersion', {
+      ...draftRecipeVersion,
+      preptime: 0,
+    });
+    fixture.detectChanges();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('mat-card-subtitle')
+        ?.textContent,
+    ).toContain('0 min');
+  });
+
   it('displays the selected version image with natural height', async () => {
     fixture.componentRef.setInput('recipeVersion', {
       ...draftRecipeVersion,

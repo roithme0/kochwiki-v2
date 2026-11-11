@@ -9,7 +9,7 @@ import { FoodstuffSelectionDialogComponent } from './foodstuff-selection-dialog.
 
 describe('Foodstuff picker result layout', () => {
   it.each([280, 640])(
-    'wraps names, details and brands beside selection status at %i px',
+    'truncates names, details and brands beside selection status at %i px',
     async (width) => {
       await page.viewport(800, 1000);
       const foodstuff = foodstuffOut({
@@ -64,12 +64,17 @@ describe('Foodstuff picker result layout', () => {
       expect(brand.getBoundingClientRect().bottom).toBeLessThanOrEqual(
         result.getBoundingClientRect().bottom,
       );
-      expect(details.getBoundingClientRect().right).toBeLessThanOrEqual(
-        status.getBoundingClientRect().left,
-      );
+      expect(
+        details.parentElement!.getBoundingClientRect().right,
+      ).toBeLessThanOrEqual(status.getBoundingClientRect().left);
       expect(getComputedStyle(details).color).not.toBe(
         getComputedStyle(name).color,
       );
+      const display = result.querySelector<HTMLElement>(
+        'app-foodstuff-display',
+      )!;
+      expect(getComputedStyle(display).paddingTop).toBe('8px');
+      expect(getComputedStyle(display).paddingBottom).toBe('8px');
       expect(image.getBoundingClientRect().width).toBe(40);
       expect(result.scrollWidth).toBeLessThanOrEqual(result.clientWidth);
       result.click();

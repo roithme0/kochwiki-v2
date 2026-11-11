@@ -3,8 +3,8 @@
     linear-gradient(
       to bottom,
       var(--mat-app-background-color) 0%,
-      color-mix(in srgb, var(--mat-app-background-color) 20%, transparent) 70%,
-      color-mix(in srgb, var(--mat-app-background-color) 45%, transparent) 100%
+      color-mix(in srgb, var(--mat-app-background-color) 70%, transparent) 70%,
+      color-mix(in srgb, var(--mat-app-background-color) 75%, transparent) 100%
     ),
     url('../../public/images/background.png');
   background-position: center bottom;

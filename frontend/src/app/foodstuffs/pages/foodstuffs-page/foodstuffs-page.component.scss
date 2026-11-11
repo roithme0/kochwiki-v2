@@ -1,6 +1,7 @@
 @use '../../../../styles/style-tokens' as tokens;
 @use '../../../../styles/page-background';
 @use '../../../../styles/search-bar';
+@use '../../../../styles/scroll-fade';
 
 :host {
   /* stretch hole page */
@@ -38,6 +39,8 @@ main {
 }
 
 .foodstuffs-viewport {
+  @include scroll-fade.bottom();
+
   flex: 1;
   min-height: 0;
   box-sizing: border-box;
@@ -50,7 +53,7 @@ main {
   gap: 0.5rem;
   width: 100%;
   box-sizing: border-box;
-  padding: tokens.$floating-button-position 0;
+  padding: 0 0 tokens.$floating-button-position;
   align-self: flex-end;
   flex-shrink: 0;
   max-width: 30rem;

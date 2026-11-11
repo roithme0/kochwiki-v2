@@ -295,7 +295,7 @@ async function runProfile(
   { start, continued, force }: ValidationRequest,
   checkShared: (cache: string) => Promise<void>,
 ): Promise<ValidationFeedback> {
-  const cache = join(root, '.agents/.codex-validation', profile.scope, session);
+  const cache = join(root, '.codex-validation', profile.scope, session);
   await mkdir(cache, { recursive: true });
   const statePath = join(cache, 'state.json');
   const state = await readState(statePath);

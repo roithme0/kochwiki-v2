@@ -7,7 +7,8 @@ import { MatCardModule } from '@angular/material/card';
   template: `
     <mat-card>
       <mat-card-header>
-        <mat-card-title>Plain title</mat-card-title>
+        <mat-card-title>Zubereitung</mat-card-title>
+        <mat-card-subtitle>30 min</mat-card-subtitle>
       </mat-card-header>
     </mat-card>
     <mat-card>
@@ -33,7 +34,10 @@ describe('Shared card headline typography', () => {
     expect(titles).toHaveLength(3);
     const reference = getComputedStyle(titles[0]);
     expect(reference.fontSize).toBe('18px');
-    expect(reference.lineHeight).toBe('18px');
+    expect(reference.lineHeight).toBe('24px');
+    expect(
+      getComputedStyle(host.querySelector('mat-card-subtitle')!).lineHeight,
+    ).toBe('24px');
 
     for (const element of host.querySelectorAll<HTMLElement>(
       'mat-card-title, mat-card-title h2, mat-card-title h3',

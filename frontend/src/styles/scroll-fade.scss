@@ -1,0 +1,7 @@
+@mixin bottom($size: 2rem) {
+  mask-image: linear-gradient(
+    to bottom,
+    black calc(100% - #{$size}),
+    transparent
+  );
+}

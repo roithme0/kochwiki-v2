@@ -207,7 +207,7 @@ jobs:
         with:
           name: e2e-failure-diagnostics
           path: |
-            .agents/.codex-validation/e2e/
+            .codex-validation/e2e/
             frontend/e2e/test-results/
             frontend/playwright-report/
           include-hidden-files: true
