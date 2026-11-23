@@ -2,12 +2,14 @@
 
 ## Deployment layout
 
-| Environment | Compose file | Application image channel | Default gateway port |
-| --- | --- | --- | --- |
-| Production | [docker-compose-production.yml](../deployment/docker-compose-production.yml) | `latest` | 8003 |
-| Staging | [docker-compose-staging.yml](../deployment/docker-compose-staging.yml) | `alpha` | 8002 |
+| Environment | Compose override | Application image channel |
+| --- | --- | --- |
+| Production | [docker-compose-production.yml](../deployment/docker-compose-production.yml) | `latest` |
+| Staging | [docker-compose-staging.yml](../deployment/docker-compose-staging.yml) | `alpha` |
 
-Use a separate deployment directory and `.env` per environment. Both files bind the same relative database and storage paths; different Compose project names alone do not isolate their data. `GATEWAY_PORT` overrides the defaults.
+Load the [common Compose file](../deployment/docker-compose-common.yml) first, then the environment override. Use a separate deployment directory and `.env` per environment. Both environments bind the same relative database and storage paths, so sharing a directory would also share their data.
+
+The gateway defaults to host port `8000`. Set `GATEWAY_PORT` in each environment's `.env` to use a different port. Environments running on the same host need distinct ports.
 
 The [publishing workflow](../.github/workflows/publish-app.yml) publishes versioned images and updates the channel on release tags: `vX.Y.Z` → `latest`, `vX.Y.Z-alpha.N` → `alpha`. It does not deploy them to a host.
 
@@ -23,15 +25,15 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 
 ## Deploy or update
 
-Commands below run from **deployment/** and show production. For staging, substitute `docker-compose-staging.yml`.
+Commands below run from **deployment/** and show production. For staging, use `docker-compose-staging.yml` as the second file.
 
 Before updating, record the running image IDs, review migrations, and take a restorable backup. Channel tags move; use matching version tags or image digests for frontend and backend when a deployment must be reproducible.
 
 ```sh
-docker compose --env-file .env -f docker-compose-production.yml pull
-docker compose --env-file .env -f docker-compose-production.yml up -d
-docker compose --env-file .env -f docker-compose-production.yml ps -a
-docker compose --env-file .env -f docker-compose-production.yml logs --tail=100 backend gateway file-storage-init
+docker compose --env-file .env -f docker-compose-common.yml -f docker-compose-production.yml pull
+docker compose --env-file .env -f docker-compose-common.yml -f docker-compose-production.yml up -d
+docker compose --env-file .env -f docker-compose-common.yml -f docker-compose-production.yml ps -a
+docker compose --env-file .env -f docker-compose-common.yml -f docker-compose-production.yml logs --tail=100 backend gateway file-storage-init
 ```
 
 The backend runs `alembic upgrade head` before starting. Garage initialization creates/configures image buckets; its container should exit successfully. PostgreSQL initialization runs only for a new data directory: changing passwords in `.env` does not rotate existing database credentials.
@@ -48,7 +50,13 @@ Paths are relative to **deployment/**:
 | Garage image objects and storage metadata | `garage/data/` and `garage/meta/` |
 | Credentials and deployment configuration | `.env` and the configuration files used for that deployment |
 
-Back up database and object storage together: database image references must match the stored objects. For a filesystem backup, stop the stack first with `docker compose --env-file .env -f docker-compose-production.yml stop`, then back up all three data directories and configuration using the host's backup tooling. Protect copied credentials and restart with the deployment command above.
+Back up database and object storage together so database image references match the stored objects. For a filesystem backup, stop the stack from **deployment/**:
+
+```sh
+docker compose --env-file .env -f docker-compose-common.yml -f docker-compose-production.yml stop
+```
+
+Use the staging override when backing up staging. Back up all three data directories and configuration using the host's backup tooling. Protect copied credentials and restart with the deployment command above.
 
 The repository has no automated backup or restore workflow. Verify recovery in an isolated deployment using a matched backup and its compatible application version before relying on it. Reverting application images alone does not reverse migrations. Unsaved proposals are held in backend memory and are lost on restart.
 
