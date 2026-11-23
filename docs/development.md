@@ -21,10 +21,10 @@ Commands below run from the stated directory. On Windows, use `npm.cmd` if Power
 3. From the **repository root**:
 
    ```sh
-   docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml up --build -d
+   docker compose --env-file deployment/.env -f deployment/docker-compose-common.yml -f deployment/docker-compose-local.yml up --build -d
    ```
 
-Open `http://localhost:8002`. Database migrations run when the backend starts. The UI requires login; the identity provider and AI service are not started by this Compose file.
+Open `http://localhost:8002`. Database migrations run when the backend starts. The UI requires login; the identity provider and AI service are not started by this stack.
 
 ### Frontend live reload
 
@@ -42,8 +42,8 @@ Open `http://localhost:4202`. API and storage requests proxy to port 8002. For A
 The container has no live reload. From the **repository root**, rebuild after backend edits:
 
 ```sh
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml up --build -d backend
-docker compose --env-file deployment/.env -f deployment/docker-compose-local.yml logs -f backend
+docker compose --env-file deployment/.env -f deployment/docker-compose-common.yml -f deployment/docker-compose-local.yml up --build -d backend
+docker compose --env-file deployment/.env -f deployment/docker-compose-common.yml -f deployment/docker-compose-local.yml logs -f backend
 ```
 
 ## Validate changes

@@ -7,5 +7,5 @@ router = APIRouter()
 
 
 @router.get("/meta/version", response_class=PlainTextResponse)
-def get_version() -> str:
+async def get_version() -> str:
     return get_settings().app_version
