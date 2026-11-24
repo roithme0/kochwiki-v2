@@ -31,13 +31,6 @@ main {
   place-items: center;
 }
 
-.error {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .foodstuffs-viewport {
   @include scroll-fade.bottom();
 
@@ -61,9 +54,4 @@ main {
 
 .create-foodstuff-button {
   @include search-bar.add-button();
-}
-
-.footer-hidden {
-  visibility: hidden;
-  pointer-events: none;
 }

@@ -1,3 +1,4 @@
+import { ErrorHintComponent } from '../../../core/components/error-hint/error-hint.component';
 import type { OnInit } from '@angular/core';
 import type { RecipeVersionOut } from '../../../core/api/generated';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
@@ -18,6 +19,7 @@ import { RecipesGridControlsService } from '../../services/recipes-grid-controls
 @Component({
   selector: 'app-recipes-page',
   imports: [
+    ErrorHintComponent,
     RecipesGridComponent,
     RecipesSearchComponent,
     MatButtonModule,

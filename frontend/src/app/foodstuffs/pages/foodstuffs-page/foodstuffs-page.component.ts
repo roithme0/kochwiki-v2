@@ -1,3 +1,4 @@
+import { ErrorHintComponent } from '../../../core/components/error-hint/error-hint.component';
 import type { OnInit } from '@angular/core';
 import { Component, DestroyRef, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -20,6 +21,7 @@ import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-d
   selector: 'app-foodstuffs-page',
   providers: [FoodstuffCatalogueService],
   imports: [
+    ErrorHintComponent,
     FoodstuffsListComponent,
     MatButtonModule,
     MatProgressSpinnerModule,

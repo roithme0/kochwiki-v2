@@ -66,7 +66,7 @@ it('keeps the final cards above the fade and centers the error message', async (
   fixture.detectChanges();
   const main = host.querySelector<HTMLElement>('main')!.getBoundingClientRect();
   const error = host
-    .querySelector<HTMLElement>('.error-wrapper p')!
+    .querySelector<HTMLElement>('.error-wrapper app-error-hint')!
     .getBoundingClientRect();
   expect(error.left + error.width / 2).toBeCloseTo(
     main.left + main.width / 2,
@@ -75,6 +75,13 @@ it('keeps the final cards above the fade and centers the error message', async (
   expect(error.top + error.height / 2).toBeCloseTo(
     main.top + main.height / 2,
     0,
+  );
+  const hint = host.querySelector('app-error-hint')!;
+  expect(hint.querySelector('mat-icon')?.getAttribute('fontIcon')).toBe(
+    'error',
+  );
+  expect(hint.querySelector('p')?.textContent?.trim()).toBe(
+    'Ein Fehler ist aufgetreten',
   );
   fixture.destroy();
 });
