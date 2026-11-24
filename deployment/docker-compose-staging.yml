@@ -14,6 +14,7 @@ services:
   backend:
     image: roithme0/kochwiki-v2-backend:alpha
     environment:
+      DEPLOYMENT_ENVIRONMENT_NAME: staging
       STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:?Set STORAGE_PUBLIC_ORIGIN in deployment/.env}
       OIDC_ALLOW_INSECURE_HTTP: ${OIDC_ALLOW_INSECURE_HTTP:-true}
 

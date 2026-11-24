@@ -72,4 +72,16 @@ Session records contain ID tokens with identity claims; restrict database and ba
 | AI requests fail | `AI_GATEWAY_URL` and external service connectivity; an empty URL disables the direct AI gateway route with 503. |
 | Semantic search is unavailable | `AI_GATEWAY_URL`, connectivity from the backend, and AI service embedding logs. |
 
-Use Compose logs for diagnosis. The repository does not configure centralized monitoring or alerting.
+Use Compose logs for diagnosis.
+
+## Endpoint duration metrics
+
+Configure metrics export in `deployment/.env`.
+
+- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTP(S) URL ending in `/otlp/v1/metrics`, reachable from the backend container. Leave it blank to disable export.
+- Set `OTEL_METRICS_BEARER_TOKEN` to the raw token configured on the observability stack.
+- Set `DEPLOYMENT_ENVIRONMENT_NAME` only if you need to override the default local label, `local`. The staging and production Compose files set their own labels.
+
+Follow the observability stack’s provisioning guide to load the KochWiki dashboard JSON, then select your environment in Grafana. [Dashboard JSON](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
+
+If the dashboard shows **No data**, check the backend startup logs for the export status and configuration errors. If export is enabled, send requests to a matched API route across two one-minute export cycles so the dashboard can calculate an increase.
