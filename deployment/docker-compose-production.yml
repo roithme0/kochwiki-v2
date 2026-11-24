@@ -14,6 +14,7 @@ services:
   backend:
     image: roithme0/kochwiki-v2-backend:latest
     environment:
+      DEPLOYMENT_ENVIRONMENT_NAME: production
       STORAGE_PUBLIC_ORIGIN: ${STORAGE_PUBLIC_ORIGIN:?Set STORAGE_PUBLIC_ORIGIN in deployment/.env}
 
   frontend:

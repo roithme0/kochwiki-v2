@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -8,6 +10,7 @@ from app.api.router import router
 from app.identity.logging import configure_auth_logging
 from app.core.config import get_settings
 from app.infrastructure.mcp.server import create_mcp_server
+from app.infrastructure.metrics import create_metrics_provider, instrument_metrics
 from app.infrastructure.mcp.services import MCPServices
 from app.core.schemas.errors import ErrorResponse
 from app.infrastructure.embeddings.lifecycle import (
@@ -17,6 +20,8 @@ from app.infrastructure.embeddings.lifecycle import (
 from app.core.exceptions import DomainError
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.images.dependencies import ImageStoragePool
+
+logger = logging.getLogger(__name__)
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
@@ -33,18 +38,27 @@ def create_app() -> FastAPI:
     recipe_proposals = RecipeProposalStore()
     image_storages = ImageStoragePool()
     mcp_services = MCPServices(recipe_proposals)
-    server, mcp_app = create_mcp_server(mcp_services)
+    mcp_server, mcp_app = create_mcp_server(mcp_services)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         try:
             with semantic_search_services(settings, mcp_services) as embeddings:
                 with embedding_refresh_workers(embeddings):
-                    async with server.session_manager.run():
+                    async with mcp_server.session_manager.run():
                         yield
         finally:
-            image_storages.close()
-            recipe_proposals.clear()
+            if metrics_provider is not None:
+                try:
+                    await asyncio.to_thread(
+                        metrics_provider.shutdown, timeout_millis=4000
+                    )
+                except Exception:
+                    logger.warning("Metrics shutdown failed")
+            try:
+                image_storages.close()
+            finally:
+                recipe_proposals.clear()
 
     application = FastAPI(
         title="Kochwiki API",
@@ -58,6 +72,17 @@ def create_app() -> FastAPI:
     application.state.image_storages = image_storages
     application.include_router(router)
     application.mount("/mcp", mcp_app)
+    metrics_provider = create_metrics_provider(settings.app_version)
+    if metrics_provider is not None:
+        try:
+            instrument_metrics(application, metrics_provider)
+        except Exception:
+            logger.warning("Invalid metrics configuration; metrics export disabled")
+            try:
+                metrics_provider.shutdown(timeout_millis=4000)
+            except Exception:
+                logger.warning("Metrics shutdown failed")
+            metrics_provider = None
     return application
 
 

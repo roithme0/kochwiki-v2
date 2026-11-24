@@ -72,4 +72,35 @@ Session records contain ID tokens with identity claims; restrict database and ba
 | AI requests fail | `AI_GATEWAY_URL` and external service connectivity; an empty URL disables the direct AI gateway route with 503. |
 | Semantic search is unavailable | `AI_GATEWAY_URL`, connectivity from the backend, and AI service embedding logs. |
 
-Use Compose logs for diagnosis. The repository does not configure centralized monitoring or alerting.
+Use Compose logs for diagnosis.
+
+## Endpoint duration metrics
+
+To enable metrics export, set these values in the environment's `deployment/.env`.
+
+- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTPS ingress URL ending in `/otlp/v1/metrics`. The backend container must be able to reach it. An empty endpoint disables export.
+- Set `OTEL_METRICS_BEARER_TOKEN` to the raw bearer token from the deployment secret. The backend constructs the authorization header.
+
+In Grafana Explore, select the deployment environment and group by FastAPI route template and HTTP method. The route filter limits the queries to matched routes.
+
+This query shows the five-minute request count for staging.
+
+```promql
+sum by (http_route, http_request_method) (
+  increase(http_server_request_duration_seconds_count{
+    job="personal/kochwiki", deployment_environment_name="staging", http_route!=""
+  }[5m])
+)
+```
+
+Use the same histogram to estimate p95 in seconds.
+
+```promql
+histogram_quantile(0.95, sum by (le, http_route, http_request_method) (
+  rate(http_server_request_duration_seconds_bucket{
+    job="personal/kochwiki", deployment_environment_name="staging", http_route!=""
+  }[5m])
+))
+```
+
+Add `http_response_status_code="200"` to either selector to filter by status. To verify ingestion after a configuration change, generate requests across two export cycles and check that the count increases and p95 returns data.
