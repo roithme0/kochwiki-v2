@@ -228,7 +228,9 @@ def test_otlp_wire_export_and_unique_instances(
                         assert metric.HasField("histogram")
                         assert metric.histogram.aggregation_temporality == 2
                         assert all(
-                            point.explicit_bounds and not point.exemplars
+                            list(point.explicit_bounds) == [0.05, 0.2, 0.5]
+                            and len(point.bucket_counts) == 4
+                            and not point.exemplars
                             for point in metric.histogram.data_points
                         )
         assert len(instances) == 2

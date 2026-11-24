@@ -1,0 +1,121 @@
+{
+  "uid": "kochwiki-request-duration",
+  "title": "KochWiki Request Duration",
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name!=\"\"}, deployment_environment_name)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false
+      },
+      {
+        "name": "route",
+        "label": "Matched route",
+        "description": "All includes every matched FastAPI route in the selected environment.",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", http_route!=\"\"}, http_route)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allowCustomValue": false,
+        "allValue": ".+",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request duration histogram",
+      "description": "Estimated request counts across all HTTP statuses. Each upper bound is inclusive. The final bar includes every request slower than 500 ms.",
+      "type": "barchart",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 0, "w": 18, "h": 10 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "legendFormat": "{{bucket}}",
+          "instant": true,
+          "range": false,
+          "expr": "label_replace(\n  sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.05\"}[$__range])),\n  \"bucket\", \"1\", \"\", \"\"\n) or label_replace(\n  sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.2\"}[$__range]))\n  - sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.05\"}[$__range])),\n  \"bucket\", \"2\", \"\", \"\"\n) or label_replace(\n  sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.5\"}[$__range]))\n  - sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.2\"}[$__range])),\n  \"bucket\", \"3\", \"\", \"\"\n) or label_replace(\n  sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"+Inf\"}[$__range]))\n  - sum(increase(http_server_request_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, le=\"0.5\"}[$__range])),\n  \"bucket\", \"4\", \"\", \"\"\n)"
+        }
+      ],
+      "transformations": [
+        { "id": "seriesToRows", "options": {} },
+        { "id": "sortBy", "options": { "sort": [{ "field": "Metric" }] } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true } } }
+      ],
+      "fieldConfig": {
+        "defaults": { "min": 0, "custom": { "axisLabel": "Requests" } },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Metric" },
+            "properties": [
+              { "id": "custom.axisLabel", "value": "Duration" },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": { "text": "≤ 50 ms" },
+                      "2": { "text": "50–200 ms" },
+                      "3": { "text": "200–500 ms" },
+                      "4": { "text": "> 500 ms" }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Metric",
+        "orientation": "vertical",
+        "legend": { "showLegend": false }
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP 500 error rate",
+      "description": "Share of requests that returned exactly HTTP 500 over the selected time range.",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 10 },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "expr": "(\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_response_status_code=\"500\"}[$__range]))\n  or vector(0)\n) / (\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`}[$__range])) > 0\n)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percentunit", "noValue": "No data" },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
+      }
+    }
+  ]
+}

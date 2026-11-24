@@ -53,7 +53,9 @@ def create_metrics_provider(version: str) -> MeterProvider | None:
                 View(instrument_name="*", aggregation=DropAggregation()),
                 View(
                     instrument_name="http.server.request.duration",
-                    aggregation=ExplicitBucketHistogramAggregation(),
+                    aggregation=ExplicitBucketHistogramAggregation(
+                        boundaries=(0.05, 0.2, 0.5)
+                    ),
                     attribute_keys={
                         "http.request.method",
                         "http.route",

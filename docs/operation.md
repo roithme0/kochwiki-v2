@@ -81,6 +81,10 @@ To enable metrics export, set these values in the environment's `deployment/.env
 - Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTP or HTTPS ingress URL ending in `/otlp/v1/metrics`. The backend container must be able to reach it. An empty endpoint disables export.
 - Set `OTEL_METRICS_BEARER_TOKEN` to the raw bearer token from the deployment secret. The backend constructs the authorization header.
 
+Provision the dashboard by placing its JSON in the observability stack's `GRAFANA_DASHBOARDS_DIR`. Select an environment and optionally a FastAPI route template. The dashboard starts with the last hour and includes all matched routes in the selected environment by default. [KochWiki Request Duration dashboard](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
+
+The histogram shows estimated request counts in four buckets with upper bounds of 50 ms, 200 ms, 500 ms, and an overflow bucket above 500 ms. The stat shows the share of matching requests that returned HTTP 500. It shows `0%` when matching requests have no HTTP 500s and `No data` when the counters show no matching requests or have insufficient samples. Prometheus estimates counter increases over the selected range from the one-minute exports.
+
 In Grafana Explore, select the deployment environment and group by FastAPI route template and HTTP method. The route filter limits the queries to matched routes.
 
 This query shows the five-minute request count for staging.
