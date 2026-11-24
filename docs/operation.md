@@ -76,35 +76,12 @@ Use Compose logs for diagnosis.
 
 ## Endpoint duration metrics
 
-To enable metrics export, set these values in the environment's `deployment/.env`.
+Configure metrics export in `deployment/.env`.
 
-- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTP or HTTPS ingress URL ending in `/otlp/v1/metrics`. The backend container must be able to reach it. An empty endpoint disables export.
-- Set `OTEL_METRICS_BEARER_TOKEN` to the raw bearer token from the deployment secret. The backend constructs the authorization header.
+- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTP(S) URL ending in `/otlp/v1/metrics`, reachable from the backend container. Leave it blank to disable export.
+- Set `OTEL_METRICS_BEARER_TOKEN` to the raw token configured on the observability stack.
+- Set `DEPLOYMENT_ENVIRONMENT_NAME` only if you need to override the default local label, `local`. The staging and production Compose files set their own labels.
 
-Provision the dashboard by placing its JSON in the observability stack's `GRAFANA_DASHBOARDS_DIR`. Select an environment and optionally a FastAPI route template. The dashboard starts with the last hour and includes all matched routes in the selected environment by default. [KochWiki Request Duration dashboard](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
+Follow the observability stack’s provisioning guide to load the KochWiki dashboard JSON, then select your environment in Grafana. [Dashboard JSON](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
 
-The histogram shows estimated request counts in four buckets with upper bounds of 50 ms, 200 ms, 500 ms, and an overflow bucket above 500 ms. The stat shows the share of matching requests that returned HTTP 500. It shows `0%` when matching requests have no HTTP 500s and `No data` when the counters show no matching requests or have insufficient samples. Prometheus estimates counter increases over the selected range from the one-minute exports.
-
-In Grafana Explore, select the deployment environment and group by FastAPI route template and HTTP method. The route filter limits the queries to matched routes.
-
-This query shows the five-minute request count for staging.
-
-```promql
-sum by (http_route, http_request_method) (
-  increase(http_server_request_duration_seconds_count{
-    job="personal/kochwiki", deployment_environment_name="staging", http_route!=""
-  }[5m])
-)
-```
-
-Use the same histogram to estimate p95 in seconds.
-
-```promql
-histogram_quantile(0.95, sum by (le, http_route, http_request_method) (
-  rate(http_server_request_duration_seconds_bucket{
-    job="personal/kochwiki", deployment_environment_name="staging", http_route!=""
-  }[5m])
-))
-```
-
-Add `http_response_status_code="200"` to either selector to filter by status. To verify ingestion after a configuration change, generate requests across two export cycles and check that the count increases and p95 returns data.
+If the dashboard shows **No data**, check the backend startup logs for the export status and configuration errors. If export is enabled, send requests to a matched API route across two one-minute export cycles so the dashboard can calculate an increase.

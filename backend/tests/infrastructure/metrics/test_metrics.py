@@ -255,15 +255,44 @@ def test_unreachable_receiver_keeps_api_and_shutdown_available(
 
 
 @pytest.mark.parametrize(
-    "endpoint,token",
+    "endpoint,token,environment,diagnostic",
     [
         (
             "http://user:password@localhost:4318/otlp/v1/metrics",
             "token",
+            "test",
+            "must be a valid HTTP(S) URL without credentials",
         ),
-        ("http://localhost:bad/otlp/v1/metrics", "token"),
-        ("http://localhost:0/otlp/v1/metrics", "token"),
-        ("http://localhost:4318/otlp/v1/metrics", "malformed secret value"),
+        (
+            "http://localhost:bad/otlp/v1/metrics",
+            "token",
+            "test",
+            "must be a valid HTTP(S) URL without credentials",
+        ),
+        (
+            "http://localhost:0/otlp/v1/metrics",
+            "token",
+            "test",
+            "must be a valid HTTP(S) URL without credentials",
+        ),
+        (
+            "http://localhost:4318/",
+            "token",
+            "test",
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must end in /otlp/v1/metrics",
+        ),
+        (
+            "http://localhost:4318/otlp/v1/metrics",
+            "malformed secret value",
+            "test",
+            "OTEL_METRICS_BEARER_TOKEN must be a raw bearer token",
+        ),
+        (
+            "http://localhost:4318/otlp/v1/metrics",
+            "token",
+            "",
+            "DEPLOYMENT_ENVIRONMENT_NAME must be set",
+        ),
     ],
 )
 def test_invalid_settings_are_redacted_and_do_not_break_api(
@@ -271,15 +300,62 @@ def test_invalid_settings_are_redacted_and_do_not_break_api(
     caplog: pytest.LogCaptureFixture,
     endpoint: str,
     token: str,
+    environment: str,
+    diagnostic: str,
 ) -> None:
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
     monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", token)
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
+    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", environment)
     with TestClient(create_app()) as client:
         assert client.get("/meta/version").status_code == 200
-    assert "Invalid metrics configuration; metrics export disabled" in caplog.text
+    assert "Metrics export disabled due to invalid configuration" in caplog.text
+    assert diagnostic in caplog.text
     assert "malformed secret value" not in caplog.text
     assert "password" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "endpoint,level,message",
+    [
+        ("", "INFO:", "Metrics export disabled because"),
+        (
+            "http://localhost:4318/",
+            "ERROR:",
+            "Metrics export disabled due to invalid configuration",
+        ),
+        (
+            "http://localhost:4318/otlp/v1/metrics",
+            "INFO:",
+            "Request duration metrics export enabled",
+        ),
+    ],
+)
+def test_uvicorn_logs_metrics_status_on_app_load(
+    monkeypatch: pytest.MonkeyPatch, endpoint: str, level: str, message: str
+) -> None:
+    import subprocess
+    import sys
+
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
+    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "private-metrics-token")
+    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from uvicorn import Config; Config('app.main:app').load()",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert any(
+        line.startswith(level) and message in line
+        for line in result.stderr.splitlines()
+    ), result.stderr
+    assert "private-metrics-token" not in result.stderr
 
 
 @pytest.mark.parametrize("enabled", [False, True])

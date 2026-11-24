@@ -21,7 +21,7 @@ from app.core.exceptions import DomainError
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.images.dependencies import ImageStoragePool
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error.metrics")
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
@@ -76,8 +76,11 @@ def create_app() -> FastAPI:
     if metrics_provider is not None:
         try:
             instrument_metrics(application, metrics_provider)
-        except Exception:
-            logger.warning("Invalid metrics configuration; metrics export disabled")
+        except Exception as error:
+            logger.error(
+                "Metrics export disabled because request instrumentation failed (%s)",
+                type(error).__name__,
+            )
             try:
                 metrics_provider.shutdown(timeout_millis=4000)
             except Exception:

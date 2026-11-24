@@ -20,14 +20,22 @@ from opentelemetry.trace import NoOpTracerProvider
 
 from .config import MetricsConfig
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error.metrics")
 
 
 def create_metrics_provider(version: str) -> MeterProvider | None:
     try:
         config = MetricsConfig.from_environment()
-        if config is None:
-            return None
+    except ValueError as error:
+        logger.error("Metrics export disabled due to invalid configuration. %s", error)
+        return None
+    if config is None:
+        logger.info(
+            "Metrics export disabled because OTEL_EXPORTER_OTLP_METRICS_ENDPOINT is empty"
+        )
+        return None
+
+    try:
         exporter = OTLPMetricExporter(
             endpoint=config.endpoint,
             headers={
@@ -65,8 +73,11 @@ def create_metrics_provider(version: str) -> MeterProvider | None:
                 ),
             ],
         )
-    except Exception:
-        logger.warning("Invalid metrics configuration; metrics export disabled")
+    except Exception as error:
+        logger.error(
+            "Metrics export disabled because exporter initialization failed (%s)",
+            type(error).__name__,
+        )
         return None
 
 
@@ -89,3 +100,4 @@ def instrument_metrics(app: FastAPI, provider: MeterProvider) -> None:
         tracer_provider=NoOpTracerProvider(),
         excluded_urls=",".join(excluded),
     )
+    logger.info("Request duration metrics export enabled")
