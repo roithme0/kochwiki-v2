@@ -1,7 +1,8 @@
 ﻿@use '../../../../styles/foodstuff-list' as list;
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -19,11 +20,21 @@
   text-align: end;
 }
 .empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   text-align: center;
+}
+
+mat-action-list:empty {
+  display: none;
+}
+
+:host(.foodstuffs-viewport) mat-action-list {
+  padding-bottom: 2rem;
 }
 
 :host(.viewport-hidden) {

@@ -4,7 +4,9 @@
       <mat-spinner diameter="25" />
     </div>
   } @else if (recipeVersionsState().status === 'error') {
-    <p>Ein Fehler ist aufgetreten</p>
+    <div class="error-wrapper">
+      <app-error-hint>Ein Fehler ist aufgetreten</app-error-hint>
+    </div>
   } @else {
     <div class="grid-wrapper">
       <app-recipes-grid

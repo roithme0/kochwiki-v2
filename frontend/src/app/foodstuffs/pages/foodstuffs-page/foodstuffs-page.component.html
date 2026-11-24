@@ -1,54 +1,40 @@
 <main>
-  <!-- loading -->
   @if (catalogue.state().status === 'loading') {
     <div class="spinner-wrapper">
       <mat-spinner diameter="25" />
     </div>
-  }
-
-  <!-- error -->
-  @else if (catalogue.state().status === 'error') {
+  } @else if (catalogue.state().status === 'error') {
     <div class="error-wrapper">
-      <div class="error">
-        <mat-icon aria-hidden="false" aria-label="Fehler" fontIcon="error" />
-        <p>Zutaten konnten nicht geladen werden.</p>
-      </div>
+      <app-error-hint>Zutaten konnten nicht geladen werden.</app-error-hint>
+    </div>
+  } @else {
+    <app-foodstuffs-list
+      class="foodstuffs-viewport"
+      [foodstuffs]="catalogue.state().data"
+      [searchValue]="foodstuffSearchState.searchBy()"
+      [showResetWhenEmpty]="false"
+      emptyMessage="Keine passenden Lebensmittel gefunden."
+      emptyCatalogueMessage="Keine Lebensmittel vorhanden."
+      (activated)="openEditFoodstuffDialog($event)"
+      (resetSearch)="foodstuffSearchState.clearSearch()"
+    />
+
+    <div class="bottom-elements">
+      <app-foodstuffs-search
+        [searchValue]="foodstuffSearchState.searchBy()"
+        (searchValueChange)="foodstuffSearchState.searchBy = $event"
+      />
+      <button
+        mat-mini-fab
+        (click)="openCreateFoodstuffDialog()"
+        class="create-foodstuff-button"
+      >
+        <mat-icon
+          aria-hidden="false"
+          aria-label="Lebensmittel hinzufügen"
+          fontIcon="add"
+        />
+      </button>
     </div>
   }
-
-  <app-foodstuffs-list
-    class="foodstuffs-viewport"
-    [class.viewport-hidden]="catalogue.state().status !== 'success'"
-    [attr.aria-hidden]="catalogue.state().status !== 'success' ? true : null"
-    [foodstuffs]="catalogue.state().data"
-    [searchValue]="foodstuffSearchState.searchBy()"
-    [showResetWhenEmpty]="false"
-    emptyMessage="Keine passenden Lebensmittel gefunden."
-    emptyCatalogueMessage="Keine Lebensmittel vorhanden."
-    (activated)="openEditFoodstuffDialog($event)"
-    (resetSearch)="foodstuffSearchState.clearSearch()"
-  />
-
-  <!-- loaded -->
-  <div
-    class="bottom-elements"
-    [class.footer-hidden]="catalogue.state().status !== 'success'"
-    [attr.aria-hidden]="catalogue.state().status !== 'success' ? true : null"
-  >
-    <app-foodstuffs-search
-      [searchValue]="foodstuffSearchState.searchBy()"
-      (searchValueChange)="foodstuffSearchState.searchBy = $event"
-    />
-    <button
-      mat-mini-fab
-      (click)="openCreateFoodstuffDialog()"
-      class="create-foodstuff-button"
-    >
-      <mat-icon
-        aria-hidden="false"
-        aria-label="Lebensmittel hinzufügen"
-        fontIcon="add"
-      />
-    </button>
-  </div>
 </main>
