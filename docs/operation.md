@@ -78,7 +78,7 @@ Use Compose logs for diagnosis.
 
 To enable metrics export, set these values in the environment's `deployment/.env`.
 
-- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTPS ingress URL ending in `/otlp/v1/metrics`. The backend container must be able to reach it. An empty endpoint disables export.
+- Set `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` to the full HTTP or HTTPS ingress URL ending in `/otlp/v1/metrics`. The backend container must be able to reach it. An empty endpoint disables export.
 - Set `OTEL_METRICS_BEARER_TOKEN` to the raw bearer token from the deployment secret. The backend constructs the authorization header.
 
 In Grafana Explore, select the deployment environment and group by FastAPI route template and HTTP method. The route filter limits the queries to matched routes.

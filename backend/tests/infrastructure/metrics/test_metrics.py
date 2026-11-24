@@ -130,7 +130,10 @@ def test_disabled_or_invalid_export_preserves_api(
     assert time.monotonic() - start < 5
 
 
-def test_otlp_wire_export_and_unique_instances(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("environment", ["staging", "production"])
+def test_otlp_wire_export_and_unique_instances(
+    monkeypatch: pytest.MonkeyPatch, environment: str
+) -> None:
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     from threading import Thread
     from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
@@ -165,7 +168,7 @@ def test_otlp_wire_export_and_unique_instances(monkeypatch: pytest.MonkeyPatch) 
         f"http://127.0.0.1:{server.server_port}/otlp/v1/metrics",
     )
     monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "test-token")
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
+    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", environment)
     monkeypatch.setenv("OTEL_METRICS_EXEMPLAR_FILTER", "always_on")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "DELTA")
     monkeypatch.setenv(
@@ -217,7 +220,7 @@ def test_otlp_wire_export_and_unique_instances(monkeypatch: pytest.MonkeyPatch) 
                 assert attrs["service.namespace"] == "personal"
                 assert attrs["service.name"] == "kochwiki"
                 assert attrs["service.version"] == app1.version
-                assert attrs["deployment.environment.name"] == "test"
+                assert attrs["deployment.environment.name"] == environment
                 instances.add(attrs["service.instance.id"])
                 for scope in resource.scope_metrics:
                     for metric in scope.metrics:
