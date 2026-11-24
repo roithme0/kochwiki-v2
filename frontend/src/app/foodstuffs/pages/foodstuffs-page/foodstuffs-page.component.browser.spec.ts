@@ -11,6 +11,68 @@ import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
 import { FoodstuffsPageComponent } from './foodstuffs-page.component';
 
+it('centers the empty search and error states in their available areas', async () => {
+  const getAllFoodstuffs = vi.fn().mockResolvedValue([]);
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: FoodstuffBackendService,
+        useValue: { getAllFoodstuffs, foodstuffsChanged$: new Subject<void>() },
+      },
+      {
+        provide: RecipeBackendService,
+        useValue: { recipesChanged$: new Subject<void>() },
+      },
+      { provide: FoodstuffImageService, useValue: {} },
+      { provide: PageHeaderService, useValue: { updateHeader: vi.fn() } },
+      { provide: SnackBarService, useValue: { open: vi.fn() } },
+      { provide: MatDialog, useValue: { open: vi.fn() } },
+    ],
+  });
+  const fixture = TestBed.createComponent(FoodstuffsPageComponent);
+  const host = fixture.nativeElement as HTMLElement;
+  host.style.height = '600px';
+  host.style.width = '320px';
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.componentInstance.foodstuffSearchState.searchBy = 'missing';
+  fixture.detectChanges();
+
+  const assertCentered = (outer: HTMLElement, inner: HTMLElement): void => {
+    const container = outer.getBoundingClientRect();
+    const content = inner.getBoundingClientRect();
+    expect(content.left + content.width / 2).toBeCloseTo(
+      container.left + container.width / 2,
+      0,
+    );
+    expect(content.top + content.height / 2).toBeCloseTo(
+      container.top + container.height / 2,
+      0,
+    );
+  };
+  const viewport = host.querySelector<HTMLElement>('app-foodstuffs-list')!;
+  const message = host.querySelector<HTMLElement>('.empty-state p')!;
+  const reset = host.querySelector<HTMLElement>('.empty-state button')!;
+  const viewportRect = viewport.getBoundingClientRect();
+  const messageRect = message.getBoundingClientRect();
+  const resetRect = reset.getBoundingClientRect();
+  expect(messageRect.left + messageRect.width / 2).toBeCloseTo(
+    viewportRect.left + viewportRect.width / 2,
+    0,
+  );
+  expect((messageRect.top + resetRect.bottom) / 2).toBeCloseTo(
+    viewportRect.top + viewportRect.height / 2,
+    0,
+  );
+
+  getAllFoodstuffs.mockRejectedValueOnce(new Error('failed'));
+  await fixture.componentInstance.catalogue.refresh();
+  fixture.detectChanges();
+  assertCentered(host.querySelector('main')!, host.querySelector('.error')!);
+  fixture.destroy();
+});
+
 it.each([320, 640])(
   'keeps the final row above floating controls, resets scrolling on search and supports native keyboard activation at %i px',
   async (width) => {
@@ -77,7 +139,7 @@ it.each([320, 640])(
       controls.getBoundingClientRect().top,
     );
     expect(rows[29].getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      viewport.getBoundingClientRect().bottom,
+      viewport.getBoundingClientRect().bottom - 32,
     );
     expect(host.querySelector('.bottom-elements-placeholder')).toBeNull();
     expect(getComputedStyle(viewport).backgroundColor).toBe('rgba(0, 0, 0, 0)');

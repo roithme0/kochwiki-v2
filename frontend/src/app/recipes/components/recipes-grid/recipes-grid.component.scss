@@ -9,6 +9,8 @@
 .grid {
   --columns: 2;
   width: 100%;
+  box-sizing: border-box;
+  padding-bottom: 2rem;
   display: grid;
   grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
   grid-auto-rows: 1px;
