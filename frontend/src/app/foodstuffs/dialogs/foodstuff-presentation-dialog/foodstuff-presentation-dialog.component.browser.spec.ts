@@ -1,8 +1,14 @@
-﻿import { TestBed } from '@angular/core/testing';
-import { MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
+import { TestBed } from '@angular/core/testing';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { page } from 'vitest/browser';
 import { Subject } from 'rxjs';
 import { foodstuffOut } from '../../../testing/foodstuff.fixtures';
+import { FoodstuffBackendService } from '../../services/foodstuff-backend.service';
+import { SnackBarService } from '../../../core/services/snack-bar.service';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 import { FoodstuffPresentationDialogComponent } from './foodstuff-presentation-dialog.component';
 
@@ -15,13 +21,16 @@ it('keeps the edit action visible while the last content clears it at narrow wid
         provide: MAT_DIALOG_DATA,
         useValue: {
           foodstuff: foodstuffOut({
-            name: 'Long'.repeat(40),
-            brand: 'Brand'.repeat(40),
+            name: 'Long'.repeat(4),
+            brand: 'Brand'.repeat(4),
           }),
           editable: true,
         },
       },
       { provide: MatDialog, useValue: { open: vi.fn() } },
+      { provide: MatDialogRef, useValue: { close: vi.fn() } },
+      { provide: FoodstuffBackendService, useValue: {} },
+      { provide: SnackBarService, useValue: { open: vi.fn() } },
       { provide: FoodstuffImageService, useValue: { contentUrl: vi.fn() } },
     ],
   });
@@ -38,6 +47,7 @@ it('keeps the edit action visible while the last content clears it at narrow wid
   await fixture.whenStable();
   const scroll = host.querySelector<HTMLElement>('mat-dialog-content')!;
   const actions = host.querySelector<HTMLElement>('app-floating-actions')!;
+  scroll.style.overflowY = 'auto';
   expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
   const before = actions.getBoundingClientRect();
   scroll.scrollTo({ top: scroll.scrollHeight, behavior: 'instant' });

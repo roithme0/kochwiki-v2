@@ -9,6 +9,7 @@ export interface FloatingAction {
   icon: string;
   color?: 'primary' | 'warn';
   route?: string[];
+  disabled?: boolean;
 }
 
 @Component({

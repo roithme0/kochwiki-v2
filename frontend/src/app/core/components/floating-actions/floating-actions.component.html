@@ -11,6 +11,7 @@
     <button
       mat-mini-fab
       type="button"
+      [disabled]="action.disabled ?? false"
       [color]="action.color"
       [attr.aria-label]="action.label"
       (click)="activated.emit(action.id)"

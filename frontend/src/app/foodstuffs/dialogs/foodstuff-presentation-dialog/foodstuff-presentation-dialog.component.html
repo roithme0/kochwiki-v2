@@ -11,7 +11,7 @@
 </mat-dialog-content>
 @if (data.editable) {
   <app-floating-actions
-    [actions]="actions"
+    [actions]="actions()"
     (activated)="activateAction($event)"
   />
 }
