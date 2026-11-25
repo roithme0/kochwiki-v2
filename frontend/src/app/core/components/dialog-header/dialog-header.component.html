@@ -1,5 +1,10 @@
 <!-- not using mat-dialog-title as it caused style issues with its ::before -->
-<h2 class="title">{{ title() }}</h2>
+<div class="heading">
+  <h2 class="title">{{ title() }}</h2>
+  @if (subtitle()) {
+    <div class="subtitle">{{ subtitle() }}</div>
+  }
+</div>
 @if (showCloseButon() === true) {
   <mat-dialog-actions>
     <button

@@ -1,8 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { IngredientsCardComponent } from '../ingredients-card/ingredients-card.component';
 import { NutritionCardComponent } from '../../../core/components/nutrition-card/nutrition-card.component';
 import { StepsGridComponent } from '../steps-grid/steps-grid.component';
 import { RecipePresentation } from '../../models/recipe-presentation';
+import type { RecipePresentationIngredient } from '../../models/recipe-presentation';
 
 @Component({
   selector: 'app-recipe-presentation',
@@ -16,4 +17,6 @@ import { RecipePresentation } from '../../models/recipe-presentation';
 })
 export class RecipePresentationComponent {
   readonly recipe = input.required<RecipePresentation>();
+  readonly interactiveIngredients = input(false);
+  readonly ingredientActivated = output<RecipePresentationIngredient>();
 }

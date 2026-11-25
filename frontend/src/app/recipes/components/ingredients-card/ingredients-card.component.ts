@@ -1,6 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { RecipePresentation } from '../../models/recipe-presentation';
+import type { RecipePresentationIngredient } from '../../models/recipe-presentation';
 import { IngredientsListComponent } from '../ingredients-list/ingredients-list.component';
 
 @Component({
@@ -11,4 +12,6 @@ import { IngredientsListComponent } from '../ingredients-list/ingredients-list.c
 })
 export class IngredientsCardComponent {
   readonly recipe = input.required<RecipePresentation>();
+  readonly interactive = input(false);
+  readonly activated = output<RecipePresentationIngredient>();
 }

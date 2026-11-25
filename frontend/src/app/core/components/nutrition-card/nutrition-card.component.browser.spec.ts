@@ -28,7 +28,7 @@ describe('NutritionCardComponent legend layout', () => {
 
   afterEach(() => fixture.destroy());
 
-  it.each([480, 448, 390, 190])(
+  it.each([480, 448, 390, 320, 190])(
     'keeps fiber separate and values readable at %i px',
     async (width) => {
       host.style.width = `${width}px`;
@@ -102,7 +102,7 @@ describe('NutritionCardComponent legend layout', () => {
         const percentageBounds = percentage.getBoundingClientRect();
         expect(valueBounds.left).toBeGreaterThanOrEqual(percentageBounds.right);
         expect(valueBounds.top).toBeCloseTo(percentageBounds.top, 0);
-        if (width > 190) {
+        if (bounds.width > 288) {
           expect(labelBounds.left).toBeGreaterThanOrEqual(
             marker.getBoundingClientRect().right,
           );

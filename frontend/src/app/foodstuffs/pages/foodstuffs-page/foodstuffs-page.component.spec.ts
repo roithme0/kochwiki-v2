@@ -3,6 +3,7 @@ import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.se
 import {
   createEnvironmentInjector,
   EnvironmentInjector,
+  ElementRef,
   runInInjectionContext,
 } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -44,6 +45,10 @@ describe('FoodstuffsPageComponent', () => {
     TestBed.configureTestingModule({
       providers: [
         FoodstuffCatalogueService,
+        {
+          provide: ElementRef,
+          useValue: new ElementRef(document.createElement('div')),
+        },
         {
           provide: FoodstuffBackendService,
           useValue: { foodstuffsChanged$, getAllFoodstuffs },

@@ -8,10 +8,10 @@ import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 import { RecipeBackendService } from '../../../recipes/services/recipe-backend.service';
 import { PageHeaderService } from '../../../core/services/page-header.service';
 import { SnackBarService } from '../../../core/services/snack-bar.service';
-import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
+import { FoodstuffPresentationDialogComponent } from '../../dialogs/foodstuff-presentation-dialog/foodstuff-presentation-dialog.component';
 import { FoodstuffsPageComponent } from './foodstuffs-page.component';
 
-it('centers the empty search and error states in their available areas', async () => {
+it('centers the empty search and retains it after a refresh failure', async () => {
   const getAllFoodstuffs = vi.fn().mockResolvedValue([]);
   vi.spyOn(console, 'error').mockImplementation(() => {});
   TestBed.configureTestingModule({
@@ -39,18 +39,6 @@ it('centers the empty search and error states in their available areas', async (
   fixture.componentInstance.foodstuffSearchState.searchBy = 'missing';
   fixture.detectChanges();
 
-  const assertCentered = (outer: HTMLElement, inner: HTMLElement): void => {
-    const container = outer.getBoundingClientRect();
-    const content = inner.getBoundingClientRect();
-    expect(content.left + content.width / 2).toBeCloseTo(
-      container.left + container.width / 2,
-      0,
-    );
-    expect(content.top + content.height / 2).toBeCloseTo(
-      container.top + container.height / 2,
-      0,
-    );
-  };
   const viewport = host.querySelector<HTMLElement>('app-foodstuffs-list')!;
   const message = host.querySelector<HTMLElement>('.empty-state p')!;
   const reset = host.querySelector<HTMLElement>('.empty-state button')!;
@@ -69,11 +57,52 @@ it('centers the empty search and error states in their available areas', async (
   getAllFoodstuffs.mockRejectedValueOnce(new Error('failed'));
   await fixture.componentInstance.catalogue.refresh();
   fixture.detectChanges();
-  assertCentered(
-    host.querySelector('main')!,
-    host.querySelector('app-error-hint')!,
+  expect(host.querySelector('app-foodstuffs-list')).not.toBeNull();
+  expect(host.querySelector('app-error-hint')).toBeNull();
+  fixture.destroy();
+});
+
+it('centers the error state after an initial load failure', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: FoodstuffBackendService,
+        useValue: {
+          getAllFoodstuffs: vi.fn().mockRejectedValue(new Error('failed')),
+          foodstuffsChanged$: new Subject<void>(),
+        },
+      },
+      {
+        provide: RecipeBackendService,
+        useValue: { recipesChanged$: new Subject<void>() },
+      },
+      { provide: FoodstuffImageService, useValue: {} },
+      { provide: PageHeaderService, useValue: { updateHeader: vi.fn() } },
+      { provide: SnackBarService, useValue: { open: vi.fn() } },
+      { provide: MatDialog, useValue: { open: vi.fn() } },
+    ],
+  });
+  const fixture = TestBed.createComponent(FoodstuffsPageComponent);
+  const host = fixture.nativeElement as HTMLElement;
+  host.style.height = '600px';
+  host.style.width = '320px';
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+  const container = host
+    .querySelector<HTMLElement>('main')!
+    .getBoundingClientRect();
+  const hint = host.querySelector<HTMLElement>('app-error-hint')!;
+  const bounds = hint.getBoundingClientRect();
+  expect(bounds.left + bounds.width / 2).toBeCloseTo(
+    container.left + container.width / 2,
+    0,
   );
-  const hint = host.querySelector('app-error-hint')!;
+  expect(bounds.top + bounds.height / 2).toBeCloseTo(
+    container.top + container.height / 2,
+    0,
+  );
   expect(hint.querySelector('mat-icon')?.getAttribute('fontIcon')).toBe(
     'error',
   );
@@ -129,14 +158,13 @@ it.each([320, 640])(
     );
     const refresh = fixture.componentInstance.catalogue.refresh();
     fixture.detectChanges();
-    expect(host.querySelector('app-foodstuffs-list')).toBeNull();
-    expect(host.querySelector('mat-spinner')).not.toBeNull();
+    expect(host.querySelector('app-foodstuffs-list')).not.toBeNull();
     resolveRefresh(records);
     await refresh;
     fixture.detectChanges();
     await fixture.whenStable();
     viewport = host.querySelector<HTMLElement>('app-foodstuffs-list')!;
-    expect(viewport.scrollTop).toBe(0);
+    expect(viewport.scrollTop).toBeGreaterThan(0);
     const rows = host.querySelectorAll<HTMLButtonElement>(
       'button[mat-list-item]',
     );
@@ -158,12 +186,14 @@ it.each([320, 640])(
     await userEvent.keyboard('{Enter}');
     expect(open).toHaveBeenCalledTimes(1);
     expect(open).toHaveBeenLastCalledWith(
-      FoodstuffPatchDialogComponent,
-      expect.objectContaining({ data: { id: 29 } }),
+      FoodstuffPresentationDialogComponent,
+      expect.objectContaining({
+        data: { foodstuff: records[29], editable: true },
+      }),
     );
     await userEvent.keyboard(' ');
     expect(open).toHaveBeenCalledTimes(2);
-    fixture.componentInstance.foodstuffSearchState.searchBy = 'Item';
+    fixture.componentInstance.foodstuffSearchState.searchBy = 'Item 00';
     fixture.detectChanges();
     await fixture.whenStable();
     expect(viewport.scrollTop).toBe(0);

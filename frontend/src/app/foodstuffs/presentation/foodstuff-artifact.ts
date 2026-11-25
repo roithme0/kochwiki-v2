@@ -3,6 +3,7 @@ import * as z from 'zod/mini';
 import { zFoodstuffSummaryOut } from '../../core/api/generated/zod.gen';
 
 const foodstuffPresentationSchema = z.pick(zFoodstuffSummaryOut, {
+  imageId: true,
   unit: true,
   kcal: true,
   carbs: true,
@@ -16,7 +17,7 @@ export type FoodstuffPresentation = z.infer<typeof foodstuffPresentationSchema>;
 export const FOODSTUFF_ARTIFACT_CAPABILITY: ChatArtifactCapability = {
   type: 'kochwiki-foodstuff',
   description:
-    'Display foodstuff nutrition using the unit and all nutrition values, using null for missing values. Nutrition is per 100 g for G, per 100 ml for ML, and per piece for PIECE.',
+    'Display foodstuff nutrition using the unit and all nutrition values, using null for missing values. Relay the supplied imageId unchanged, or use null when unavailable, including for temporary foodstuffs. Nutrition is per 100 g for G, per 100 ml for ML, and per piece for PIECE.',
   titleDescription:
     'Use the foodstuff name followed by a comma and space and its details as the title (name, details). When there are no details, use only the name without a trailing comma.',
   subtitleDescription:

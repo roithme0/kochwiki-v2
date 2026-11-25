@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 })
 export class DialogHeaderComponent {
   title = input.required<string>();
+  subtitle = input<string | null>(null);
   showCloseButon = input.required<boolean>();
   closeDisabled = input(false);
 }

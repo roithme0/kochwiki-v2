@@ -1,28 +1,21 @@
 @use '../../../../styles/style-tokens' as tokens;
+@use '../../../../styles/dialog';
 @use '../../../../styles/page-background';
 @use '../../../../styles/search-bar';
 @use '@angular/material' as mat;
 
+@include dialog.layout();
+
 :host {
   @include page-background.illustrated();
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  box-sizing: border-box;
-  padding: 0.75rem 1rem;
 }
 
-app-dialog-header,
 .search-footer {
   flex-shrink: 0;
 }
 
-mat-dialog-content {
+:host > mat-dialog-content {
   position: relative;
-  flex: 1;
-  min-height: 0;
-  max-height: none;
   overflow: hidden;
   padding: 0.75rem 0 !important;
 }

@@ -1,0 +1,11 @@
+@use '../../../../styles/dialog';
+
+@include dialog.layout();
+
+:host {
+  position: relative;
+}
+
+.spacer {
+  height: 5rem;
+}

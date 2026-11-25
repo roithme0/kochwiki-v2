@@ -186,7 +186,12 @@ def test_representative_workflow_policy_contracts() -> None:
         normalized("never a successful write merely to repair display") in presentation
     )
     assert normalized("never invent IDs or expose internal IDs") in presentation
-    assert normalized("relay ingredient imageId unchanged, or null") in presentation
+    assert (
+        normalized(
+            "relay foodstuff imageId unchanged in foodstuff artifacts and recipe ingredients, or null if unavailable, including temporary foodstuffs; never substitute image URLs"
+        )
+        in presentation
+    )
     assert (
         normalized("as full kochwiki-recipe/kochwiki-foodstuff source artifacts")
         in presentation

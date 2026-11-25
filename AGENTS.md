@@ -28,19 +28,12 @@
 
 ## Validation
 
-After edits, run the applicable commands in order:
+After edits, run applicable formatting and lint checks, then run only tests that directly cover this turn's changes. Skip tests if none are relevant. Select specific test files or cases. Leave full test groups and the full non-E2E suite to the Codex stop hook unless the user requests a broader run. See [validation commands and prerequisites](docs/development.md#validate-changes).
 
-Run `node .agents/validation/run.mts` from the repository root for changed-file formatting, lint, and all non-E2E tests. Use `node .agents/validation/test.mts --list` to see test groups, and `--group NAME` to select relevant tests during implementation. Full validation remains required before completion.
-
-Backend pytest requires the dedicated PostgreSQL test database. See [development setup](docs/development.md#validate-changes) for the database command.
-
-Use `npm.cmd` if PowerShell blocks `npm.ps1`. See [development setup and contract validation](docs/development.md) for dependencies, editor configuration, and generated API contracts.
-
-- Format only changed staged, unstaged, and untracked files, respecting configured exclusions and leaving the Git index unchanged. Coordinate before formatting unrelated user edits and review the resulting diff. Full-backend formatting requires an explicit request.
-- Lint errors and warnings fail validation. Run `lint:fix` only deliberately and review its diff; hooks and CI never apply lint fixes.
-- Review and trust hooks before relying on them. They validate changed scopes automatically with all non-E2E test groups enabled, and skip isolated E2E. They reuse success only for identical content and selected checks after all checks pass. Shared hook changes validate both scopes; persistent failures request at most one continuation.
-- Run isolated E2E explicitly for changes to browser flows, frontend/backend integration, or deployment behavior: `node .agents/validation/e2e.mts` or `node .agents/validation/run.mts --group all` from the root. The runner rebuilds the isolated disposable Docker stack and runs Playwright; see the development guide for prerequisites. E2E success is not reused across changed turns.
-- Fix findings introduced by your work; broader cleanup requires authorization. Report missing dependencies or failed checks as incomplete validation. Hooks never install dependencies automatically.
+- Format changed staged, unstaged, and untracked files within scope. Respect exclusions, leave the Git index unchanged, coordinate before formatting unrelated user edits, and review the diff. Full-backend formatting requires an explicit request.
+- Treat lint warnings as failures. Use `lint:fix` deliberately and review its diff.
+- Run the relevant [isolated E2E tests](docs/development.md#end-to-end-tests) for changes to browser flows, frontend/backend integration, or deployment behavior.
+- Review and trust the Codex hooks before relying on them. Fix findings introduced by your work and get authorization for broader cleanup. Report incomplete validation and its cause.
 
 ## Communication Preferences
 

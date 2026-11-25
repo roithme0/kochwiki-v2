@@ -4,14 +4,26 @@
   gap: 0.5rem;
 }
 
-.title {
+.heading {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.title {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 500;
 }
 
+.subtitle {
+  color: var(--mat-sys-on-surface-variant, currentColor);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 mat-dialog-actions {
+  flex-shrink: 0;
   min-height: 0 !important;
   padding: 0 !important;
 }

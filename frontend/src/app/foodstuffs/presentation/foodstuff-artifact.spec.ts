@@ -8,6 +8,7 @@ import {
 } from './foodstuff-artifact';
 
 const payload = {
+  imageId: '123e4567-e89b-42d3-a456-426614174000',
   unit: 'G',
   kcal: 0,
   carbs: null,
@@ -35,6 +36,7 @@ describe('Foodstuff artifact contract', () => {
 
   it('permits absent brand and details with completely unknown nutrition', () => {
     const nutrition = {
+      imageId: null,
       unit: 'PIECE',
       kcal: null,
       carbs: null,
@@ -54,6 +56,8 @@ describe('Foodstuff artifact contract', () => {
   it.each([
     null,
     {},
+    { ...payload, imageId: undefined },
+    { ...payload, imageId: 'not-a-uuid' },
     { ...payload, details: 'roh' },
     { ...payload, unit: 'KG' },
     { ...payload, kcal: -1 },
@@ -83,10 +87,9 @@ describe('Foodstuff artifact contract', () => {
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['properties'];
     expect(properties).toEqual(
       Object.fromEntries(
-        ['unit', 'kcal', 'carbs', 'protein', 'fat', 'fiber'].map((key) => [
-          key,
-          schema.properties?.[key],
-        ]),
+        ['imageId', 'unit', 'kcal', 'carbs', 'protein', 'fat', 'fiber'].map(
+          (key) => [key, schema.properties?.[key]],
+        ),
       ),
     );
     expect(
@@ -94,7 +97,7 @@ describe('Foodstuff artifact contract', () => {
     ).toBe(false);
     expect(
       FOODSTUFF_ARTIFACT_CAPABILITY.payloadSchema['required'],
-    ).toHaveLength(6);
+    ).toHaveLength(7);
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('name');
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.titleDescription).toContain('details');
     expect(FOODSTUFF_ARTIFACT_CAPABILITY.subtitleDescription).toContain(

@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { FoodstuffDisplayComponent } from '../../../foodstuffs/components/foodstuff-display/foodstuff-display.component';
 import { RecipePresentationIngredient } from '../../models/recipe-presentation';
@@ -12,6 +12,8 @@ import { RecipePresentationIngredient } from '../../models/recipe-presentation';
 export class IngredientsListComponent {
   readonly ingredients =
     input.required<readonly RecipePresentationIngredient[]>();
+  readonly interactive = input(false);
+  readonly activated = output<RecipePresentationIngredient>();
   readonly ingredientsSorted = computed(() =>
     [...this.ingredients()].sort((a, b) => a.index - b.index),
   );

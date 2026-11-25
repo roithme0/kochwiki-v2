@@ -12,7 +12,7 @@ export class RecipePage {
   constructor(private readonly page: Page) {
     this.pageHeader = new PageHeader(page);
     this.editButton = page.getByRole('button', {
-      name: 'edit icon',
+      name: 'Rezept bearbeiten',
       exact: true,
     });
     this.deleteButton = page.getByRole('button', {

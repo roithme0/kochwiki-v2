@@ -1,0 +1,28 @@
+@mixin layout($fill: true) {
+  :host {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0.75rem 1rem;
+
+    @if $fill {
+      height: 100%;
+    }
+  }
+
+  :host > app-dialog-header {
+    flex-shrink: 0;
+  }
+
+  :host > mat-dialog-content {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 0.75rem 0 0 !important;
+  }
+
+  :host > mat-dialog-actions {
+    padding: 0 !important;
+  }
+}

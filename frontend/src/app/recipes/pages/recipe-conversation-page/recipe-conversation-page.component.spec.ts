@@ -297,16 +297,17 @@ describe('Recipe conversation page through published session controller and HTTP
     ]);
   }
 
-  it('renders the foodstuff name and brand title, details subtitle and nutrition-only body without fetches', async () => {
+  it('renders the foodstuff title, brand subtitle and shared body without fetches', async () => {
     const page = await open();
     await submitArtifacts(page, [
       {
         ...conversationProposal(),
         type: 'kochwiki-foodstuff',
         content: {
-          title: 'Linsen, Meine Marke',
-          subtitle: 'gekocht',
+          title: 'Linsen, gekocht',
+          subtitle: 'Meine Marke',
           payload: {
+            imageId: null,
             unit: 'G',
             kcal: 200,
             carbs: 12,
@@ -323,15 +324,15 @@ describe('Recipe conversation page through published session controller and HTTP
       ),
     ).toHaveLength(1);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'Linsen, Meine Marke',
+      'Linsen, gekocht',
     );
     expect((fixture.nativeElement as HTMLElement).textContent).toContain(
-      'gekocht',
+      'Meine Marke',
     );
     const foodstuffBody = fixture.debugElement.query(
       By.directive(FoodstuffPresentationComponent),
     ).nativeElement as HTMLElement;
-    expect(foodstuffBody.textContent).not.toContain('gekocht');
+    expect(foodstuffBody.textContent).not.toContain('Meine Marke');
     const cards = fixture.debugElement.queryAll(
       By.directive(NutritionCardComponent),
     );

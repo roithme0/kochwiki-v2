@@ -48,16 +48,16 @@ docker compose --env-file deployment/.env -f deployment/docker-compose-common.ym
 
 ## Validate changes
 
-With [frontend dependencies and Chromium](#frontend-checks) installed and the [dedicated backend test database](#backend-checks) running, validate from the **repository root**:
+Use the applicable formatting and lint commands below, then select the test files or cases that cover your changes. From the **repository root**, choose one test group and pass its runner a filter after `--`:
 
 ```sh
-node .agents/validation/run.mts
-node .agents/validation/run.mts --scope frontend
+node .agents/validation/test.mts --group frontend-app -- --include 'src/**/example.component.spec.ts'
+node .agents/validation/test.mts --group backend -- tests/path/test_example.py::test_case
 ```
 
-The runner checks generated Kochwiki contract freshness and defaults to all non-E2E tests. Use `--scope frontend|backend` to narrow formatting and lint, and `--group NAME` to select tests. List groups with `node .agents/validation/test.mts --list`; use `--group all` to include [E2E](#end-to-end-tests). The test entrypoint runs groups without formatting or linting. Review formatting changes.
+Use `frontend-browser` with `--include` for browser component tests. For tooling tests, pass individual files to `node --test` from the repository root. List groups with `node .agents/validation/test.mts --list`. A group without a filter runs every test in that group. See [end-to-end tests](#end-to-end-tests) for filtered E2E runs.
 
-For a focused run, pass native arguments after `--`, for example `node .agents/validation/test.mts --group backend -- -k example` or `node .agents/validation/test.mts --group e2e -- --grep example`. E2E selection still prepares the isolated stack.
+For a full manual run, install [frontend dependencies and Chromium](#frontend-checks), start the [dedicated backend test database](#backend-checks), and run `node .agents/validation/run.mts` from the repository root. It formats changed files, runs lint, checks generated contract freshness, and runs all non-E2E groups. Use `--group all` to also run [E2E](#end-to-end-tests).
 
 ### Frontend checks
 
@@ -68,14 +68,11 @@ npm ci
 npx playwright install chromium
 ```
 
-Then run in order after frontend edits. Formatting includes all changed frontend files; review unrelated edits first.
+Then format and lint from **frontend/**. Formatting includes all changed frontend files. Review unrelated edits first.
 
 ```sh
 npm run format:changed
 npm run lint
-npm run test:tooling
-npm run test -- --watch=false
-npm run test:browser
 ```
 
 The default unit suite runs in jsdom; `test:browser` runs `*.browser.spec.ts` in headless Chromium. App validation includes both suites. See [Angular test configuration](../frontend/angular.json) and [browser configuration](../frontend/vitest.browser.config.ts).
@@ -86,11 +83,10 @@ Upgrade `vitest` and `@vitest/browser-playwright` together; their pinned version
 
 ### Backend checks
 
-From the **repository root**, format changed Python files and test the backend validation tooling:
+From the **repository root**, format changed Python files:
 
 ```sh
 node .agents/validation/backend.mts --format
-node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts
 ```
 
 Install the backend development dependencies as described [below](#update-the-api-contract). Use the backend virtual environment's Black in your editor to match the pinned version and Python 3.13 settings in `backend/pyproject.toml`. Formatting includes staged, unstaged, and untracked changed files and leaves the Git index unchanged.
@@ -153,23 +149,23 @@ For larger changes, the available workflow is `concept-creator` → `prepare-spe
 
 Temporary concepts, specs, and plans belong under `.agents/`, as defined in `AGENTS.md`. Keep them out of commits and permanent documentation.
 
-Review and trust hooks in Codex before relying on them. They run affected [frontend and backend checks](#validate-changes), excluding [E2E](#end-to-end-tests); prepare the same dependencies first. Logs are under `.codex-validation/` at the repository root. Update absolute paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the checkout. If hooks are unavailable, run validation manually.
+Review and trust hooks in Codex before relying on them. When the stop hook detects changes in a validation scope, it formats and lints the applicable scopes, checks generated contract freshness, and runs the full non-E2E suite. Prepare the [validation dependencies](#validate-changes) first. Logs are under `.codex-validation/` at the repository root. Update absolute paths in [.codex/hooks.json](../.codex/hooks.json) when relocating the checkout.
 
 Use `/skills` and `/hooks` to inspect them in the Codex CLI; see the [official command reference](https://learn.chatgpt.com/docs/developer-commands).
 
 ## End-to-end tests
 
-Run isolated E2E explicitly for changes to browser flows, frontend/backend integration, or deployment behavior. Prepare the [repository prerequisites](#prerequisites) and [frontend dependencies and Chromium](#frontend-checks).
+Run the relevant isolated E2E tests for changes to browser flows, frontend/backend integration, or deployment behavior. Prepare the [repository prerequisites](#prerequisites) and [frontend dependencies and Chromium](#frontend-checks).
 
 Check out [identity-provider](https://github.com/roithme0/identity-provider) beside this repository at the revision in [identity-provider.ref](../deployment/tests/identity-provider.ref). Its configuration and apply script must have no local changes. Set `IDENTITY_PROVIDER_REPOSITORY` to use another checkout path. CI checks out the pinned revision automatically; update the pin deliberately when adopting provider changes.
 
 Keep Docker running and loopback ports `9002` (Kochwiki) and `8026` (Keycloak) free. From the **repository root**:
 
 ```sh
-node .agents/validation/e2e.mts
+node .agents/validation/test.mts --group e2e -- --grep 'example flow'
 ```
 
-The runner rebuilds and recreates the isolated `kochwiki-e2e` stack using [the E2E Compose configuration](../deployment/tests/docker-compose-e2e.yml). It applies the provider's original realm, profile, client and mapper configuration through its original apply script, then creates a [disposable test account](../deployment/tests/e2e-user.json). Callback URLs and credentials are specific to the test instance. Its database, storage, and identity data are temporary and reset on each run. The development environment is separate. The stack stays running for inspection.
+Use `node .agents/validation/e2e.mts` for the full E2E suite. Both commands rebuild and recreate the isolated `kochwiki-e2e` stack using [the E2E Compose configuration](../deployment/tests/docker-compose-e2e.yml). The runner applies the provider's original realm, profile, client and mapper configuration through its original apply script, then creates a [disposable test account](../deployment/tests/e2e-user.json). Callback URLs and credentials are specific to the test instance. Its database, storage, and identity data are temporary and reset on each run. The development environment is separate. The stack stays running for inspection.
 
 Every E2E test runs in two Chromium projects: `desktop-chromium` uses Desktop Chrome settings, and `mobile-chromium` uses Pixel 7 settings. To rerun only the browser tests against the prepared stack, run `npm run test:e2e:browser` from **frontend/**. Select one project with `npm run test:e2e:browser -- --project=mobile-chromium` (or `desktop-chromium`). See [the browser tests](../frontend/e2e/) for the login and navigation flows and [the Playwright configuration](../frontend/playwright.config.ts) for browser settings.
 

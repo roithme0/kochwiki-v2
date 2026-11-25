@@ -1,0 +1,17 @@
+<app-dialog-header
+  [title]="title()"
+  [subtitle]="foodstuff().brand"
+  [showCloseButon]="true"
+/>
+<mat-dialog-content>
+  <app-foodstuff-presentation [foodstuff]="foodstuff()" />
+  @if (data.editable) {
+    <div class="spacer"></div>
+  }
+</mat-dialog-content>
+@if (data.editable) {
+  <app-floating-actions
+    [actions]="actions"
+    (activated)="activateAction($event)"
+  />
+}

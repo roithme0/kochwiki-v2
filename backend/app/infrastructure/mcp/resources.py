@@ -85,8 +85,8 @@ kochwiki://workflows/nutrition-research for evidence, including the BLS fiber fa
 PRESENTATION = """Use supplied/returned IDs only in tool arguments, artifact metadata and supported
 imageId fields; never invent IDs or expose internal IDs in user-facing text,
 titles, subtitles or display payloads. Refer to items by meaningful details.
-Relay ingredient imageId unchanged, or null if unavailable, including temporary
-foodstuffs; never substitute image URLs.
+Relay foodstuff imageId unchanged in foodstuff artifacts and recipe ingredients,
+or null if unavailable, including temporary foodstuffs; never substitute image URLs.
 
 Present retrieved recipes/foodstuffs relied on for facts, explanations or comparisons
 as full kochwiki-recipe/kochwiki-foodstuff source artifacts. Explicit display requests
