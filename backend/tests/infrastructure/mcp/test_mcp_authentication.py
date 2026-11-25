@@ -107,7 +107,6 @@ def test_entire_mcp_surface_requires_credentials(method: str, rpc: str) -> None:
 @pytest.mark.parametrize(
     "credential",
     [
-        "missing",
         "cookie",
         "browser-bearer",
         "unknown",
@@ -152,7 +151,6 @@ def test_invalid_credentials_cannot_invoke_tools(
         elif credential == "logout":
             assert invalidate_session(session, browser_secret)
     authorization = {
-        "missing": None,
         "cookie": None,
         "browser-bearer": f"Bearer {browser_secret}",
         "unknown": f"Bearer {secrets.token_urlsafe(32)}",

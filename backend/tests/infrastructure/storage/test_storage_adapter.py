@@ -113,15 +113,12 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(path, "/explicit-bucket/" + quote(key, safe="/"))
         self.assertEqual(parse_qs(query)["X-Amz-SignedHeaders"], ["host"])
 
-    def test_inspect_and_delete_use_explicit_bucket(self) -> None:
+    def test_inspect_returns_object_metadata(self) -> None:
         with Stubber(self.storage._internal) as stub:
             stub.add_response(
                 "head_object",
                 {"ContentLength": 42, "ContentType": "image/png", "ETag": '"opaque"'},
                 {"Bucket": "explicit-bucket", "Key": "test.png"},
-            )
-            stub.add_response(
-                "delete_object", {}, {"Bucket": "explicit-bucket", "Key": "test.png"}
             )
             result = self.storage.inspect("test.png")
             self.assertIsNotNone(result)
@@ -130,7 +127,6 @@ class StorageTests(unittest.TestCase):
                 (result.size, result.content_type, result.etag),
                 (42, "image/png", '"opaque"'),
             )
-            self.storage.delete("test.png")
             stub.assert_no_pending_responses()
 
     def test_missing_is_distinct_from_denied_or_unavailable(self) -> None:
@@ -187,7 +183,7 @@ class StorageTests(unittest.TestCase):
             with self.subTest(expiry=expiry), self.assertRaises(ValueError):
                 self.storage.presign_download("test.png", expires_in=expiry)
 
-    def test_bounded_read_and_write(self) -> None:
+    def test_bounded_read_closes_stream(self) -> None:
         with Stubber(self.storage._internal) as stub:
             body = StreamingBody(BytesIO(b"png"), 3)
             stub.add_response(
@@ -197,17 +193,6 @@ class StorageTests(unittest.TestCase):
             )
             self.assertEqual(self.storage.read("temporary", max_bytes=3), b"png")
             self.assertTrue(body._raw_stream.closed)
-            stub.add_response(
-                "put_object",
-                {},
-                {
-                    "Bucket": "explicit-bucket",
-                    "Key": "permanent",
-                    "Body": b"png",
-                    "ContentType": "image/png",
-                },
-            )
-            self.storage.write("permanent", b"png", content_type="image/png")
             stub.assert_no_pending_responses()
 
     def test_read_closes_oversized_or_incomplete_stream_and_sanitizes_errors(

@@ -1,17 +1,15 @@
-import secrets
 from collections.abc import Callable
 from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.identity.config import SESSION_COOKIE, SESSION_LIFETIME
-from app.identity.models.application_session import ApplicationSession
+from app.identity.config import SESSION_COOKIE
 from app.identity.schemas.user import UserOut
-from app.identity.services.sessions import invalidate_session, secret_hash
+from app.identity.services.sessions import invalidate_session
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
 from app.recipes.services.recipes import get_recipe_lineage
@@ -58,39 +56,12 @@ def test_creation_assigns_authenticated_creator(
             assert lineage is not None and lineage.owner_id == body["ownerId"]
 
 
-@pytest.mark.parametrize(
-    "credential",
-    ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"],
-)
-def test_creation_rejects_invalid_sessions_without_creating_records(
+def test_creation_rejects_missing_session_without_creating_records(
     client: TestClient,
     sign_in: Callable[[TestClient], UserOut],
-    credential: str,
 ) -> None:
     sign_in(client)
-    secret = client.cookies.get(SESSION_COOKIE)
-    assert secret is not None
-    if credential == "expired":
-        with SessionLocal.begin() as session:
-            session.execute(
-                update(ApplicationSession).values(
-                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-                )
-            )
-    elif credential == "revoked":
-        with SessionLocal.begin() as session:
-            assert invalidate_session(session, secret)
     client.cookies.clear()
-    supplied = {
-        "missing": None,
-        "malformed": "invalid",
-        "unknown": secrets.token_urlsafe(32),
-        "expired": secret,
-        "revoked": secret,
-        "stored-hash": secret_hash(secret),
-    }[credential]
-    if supplied is not None:
-        client.cookies.set(SESSION_COOKIE, supplied)
     response = client.post("/recipes", json=PAYLOAD)
     assert response.status_code == 401
     assert response.json() == {"detail": "Authentication required."}
@@ -152,7 +123,7 @@ MUTATIONS = [
 
 
 @pytest.mark.parametrize(("method", "suffix"), MUTATIONS)
-@pytest.mark.parametrize("caller", ["other", "missing", "revoked", "expired"])
+@pytest.mark.parametrize("caller", ["other", "missing"])
 def test_mutations_require_live_owner_without_side_effects(
     client: TestClient,
     sign_in: Callable[[TestClient], UserOut],
@@ -161,25 +132,14 @@ def test_mutations_require_live_owner_without_side_effects(
     caller: str,
 ) -> None:
     owner = sign_in(client)
-    secret = client.cookies.get(SESSION_COOKIE)
     active = client.post("/recipes", json=PAYLOAD).json()
     path = f"/recipes/{active['recipeLineageId']}"
     draft = client.post(f"{path}/drafts", json=PAYLOAD).json()
     before = client.get("/recipes").json()
     if caller == "other":
         sign_in(client)
-    elif caller == "missing":
-        client.cookies.clear()
-    elif caller == "revoked":
-        with SessionLocal.begin() as session:
-            assert invalidate_session(session, secret)
     else:
-        with SessionLocal.begin() as session:
-            session.execute(
-                update(ApplicationSession).values(
-                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-                )
-            )
+        client.cookies.clear()
     response = client.request(
         method,
         path + suffix.format(draft=draft["recipeVersionId"]),

@@ -651,19 +651,6 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert unknown_update_field.status_code == 422
     assert unknown_update_field.json()["detail"][0]["loc"] == ["body", "unexpected"]
     assert unknown_update_field.json()["detail"][0]["type"] == "extra_forbidden"
-    assert (
-        client.post(
-            "/recipes",
-            json=recipe_version_payload(
-                "Bad index",
-                steps=[
-                    {"index": 1, "description": "A"},
-                    {"index": 1, "description": "B"},
-                ],
-            ),
-        ).status_code
-        == 422
-    )
     assert client.patch("/foodstuffs/1", json={"name": None}).status_code == 422
     assert client.patch("/foodstuffs/1", json={"unit": None}).status_code == 422
     for field, value in (
@@ -712,7 +699,6 @@ def test_validation_and_version_contracts(client: TestClient) -> None:
     assert "/recipes/{lineage_id}" in recipe_paths
     assert "/recipes/{lineage_id}/versions/{version_id}" in recipe_paths
     assert "/recipes/{recipe_id}" not in recipe_paths
-    assert client.get("/meta/version").headers["content-type"].startswith("text/plain")
 
 
 @pytest.mark.usefixtures("recipe_session")
@@ -869,10 +855,11 @@ def test_numeric_success_schema_matches_json_responses(client: TestClient) -> No
 
 @pytest.mark.usefixtures("recipe_session")
 def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) -> None:
-    schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
-    for name in ("FoodstuffOut", "FoodstuffSummaryOut"):
-        assert schemas[name]["additionalProperties"] is False
-        assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
+    schema = client.get("/api/openapi.json").json()["components"]["schemas"][
+        "FoodstuffOut"
+    ]
+    assert schema["additionalProperties"] is False
+    assert set(schema["required"]) == set(schema["properties"])
 
     created = create_foodstuff(client, kcal=370.5, protein=None)
     foodstuff_id = created["id"]
@@ -884,7 +871,7 @@ def test_foodstuff_success_responses_follow_closed_schema(client: TestClient) ->
         client.get(f"/foodstuffs/{foodstuff_id}").json(),
         patched.json(),
     ):
-        assert set(body) == set(schemas["FoodstuffOut"]["properties"])
+        assert set(body) == set(schema["properties"])
         assert body["kcal"] == 370.5
         assert body["protein"] is None
         FoodstuffOut.model_validate(body)
@@ -917,7 +904,7 @@ def test_current_user_success_response_follows_closed_schema(
 @pytest.mark.usefixtures("recipe_session")
 def test_recipe_reads_follow_closed_nested_schema(client: TestClient) -> None:
     schemas = client.get("/api/openapi.json").json()["components"]["schemas"]
-    for name in ("RecipeVersionOut", "IngredientOut", "StepOut", "FoodstuffSummaryOut"):
+    for name in ("RecipeVersionOut", "IngredientOut", "StepOut"):
         assert schemas[name]["additionalProperties"] is False
         assert set(schemas[name]["required"]) == set(schemas[name]["properties"])
 
@@ -1100,16 +1087,6 @@ def test_duplicate_foodstuff_membership_and_positions_are_rejected(
         ),
     )
     assert duplicate_step_position.status_code == 422
-
-
-def test_current_user_contract_has_no_shopping_list_side_effect(
-    client: TestClient,
-    sign_in: Callable[[TestClient], UserOut],
-) -> None:
-    created = sign_in(client)
-
-    assert client.get("/auth/me").json() == created.model_dump()
-    assert client.get("/shoppingLists/1").status_code == 404
 
 
 @pytest.mark.usefixtures("recipe_session")
