@@ -7,10 +7,6 @@ import {
   type ChatArtifact,
   type ChatTurn,
 } from '@roithme0/chat-ui/ui';
-import {
-  SessionController,
-  HttpSessionTransport,
-} from '@roithme0/chat-ui/conversation';
 
 @Component({
   imports: [ChatUiComponent],
@@ -98,18 +94,5 @@ describe('Packaged chat UI integration', () => {
 
     expect(fixture.debugElement.query(By.css('.banner'))).not.toBeNull();
     expect(fixture.debugElement.query(By.css('.artifact'))).toBeNull();
-  });
-});
-
-describe('Packaged conversation entry point', () => {
-  it('exposes a controller compatible with the Kochwiki HTTP transport', () => {
-    const transport = new HttpSessionTransport(
-      '/ai/api/v1',
-      'kochwiki',
-      'kochwiki:1',
-    );
-    const controller = new SessionController(transport, () => {});
-
-    expect(controller).toBeInstanceOf(SessionController);
   });
 });

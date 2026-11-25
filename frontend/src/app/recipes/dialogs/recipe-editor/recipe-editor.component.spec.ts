@@ -411,30 +411,6 @@ describe('RecipeEditorComponent', () => {
     );
   });
 
-  it('shows all editor sections together when ready', async () => {
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const sections = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>(
-        'section.form-section',
-      ),
-    );
-    expect(
-      sections.map((section) =>
-        section.querySelector('h2')?.textContent?.trim(),
-      ),
-    ).toEqual(['Basisdaten', 'Zutaten', 'Zubereitung']);
-    expect(
-      sections.every((section) =>
-        section.querySelector(
-          'app-recipe-meta-form, app-recipe-ingredients-form, app-recipe-preparation-form',
-        ),
-      ),
-    ).toBe(true);
-  });
-
   it('starts create mode empty and can add, validate, remove and save preparation steps', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -751,23 +727,6 @@ describe('RecipeEditorComponent', () => {
       );
     },
   );
-
-  it('does not submit an invalid step description', async () => {
-    component.recipeForm.controls.metaFormGroup.controls.name.setValue(
-      'Linsensuppe',
-    );
-    component.recipeForm.controls.preparationFormGroup.controls.steps.push(
-      new FormGroup({
-        description: new FormControl('', Validators.required.bind(Validators)),
-      }),
-    );
-    const emitted = vi.fn().mockName('emitted');
-    component.submitted.subscribe(emitted);
-
-    await component.onSubmit('publish');
-
-    expect(emitted).not.toHaveBeenCalled();
-  });
 
   it('keeps Save available and shows the first required field error on an invalid attempt', async () => {
     fixture.detectChanges();

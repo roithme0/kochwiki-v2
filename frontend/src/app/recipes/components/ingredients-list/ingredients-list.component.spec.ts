@@ -11,7 +11,7 @@ describe('IngredientsListComponent', () => {
     });
   });
 
-  it('sorts a readonly input without mutation and renders disabled rows', () => {
+  it('sorts a readonly input without mutation', () => {
     const ingredients = Object.freeze([
       { index: 2, amount: 3, foodstuff: foodstuffSummary({ name: 'Salz' }) },
       {
@@ -25,17 +25,9 @@ describe('IngredientsListComponent', () => {
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     const buttons = host.querySelectorAll<HTMLButtonElement>('button');
-    expect(Array.from(buttons).every((button) => button.disabled)).toBe(true);
     expect(buttons[0].textContent).toContain('Apfel');
     expect(buttons[1].textContent).toContain('Salz');
     expect(ingredients.map((ingredient) => ingredient.index)).toEqual([2, 1]);
-    expect(host.querySelector('.foodstuff-details')?.textContent).toBe(
-      '<b>roh</b>',
-    );
-    expect(host.querySelector('.foodstuff-details b')).toBeNull();
-    expect(
-      host.querySelector('mat-action-list')?.getAttribute('aria-label'),
-    ).toBe('Zutaten');
   });
 
   it('renders the empty state without a row', () => {

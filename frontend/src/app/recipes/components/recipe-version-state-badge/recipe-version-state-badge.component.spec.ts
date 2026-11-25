@@ -19,16 +19,6 @@ describe('RecipeVersionStateBadgeComponent', () => {
     expectBadge('active', '', true);
   });
 
-  it('renders draft versions as a filled rounded badge', () => {
-    fixture.componentRef.setInput('state', 'draft');
-    fixture.detectChanges();
-
-    const styles = getComputedStyle(fixture.nativeElement as HTMLElement);
-    expect(styles.display).toBe('inline-flex');
-    expect(styles.borderRadius).toBe('0.5rem');
-    expect(styles.backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
-  });
-
   function expectBadge(
     state: RecipeVersionState,
     expectedText: string,

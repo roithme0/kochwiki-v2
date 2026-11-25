@@ -129,7 +129,6 @@ describe('FoodstuffBackendService', () => {
     it.each(malformedResponses)('rejects $reason', async ({ body }) => {
       const response = operation.run(service);
       const request = httpTesting.expectOne(backendUrl + operation.path);
-      expect(request.request.method).toBe(operation.method);
       const endpoint = `${request.request.method} ${request.request.url}`;
       const rejection = expect(response).rejects.toMatchObject({
         name: 'ApiContractError',

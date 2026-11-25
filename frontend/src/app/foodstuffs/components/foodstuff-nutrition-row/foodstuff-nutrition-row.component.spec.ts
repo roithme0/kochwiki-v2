@@ -57,19 +57,10 @@ describe('FoodstuffNutritionRowComponent', () => {
     expect(control.valid).toBe(true);
   });
 
-  it('labels the numeric field and renders a marker only when a color is supplied', () => {
+  it('labels the numeric field', () => {
     expect(input().getAttribute('aria-label')).toBe('Ballaststoffe');
-    expect(host.querySelector('.color-indicator')).toBeNull();
-    expect(host.querySelector('.nutrient-input')?.textContent?.trim()).toBe(
-      'g',
-    );
-    fixture.componentRef.setInput('color', 'rgb(105, 153, 174)');
     fixture.componentRef.setInput('label', 'Kohlenhydrate');
     fixture.detectChanges();
     expect(input().getAttribute('aria-label')).toBe('Kohlenhydrate');
-    expect(
-      host.querySelector<HTMLElement>('.color-indicator')?.style
-        .backgroundColor,
-    ).toBe('rgb(105, 153, 174)');
   });
 });

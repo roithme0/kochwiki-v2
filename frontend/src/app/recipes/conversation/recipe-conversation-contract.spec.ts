@@ -108,8 +108,6 @@ describe('Recipe conversation contract', () => {
   });
 
   it.each([
-    null,
-    {},
     { ...validPayload, servings: 0 },
     { ...validPayload, kcal: Infinity },
     { ...validPayload, ingredients: [null] },

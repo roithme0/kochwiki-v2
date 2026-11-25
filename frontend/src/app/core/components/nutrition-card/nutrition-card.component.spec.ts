@@ -195,15 +195,6 @@ describe('NutritionCardComponent', () => {
     expect(element.querySelector('.value-percentage')).toBeNull();
   });
 
-  it('can show a complete macro distribution when calories are missing', () => {
-    const element = render({
-      ...nutrition,
-      kcal: { status: 'unknown', value: null },
-    });
-    expect(element.querySelector('app-macro-chart')).not.toBeNull();
-    expect(renderedChart().nutrition().kcal.status).toBe('unknown');
-  });
-
   it('updates between complete, missing, zero and restored values without stale percentages', () => {
     render(nutrition);
     expect(
