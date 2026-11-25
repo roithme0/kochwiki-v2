@@ -16,6 +16,7 @@
 ### Testing
 
 - Add unit, component, integration, or contract tests where they provide meaningful regression protection. Choose the smallest scope that verifies the behavior. Use a real browser when the behavior depends on layout or native browser interactions. Avoid tests that merely restate implementation details.
+- Follow the [frontend test guidance](docs/development/frontend-testing.md#frontend-test-guidance) for required frontend coverage, layers, and conventions.
 - Create new end-to-end tests only when explicitly requested. Maintain and repair existing end-to-end tests as needed, preserving their regression coverage.
 - Remove existing tests only when redundant, obsolete, flaky, or blocking legitimate refactoring; explain the reason.
 
@@ -28,11 +29,11 @@
 
 ## Validation
 
-After edits, run applicable formatting and lint checks, then run only tests that directly cover this turn's changes. Skip tests if none are relevant. Select specific test files or cases. Leave full test groups and the full non-E2E suite to the Codex stop hook unless the user requests a broader run. See [validation commands and prerequisites](docs/development.md#validate-changes).
+After edits, run applicable formatting and lint checks, then run only tests that directly cover this turn's changes. Skip tests if none are relevant. Select specific test files or cases. Leave full test groups and the full non-E2E suite to the Codex stop hook unless the user requests a broader run. See [validation commands and prerequisites](docs/development/general.md#validate-changes).
 
 - Format changed staged, unstaged, and untracked files within scope. Respect exclusions, leave the Git index unchanged, coordinate before formatting unrelated user edits, and review the diff. Full-backend formatting requires an explicit request.
 - Treat lint warnings as failures. Use `lint:fix` deliberately and review its diff.
-- Run the relevant [isolated E2E tests](docs/development.md#end-to-end-tests) for changes to browser flows, frontend/backend integration, or deployment behavior.
+- Run the relevant [isolated E2E tests](docs/development/end-to-end-tests.md) for changes to browser flows, frontend/backend integration, or deployment behavior.
 - Review and trust the Codex hooks before relying on them. Fix findings introduced by your work and get authorization for broader cleanup. Report incomplete validation and its cause.
 
 ## Communication Preferences
