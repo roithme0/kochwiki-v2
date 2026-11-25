@@ -1,0 +1,22 @@
+@for (action of actions(); track action.id) {
+  @if (action.route; as route) {
+    <a
+      mat-mini-fab
+      [routerLink]="route"
+      [color]="action.color"
+      [attr.aria-label]="action.label"
+      ><mat-icon aria-hidden="true" [fontIcon]="action.icon"
+    /></a>
+  } @else {
+    <button
+      mat-mini-fab
+      type="button"
+      [disabled]="action.disabled ?? false"
+      [color]="action.color"
+      [attr.aria-label]="action.label"
+      (click)="activated.emit(action.id)"
+    >
+      <mat-icon aria-hidden="true" [fontIcon]="action.icon" />
+    </button>
+  }
+}

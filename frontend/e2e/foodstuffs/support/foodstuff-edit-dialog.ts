@@ -10,7 +10,12 @@ export class FoodstuffEditDialog {
   readonly saveButton: Locator;
 
   constructor(private readonly page: Page) {
-    this.dialog = page.getByRole('dialog');
+    this.dialog = page.getByRole('dialog').filter({
+      has: page.getByRole('heading', {
+        name: 'Lebensmittel bearbeiten',
+        exact: true,
+      }),
+    });
     this.heading = this.dialog.getByRole('heading', {
       name: 'Lebensmittel bearbeiten',
       exact: true,

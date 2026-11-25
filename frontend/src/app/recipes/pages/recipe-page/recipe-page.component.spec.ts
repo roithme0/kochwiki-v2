@@ -27,6 +27,7 @@ import { DisplayImageComponent } from '../../../core/components/display-image/di
 import { RecipeImageService } from '../../services/recipe-image.service';
 import { FoodstuffBackendService } from '../../../foodstuffs/services/foodstuff-backend.service';
 import { FoodstuffImageService } from '../../../foodstuffs/services/foodstuff-image.service';
+import { FoodstuffPresentationDialogComponent } from '../../../foodstuffs/dialogs/foodstuff-presentation-dialog/foodstuff-presentation-dialog.component';
 
 describe('RecipePageComponent', () => {
   let component: RecipePageComponent;
@@ -60,6 +61,7 @@ describe('RecipePageComponent', () => {
       RecipePageComponent.prototype,
     ) as RecipePageComponent;
     Object.assign(component, {
+      destroyRef: { onDestroy: vi.fn() },
       recipeLineageId: '00000000-0000-4000-8000-000000000007',
       recipeVersion: draftRecipeVersion,
       activeUser: { activeUser: signal({ id: 1 }) },
@@ -73,6 +75,38 @@ describe('RecipePageComponent', () => {
       router: { navigate } as unknown as Router,
       snackBarService: { open: openSnackBar } as unknown as SnackBarService,
     });
+  });
+
+  it('resolves the activated ingredient by index rather than source position', () => {
+    const first = foodstuffSummary({ id: 1, name: 'First', unit: 'ML' });
+    const second = foodstuffSummary({ id: 2, name: 'Second', unit: 'PIECE' });
+    component.recipeVersion = {
+      ...draftRecipeVersion,
+      ingredients: [
+        {
+          id: 1,
+          index: 8,
+          amount: 50,
+          recipeVersionId: draftRecipeVersion.recipeVersionId,
+          foodstuff: first,
+        },
+        {
+          id: 2,
+          index: 2,
+          amount: 2,
+          recipeVersionId: draftRecipeVersion.recipeVersionId,
+          foodstuff: second,
+        },
+      ],
+    };
+    openDialog.mockReturnValue({ afterClosed: () => EMPTY });
+    component.openIngredient({ index: 2, amount: 2, foodstuff: second });
+    expect(openDialog).toHaveBeenCalledWith(
+      FoodstuffPresentationDialogComponent,
+      expect.objectContaining({ data: { foodstuff: second, editable: false } }),
+    );
+    component.openIngredient({ index: 99, amount: 2, foodstuff: second });
+    expect(openDialog).toHaveBeenCalledTimes(1);
   });
 
   it.each([2, null])(
@@ -419,7 +453,7 @@ describe('RecipePageComponent presentation integration', () => {
 
       expect(
         (fixture.nativeElement as HTMLElement).querySelector(
-          '.buttons-wrapper',
+          'app-floating-actions button, app-floating-actions a',
         ) !== null,
       ).toBe(userId === recipe.ownerId && state !== 'historical');
       const presentation = fixture.debugElement.query(

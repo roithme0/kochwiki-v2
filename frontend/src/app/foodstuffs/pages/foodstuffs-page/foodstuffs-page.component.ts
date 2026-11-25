@@ -1,6 +1,6 @@
 import { ErrorHintComponent } from '../../../core/components/error-hint/error-hint.component';
 import type { OnInit } from '@angular/core';
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,7 +13,7 @@ import { FoodstuffCatalogueService } from '../../services/foodstuff-catalogue.se
 import { FoodstuffsSearchComponent } from '../../components/foodstuffs-search/foodstuffs-search.component';
 import { FoodstuffSearchStateService } from '../../services/foodstuff-search-state.service';
 import { FoodstuffsListComponent } from '../../components/foodstuffs-list/foodstuffs-list.component';
-import { FoodstuffPatchDialogComponent } from '../../dialogs/foodstuff-patch-dialog/foodstuff-patch-dialog.component';
+import { FoodstuffPresentationDialogComponent } from '../../dialogs/foodstuff-presentation-dialog/foodstuff-presentation-dialog.component';
 import type { FoodstuffOut } from '../../../core/api/generated';
 import { FoodstuffCreateDialogComponent } from '../../dialogs/foodstuff-create-dialog/foodstuff-create-dialog.component';
 
@@ -39,6 +39,13 @@ export class FoodstuffsPageComponent implements OnInit {
   readonly pageHeaderService = inject(PageHeaderService);
   readonly dialog = inject(MatDialog);
   readonly foodstuffSearchState = inject(FoodstuffSearchStateService);
+  readonly hasLoaded = signal(false);
+
+  constructor() {
+    effect(() => {
+      if (this.catalogue.state().status === 'success') this.hasLoaded.set(true);
+    });
+  }
 
   ngOnInit(): void {
     this.pageHeaderService.updateHeader(true, 'Lebensmittel', '', true);
@@ -52,9 +59,9 @@ export class FoodstuffsPageComponent implements OnInit {
       .subscribe(() => void this.catalogue.refresh());
   }
 
-  openEditFoodstuffDialog(foodstuff: FoodstuffOut): void {
-    this.dialog.open(FoodstuffPatchDialogComponent, {
-      data: { id: foodstuff.id },
+  openFoodstuffDialog(foodstuff: FoodstuffOut): void {
+    this.dialog.open(FoodstuffPresentationDialogComponent, {
+      data: { foodstuff, editable: true },
       width: '100vw',
       maxWidth: 'min(var(--app-max-width), 100vw)',
       height: '100dvh',

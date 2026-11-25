@@ -4,6 +4,10 @@
     <mat-card-subtitle>{{ recipe().servings }} Portionen</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
-    <app-ingredients-list [ingredients]="recipe().ingredients" />
+    <app-ingredients-list
+      [ingredients]="recipe().ingredients"
+      [interactive]="interactive()"
+      (activated)="activated.emit($event)"
+    />
   </mat-card-content>
 </mat-card>

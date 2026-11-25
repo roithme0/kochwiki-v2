@@ -1,3 +1,7 @@
-<app-ingredients-card [recipe]="recipe()" />
+<app-ingredients-card
+  [recipe]="recipe()"
+  [interactive]="interactiveIngredients()"
+  (activated)="ingredientActivated.emit($event)"
+/>
 <app-steps-grid [recipe]="recipe()" />
 <app-nutrition-card [nutrition]="recipe()" basis="pro Portion" />

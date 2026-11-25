@@ -1,21 +1,10 @@
-:host {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+@use '../../../../styles/dialog';
 
-app-dialog-header {
-  --material-padding: 24px;
-  padding: var(--material-padding);
-  padding-bottom: 0;
-}
+@include dialog.layout();
 
-mat-dialog-content.mat-dialog-content {
-  padding: 0;
-  flex: 1;
+:host > mat-dialog-content {
+  padding-top: 0 !important;
   display: flex;
-  min-height: 0;
-  max-height: none;
   overflow-y: auto;
   scrollbar-gutter: stable;
 }

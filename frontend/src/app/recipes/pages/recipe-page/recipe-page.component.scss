@@ -1,5 +1,3 @@
-@use '../../../../styles/style-tokens' as tokens;
-
 :host {
   /* stretch hole page */
   display: inline-block;
@@ -33,21 +31,13 @@ article {
 }
 
 .spacer {
-  flex: 0 0 4rem;
+  flex: 0 0 8rem;
 }
 
 .version-state-badge {
   align-self: flex-end;
   margin: 0;
   width: min-content;
-}
-
-.buttons-wrapper {
-  position: absolute;
-  right: tokens.$floating-button-position;
-  bottom: tokens.$floating-button-position;
-  display: flex;
-  gap: 0.5rem;
 }
 
 .recipe-not-found-placeholder {

@@ -1,0 +1,12 @@
+@use '../../../../styles/style-tokens' as tokens;
+
+:host {
+  position: absolute;
+  right: tokens.$floating-button-position;
+  bottom: tokens.$floating-button-position;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: calc(100% - 2 * #{tokens.$floating-button-position});
+}

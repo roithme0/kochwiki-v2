@@ -1,15 +1,9 @@
-:host {
-  padding: 0.75rem 1rem;
-  display: flex;
-  flex-direction: column;
-}
+@use '../../../../styles/dialog';
 
-mat-dialog-content {
-  padding: 0.75rem 0 0.5rem !important;
-}
+@include dialog.layout($fill: false);
 
-mat-dialog-actions {
-  padding: 0 !important;
+:host > mat-dialog-content {
+  padding: 0.75rem 0 !important;
 }
 
 button {

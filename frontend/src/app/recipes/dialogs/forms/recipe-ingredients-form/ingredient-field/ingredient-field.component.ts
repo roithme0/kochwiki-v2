@@ -1,9 +1,10 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import type { FoodstuffSummaryOut } from '../../../../../core/api/generated';
 import { FoodstuffDisplayComponent } from '../../../../../foodstuffs/components/foodstuff-display/foodstuff-display.component';
+import { foodstuffTitle } from '../../../../../foodstuffs/presentation/foodstuff-title';
 
 @Component({
   selector: 'app-ingredient-field',
@@ -20,4 +21,8 @@ export class IngredientFieldComponent {
   readonly foodstuff = input.required<FoodstuffSummaryOut | undefined>();
   readonly amountControl = input.required<FormControl<number | null>>();
   readonly index = input.required<number>();
+  readonly label = computed(() => {
+    const foodstuff = this.foodstuff();
+    return foodstuff ? foodstuffTitle(foodstuff) : `Zutat ${this.index() + 1}`;
+  });
 }

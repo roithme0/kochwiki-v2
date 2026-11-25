@@ -52,7 +52,7 @@ mat-card-content.percentage-content {
   color: gray;
 }
 
-@container nutrition-legend (max-width: 14rem) {
+@container nutrition-legend (max-width: 18rem) {
   mat-card-content.legend-content {
     display: grid;
     grid-template-columns: 0.625rem minmax(0, 1fr) auto auto;

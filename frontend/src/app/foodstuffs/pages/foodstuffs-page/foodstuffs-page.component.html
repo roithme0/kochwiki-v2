@@ -1,9 +1,9 @@
 <main>
-  @if (catalogue.state().status === 'loading') {
+  @if (!hasLoaded() && catalogue.state().status === 'loading') {
     <div class="spinner-wrapper">
       <mat-spinner diameter="25" />
     </div>
-  } @else if (catalogue.state().status === 'error') {
+  } @else if (!hasLoaded() && catalogue.state().status === 'error') {
     <div class="error-wrapper">
       <app-error-hint>Zutaten konnten nicht geladen werden.</app-error-hint>
     </div>
@@ -15,7 +15,7 @@
       [showResetWhenEmpty]="false"
       emptyMessage="Keine passenden Lebensmittel gefunden."
       emptyCatalogueMessage="Keine Lebensmittel vorhanden."
-      (activated)="openEditFoodstuffDialog($event)"
+      (activated)="openFoodstuffDialog($event)"
       (resetSearch)="foodstuffSearchState.clearSearch()"
     />
 

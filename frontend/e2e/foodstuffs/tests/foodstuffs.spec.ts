@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { expectUploadedImage } from '../../shared/support/uploaded-image';
 import { FoodstuffCreateDialog } from '../support/foodstuff-create-dialog';
 import { FoodstuffEditDialog } from '../support/foodstuff-edit-dialog';
@@ -41,6 +41,10 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
     await foodstuffsPage.row(name).click();
+    const presentation = page.locator('app-foodstuff-presentation-dialog');
+    await presentation
+      .getByRole('button', { name: 'Lebensmittel bearbeiten' })
+      .click();
     await editDialog.expectLoaded({ name }, 'empty');
 
     await imageInput.chooseFile(
@@ -51,6 +55,14 @@ test.describe('Foodstuffs', () => {
       },
     );
     await editDialog.save();
+    await expectUploadedImage(
+      presentation.locator(
+        'app-foodstuff-presentation img[src^="/api/foodstuff-images/"]',
+      ),
+      13,
+      7,
+    );
+    await presentation.getByRole('button', { name: 'Schlie\u00dfen' }).click();
     await expectUploadedImage(foodstuffsPage.image(name), 13, 7);
 
     await page.reload();
@@ -58,6 +70,9 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.search(name, [name]);
     await expectUploadedImage(foodstuffsPage.image(name), 13, 7);
     await foodstuffsPage.row(name).click();
+    await presentation
+      .getByRole('button', { name: 'Lebensmittel bearbeiten' })
+      .click();
     await editDialog.expectLoaded({ name }, 'image');
     await expectUploadedImage(imageInput.preview, 13, 7);
   });
@@ -83,6 +98,10 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(name, [name]);
     await foodstuffsPage.row(name).click();
+    const presentation = page.locator('app-foodstuff-presentation-dialog');
+    await presentation
+      .getByRole('button', { name: 'Lebensmittel bearbeiten' })
+      .click();
     await editDialog.expectLoaded(
       { name, brand: 'Seed brand', unit: 'Stück', kcal: 42 },
       'empty',
@@ -91,6 +110,18 @@ test.describe('Foodstuffs', () => {
     await editDialog.form.fill(updatedValues);
     await editDialog.expectLoaded(updatedValues, 'empty');
     await editDialog.save();
+    await expect(
+      presentation.getByRole('heading', { name: updatedName }),
+    ).toBeVisible();
+    await expect(presentation).toContainText('Updated brand');
+    await expect(presentation).toContainText('123');
+    await expect(
+      presentation
+        .locator('app-nutrition-value')
+        .filter({ hasText: 'Ballaststoffe' })
+        .locator('.value-absolute'),
+    ).toHaveText('8.5 g');
+    await presentation.getByRole('button', { name: 'Schlie\u00dfen' }).click();
 
     await foodstuffsPage.search(updatedName, [updatedName]);
     await foodstuffsPage.search(name, [updatedName]);
@@ -99,6 +130,9 @@ test.describe('Foodstuffs', () => {
     await foodstuffsPage.expectLoaded();
     await foodstuffsPage.search(updatedName, [updatedName]);
     await foodstuffsPage.row(updatedName).click();
+    await presentation
+      .getByRole('button', { name: 'Lebensmittel bearbeiten' })
+      .click();
     await editDialog.expectLoaded(updatedValues, 'empty');
   });
 });

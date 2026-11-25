@@ -1,4 +1,4 @@
-<main>
+﻿<main>
   @if (recipeVersionIsLoading()) {
     <div class="spinner-wrapper">
       <mat-spinner diameter="25" />
@@ -20,70 +20,18 @@
           "
           [dimensions]="recipeVersion.imageDimensions"
         />
-        <app-recipe-presentation [recipe]="recipeVersion" />
+        <app-recipe-presentation
+          [recipe]="recipeVersion"
+          [interactiveIngredients]="true"
+          (ingredientActivated)="openIngredient($event)"
+        />
         <div class="spacer"></div>
       </article>
 
-      @if (ownsRecipe() && recipeVersion.state !== 'historical') {
-        <div class="buttons-wrapper">
-          <button
-            mat-mini-fab
-            (click)="openPatchRecipeDialog()"
-            class="medium-size-button"
-          >
-            <mat-icon
-              aria-hidden="false"
-              aria-label="edit icon"
-              fontIcon="edit"
-            />
-          </button>
-
-          <a
-            mat-mini-fab
-            class="medium-size-button"
-            aria-label="Rezept verbessern"
-            [routerLink]="[
-              '/recipes',
-              recipeVersion.recipeLineageId,
-              'versions',
-              recipeVersion.recipeVersionId,
-              'improve',
-            ]"
-          >
-            <mat-icon aria-hidden="true" fontIcon="auto_fix_high" />
-          </a>
-          @if (recipeVersion.state === 'draft') {
-            <button
-              mat-mini-fab
-              color="primary"
-              (click)="openPublishDraftDialog()"
-              class="medium-size-button"
-              aria-label="Entwurf als aktive Version übernehmen"
-            >
-              <mat-icon aria-hidden="true" fontIcon="publish" />
-            </button>
-            <button
-              mat-mini-fab
-              color="warn"
-              (click)="openDiscardDraftDialog()"
-              class="medium-size-button"
-              aria-label="Entwurf verwerfen"
-            >
-              <mat-icon aria-hidden="true" fontIcon="delete" />
-            </button>
-          } @else {
-            <button
-              mat-mini-fab
-              color="warn"
-              (click)="openDeleteRecipeDialog()"
-              class="medium-size-button"
-              aria-label="Rezeptlinie löschen"
-            >
-              <mat-icon aria-hidden="true" fontIcon="delete" />
-            </button>
-          }
-        </div>
-      }
+      <app-floating-actions
+        [actions]="floatingActions()"
+        (activated)="activateFloatingAction($event)"
+      />
     } @else {
       <div class="recipe-not-found-placeholder">
         <p>Rezept nicht gefunden.</p>

@@ -1,7 +1,13 @@
 @if (ingredientsSorted().length) {
   <mat-action-list aria-label="Zutaten">
     @for (ingredient of ingredientsSorted(); track ingredient.index) {
-      <button mat-list-item type="button" class="foodstuff" disabled>
+      <button
+        mat-list-item
+        type="button"
+        class="foodstuff"
+        [disabled]="!interactive()"
+        (click)="activated.emit(ingredient)"
+      >
         <app-foodstuff-display
           matListItemTitle
           [foodstuff]="ingredient.foodstuff"

@@ -60,10 +60,13 @@ export class FoodstuffPatchDialogComponent implements OnInit {
     this.submitting.set(true);
     this.dialogRef.disableClose = true;
     try {
-      await this.foodstuffBackendService.patchFoodstuff(this.data.id, updates);
+      const saved = await this.foodstuffBackendService.patchFoodstuff(
+        this.data.id,
+        updates,
+      );
       if (this.destroyRef.destroyed) return;
       this.foodstuffBackendService.notifyFoodstuffsChanged();
-      this.dialogRef.close();
+      this.dialogRef.close(saved);
       this.snackBarService.open('Zutat aktualisiert');
     } catch (error: unknown) {
       if (this.destroyRef.destroyed) return;

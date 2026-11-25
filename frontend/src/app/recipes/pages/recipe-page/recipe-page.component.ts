@@ -11,7 +11,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,17 +28,21 @@ import {
 } from '../../../core/dialogs/confirmation-dialog/confirmation-dialog.component';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { RecipeVersionStateBadgeComponent } from '../../components/recipe-version-state-badge/recipe-version-state-badge.component';
+import { FloatingActionsComponent } from '../../../core/components/floating-actions/floating-actions.component';
+import type { FloatingAction } from '../../../core/components/floating-actions/floating-actions.component';
+import { FoodstuffPresentationDialogComponent } from '../../../foodstuffs/dialogs/foodstuff-presentation-dialog/foodstuff-presentation-dialog.component';
+import type { RecipePresentationIngredient } from '../../models/recipe-presentation';
 
 @Component({
   selector: 'app-recipe-page',
   imports: [
     RecipePresentationComponent,
     DisplayImageComponent,
-    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinner,
     RecipeVersionStateBadgeComponent,
+    FloatingActionsComponent,
   ],
   templateUrl: './recipe-page.component.html',
   styleUrl: './recipe-page.component.scss',
@@ -77,6 +81,86 @@ export class RecipePageComponent implements OnInit {
 
   ngOnInit(): void {
     this.pageHeaderService.updateHeader(true, '', 'recipes', true);
+  }
+
+  openIngredient(ingredient: RecipePresentationIngredient): void {
+    const persisted = this.recipeVersion?.ingredients.find(
+      (item) => item.index === ingredient.index,
+    );
+    if (!persisted) return;
+    this.dialog.open(FoodstuffPresentationDialogComponent, {
+      data: { foodstuff: persisted.foodstuff, editable: false },
+      width: '100vw',
+      maxWidth: 'min(var(--app-max-width), 100vw)',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      position: { top: '0' },
+      autoFocus: 'first-tabbable',
+      restoreFocus: false,
+    });
+  }
+
+  floatingActions(): FloatingAction[] {
+    const recipe = this.recipeVersion;
+    if (!recipe || !this.ownsRecipe() || recipe.state === 'historical')
+      return [];
+    const actions: FloatingAction[] = [
+      { id: 'edit', label: 'Rezept bearbeiten', icon: 'edit' },
+      {
+        id: 'improve',
+        label: 'Rezept verbessern',
+        icon: 'auto_fix_high',
+        route: [
+          '/recipes',
+          recipe.recipeLineageId,
+          'versions',
+          recipe.recipeVersionId,
+          'improve',
+        ],
+      },
+    ];
+    if (recipe.state === 'draft')
+      actions.push(
+        {
+          id: 'publish',
+          label: 'Entwurf als aktive Version übernehmen',
+          icon: 'publish',
+          color: 'primary',
+        },
+        {
+          id: 'discard',
+          label: 'Entwurf verwerfen',
+          icon: 'delete',
+          color: 'warn',
+        },
+      );
+    else
+      actions.push({
+        id: 'delete',
+        label: 'Rezeptlinie löschen',
+        icon: 'delete',
+        color: 'warn',
+      });
+    return actions;
+  }
+
+  activateFloatingAction(id: string): void {
+    switch (id) {
+      case 'edit':
+        this.openPatchRecipeDialog();
+        break;
+      case 'publish':
+        this.openPublishDraftDialog();
+        break;
+      case 'discard':
+        this.openDiscardDraftDialog();
+        break;
+      case 'delete':
+        this.openDeleteRecipeDialog();
+        break;
+      default:
+        console.warn('Unknown recipe action:', id);
+    }
   }
 
   keepRecipeVersionUpToDate(recipeLineageId: string | undefined): void {

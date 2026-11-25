@@ -20,11 +20,7 @@
       matInput
       type="number"
       [formControl]="amountControl()"
-      [attr.aria-label]="
-        'Menge für ' +
-        (foodstuff()?.name ?? 'Zutat ' + (index() + 1)) +
-        (foodstuff()?.details ? ', ' + foodstuff()?.details : '')
-      "
+      [attr.aria-label]="'Menge für ' + label()"
     />
     <span matTextSuffix>{{ foodstuff()?.unitVerbose }}</span>
   </mat-form-field>
