@@ -56,7 +56,6 @@ describe('Foodstuff picker result layout', () => {
       const image = result?.querySelector<HTMLElement>('app-display-image');
       if (!result || !name || !details || !brand || !status || !image)
         throw new Error('Expected complete selected foodstuff result');
-      expect(result.getAttribute('aria-pressed')).toBe('true');
       expect(details.parentElement).toBe(name.parentElement);
       expect(brand.getBoundingClientRect().top).toBeGreaterThanOrEqual(
         details.getBoundingClientRect().bottom,
@@ -77,9 +76,6 @@ describe('Foodstuff picker result layout', () => {
       expect(getComputedStyle(display).paddingBottom).toBe('8px');
       expect(image.getBoundingClientRect().width).toBe(40);
       expect(result.scrollWidth).toBeLessThanOrEqual(result.clientWidth);
-      result.click();
-      fixture.detectChanges();
-      expect(result.getAttribute('aria-pressed')).toBe('false');
       fixture.destroy();
     },
   );

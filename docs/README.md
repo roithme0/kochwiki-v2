@@ -9,7 +9,7 @@ These docs contain only the essential guidance for getting started with the repo
 | [decisions/](decisions/) | Why we chose an approach | A shared [ADR template](decisions/template.md) and one numbered record per significant architectural decision: context, decision, alternatives, and consequences. |
 | [domains/](domains/) | What our language means | Glossaries for [foodstuffs](domains/foodstuffs.md) and [recipes](domains/recipes.md), including important distinctions and relationships. Include German UI terms where helpful. |
 | [navigation.md](navigation.md) | How the current system fits together | Responsibilities, boundaries, code entry points, and representative flows. Link to relevant code and tests. |
-| [development.md](development.md) | How to work on the code | Local setup, running, testing, debugging, and contract generation. |
+| [Development](development/general.md) | How to work on the code | Local setup, running, testing, debugging, and contract generation. |
 | [operation.md](operation.md) | How to run deployed environments | Deployment, configuration, migrations, monitoring, backup, recovery, and troubleshooting. |
 
 ## Writing rules

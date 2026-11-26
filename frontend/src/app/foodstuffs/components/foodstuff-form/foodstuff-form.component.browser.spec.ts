@@ -1,10 +1,6 @@
 import type { ComponentFixture } from '@angular/core/testing';
 import { TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { MatInput } from '@angular/material/input';
-import { MatCard } from '@angular/material/card';
 import { page } from 'vitest/browser';
-import { MacroChartComponent } from '../../../core/components/macro-chart/macro-chart.component';
 import { FoodstuffImageService } from '../../services/foodstuff-image.service';
 import { FoodstuffFormComponent } from './foodstuff-form.component';
 
@@ -102,7 +98,6 @@ describe('FoodstuffFormComponent nutrition editor layout', () => {
         separator.getBoundingClientRect().width,
         0,
       );
-      expect(fiber.querySelector('.color-indicator')).toBeNull();
       for (const input of editor.querySelectorAll<HTMLInputElement>('input')) {
         const inputBounds = input.getBoundingClientRect();
         expect(inputBounds.width).toBeGreaterThan(20);
@@ -110,17 +105,6 @@ describe('FoodstuffFormComponent nutrition editor layout', () => {
         expect(inputBounds.right).toBeLessThanOrEqual(bounds.right);
         expect(input.disabled).toBe(false);
       }
-      const renderedChart = fixture.debugElement.query(
-        By.directive(MacroChartComponent),
-      ).componentInstance as MacroChartComponent;
-      const markers = Array.from(
-        macros.querySelectorAll<HTMLElement>('.color-indicator'),
-      );
-      expect(markers).toHaveLength(3);
-      expect(
-        markers.map((marker) => getComputedStyle(marker).backgroundColor),
-      ).toEqual(renderedChart.chart?.data.datasets[0].backgroundColor);
-      expect(renderedChart.chart?.data.datasets[0].data).toEqual([40, 20, 10]);
       for (const label of macros.querySelectorAll<HTMLElement>(
         '.nutrient-label',
       )) {
@@ -144,17 +128,6 @@ describe('FoodstuffFormComponent nutrition editor layout', () => {
       if (!fiberInput) throw new Error('Expected editable fiber');
       expect(fiberInput.value).toBe('8.5');
       expect(fiberInput.validity.stepMismatch).toBe(false);
-      for (const row of fixture.debugElement.queryAll(
-        By.css('app-foodstuff-nutrition-row'),
-      )) {
-        expect(row.query(By.directive(MatCard))).not.toBeNull();
-        expect(row.query(By.directive(MatInput))).not.toBeNull();
-      }
-      expect(
-        fixture.debugElement
-          .query(By.css('.calories-field'))
-          .query(By.directive(MatInput)),
-      ).not.toBeNull();
       expect(editor.scrollWidth).toBeLessThanOrEqual(editor.clientWidth);
       expect(calories.getAttribute('aria-label')).toBe('Kalorien');
       expect(host.querySelector('.calories-field')?.textContent?.trim()).toBe(

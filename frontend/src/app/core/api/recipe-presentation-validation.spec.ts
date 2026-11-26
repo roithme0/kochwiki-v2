@@ -30,7 +30,7 @@ const presentation: RecipePresentationOut = {
   steps: [{ index: 100, description: 'x'.repeat(200) }],
 };
 
-describe('generated resolver response validation', () => {
+describe('generated recipe presentation response schema validation', () => {
   it('accepts nulls, zero nutrition and values above request limits', () => {
     expect(z.parse(zRecipePresentationOut, presentation)).toEqual(presentation);
   });

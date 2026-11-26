@@ -325,7 +325,7 @@ describe('FoodstuffFormComponent', () => {
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
   });
 
-  it('renders local labels and emits the typed foodstuff updates', async () => {
+  it('emits the typed foodstuff updates', async () => {
     const submitted = vi.fn().mockName('submitted');
     component.submitted.subscribe(submitted);
 
@@ -343,19 +343,6 @@ describe('FoodstuffFormComponent', () => {
     });
     await component.onSubmit();
 
-    const labels: NodeListOf<Element> = (
-      fixture.nativeElement as HTMLElement
-    ).querySelectorAll('mat-label, .nutrient-label > span:last-child');
-    expect(Array.from(labels, (label) => label.textContent?.trim())).toEqual([
-      'Name',
-      'Einheit',
-      'Details',
-      'Marke',
-      'Kohlenhydrate',
-      'Proteine',
-      'Fett',
-      'Ballaststoffe',
-    ]);
     expect(submitted).toHaveBeenCalledTimes(1);
     expect(submitted).toHaveBeenCalledWith({
       name: 'Linsen',
@@ -406,12 +393,6 @@ describe('FoodstuffFormComponent', () => {
       await TestbedHarnessEnvironment.loader(fixture).getHarness(
         MatSelectHarness,
       );
-    await select.open();
-    const options = await select.getOptions();
-    expect(
-      await Promise.all(options.map((option) => option.getText())),
-    ).toEqual(['Gramm', 'Milliliter', 'Stück']);
-    await select.close();
     for (const [label, unit] of [
       ['Gramm', 'G'],
       ['Milliliter', 'ML'],

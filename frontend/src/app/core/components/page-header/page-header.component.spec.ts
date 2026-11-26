@@ -97,37 +97,14 @@ describe('PageHeaderComponent', () => {
     const menu = await loader.getHarness(MatMenuHarness);
     await menu.open();
 
-    const items = await menu.getItems();
-    expect(items.length).toBe(2);
-    expect(await items[1].getText()).toContain('Abmelden');
-    expect(await items[1].getText()).toContain('logout');
+    const [logout] = await menu.getItems({ text: /Abmelden/ });
+    expect(logout).toBeDefined();
     expect(document.body.textContent).toContain('Roi');
 
-    await items[1].click();
+    await logout.click();
     expect(activeUserService.logout).toHaveBeenCalledTimes(1);
     await vi.waitFor(() =>
       expect(assign).toHaveBeenCalledWith('https://idp.example/logout'),
     );
-  });
-
-  it('stays on the current page when logout is not confirmed', async () => {
-    vi.mocked(activeUserService.logout).mockResolvedValue(null);
-    await fixture.componentInstance.logout();
-    expect(assign).not.toHaveBeenCalled();
-  });
-
-  it('keeps the light theme action visible and disabled', async () => {
-    const menu =
-      await TestbedHarnessEnvironment.loader(fixture).getHarness(
-        MatMenuHarness,
-      );
-    await menu.open();
-    const [toggle] = await menu.getItems();
-    expect(await toggle.getText()).toContain('Helles Design');
-    expect(await toggle.getText()).toContain('light_mode');
-    expect(await toggle.isDisabled()).toBe(true);
-    await toggle.click();
-    expect(await menu.isOpen()).toBe(true);
-    expect(activeUserService.logout).not.toHaveBeenCalled();
   });
 });

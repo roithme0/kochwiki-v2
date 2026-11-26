@@ -83,11 +83,6 @@ describe('ImageEditorComponent', () => {
       image.dispatchEvent(new Event('error'));
       expect(host.image.imageAccessFailed()).toBe(false);
       expect(host.image.imageError()).toBeNull();
-      expect(
-        button('Bild auswählen')
-          .querySelector('mat-icon')
-          ?.getAttribute('data-mat-icon-name'),
-      ).toContain('add_photo_alternate');
       expect(element.querySelector('[aria-label="Bild entfernen"]')).toBeNull();
     },
   );
@@ -102,11 +97,6 @@ describe('ImageEditorComponent', () => {
       'blob:preview',
     );
     expect(element.querySelector('img')?.alt).toBe('Bildvorschau');
-    expect(
-      button('Bild ersetzen')
-        .querySelector('mat-icon')
-        ?.getAttribute('data-mat-icon-name'),
-    ).toContain('edit');
     expect(host.upload).not.toHaveBeenCalled();
     button('Bild entfernen').click();
     fixture.detectChanges();

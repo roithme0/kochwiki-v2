@@ -16,7 +16,7 @@ The [publishing workflow](../.github/workflows/publish-app.yml) publishes versio
 ## Configure the host
 
 - Install Docker with Compose v2 and retain the `deployment/` directory structure, including gateway, Garage, and PostgreSQL configuration.
-- Create `deployment/.env` from [.env.example](../deployment/.env.example). Replace placeholders; the [development setup](development.md#run-locally) describes credential formats and integration settings.
+- Create `deployment/.env` from [.env.example](../deployment/.env.example). Replace placeholders; the [development setup](development/general.md#run-locally) describes credential formats and integration settings.
 - Set `STORAGE_PUBLIC_ORIGIN` to the public application origin and `OIDC_CALLBACK_URL` to that origin plus `/api/auth/callback`. Configure the identity provider and any container-specific backchannel address.
 - In the identity-provider deployment, set `KOCHWIKI_LOGOUT_REDIRECT_URIS` to include the callback origin plus `/signed-out` and apply its client configuration. Logout returns there after ending the browser's Keycloak SSO session, which can affect other applications sharing that session. Use this setup for local environments too.
 - The callback origin is trusted for authenticated mutations. Add other frontend origins with `CSRF_TRUSTED_ORIGINS` (comma-separated exact HTTP(S) origins), for example `http://localhost:4202` for the Angular dev server. Login still returns to the configured callback origin.

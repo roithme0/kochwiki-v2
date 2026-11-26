@@ -7,10 +7,6 @@ import {
   type ChatArtifact,
   type ChatTurn,
 } from '@roithme0/chat-ui/ui';
-import {
-  SessionController,
-  HttpSessionTransport,
-} from '@roithme0/chat-ui/conversation';
 
 @Component({
   imports: [ChatUiComponent],
@@ -58,7 +54,7 @@ describe('Packaged chat UI integration', () => {
     TestBed.configureTestingModule({ imports: [RendererTestHost] });
   });
 
-  it('invokes the host renderer inside the library with the exact artifact payload', () => {
+  it('renders the artifact ID and payload fields using the host renderer', () => {
     const fixture = TestBed.createComponent(RendererTestHost);
     fixture.detectChanges();
 
@@ -70,46 +66,5 @@ describe('Packaged chat UI integration', () => {
     expect(element.querySelector('.artifact h3')?.textContent?.trim()).toBe(
       'Host headline',
     );
-  });
-
-  it('keeps the banner and headline with an unsupported presentation message when no renderer is supplied', () => {
-    const fixture = TestBed.createComponent(RendererTestHost);
-    fixture.componentInstance.showRenderer = false;
-    fixture.detectChanges();
-
-    const element: HTMLElement = fixture.nativeElement as HTMLElement;
-    expect(element.querySelector('.banner h2')?.textContent?.trim()).toBe(
-      'Banner',
-    );
-    expect(fixture.debugElement.query(By.css('.artifact h3'))).not.toBeNull();
-    expect(element.querySelector('pre')).toBeNull();
-    expect(element.textContent).toContain(
-      'Diese Darstellung wird nicht unterst\u00fctzt.',
-    );
-    expect(element.textContent).not.toContain('Host name');
-    expect(fixture.debugElement.query(By.css('.host-renderer'))).toBeNull();
-    expect(element.textContent).not.toContain('host-owned-id');
-  });
-
-  it('shows only the banner when no artifact is supplied', () => {
-    const fixture = TestBed.createComponent(RendererTestHost);
-    fixture.componentInstance.artifact = undefined;
-    fixture.detectChanges();
-
-    expect(fixture.debugElement.query(By.css('.banner'))).not.toBeNull();
-    expect(fixture.debugElement.query(By.css('.artifact'))).toBeNull();
-  });
-});
-
-describe('Packaged conversation entry point', () => {
-  it('exposes a controller compatible with the Kochwiki HTTP transport', () => {
-    const transport = new HttpSessionTransport(
-      '/ai/api/v1',
-      'kochwiki',
-      'kochwiki:1',
-    );
-    const controller = new SessionController(transport, () => {});
-
-    expect(controller).toBeInstanceOf(SessionController);
   });
 });

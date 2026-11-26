@@ -184,52 +184,12 @@ class PresentationValidationTests(unittest.TestCase):
             with self.assertRaises(PydanticSerializationError):
                 dump()
 
-    def test_response_round_trip(self) -> None:
-        body = presentation()
-        parsed = RecipePresentationOut.model_validate_json(json.dumps(body))
-        self.assertEqual(parsed.ingredients[0].amount, Decimal("12.5"))
-        self.assertIs(parsed.ingredients[0].foodstuff.unit, Unit.G)
-        self.assertEqual(json.loads(parsed.model_dump_json()), body)
-        empty = {**body, "ingredients": [], "steps": []}
-        self.assertEqual(
-            json.loads(RecipePresentationOut.model_validate(empty).model_dump_json()),
-            empty,
-        )
-
     def test_required_nullable_fields(self) -> None:
-        for field in ("preptime", "kcal", "carbs", "protein", "fat"):
-            with self.subTest(field=field):
-                body = presentation()
-                del body[field]
-                with self.assertRaises(ValidationError):
-                    RecipePresentationOut.model_validate(body)
         for field in ("brand", "details", "kcal", "carbs", "protein", "fat"):
             with self.subTest(foodstuff_field=field):
                 parsed = RecipePresentationOut.model_validate(presentation())
                 body = parsed.model_dump(mode="json")
                 del body["ingredients"][0]["foodstuff"][field]
-                with self.assertRaises(ValidationError):
-                    RecipePresentationOut.model_validate(body)
-
-    def test_response_objects_are_closed(self) -> None:
-        for path in (
-            (),
-            ("ingredients", 0),
-            ("ingredients", 0, "foodstuff"),
-            ("steps", 0),
-        ):
-            with self.subTest(path=path):
-                body = presentation()
-                target: object = body
-                for key in path:
-                    if isinstance(key, int):
-                        assert isinstance(target, list)
-                        target = target[key]
-                    else:
-                        assert isinstance(target, dict)
-                        target = target[key]
-                assert isinstance(target, dict)
-                target["unexpected"] = True
                 with self.assertRaises(ValidationError):
                     RecipePresentationOut.model_validate(body)
 

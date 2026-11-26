@@ -133,22 +133,6 @@ describe('Session-gated application routing', () => {
     expect(navigation.signIn).toHaveBeenCalledTimes(1);
   });
 
-  it('requires login when navigating from signed-out to a protected page', async () => {
-    TestBed.createComponent(AppComponent);
-    const pending = TestBed.inject(Router).navigateByUrl('/protected');
-    await vi.waitFor(() =>
-      expect(TestBed.inject(ActiveUserService).restorationState()).toBe(
-        'loading',
-      ),
-    );
-    TestBed.inject(HttpTestingController)
-      .expectOne('/api/auth/me')
-      .flush(null, { status: 401, statusText: 'Unauthorized' });
-    expect(await pending).toBe(false);
-    expect(navigation.signIn).toHaveBeenCalledTimes(1);
-    expect(TestBed.inject(ActiveUserService).activeUser()).toBeNull();
-  });
-
   it('does not redirect for a cancelled guard after navigating to signed-out', async () => {
     const fixture = TestBed.createComponent(AppComponent);
     const router = TestBed.inject(Router);

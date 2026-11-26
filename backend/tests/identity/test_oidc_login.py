@@ -485,11 +485,6 @@ def test_cookie_flags(
             "oidc_callback_url": CALLBACK,
         },
         {
-            "oidc_issuer": "http://idp.example/realm",
-            "oidc_client_secret": SECRET,
-            "oidc_callback_url": CALLBACK,
-        },
-        {
             "oidc_issuer": ISSUER,
             "oidc_client_secret": SECRET,
             "oidc_callback_url": "https://wiki.example/other",

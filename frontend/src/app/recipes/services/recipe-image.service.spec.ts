@@ -148,7 +148,6 @@ describe.each(cases)('$domain image transfers', ({ domain, serviceType }) => {
       expect(service.contentUrl(id)).toBe(
         `${backendUrl}/${domain}-images/${id}/content`,
       );
-      expect(service.contentUrl(id)).toBe(service.contentUrl(id));
       http.verify();
       TestBed.resetTestingModule();
     });

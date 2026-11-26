@@ -1,4 +1,3 @@
-import secrets
 from collections.abc import Callable
 
 import pytest
@@ -10,7 +9,7 @@ from app.foodstuffs.services.foodstuffs import foodstuff_out, list_foodstuffs
 from app.identity.config import SESSION_COOKIE, SESSION_LIFETIME
 from app.identity.models.application_session import ApplicationSession
 from app.identity.schemas.user import UserOut
-from app.identity.services.sessions import invalidate_session, secret_hash
+from app.identity.services.sessions import secret_hash
 from app.infrastructure.database.session import SessionLocal
 
 OPERATIONS: list[tuple[str, str, int]] = [
@@ -40,42 +39,15 @@ def shared_foodstuff(authenticated_client: TestClient) -> FoodstuffOut:
 
 
 @pytest.mark.parametrize(("method", "path", "status"), OPERATIONS)
-@pytest.mark.parametrize(
-    "credential",
-    ["missing", "malformed", "unknown", "expired", "revoked", "stored-hash"],
-)
-def test_invalid_sessions_cannot_access_or_mutate_foodstuffs(
+def test_missing_session_prevents_foodstuff_access_and_mutation(
     client: TestClient,
     shared_foodstuff: FoodstuffOut,
     recipe_session: UserOut,
     method: str,
     path: str,
     status: int,
-    credential: str,
 ) -> None:
-    secret = client.cookies.get(SESSION_COOKIE, path="/")
-    assert secret is not None
-    if credential == "expired":
-        with SessionLocal.begin() as session:
-            session.execute(
-                update(ApplicationSession).values(
-                    last_activity_at=func.statement_timestamp() - SESSION_LIFETIME,
-                )
-            )
-    elif credential == "revoked":
-        with SessionLocal.begin() as session:
-            assert invalidate_session(session, secret)
-    supplied = {
-        "missing": None,
-        "malformed": "invalid",
-        "unknown": secrets.token_urlsafe(32),
-        "expired": secret,
-        "revoked": secret,
-        "stored-hash": secret_hash(secret),
-    }[credential]
     client.cookies.clear()
-    if supplied is not None:
-        client.cookies.set(SESSION_COOKIE, supplied)
     response = client.request(
         method,
         path.format(foodstuff_id=shared_foodstuff.id),

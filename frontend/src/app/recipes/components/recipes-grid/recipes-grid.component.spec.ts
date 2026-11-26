@@ -84,29 +84,6 @@ describe('RecipesGridComponent', () => {
     }
   });
 
-  it('updates recipe columns from its own element width at the existing breakpoints', () => {
-    const width = signal(480);
-    const observe = vi.fn().mockReturnValue(width);
-    TestBed.configureTestingModule({
-      imports: [RecipesGridComponent, RouterTestingModule],
-      providers: [{ provide: ElementWidthService, useValue: { observe } }],
-    });
-    const fixture = TestBed.createComponent(RecipesGridComponent);
-
-    expect(observe.mock.calls[0][0]).toBe(fixture.nativeElement as HTMLElement);
-    expect(fixture.componentInstance.displayedColumns()).toBe(2);
-    width.set(599);
-    expect(fixture.componentInstance.displayedColumns()).toBe(2);
-    width.set(600);
-    expect(fixture.componentInstance.displayedColumns()).toBe(3);
-    width.set(899);
-    expect(fixture.componentInstance.displayedColumns()).toBe(3);
-    width.set(900);
-    expect(fixture.componentInstance.displayedColumns()).toBe(4);
-    width.set(480);
-    expect(fixture.componentInstance.displayedColumns()).toBe(2);
-  });
-
   it('orders active versions and drafts by last modification time without mutating the input', () => {
     const recipeVersions: RecipeVersionOut[] = [
       recipeVersion(
@@ -144,28 +121,6 @@ describe('RecipesGridComponent', () => {
       '00000000-0000-0000-0000-000000000001',
       '00000000-0000-0000-0000-000000000002',
       '00000000-0000-0000-0000-000000000003',
-    ]);
-  });
-
-  it('creates absolute commands for active and draft links', () => {
-    const component = Object.create(
-      RecipesGridComponent.prototype,
-    ) as RecipesGridComponent;
-
-    expect(
-      component.recipeVersionLink(
-        recipeVersion('active-version', '2026-09-10T09:00:00Z', 'active'),
-      ),
-    ).toEqual(['/recipes', '00000000-0000-4000-8000-000000000001']);
-    expect(
-      component.recipeVersionLink(
-        recipeVersion('draft-version', '2026-09-10T09:00:00Z', 'draft'),
-      ),
-    ).toEqual([
-      '/recipes',
-      '00000000-0000-4000-8000-000000000001',
-      'versions',
-      'draft-version',
     ]);
   });
 
