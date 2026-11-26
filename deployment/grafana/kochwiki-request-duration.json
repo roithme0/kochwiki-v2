@@ -44,7 +44,7 @@
       "description": "Estimated request counts across all HTTP statuses. Each upper bound is inclusive. The final bar includes every request slower than 500 ms.",
       "type": "barchart",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "x": 0, "y": 0, "w": 18, "h": 10 },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
       "targets": [
         {
           "refId": "A",
@@ -89,32 +89,6 @@
         "xField": "Metric",
         "orientation": "vertical",
         "legend": { "showLegend": false }
-      }
-    },
-    {
-      "id": 2,
-      "title": "HTTP 500 error rate",
-      "description": "Share of requests that returned exactly HTTP 500 over the selected time range.",
-      "type": "stat",
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 10 },
-      "targets": [
-        {
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "expr": "(\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_response_status_code=\"500\"}[$__range]))\n  or vector(0)\n) / (\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`}[$__range])) > 0\n)"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": { "unit": "percentunit", "noValue": "No data" },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "textMode": "value",
-        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
       }
     }
   ]

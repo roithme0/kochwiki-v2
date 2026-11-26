@@ -74,7 +74,7 @@ Session records contain ID tokens with identity claims; restrict database and ba
 
 Use Compose logs for diagnosis.
 
-## Endpoint duration metrics
+## Endpoint monitoring
 
 Configure metrics export in `deployment/.env`.
 
@@ -82,6 +82,11 @@ Configure metrics export in `deployment/.env`.
 - Set `OTEL_METRICS_BEARER_TOKEN` to the raw token configured on the observability stack.
 - Set `DEPLOYMENT_ENVIRONMENT_NAME` only if you need to override the default local label, `local`. The staging and production Compose files set their own labels.
 
-Follow the observability stack’s provisioning guide to load the KochWiki dashboard JSON, then select your environment in Grafana. [Dashboard JSON](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
+Load both dashboard JSON files using the observability stack’s provisioning guide. [Grafana provisioning](https://github.com/roithme0/observability#provision-grafana-dashboards)
 
-If the dashboard shows **No data**, check the backend startup logs for the export status and configuration errors. If export is enabled, send requests to a matched API route across two one-minute export cycles so the dashboard can calculate an increase.
+- [KochWiki Request Duration](../deployment/grafana/kochwiki-request-duration.json)
+- [KochWiki Request Errors](../deployment/grafana/kochwiki-request-errors.json)
+
+In Grafana, select the environment and time range. In **Request Errors**, hover over the marker in **Errors** to see counts by status code.
+
+If expected traffic is missing, check the backend startup logs for the metrics export status. To verify export, send requests to a matched API route across two one-minute export cycles.
