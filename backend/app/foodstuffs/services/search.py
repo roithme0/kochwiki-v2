@@ -51,5 +51,10 @@ class FoodstuffSemanticSearch(SemanticSearch[FoodstuffSearchCandidate]):
                 FoodstuffSearchCandidate(
                     foodstuff_summary_out(foodstuff), float(distance_value)
                 )
-                for foodstuff, distance_value in session.execute(statement)
+                for foodstuff, distance_value in session.execute(
+                    statement,
+                    execution_options={
+                        "kochwiki_query_name": "Search foodstuffs by embedding"
+                    },
+                )
             ]

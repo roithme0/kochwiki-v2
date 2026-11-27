@@ -3,6 +3,7 @@ import json
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from decimal import Decimal
+from uuid import UUID
 
 import httpx2
 import pytest
@@ -62,6 +63,7 @@ def test_enrichment_mcp_refreshes_historical_source_and_shared_proposal(
         )
         source = recipes.create_recipe(session, write, owner_id=mcp_user.id)
         source_id = str(source.version_id)
+        lineage_id = source.lineage_id
         recipes.publish_active_recipe_edit(session, source.lineage_id, write)
 
     async def exercise() -> None:
@@ -164,11 +166,15 @@ def test_enrichment_mcp_refreshes_historical_source_and_shared_proposal(
             versions = RecipeLineageOut.model_validate(
                 lineage.structured_content
             ).versions
-            historical = next(
-                version
-                for version in versions
-                if str(version.recipeVersionId) == source_id
+            assert all(
+                str(version.recipeVersionId) != source_id for version in versions
             )
+            with SessionLocal() as session:
+                historical = recipes.recipe_version_out(
+                    recipes.get_recipe_version_by_id(
+                        session, lineage_id, UUID(source_id)
+                    )
+                )
             assert historical.state == "historical"
             assert historical.fiber.status == "exact" and historical.fiber.value == 5
             assert (

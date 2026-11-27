@@ -59,7 +59,16 @@ class ImageUploads:
     def _recover(self, image: ValidatedImage, error: SQLAlchemyError) -> None:
         try:
             with self._sessions() as session:
-                persisted = session.get(ImageAsset, image.id) is not None
+                persisted = (
+                    session.get(
+                        ImageAsset,
+                        image.id,
+                        execution_options={
+                            "kochwiki_query_name": "Get image asset by ID"
+                        },
+                    )
+                    is not None
+                )
         except SQLAlchemyError:
             raise ImagePersistenceFailed(cleanup_pending=True) from None
         if persisted:
@@ -104,7 +113,8 @@ class OwnedImageUploads(ImageUploads):
         upload = session.scalar(
             select(self.upload_model)
             .where(self.upload_model.id == upload_id)
-            .with_for_update()
+            .with_for_update(),
+            execution_options={"kochwiki_query_name": "Lock image upload"},
         )
         if upload is None:
             raise ImageUploadNotFound("Upload has not been received")
@@ -114,5 +124,6 @@ class OwnedImageUploads(ImageUploads):
 
     def _consume_upload(self, session: Session, upload_id: UUID) -> None:
         session.execute(
-            delete(self.upload_model).where(self.upload_model.id == upload_id)
+            delete(self.upload_model).where(self.upload_model.id == upload_id),
+            execution_options={"kochwiki_query_name": "Consume image upload"},
         )

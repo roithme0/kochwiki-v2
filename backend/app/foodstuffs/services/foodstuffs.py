@@ -69,7 +69,9 @@ def list_foodstuffs(session: Session, *, owner_id: int) -> Sequence[Foodstuff]:
         .options(selectinload(Foodstuff.ingredients))
         .order_by(Foodstuff.id)
     )
-    return session.scalars(statement).all()
+    return session.scalars(
+        statement, execution_options={"kochwiki_query_name": "List foodstuffs"}
+    ).all()
 
 
 def get_foodstuff(session: Session, foodstuff_id: int) -> Foodstuff:
@@ -78,7 +80,9 @@ def get_foodstuff(session: Session, foodstuff_id: int) -> Foodstuff:
         .options(selectinload(Foodstuff.ingredients))
         .where(Foodstuff.id == foodstuff_id)
     )
-    foodstuff = session.scalar(statement)
+    foodstuff = session.scalar(
+        statement, execution_options={"kochwiki_query_name": "Get foodstuff by ID"}
+    )
     if foodstuff is None:
         raise NotFoundError(f"Foodstuff with id {foodstuff_id} not found")
     return foodstuff
@@ -133,7 +137,8 @@ def _get_foodstuff_for_update(session: Session, foodstuff_id: int) -> Foodstuff:
         .where(Foodstuff.id == foodstuff_id)
         .options(selectinload(Foodstuff.ingredients))
         .with_for_update()
-        .execution_options(populate_existing=True)
+        .execution_options(populate_existing=True),
+        execution_options={"kochwiki_query_name": "Lock foodstuff by ID"},
     )
     if foodstuff is None:
         raise NotFoundError(f"Foodstuff with id {foodstuff_id} not found")
@@ -189,7 +194,8 @@ def owned_foodstuffs_by_id(
     found = {
         foodstuff.id: foodstuff
         for foodstuff in session.scalars(
-            select(Foodstuff).where(Foodstuff.id.in_(requested))
+            select(Foodstuff).where(Foodstuff.id.in_(requested)),
+            execution_options={"kochwiki_query_name": "Get foodstuffs by IDs"},
         )
     }
     missing = sorted(requested - found.keys())
@@ -202,7 +208,11 @@ def owned_foodstuffs_by_id(
 
 def _validate_image(session: Session, image_id: UUID | None, *, owner_id: int) -> None:
     if image_id is not None:
-        image = session.get(ImageAsset, image_id)
+        image = session.get(
+            ImageAsset,
+            image_id,
+            execution_options={"kochwiki_query_name": "Get image asset by ID"},
+        )
         if image is None or image.kind != ImageKind.FOODSTUFF:
             raise NotFoundError(f"Foodstuff image with id {image_id} not found")
         if image.uploader_id != owner_id:
@@ -217,7 +227,8 @@ def delete_foodstuff(session: Session, foodstuff_id: int, *, owner_id: int) -> N
     usage_count = session.scalar(
         select(func.count())
         .select_from(Ingredient)
-        .where(Ingredient.foodstuff_id == foodstuff.id)
+        .where(Ingredient.foodstuff_id == foodstuff.id),
+        execution_options={"kochwiki_query_name": "Count ingredient uses of foodstuff"},
     )
     if usage_count and usage_count > 0:
         raise ConflictError("Foodstuff cannot be deleted while it is used by a recipe")

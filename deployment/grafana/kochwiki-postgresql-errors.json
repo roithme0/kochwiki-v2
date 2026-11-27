@@ -1,0 +1,293 @@
+{
+  "uid": "kochwiki-postgresql-errors",
+  "title": "KochWiki PostgreSQL Errors",
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values({job=\"personal/kochwiki\", deployment_environment_name!=\"\", __name__=~\"kochwiki_postgresql_connection_acquisition_duration_seconds_count|kochwiki_postgresql_query_execution_duration_seconds_count|http_server_request_duration_seconds_count\"}, deployment_environment_name)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Acquisition failure rate",
+      "description": "Share of attempts that failed to obtain a usable connection. Pool exhaustion can occur while PostgreSQL is healthy.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "expr": "(\n  ((sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range]))\n  )) or vector(0))\n  / (sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n  ) > 0)\n) or vector(-1)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "No attempts"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Acquisition failures",
+      "description": "Attempts that failed to obtain a usable connection in the selected time range.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "expr": "(sum (\n  last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range])\n  - (kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range]))\n)) or vector(0)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Acquisition attempts",
+      "description": "All attempts to obtain a usable connection in the selected time range.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "expr": "(sum (\n  last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n  - (kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n)) or vector(0)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Operational failure rate by query pattern",
+      "description": "Operational failures divided by all observed executions. Constraint violations count toward executions.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "sum by (query_name) (\n  last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n  - (kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n) > 0"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "sum by (query_name) (\n  last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range])\n  - (kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", outcome=\"operational_failure\"}[$__range]))\n)\nor 0 * (\n  sum by (query_name) (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n  ) > 0\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "query_name",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "Failure rate",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "query_name",
+                "Failure rate",
+                "Value #B",
+                "Value #A"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "query_name": 0,
+              "Failure rate": 1,
+              "Value #B": 2,
+              "Value #A": 3
+            },
+            "renameByName": {
+              "query_name": "Query pattern",
+              "Value #B": "Failures",
+              "Value #A": "Executions"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Failure rate",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failure rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true
+      }
+    }
+  ]
+}

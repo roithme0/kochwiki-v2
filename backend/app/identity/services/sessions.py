@@ -16,7 +16,8 @@ def cleanup_expired_sessions(session: Session) -> None:
         delete(ApplicationSession).where(
             ApplicationSession.last_activity_at
             <= func.statement_timestamp() - SESSION_LIFETIME
-        )
+        ),
+        execution_options={"kochwiki_query_name": "Delete expired sessions"},
     )
 
 
@@ -37,10 +38,14 @@ def establish_session(
         session.execute(
             delete(ApplicationSession).where(
                 ApplicationSession.secret_hash == previous_hash
-            )
+            ),
+            execution_options={"kochwiki_query_name": "Delete previous session"},
         )
     secret = secrets.token_urlsafe(32)
-    now = session.scalar(select(func.statement_timestamp()))
+    now = session.scalar(
+        select(func.statement_timestamp()),
+        execution_options={"kochwiki_query_name": "Get database statement time"},
+    )
     assert isinstance(now, datetime)
     hashed = secret_hash(secret)
     assert hashed is not None
@@ -75,11 +80,14 @@ def authenticated_user(
                 ApplicationSession.last_activity_at, func.statement_timestamp()
             )
         )
-        .returning(ApplicationSession.user_id, ApplicationSession.last_activity_at)
+        .returning(ApplicationSession.user_id, ApplicationSession.last_activity_at),
+        execution_options={"kochwiki_query_name": "Refresh active session"},
     ).one_or_none()
     if row is None:
         return None
-    user = session.get(User, row.user_id)
+    user = session.get(
+        User, row.user_id, execution_options={"kochwiki_query_name": "Get user by ID"}
+    )
     assert user is not None
     return user, row.last_activity_at + SESSION_LIFETIME
 
@@ -93,5 +101,6 @@ def invalidate_session(
     return session.scalars(
         delete(ApplicationSession)
         .where(ApplicationSession.secret_hash == hashed)
-        .returning(ApplicationSession)
+        .returning(ApplicationSession),
+        execution_options={"kochwiki_query_name": "Invalidate session"},
     ).one_or_none()

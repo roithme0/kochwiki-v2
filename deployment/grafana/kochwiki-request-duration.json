@@ -44,7 +44,7 @@
       "description": "Estimated request counts across all HTTP statuses. Each upper bound is inclusive. The final bar includes every request slower than 500 ms.",
       "type": "barchart",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "x": 0, "y": 0, "w": 18, "h": 10 },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
       "targets": [
         {
           "refId": "A",
@@ -93,28 +93,76 @@
     },
     {
       "id": 2,
-      "title": "HTTP 500 error rate",
-      "description": "Share of requests that returned exactly HTTP 500 over the selected time range.",
-      "type": "stat",
+      "title": "Average request duration by endpoint",
+      "description": "Average duration and estimated request count across all HTTP statuses in the selected time range.",
+      "type": "table",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 10 },
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 11 },
       "targets": [
         {
           "refId": "A",
+          "format": "table",
           "instant": true,
           "range": false,
-          "expr": "(\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_response_status_code=\"500\"}[$__range]))\n  or vector(0)\n) / (\n  sum(increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`}[$__range])) > 0\n)"
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ) > 0,\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_sum{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ),\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "endpoint", "mode": "inner" }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "timeSeries": false,
+            "alias": "Average duration",
+            "binary": {
+              "left": { "matcher": { "id": "byName", "options": "Value #B" } },
+              "operator": "/",
+              "right": { "matcher": { "id": "byName", "options": "Value #A" } }
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": { "include": { "names": ["endpoint", "Average duration", "Value #A"] } }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": { "endpoint": 0, "Average duration": 1, "Value #A": 2 },
+            "renameByName": { "endpoint": "Endpoint", "Value #A": "Estimated requests" }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "sort": [{ "field": "Average duration", "desc": true }] }
         }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "percentunit", "noValue": "No data" },
-        "overrides": []
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Average duration" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estimated requests" },
+            "properties": [{ "id": "decimals", "value": 2 }]
+          }
+        ]
       },
       "options": {
-        "colorMode": "none",
-        "graphMode": "none",
-        "textMode": "value",
-        "reduceOptions": { "calcs": ["lastNotNull"], "values": false }
+        "showHeader": true
       }
     }
   ]

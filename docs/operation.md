@@ -74,7 +74,7 @@ Session records contain ID tokens with identity claims; restrict database and ba
 
 Use Compose logs for diagnosis.
 
-## Endpoint duration metrics
+## Monitoring
 
 Configure metrics export in `deployment/.env`.
 
@@ -82,6 +82,25 @@ Configure metrics export in `deployment/.env`.
 - Set `OTEL_METRICS_BEARER_TOKEN` to the raw token configured on the observability stack.
 - Set `DEPLOYMENT_ENVIRONMENT_NAME` only if you need to override the default local label, `local`. The staging and production Compose files set their own labels.
 
-Follow the observability stack’s provisioning guide to load the KochWiki dashboard JSON, then select your environment in Grafana. [Dashboard JSON](../deployment/grafana/kochwiki-request-duration.json) · [Observability provisioning guide](https://github.com/roithme0/observability#provision-grafana-dashboards)
+Load the dashboard JSON files using the observability stack’s provisioning guide. [Grafana provisioning](https://github.com/roithme0/observability#provision-grafana-dashboards)
 
-If the dashboard shows **No data**, check the backend startup logs for the export status and configuration errors. If export is enabled, send requests to a matched API route across two one-minute export cycles so the dashboard can calculate an increase.
+In Grafana, select the environment and time range.
+
+If expected traffic is missing, check the backend startup logs for the metrics export status. To verify export, send requests to a matched API route across two one-minute export cycles.
+
+### Endpoint monitoring
+
+- [KochWiki Request Duration](../deployment/grafana/kochwiki-request-duration.json)
+- [KochWiki Request Errors](../deployment/grafana/kochwiki-request-errors.json)
+
+Use the matched-route filter to narrow the endpoint rankings.
+
+- In **Request Duration**, use **Average request duration by endpoint** to find slow endpoints. Check **Estimated requests** to see how much traffic each average represents.
+- In **Request Errors**, hover over the marker in **Errors** to see counts by status code.
+
+### PostgreSQL monitoring
+
+- Compare connection acquisition time with query execution time. Check the execution count when interpreting a query pattern’s average. [KochWiki PostgreSQL Performance](../deployment/grafana/kochwiki-postgresql-performance.json)
+- Check for pool exhaustion when acquisition fails. The query failure rate includes timeouts and disconnects. Constraint violations count toward executions only. [KochWiki PostgreSQL Errors](../deployment/grafana/kochwiki-postgresql-errors.json)
+
+**No attempts** means the selected range contains no observed connection acquisitions. PostgreSQL availability is unknown during idle periods. Counts use export timestamps, so activity near a time boundary can appear in an adjacent range. Counts can be overstated when reporting resumes after a long gap.

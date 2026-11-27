@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 from app.api.router import router
 from app.identity.logging import configure_auth_logging
 from app.core.config import get_settings
+from app.infrastructure.database.metrics import observe_postgresql
+from app.infrastructure.database.session import engine
 from app.infrastructure.mcp.server import create_mcp_server
 from app.infrastructure.metrics import create_metrics_provider, instrument_metrics
 from app.infrastructure.mcp.services import MCPServices
@@ -43,10 +45,19 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         try:
-            with semantic_search_services(settings, mcp_services) as embeddings:
-                with embedding_refresh_workers(embeddings):
-                    async with mcp_server.session_manager.run():
-                        yield
+            with ExitStack() as stack:
+                if metrics_provider is not None and engine.dialect.name == "postgresql":
+                    stack.enter_context(
+                        observe_postgresql(
+                            engine, metrics_provider.get_meter("kochwiki.postgresql")
+                        )
+                    )
+                embeddings = stack.enter_context(
+                    semantic_search_services(settings, mcp_services)
+                )
+                stack.enter_context(embedding_refresh_workers(embeddings))
+                async with mcp_server.session_manager.run():
+                    yield
         finally:
             if metrics_provider is not None:
                 try:

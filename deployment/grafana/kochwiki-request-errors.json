@@ -1,0 +1,303 @@
+{
+  "uid": "kochwiki-request-errors",
+  "title": "KochWiki Request Errors",
+  "schemaVersion": 41,
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name!=\"\"}, deployment_environment_name)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false
+      },
+      {
+        "name": "route",
+        "label": "Matched route",
+        "description": "All includes every matched FastAPI route in the selected environment.",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", http_route!=\"\"}, http_route)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "allowCustomValue": false,
+        "allValue": ".+",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP 4xx by endpoint",
+      "description": "Share of all requests to each method and matched route that returned HTTP 4xx. Hover over the error count for estimated counts by status code.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 11 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ) > 0,\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  (\n    sum by (http_request_method, http_route, http_response_status_code) (\n      increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\", http_response_status_code=~\"4[0-9]{2}\"}[$__range])\n    ) > 0\n  ) * on (http_request_method, http_route, http_response_status_code) group_left (status_detail) (\n    label_join(\n      count_values by (http_request_method, http_route, http_response_status_code) (\n        \"status_count\", round(\n          sum by (http_request_method, http_route, http_response_status_code) (\n            increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\", http_response_status_code=~\"4[0-9]{2}\"}[$__range])\n          ) > 0, 0.01\n        )\n      ),\n      \"status_detail\", \": \", \"http_response_status_code\", \"status_count\"\n    )\n  ) or on (http_request_method, http_route) label_replace(\n    0 * (\n      sum by (http_request_method, http_route) (\n        increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n      ) > 0\n    ),\n    \"status_detail\", \"No 4xx responses\", \"http_route\", \".+\"\n  ),\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupBy",
+          "filter": { "id": "byRefId", "options": "B" },
+          "options": {
+            "fields": {
+              "endpoint": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "Value #B": {
+                "operation": "aggregate",
+                "aggregations": ["sum"]
+              },
+              "status_detail": {
+                "operation": "aggregate",
+                "aggregations": ["allValues"]
+              }
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": { "byField": "endpoint", "mode": "inner" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "http_request_method": true, "http_route": true },
+            "indexByName": {
+              "endpoint": 0,
+              "Value #B (sum)": 1,
+              "Value #A": 2,
+              "status_detail (allValues)": 3
+            },
+            "renameByName": {
+              "endpoint": "Endpoint",
+              "Value #B (sum)": "Errors",
+              "Value #A": "Requests",
+              "status_detail (allValues)": "Status breakdown"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "timeSeries": false,
+            "alias": "Error rate",
+            "binary": {
+              "left": {
+                "matcher": { "id": "byName", "options": "Errors" }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": { "id": "byName", "options": "Requests" }
+              }
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Errors" },
+            "properties": [
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.tooltip.field", "value": "Status breakdown" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Requests" },
+            "properties": [
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Error rate" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Status breakdown" },
+            "properties": [
+              { "id": "custom.hideFrom.viz", "value": true },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "pill" }
+              },
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "gray" }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          { "displayName": "Error rate", "desc": true }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "HTTP 5xx by endpoint",
+      "description": "Share of all requests to each method and matched route that returned HTTP 5xx. Hover over the error count for estimated counts by status code.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 11, "w": 24, "h": 11 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ) > 0,\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  (\n    sum by (http_request_method, http_route, http_response_status_code) (\n      increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\", http_response_status_code=~\"5[0-9]{2}\"}[$__range])\n    ) > 0\n  ) * on (http_request_method, http_route, http_response_status_code) group_left (status_detail) (\n    label_join(\n      count_values by (http_request_method, http_route, http_response_status_code) (\n        \"status_count\", round(\n          sum by (http_request_method, http_route, http_response_status_code) (\n            increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\", http_response_status_code=~\"5[0-9]{2}\"}[$__range])\n          ) > 0, 0.01\n        )\n      ),\n      \"status_detail\", \": \", \"http_response_status_code\", \"status_count\"\n    )\n  ) or on (http_request_method, http_route) label_replace(\n    0 * (\n      sum by (http_request_method, http_route) (\n        increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n      ) > 0\n    ),\n    \"status_detail\", \"No 5xx responses\", \"http_route\", \".+\"\n  ),\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupBy",
+          "filter": { "id": "byRefId", "options": "B" },
+          "options": {
+            "fields": {
+              "endpoint": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "Value #B": {
+                "operation": "aggregate",
+                "aggregations": ["sum"]
+              },
+              "status_detail": {
+                "operation": "aggregate",
+                "aggregations": ["allValues"]
+              }
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": { "byField": "endpoint", "mode": "inner" }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "http_request_method": true, "http_route": true },
+            "indexByName": {
+              "endpoint": 0,
+              "Value #B (sum)": 1,
+              "Value #A": 2,
+              "status_detail (allValues)": 3
+            },
+            "renameByName": {
+              "endpoint": "Endpoint",
+              "Value #B (sum)": "Errors",
+              "Value #A": "Requests",
+              "status_detail (allValues)": "Status breakdown"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "timeSeries": false,
+            "alias": "Error rate",
+            "binary": {
+              "left": {
+                "matcher": { "id": "byName", "options": "Errors" }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": { "id": "byName", "options": "Requests" }
+              }
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Errors" },
+            "properties": [
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.tooltip.field", "value": "Status breakdown" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Requests" },
+            "properties": [
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Error rate" },
+            "properties": [
+              { "id": "unit", "value": "percentunit" },
+              { "id": "decimals", "value": 2 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Status breakdown" },
+            "properties": [
+              { "id": "custom.hideFrom.viz", "value": true },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "pill" }
+              },
+              {
+                "id": "color",
+                "value": { "mode": "fixed", "fixedColor": "gray" }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          { "displayName": "Error rate", "desc": true }
+        ]
+      }
+    }
+  ]
+}

@@ -49,9 +49,13 @@ class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
         self, session: Session, record_id: int, *, for_update: bool
     ) -> str | None:
         statement = select(Foodstuff).where(Foodstuff.id == record_id)
+        query_name = "Get foodstuff embedding source"
         if for_update:
             statement = statement.with_for_update()
-        foodstuff = session.scalar(statement)
+            query_name = "Lock foodstuff embedding source"
+        foodstuff = session.scalar(
+            statement, execution_options={"kochwiki_query_name": query_name}
+        )
         return (
             source_text(foodstuff.name, foodstuff.brand, foodstuff.details)
             if foodstuff is not None
@@ -61,7 +65,11 @@ class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
     def _load_embedding(
         self, session: Session, record_id: int
     ) -> FoodstuffEmbedding | None:
-        return session.get(FoodstuffEmbedding, record_id)
+        return session.get(
+            FoodstuffEmbedding,
+            record_id,
+            execution_options={"kochwiki_query_name": "Get foodstuff embedding by ID"},
+        )
 
     def _new_embedding(
         self, record_id: int, profile: str, text: str, vector: list[float]
@@ -71,4 +79,11 @@ class FoodstuffEmbeddingService(EmbeddingService[int, FoodstuffEmbedding]):
         )
 
     def _refresh_ids(self, session: Session) -> list[int]:
-        return list(session.scalars(select(Foodstuff.id).order_by(Foodstuff.id)))
+        return list(
+            session.scalars(
+                select(Foodstuff.id).order_by(Foodstuff.id),
+                execution_options={
+                    "kochwiki_query_name": "List foodstuff embedding refresh IDs"
+                },
+            )
+        )

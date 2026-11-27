@@ -33,7 +33,13 @@ def save_recipe_proposal(
         with session.begin():
             proposal = store.get(proposal_id, user_id=user_id)
             saved_version_id = store.saved_version_id(proposal_id, user_id=user_id)
-            source = session.get(RecipeVersion, proposal.sourceRecipeVersionId)
+            source = session.get(
+                RecipeVersion,
+                proposal.sourceRecipeVersionId,
+                execution_options={
+                    "kochwiki_query_name": "Get recipe version by primary key"
+                },
+            )
             if source is not None:
                 require_recipe_lineage_owner(session, source.lineage_id, user_id)
             if saved_version_id is not None:
@@ -53,7 +59,11 @@ def save_recipe_proposal(
 
 
 def _get_version(session: Session, version_id: UUID) -> RecipeVersion:
-    version = session.get(RecipeVersion, version_id)
+    version = session.get(
+        RecipeVersion,
+        version_id,
+        execution_options={"kochwiki_query_name": "Get recipe version by primary key"},
+    )
     if version is None:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
     return get_recipe_version_by_id(session, version.lineage_id, version_id)

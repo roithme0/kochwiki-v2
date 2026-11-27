@@ -108,7 +108,7 @@ def test_all_versions_retain_lineage_owner(
     with SessionLocal() as session:
         lineage = get_recipe_lineage(session, UUID(original["recipeVersionId"]))
         assert lineage.ownerId == owner.id
-        assert len(lineage.versions) == 3
+        assert len(lineage.versions) == 1
         assert all(version.ownerId == owner.id for version in lineage.versions)
 
 

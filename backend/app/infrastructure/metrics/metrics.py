@@ -18,9 +18,53 @@ from opentelemetry.sdk.metrics.view import (
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.trace import NoOpTracerProvider
 
+from app.infrastructure.database.metrics import (
+    ACQUISITION_DURATION,
+    DURATION_BUCKETS,
+    QUERY_DURATION,
+)
+
 from .config import MetricsConfig
 
 logger = logging.getLogger("uvicorn.error.metrics")
+
+
+def _metrics_views() -> list[View]:
+    return [
+        View(instrument_name="*", aggregation=DropAggregation()),
+        View(
+            instrument_name="http.server.request.duration",
+            aggregation=ExplicitBucketHistogramAggregation(boundaries=(0.05, 0.2, 0.5)),
+            attribute_keys={
+                "http.request.method",
+                "http.route",
+                "http.response.status_code",
+                "url.scheme",
+            },
+        ),
+        View(
+            instrument_name=ACQUISITION_DURATION,
+            aggregation=ExplicitBucketHistogramAggregation(DURATION_BUCKETS),
+            attribute_keys={"outcome"},
+        ),
+        View(
+            instrument_name=QUERY_DURATION,
+            aggregation=ExplicitBucketHistogramAggregation(DURATION_BUCKETS),
+            attribute_keys={"query.name", "outcome"},
+        ),
+    ]
+
+
+def _metrics_resource(version: str, environment: str) -> Resource:
+    return Resource.create(
+        {
+            "service.namespace": "personal",
+            "service.name": "kochwiki",
+            "service.version": version,
+            "service.instance.id": str(uuid4()),
+            "deployment.environment.name": environment,
+        }
+    )
 
 
 def create_metrics_provider(version: str) -> MeterProvider | None:
@@ -48,30 +92,8 @@ def create_metrics_provider(version: str) -> MeterProvider | None:
         return MeterProvider(
             metric_readers=[reader],
             exemplar_filter=AlwaysOffExemplarFilter(),
-            resource=Resource.create(
-                {
-                    "service.namespace": "personal",
-                    "service.name": "kochwiki",
-                    "service.version": version,
-                    "service.instance.id": str(uuid4()),
-                    "deployment.environment.name": config.environment,
-                }
-            ),
-            views=[
-                View(instrument_name="*", aggregation=DropAggregation()),
-                View(
-                    instrument_name="http.server.request.duration",
-                    aggregation=ExplicitBucketHistogramAggregation(
-                        boundaries=(0.05, 0.2, 0.5)
-                    ),
-                    attribute_keys={
-                        "http.request.method",
-                        "http.route",
-                        "http.response.status_code",
-                        "url.scheme",
-                    },
-                ),
-            ],
+            resource=_metrics_resource(version, config.environment),
+            views=_metrics_views(),
         )
     except Exception as error:
         logger.error(
