@@ -50,7 +50,11 @@ class ImageTransfers:
 
     def content_handoff(self, image_id: UUID) -> str | None:
         with self._sessions() as session:
-            image = session.get(ImageAsset, image_id)
+            image = session.get(
+                ImageAsset,
+                image_id,
+                execution_options={"kochwiki_query_name": "Get image asset by ID"},
+            )
             if image is None or image.kind != self._kind:
                 return None
             return self._storage.image_handoff(image.object_key)

@@ -20,5 +20,9 @@ def map_identity(session: Session, identity: Identity) -> User:
         },
     ).returning(User)
     return session.scalars(
-        statement, execution_options={"populate_existing": True}
+        statement,
+        execution_options={
+            "populate_existing": True,
+            "kochwiki_query_name": "Upsert identity user",
+        },
     ).one()

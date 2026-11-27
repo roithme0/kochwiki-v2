@@ -21,7 +21,8 @@ def mark_recipe_refresh(session: Session, recipe_id: UUID) -> None:
 
 def remove_recipe_embedding(session: Session, version_id: UUID) -> None:
     session.execute(
-        delete(RecipeEmbedding).where(RecipeEmbedding.recipe_version_id == version_id)
+        delete(RecipeEmbedding).where(RecipeEmbedding.recipe_version_id == version_id),
+        execution_options={"kochwiki_query_name": "Delete recipe embedding"},
     )
 
 
@@ -32,9 +33,13 @@ class RecipeEmbeddingService(EmbeddingService[UUID, RecipeEmbedding]):
         self, session: Session, record_id: UUID, *, for_update: bool
     ) -> str | None:
         statement = select(RecipeVersion).where(RecipeVersion.version_id == record_id)
+        query_name = "Get recipe embedding source"
         if for_update:
             statement = statement.with_for_update()
-        version = session.scalar(statement)
+            query_name = "Lock recipe embedding source"
+        version = session.scalar(
+            statement, execution_options={"kochwiki_query_name": query_name}
+        )
         return (
             version.name
             if version is not None and version.state in SEARCHABLE_RECIPE_STATES
@@ -44,7 +49,11 @@ class RecipeEmbeddingService(EmbeddingService[UUID, RecipeEmbedding]):
     def _load_embedding(
         self, session: Session, record_id: UUID
     ) -> RecipeEmbedding | None:
-        return session.get(RecipeEmbedding, record_id)
+        return session.get(
+            RecipeEmbedding,
+            record_id,
+            execution_options={"kochwiki_query_name": "Get recipe embedding by ID"},
+        )
 
     def _new_embedding(
         self, record_id: UUID, profile: str, text: str, vector: list[float]
@@ -61,7 +70,10 @@ class RecipeEmbeddingService(EmbeddingService[UUID, RecipeEmbedding]):
             session.scalars(
                 select(RecipeVersion.version_id)
                 .where(RecipeVersion.state.in_(SEARCHABLE_RECIPE_STATES))
-                .order_by(RecipeVersion.version_id)
+                .order_by(RecipeVersion.version_id),
+                execution_options={
+                    "kochwiki_query_name": "List recipe embedding refresh IDs"
+                },
             )
         )
 
@@ -74,5 +86,8 @@ class RecipeEmbeddingService(EmbeddingService[UUID, RecipeEmbedding]):
                             RecipeVersion.state == RecipeVersionState.HISTORICAL
                         )
                     )
-                )
+                ),
+                execution_options={
+                    "kochwiki_query_name": "Delete historical recipe embeddings"
+                },
             )

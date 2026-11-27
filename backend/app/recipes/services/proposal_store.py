@@ -46,7 +46,10 @@ class RecipeProposalStore:
             source = session.scalar(
                 select(RecipeVersion).where(
                     RecipeVersion.version_id == validated.sourceRecipeVersionId
-                )
+                ),
+                execution_options={
+                    "kochwiki_query_name": "Get proposal source version"
+                },
             )
             if source is None:
                 raise NotFoundError(

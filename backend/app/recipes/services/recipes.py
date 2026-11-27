@@ -44,7 +44,8 @@ def list_recipe_versions(session: Session) -> Sequence[RecipeVersion]:
                 (RecipeVersionState.ACTIVE, RecipeVersionState.DRAFT)
             )
         )
-        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
+        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc()),
+        execution_options={"kochwiki_query_name": "List recipe versions"},
     ).all()
 
 
@@ -53,7 +54,8 @@ def get_active_recipe_version(session: Session, lineage_id: UUID) -> RecipeVersi
         _recipe_version_statement().where(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.state == RecipeVersionState.ACTIVE,
-        )
+        ),
+        execution_options={"kochwiki_query_name": "Get active recipe version"},
     )
     if version is None:
         raise NotFoundError(f"Recipe lineage with id {lineage_id} not found")
@@ -67,7 +69,8 @@ def get_recipe_version_by_id(
         _recipe_version_statement().where(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.version_id == version_id,
-        )
+        ),
+        execution_options={"kochwiki_query_name": "Get recipe version by ID"},
     )
     if version is None:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
@@ -84,7 +87,8 @@ def list_historical_recipe_versions(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.state == RecipeVersionState.HISTORICAL,
         )
-        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
+        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc()),
+        execution_options={"kochwiki_query_name": "List historical recipe versions"},
     ).all()
 
 
@@ -102,7 +106,10 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
                 (RecipeVersionState.ACTIVE, RecipeVersionState.DRAFT)
             ),
         )
-        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
+        .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc()),
+        execution_options={
+            "kochwiki_query_name": "List active and draft recipe versions"
+        },
     ).all()
     if not versions:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
@@ -180,7 +187,8 @@ def create_recipe_draft(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.state == RecipeVersionState.ACTIVE,
         )
-        .with_for_update()
+        .with_for_update(),
+        execution_options={"kochwiki_query_name": "Lock active recipe image"},
     )
     image_id = _resolve_image_id(
         session, payload, source_image_id, owner_id=lineage.owner_id
@@ -369,13 +377,15 @@ def list_ingredients(session: Session) -> Sequence[Ingredient]:
         .options(
             selectinload(Ingredient.foodstuff), selectinload(Ingredient.recipe_version)
         )
-        .order_by(Ingredient.id)
+        .order_by(Ingredient.id),
+        execution_options={"kochwiki_query_name": "List ingredients"},
     ).all()
 
 
 def list_steps(session: Session) -> Sequence[Step]:
     return session.scalars(
-        select(Step).options(selectinload(Step.recipe_version)).order_by(Step.id)
+        select(Step).options(selectinload(Step.recipe_version)).order_by(Step.id),
+        execution_options={"kochwiki_query_name": "List steps"},
     ).all()
 
 
@@ -393,7 +403,11 @@ def _recipe_version_statement() -> Select[tuple[RecipeVersion]]:
 
 
 def _get_lineage(session: Session, lineage_id: UUID) -> RecipeLineage:
-    lineage = session.get(RecipeLineage, lineage_id)
+    lineage = session.get(
+        RecipeLineage,
+        lineage_id,
+        execution_options={"kochwiki_query_name": "Get recipe lineage by ID"},
+    )
     if lineage is None:
         raise NotFoundError(f"Recipe lineage with id {lineage_id} not found")
     return lineage
@@ -408,7 +422,8 @@ def _get_active_recipe_version_for_update(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.state == RecipeVersionState.ACTIVE,
         )
-        .with_for_update()
+        .with_for_update(),
+        execution_options={"kochwiki_query_name": "Lock active recipe version"},
     )
     if version is None:
         raise NotFoundError(f"Recipe lineage with id {lineage_id} not found")
@@ -424,7 +439,8 @@ def _get_recipe_version_for_update(
             RecipeVersion.lineage_id == lineage_id,
             RecipeVersion.version_id == version_id,
         )
-        .with_for_update()
+        .with_for_update(),
+        execution_options={"kochwiki_query_name": "Lock recipe version by ID"},
     )
     if version is None:
         raise NotFoundError(f"Recipe version with id {version_id} not found")
@@ -464,7 +480,11 @@ def _resolve_image_id(
     if "imageId" not in payload.model_fields_set:
         return source_image_id
     if payload.imageId is not None:
-        image = session.get(ImageAsset, payload.imageId)
+        image = session.get(
+            ImageAsset,
+            payload.imageId,
+            execution_options={"kochwiki_query_name": "Get image asset by ID"},
+        )
         if image is None or image.kind != ImageKind.RECIPE:
             raise NotFoundError(f"Recipe image with id {payload.imageId} not found")
         if image.uploader_id != owner_id:

@@ -1,0 +1,366 @@
+{
+  "uid": "kochwiki-postgresql-performance",
+  "title": "KochWiki PostgreSQL Performance",
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values({job=\"personal/kochwiki\", deployment_environment_name!=\"\", __name__=~\"kochwiki_postgresql_connection_acquisition_duration_seconds_count|kochwiki_postgresql_query_execution_duration_seconds_count|http_server_request_duration_seconds_count\"}, deployment_environment_name)",
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Connection acquisition duration",
+      "description": "Distribution across all outcomes in the selected time range. Upper bounds are inclusive.",
+      "type": "barchart",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{bucket}}",
+          "expr": "label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range]))\n  ),\n  \"bucket\", \"1\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range]))\n  ),\n  \"bucket\", \"2\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range]))\n  ),\n  \"bucket\", \"3\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range]))\n  ),\n  \"bucket\", \"4\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range])\n    - (kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_connection_acquisition_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range]))\n  ),\n  \"bucket\", \"5\", \"\", \"\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Metric"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "axisLabel": "Attempts"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Metric"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Duration (ms)"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "≤ 5"
+                      },
+                      "2": {
+                        "text": "5–20"
+                      },
+                      "3": {
+                        "text": "20–100"
+                      },
+                      "4": {
+                        "text": "100–500"
+                      },
+                      "5": {
+                        "text": "> 500"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Metric",
+        "orientation": "vertical",
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Query execution duration",
+      "description": "Distribution across all outcomes in the selected time range. Upper bounds are inclusive.",
+      "type": "barchart",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{bucket}}",
+          "expr": "label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range]))\n  ),\n  \"bucket\", \"1\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.005\"}[$__range]))\n  ),\n  \"bucket\", \"2\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.02\"}[$__range]))\n  ),\n  \"bucket\", \"3\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.1\"}[$__range]))\n  ),\n  \"bucket\", \"4\", \"\", \"\"\n) or label_replace(\n  sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"+Inf\"}[$__range]))\n  )\n  - sum (\n    last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range])\n    - (kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_bucket{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", le=\"0.5\"}[$__range]))\n  ),\n  \"bucket\", \"5\", \"\", \"\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Metric"
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "decimals": 0,
+          "custom": {
+            "axisLabel": "Executions"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Metric"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Duration (ms)"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "≤ 5"
+                      },
+                      "2": {
+                        "text": "5–20"
+                      },
+                      "3": {
+                        "text": "20–100"
+                      },
+                      "4": {
+                        "text": "100–500"
+                      },
+                      "5": {
+                        "text": "> 500"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "xField": "Metric",
+        "orientation": "vertical",
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Average duration by query pattern",
+      "description": "Average driver execution time across all outcomes for each query pattern in the selected time range.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "sum by (query_name) (\n  last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n  - (kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n) > 0"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "sum by (query_name) (\n  last_over_time(kochwiki_postgresql_query_execution_duration_seconds_sum{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range])\n  - (kochwiki_postgresql_query_execution_duration_seconds_sum{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"} offset $__range or 0 * last_over_time(kochwiki_postgresql_query_execution_duration_seconds_sum{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\"}[$__range]))\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "query_name",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "Average duration",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #A"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "query_name",
+                "Average duration",
+                "Value #A"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "query_name": 0,
+              "Average duration": 1,
+              "Value #A": 2
+            },
+            "renameByName": {
+              "query_name": "Query pattern",
+              "Value #A": "Executions"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Average duration",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 3
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true
+      }
+    }
+  ]
+}

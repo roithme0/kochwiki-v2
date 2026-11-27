@@ -1,37 +1,82 @@
-import time
-from uuid import uuid4
+import subprocess
+import sys
 from collections.abc import Callable
-from app.identity.schemas.user import UserOut
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from queue import Queue
+from socket import socket
+from threading import Thread
+from time import monotonic
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
+    ExportMetricsServiceRequest,
+)
+from opentelemetry.proto.metrics.v1.metrics_pb2 import (
+    AGGREGATION_TEMPORALITY_CUMULATIVE,
+)
 from opentelemetry.sdk.metrics.export import (
     Histogram,
-    HistogramDataPoint,
     InMemoryMetricReader,
+    Metric,
     MetricExporter,
+    PeriodicExportingMetricReader,
 )
 
+from app.core.exceptions import NotFoundError
+from app.identity.schemas.user import UserOut
+from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.metrics import metrics
+from app.infrastructure.metrics.config import MetricsConfig
 from app.main import create_app
+from app.recipes.services.recipes import get_active_recipe_version
+
+ENDPOINT = "http://127.0.0.1:1/otlp/v1/metrics"
+TOKEN = "private-metrics-token"
+INVALID_METRICS_PATH = (
+    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must end in /otlp/v1/metrics"
+    " without a query or fragment"
+)
 
 
-def test_duration_series_and_exclusions(
-    monkeypatch: pytest.MonkeyPatch, sign_in: Callable[[TestClient], UserOut]
-) -> None:
-    reader = InMemoryMetricReader()
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://localhost:1/otlp/v1/metrics"
-    )
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "test-token")
+@pytest.fixture
+def metrics_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", ENDPOINT)
+    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", TOKEN)
     monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
 
+
+@pytest.fixture
+def metric_reader(
+    monkeypatch: pytest.MonkeyPatch, metrics_environment: None
+) -> InMemoryMetricReader:
+    reader = InMemoryMetricReader()
+
     def memory_reader(
-        exporter: MetricExporter, **kwargs: object
+        exporter: MetricExporter, *, export_interval_millis: float
     ) -> InMemoryMetricReader:
         return reader
 
     monkeypatch.setattr(metrics, "PeriodicExportingMetricReader", memory_reader)
+    return reader
+
+
+def _read_metrics(reader: InMemoryMetricReader) -> dict[str, Metric]:
+    data = reader.get_metrics_data()
+    assert data is not None
+    return {
+        metric.name: metric
+        for resource in data.resource_metrics
+        for scope in resource.scope_metrics
+        for metric in scope.metrics
+    }
+
+
+def test_request_duration_labels_aggregate_and_exclude_non_api_routes(
+    metric_reader: InMemoryMetricReader,
+    sign_in: Callable[[TestClient], UserOut],
+) -> None:
     app = create_app()
 
     @app.get("/test-failure")
@@ -42,11 +87,11 @@ def test_duration_series_and_exclusions(
         app, raise_server_exceptions=False, headers={"Origin": "http://localhost:8000"}
     ) as client:
         sign_in(client)
-        for _ in range(2):
+        for private_value in ("first", "second"):
             assert (
                 client.get(
-                    f"/recipes/{uuid4()}?secret=private",
-                    headers={"X-Secret": "private"},
+                    f"/recipes/{uuid4()}?secret={private_value}",
+                    headers={"X-Secret": private_value},
                 ).status_code
                 == 404
             )
@@ -55,103 +100,169 @@ def test_duration_series_and_exclusions(
         assert client.get("/missing-private").status_code == 404
         assert client.get("/meta/version").status_code == 200
         assert client.request("BREW", "/meta/version").status_code == 405
-        client.get("/auth/me")
+        assert client.get("/auth/me").status_code == 200
         for path in (
             "/mcp",
             "/mcp/",
             "/mcp/private",
             "/api/docs",
             "/api/openapi.json",
+            "/redoc",
             "/docs/oauth2-redirect",
         ):
             client.get(path, follow_redirects=False)
-        data = reader.get_metrics_data()
-        assert data is not None
-        found = [
-            metric
-            for resource in data.resource_metrics
-            for scope in resource.scope_metrics
-            for metric in scope.metrics
-        ]
-        assert len(found) == 1
-        metric = found[0]
-        assert metric.name == "http.server.request.duration"
+
+        collected = _read_metrics(metric_reader)
+
+    http_metrics = {name for name in collected if name.startswith("http.")}
+    assert http_metrics == {"http.server.request.duration"}
+    duration = collected["http.server.request.duration"]
+    assert duration.unit == "s"
+    assert isinstance(duration.data, Histogram)
+    assert len(duration.data.data_points) == 7
+    assert all(
+        point.attributes.get("url.scheme", "http") == "http"
+        for point in duration.data.data_points
+    )
+    assert {
+        frozenset(
+            (key, value)
+            for key, value in point.attributes.items()
+            if key != "url.scheme"
+        ): point.count
+        for point in duration.data.data_points
+    } == {
+        frozenset(
+            {
+                "http.request.method": method,
+                "http.response.status_code": status,
+                **({"http.route": route} if route is not None else {}),
+            }.items()
+        ): count
+        for method, route, status, count in (
+            ("GET", "/recipes/{lineage_id}", 404, 2),
+            ("GET", "/recipes/{lineage_id}", 422, 1),
+            ("GET", "/test-failure", 500, 1),
+            ("GET", None, 404, 1),
+            ("GET", "/meta/version", 200, 1),
+            ("_OTHER", "/meta/version", 405, 1),
+            ("GET", "/auth/me", 200, 1),
+        )
+    }
+
+
+def test_app_lifespan_exports_postgresql_duration_histograms(
+    metric_reader: InMemoryMetricReader,
+) -> None:
+    with TestClient(create_app()):
+        with SessionLocal() as session, pytest.raises(NotFoundError):
+            get_active_recipe_version(session, uuid4())
+
+        collected = _read_metrics(metric_reader)
+
+    assert collected.keys() == {
+        "kochwiki.postgresql.connection.acquisition.duration",
+        "kochwiki.postgresql.query.execution.duration",
+    }
+    for name, attributes in (
+        ("kochwiki.postgresql.connection.acquisition.duration", {"outcome": "success"}),
+        (
+            "kochwiki.postgresql.query.execution.duration",
+            {"query.name": "Get active recipe version", "outcome": "success"},
+        ),
+    ):
+        metric = collected[name]
         assert metric.unit == "s"
         assert isinstance(metric.data, Histogram)
-        points = list(metric.data.data_points)
-        assert all(
-            set(point.attributes)
-            <= {
-                "http.request.method",
-                "http.route",
-                "http.response.status_code",
-                "url.scheme",
-            }
-            for point in points
-        )
-
-        def matching(route: str | None, status: int) -> list[HistogramDataPoint]:
-            return [
-                point
-                for point in points
-                if point.attributes.get("http.route") == route
-                and point.attributes.get("http.response.status_code") == status
-            ]
-
-        assert len(matching("/recipes/{lineage_id}", 404)) == 1
-        assert matching("/recipes/{lineage_id}", 404)[0].count == 2
-        assert matching("/recipes/{lineage_id}", 422)[0].count == 1
-        assert matching("/test-failure", 500)[0].count == 1
-        assert matching(None, 404)[0].count == 1
-        assert matching("/meta/version", 200)[0].count == 1
-        assert (
-            matching("/meta/version", 200)[0].attributes["http.request.method"] == "GET"
-        )
-        assert (
-            matching("/meta/version", 405)[0].attributes["http.request.method"]
-            == "_OTHER"
-        )
-        assert any(point.attributes.get("http.route") == "/auth/me" for point in points)
-        assert all("private" not in str(point.attributes) for point in points)
-        assert sum(point.count for point in points) == 8
+        (point,) = metric.data.data_points
+        assert point.attributes == attributes
+        assert point.explicit_bounds == (0.005, 0.02, 0.1, 0.5)
+        assert point.count == 1
 
 
-@pytest.mark.parametrize("endpoint", [None, "", "invalid"])
-def test_disabled_or_invalid_export_preserves_api(
+@pytest.mark.parametrize("endpoint", [None, ""])
+def test_export_is_opt_in(
     monkeypatch: pytest.MonkeyPatch, endpoint: str | None
 ) -> None:
     if endpoint is None:
         monkeypatch.delenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", raising=False)
     else:
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
-    start = time.monotonic()
-    with TestClient(create_app()) as client:
-        assert client.get("/meta/version").status_code == 200
-    assert time.monotonic() - start < 5
+
+    assert MetricsConfig.from_environment() is None
 
 
-@pytest.mark.parametrize("environment", ["staging", "production"])
-def test_otlp_wire_export_and_unique_instances(
-    monkeypatch: pytest.MonkeyPatch, environment: str
+@pytest.mark.parametrize(
+    "variable,value,diagnostic",
+    [
+        (
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            "http://localhost:4318/",
+            INVALID_METRICS_PATH,
+        ),
+        (
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            f"{ENDPOINT}?query=value",
+            INVALID_METRICS_PATH,
+        ),
+        (
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            f"{ENDPOINT}#fragment",
+            INVALID_METRICS_PATH,
+        ),
+        (
+            "DEPLOYMENT_ENVIRONMENT_NAME",
+            "",
+            "DEPLOYMENT_ENVIRONMENT_NAME must be set",
+        ),
+        *(
+            (
+                "OTEL_METRICS_BEARER_TOKEN",
+                token,
+                "OTEL_METRICS_BEARER_TOKEN must be a raw bearer token",
+            )
+            for token in ("", f"Bearer {TOKEN}", "token%20value", " token", "token\n")
+        ),
+    ],
+)
+def test_invalid_export_settings_are_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    metrics_environment: None,
+    variable: str,
+    value: str,
+    diagnostic: str,
 ) -> None:
-    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-    from threading import Thread
-    from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
-        ExportMetricsServiceRequest,
-    )
-    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    monkeypatch.setenv(variable, value)
+    with pytest.raises(ValueError) as error:
+        MetricsConfig.from_environment()
+    assert str(error.value) == diagnostic
 
-    received: list[tuple[str, str | None, str | None, bytes]] = []
+
+def test_legacy_headers_do_not_supply_a_bearer_token(
+    monkeypatch: pytest.MonkeyPatch, metrics_environment: None
+) -> None:
+    monkeypatch.delenv("OTEL_METRICS_BEARER_TOKEN")
+    monkeypatch.setenv(
+        "OTEL_EXPORTER_OTLP_METRICS_HEADERS", "Authorization=Bearer%20token"
+    )
+
+    with pytest.raises(ValueError, match="must be a raw bearer token"):
+        MetricsConfig.from_environment()
+
+
+def test_periodic_otlp_exports_identify_concurrent_instances(
+    monkeypatch: pytest.MonkeyPatch, metrics_environment: None
+) -> None:
+    received: Queue[tuple[str, str | None, str | None, bytes]] = Queue()
 
     class Receiver(BaseHTTPRequestHandler):
         def do_POST(self) -> None:
-            body = self.rfile.read(int(self.headers["Content-Length"]))
-            received.append(
+            received.put(
                 (
                     self.path,
                     self.headers.get("Authorization"),
                     self.headers.get("Content-Type"),
-                    body,
+                    self.rfile.read(int(self.headers["Content-Length"])),
                 )
             )
             self.send_response(200)
@@ -160,15 +271,12 @@ def test_otlp_wire_export_and_unique_instances(
         def log_message(self, format: str, *args: object) -> None:
             pass
 
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Receiver)
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
-        f"http://127.0.0.1:{server.server_port}/otlp/v1/metrics",
-    )
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "test-token")
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", environment)
+    def fast_reader(
+        exporter: MetricExporter, *, export_interval_millis: float
+    ) -> PeriodicExportingMetricReader:
+        return PeriodicExportingMetricReader(exporter, export_interval_millis=100)
+
+    monkeypatch.setattr(metrics, "PeriodicExportingMetricReader", fast_reader)
     monkeypatch.setenv("OTEL_METRICS_EXEMPLAR_FILTER", "always_on")
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "DELTA")
     monkeypatch.setenv(
@@ -176,142 +284,96 @@ def test_otlp_wire_export_and_unique_instances(
         "BASE2_EXPONENTIAL_BUCKET_HISTOGRAM",
     )
 
-    def fast_reader(
-        exporter: MetricExporter, **kwargs: object
-    ) -> PeriodicExportingMetricReader:
-        return PeriodicExportingMetricReader(
-            exporter, export_interval_millis=100, export_timeout_millis=3000
+    with ThreadingHTTPServer(("127.0.0.1", 0), Receiver) as server:
+        monkeypatch.setenv(
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            f"http://127.0.0.1:{server.server_port}/otlp/v1/metrics",
         )
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "staging")
+            first_app, second_app = create_app(), create_app()
+            with (
+                TestClient(first_app) as first_client,
+                TestClient(second_app) as second_client,
+            ):
+                assert first_client.get("/meta/version").status_code == 200
+                assert second_client.get("/missing").status_code == 404
 
-    monkeypatch.setattr(metrics, "PeriodicExportingMetricReader", fast_reader)
-    try:
-        app1, app2 = create_app(), create_app()
-        with TestClient(app1) as client1, TestClient(app2) as client2:
-            assert client1.get("/meta/version").status_code == 200
-            assert client2.get("/meta/version").status_code == 200
-            deadline = time.monotonic() + 5
+                instances: dict[int, str] = {}
+                deadline = monotonic() + 5
+                while len(instances) < 2:
+                    remaining = deadline - monotonic()
+                    assert remaining > 0, instances
+                    path, authorization, content_type, body = received.get(
+                        timeout=remaining
+                    )
+                    assert path == "/otlp/v1/metrics"
+                    assert authorization == f"Bearer {TOKEN}"
+                    assert content_type == "application/x-protobuf"
 
-            def live_instances() -> set[str]:
-                return {
-                    item.value.string_value
-                    for _, _, _, body in list(received)
-                    for resource in ExportMetricsServiceRequest.FromString(
-                        body
-                    ).resource_metrics
-                    for item in resource.resource.attributes
-                    if item.key == "service.instance.id"
-                }
+                    request = ExportMetricsServiceRequest.FromString(body)
+                    (resource,) = request.resource_metrics
+                    attributes = {
+                        item.key: item.value.string_value
+                        for item in resource.resource.attributes
+                    }
+                    assert attributes["deployment.environment.name"] == "staging"
+                    assert attributes["service.namespace"] == "personal"
+                    assert attributes["service.name"] == "kochwiki"
+                    assert attributes["service.version"] == first_app.version
+                    instance = attributes["service.instance.id"]
+                    assert instance
 
-            while len(live_instances()) < 2 and time.monotonic() < deadline:
-                time.sleep(0.05)
-            assert len(live_instances()) == 2
-            periodic_exports = list(received)
-        instances: set[str] = set()
-        for path, authorization, content_type, body in periodic_exports:
-            assert path == "/otlp/v1/metrics"
-            assert authorization == "Bearer test-token"
-            assert content_type == "application/x-protobuf"
-            request = ExportMetricsServiceRequest.FromString(body)
-            for resource in request.resource_metrics:
-                attrs = {
-                    item.key: item.value.string_value
-                    for item in resource.resource.attributes
-                }
-                assert attrs["service.namespace"] == "personal"
-                assert attrs["service.name"] == "kochwiki"
-                assert attrs["service.version"] == app1.version
-                assert attrs["deployment.environment.name"] == environment
-                instances.add(attrs["service.instance.id"])
-                for scope in resource.scope_metrics:
-                    for metric in scope.metrics:
-                        assert metric.name == "http.server.request.duration"
-                        assert metric.HasField("histogram")
-                        assert metric.histogram.aggregation_temporality == 2
-                        assert all(
-                            list(point.explicit_bounds) == [0.05, 0.2, 0.5]
-                            and len(point.bucket_counts) == 4
-                            and not point.exemplars
-                            for point in metric.histogram.data_points
-                        )
-        assert len(instances) == 2
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
+                    (duration,) = [
+                        metric
+                        for scope in resource.scope_metrics
+                        for metric in scope.metrics
+                    ]
+                    assert duration.name == "http.server.request.duration"
+                    assert duration.HasField("histogram")
+                    assert (
+                        duration.histogram.aggregation_temporality
+                        == AGGREGATION_TEMPORALITY_CUMULATIVE
+                    )
+                    (point,) = duration.histogram.data_points
+                    assert list(point.explicit_bounds) == [0.05, 0.2, 0.5]
+                    assert len(point.bucket_counts) == 4
+                    assert not point.exemplars
+                    (status,) = (
+                        item.value.int_value
+                        for item in point.attributes
+                        if item.key == "http.response.status_code"
+                    )
+                    assert status in {200, 404}
+                    assert instances.setdefault(status, instance) == instance
 
+                assert instances[200] != instances[404]
 
-def test_unreachable_receiver_keeps_api_and_shutdown_available(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://127.0.0.1:1/otlp/v1/metrics"
-    )
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "test-token")
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
-    start = time.monotonic()
-    with TestClient(create_app()) as client:
-        assert client.get("/meta/version").status_code == 200
-    assert time.monotonic() - start < 6
+        finally:
+            server.shutdown()
+            thread.join()
 
 
-@pytest.mark.parametrize(
-    "endpoint,token,environment,diagnostic",
-    [
-        (
-            "http://user:password@localhost:4318/otlp/v1/metrics",
-            "token",
-            "test",
-            "must be a valid HTTP(S) URL without credentials",
-        ),
-        (
-            "http://localhost:bad/otlp/v1/metrics",
-            "token",
-            "test",
-            "must be a valid HTTP(S) URL without credentials",
-        ),
-        (
-            "http://localhost:0/otlp/v1/metrics",
-            "token",
-            "test",
-            "must be a valid HTTP(S) URL without credentials",
-        ),
-        (
-            "http://localhost:4318/",
-            "token",
-            "test",
-            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must end in /otlp/v1/metrics",
-        ),
-        (
-            "http://localhost:4318/otlp/v1/metrics",
-            "malformed secret value",
-            "test",
-            "OTEL_METRICS_BEARER_TOKEN must be a raw bearer token",
-        ),
-        (
-            "http://localhost:4318/otlp/v1/metrics",
-            "token",
-            "",
-            "DEPLOYMENT_ENVIRONMENT_NAME must be set",
-        ),
-    ],
-)
-def test_invalid_settings_are_redacted_and_do_not_break_api(
+def test_unreachable_receiver_leaves_api_and_shutdown_available(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
-    endpoint: str,
-    token: str,
-    environment: str,
-    diagnostic: str,
+    metrics_environment: None,
 ) -> None:
-    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", token)
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", environment)
-    with TestClient(create_app()) as client:
-        assert client.get("/meta/version").status_code == 200
-    assert "Metrics export disabled due to invalid configuration" in caplog.text
-    assert diagnostic in caplog.text
-    assert "malformed secret value" not in caplog.text
-    assert "password" not in caplog.text
+    with socket() as receiver:
+        receiver.bind(("127.0.0.1", 0))
+        port = receiver.getsockname()[1]
+        monkeypatch.setenv(
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
+            f"http://127.0.0.1:{port}/otlp/v1/metrics",
+        )
+        start = monotonic()
+        with TestClient(create_app()) as client:
+            assert client.get("/meta/version").status_code == 200
+        assert monotonic() - start < 6
+
+    assert "Failed to export metrics batch" in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -319,96 +381,69 @@ def test_invalid_settings_are_redacted_and_do_not_break_api(
     [
         ("", "INFO:", "Metrics export disabled because"),
         (
-            "http://localhost:4318/",
+            "http://user:private-password@localhost:4318/otlp/v1/metrics",
             "ERROR:",
-            "Metrics export disabled due to invalid configuration",
+            "Metrics export disabled due to invalid configuration. "
+            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must be a valid HTTP(S) URL without credentials",
         ),
-        (
-            "http://localhost:4318/otlp/v1/metrics",
-            "INFO:",
-            "Request duration metrics export enabled",
-        ),
+        (ENDPOINT, "INFO:", "Request duration metrics export enabled"),
     ],
 )
-def test_uvicorn_logs_metrics_status_on_app_load(
-    monkeypatch: pytest.MonkeyPatch, endpoint: str, level: str, message: str
+def test_uvicorn_logs_metrics_status_without_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+    metrics_environment: None,
+    endpoint: str,
+    level: str,
+    message: str,
 ) -> None:
-    import subprocess
-    import sys
-
     monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", "private-metrics-token")
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
     result = subprocess.run(
         [
             sys.executable,
             "-c",
-            "from uvicorn import Config; Config('app.main:app').load()",
+            """
+from fastapi.testclient import TestClient
+from uvicorn import Config
+
+config = Config("app.main:app")
+config.load()
+assert TestClient(config.loaded_app).get("/meta/version").status_code == 200
+""",
         ],
         capture_output=True,
         text=True,
         timeout=10,
-        check=False,
+        check=True,
     )
-    assert result.returncode == 0, result.stderr
     assert any(
         line.startswith(level) and message in line
         for line in result.stderr.splitlines()
     ), result.stderr
-    assert "private-metrics-token" not in result.stderr
+    assert TOKEN not in result.stderr
+    assert "private-password" not in result.stderr
 
 
-@pytest.mark.parametrize("enabled", [False, True])
-def test_malformed_instrumentor_environment_does_not_break_import_or_api(
-    enabled: bool,
+@pytest.mark.parametrize("endpoint", ["", ENDPOINT])
+def test_malformed_instrumentor_environment_keeps_api_available(
+    monkeypatch: pytest.MonkeyPatch, metrics_environment: None, endpoint: str
 ) -> None:
-    import os
-    import subprocess
-    import sys
-
-    env = os.environ.copy()
-    env["OTEL_PYTHON_FASTAPI_EXCLUDED_URLS"] = "["
-    env["OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"] = (
-        "http://127.0.0.1:1/otlp/v1/metrics" if enabled else ""
-    )
-    env["OTEL_METRICS_BEARER_TOKEN"] = "token"
-    env["DEPLOYMENT_ENVIRONMENT_NAME"] = "test"
+    monkeypatch.setenv("OTEL_PYTHON_FASTAPI_EXCLUDED_URLS", "[")
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", endpoint)
     result = subprocess.run(
         [
             sys.executable,
             "-c",
-            "from fastapi.testclient import TestClient; from app.main import create_app; c = TestClient(create_app()); assert c.get('/meta/version').status_code == 200",
+            """
+from fastapi.testclient import TestClient
+from app.main import app
+
+with TestClient(app) as client:
+    assert client.get("/meta/version").status_code == 200
+""",
         ],
-        env=env,
         capture_output=True,
         text=True,
         timeout=10,
         check=False,
     )
     assert result.returncode == 0, result.stderr
-
-
-@pytest.mark.parametrize(
-    "token", ["", "Bearer token", "token%20value", " token", "token\n"]
-)
-def test_invalid_bearer_token_disables_export(
-    monkeypatch: pytest.MonkeyPatch, token: str
-) -> None:
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://localhost:4318/otlp/v1/metrics"
-    )
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
-    monkeypatch.setenv("OTEL_METRICS_BEARER_TOKEN", token)
-    assert metrics.create_metrics_provider("test") is None
-
-
-def test_legacy_headers_do_not_enable_export(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "http://localhost:4318/otlp/v1/metrics"
-    )
-    monkeypatch.setenv("DEPLOYMENT_ENVIRONMENT_NAME", "test")
-    monkeypatch.delenv("OTEL_METRICS_BEARER_TOKEN", raising=False)
-    monkeypatch.setenv(
-        "OTEL_EXPORTER_OTLP_METRICS_HEADERS", "Authorization=Bearer%20token"
-    )
-    assert metrics.create_metrics_provider("test") is None

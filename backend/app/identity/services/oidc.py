@@ -122,7 +122,10 @@ class OIDCLogin:
         now = datetime.now(timezone.utc)
         with SessionLocal.begin() as session:
             session.execute(
-                delete(LoginTransaction).where(LoginTransaction.expires_at <= now)
+                delete(LoginTransaction).where(LoginTransaction.expires_at <= now),
+                execution_options={
+                    "kochwiki_query_name": "Delete expired login transactions"
+                },
             )
             session.add(
                 LoginTransaction(
@@ -166,7 +169,8 @@ class OIDCLogin:
                     LoginTransaction.browser_hash == browser_hash,
                     LoginTransaction.expires_at > datetime.now(timezone.utc),
                 )
-                .returning(LoginTransaction)
+                .returning(LoginTransaction),
+                execution_options={"kochwiki_query_name": "Consume login transaction"},
             ).one_or_none()
         if transaction is None:
             raise LoginRejected()

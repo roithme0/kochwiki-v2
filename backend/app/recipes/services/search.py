@@ -45,5 +45,10 @@ class RecipeSemanticSearch(SemanticSearch[RecipeSearchCandidate]):
                 RecipeSearchCandidate(
                     recipe_version_out(version), float(distance_value)
                 )
-                for version, distance_value in session.execute(statement)
+                for version, distance_value in session.execute(
+                    statement,
+                    execution_options={
+                        "kochwiki_query_name": "Search recipes by embedding"
+                    },
+                )
             ]

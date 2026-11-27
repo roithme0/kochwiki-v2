@@ -32,7 +32,10 @@ def current_caller() -> MCPCaller:
     try:
         with SessionLocal() as session:
             user_id = session.scalar(
-                select(User.id).where(User.issuer == issuer, User.subject == subject)
+                select(User.id).where(User.issuer == issuer, User.subject == subject),
+                execution_options={
+                    "kochwiki_query_name": "Get asserted caller user ID"
+                },
             )
     except SQLAlchemyError:
         raise MCPError(-32603, "Caller identity service unavailable.") from None

@@ -35,7 +35,8 @@ def issue_delegation_token(
             ApplicationSession.last_activity_at
             > func.statement_timestamp() - SESSION_LIFETIME,
         )
-        .with_for_update()
+        .with_for_update(),
+        execution_options={"kochwiki_query_name": "Get active session for delegation"},
     ).one_or_none()
     if row is None:
         return None
@@ -74,5 +75,6 @@ def delegated_user(
             DelegationToken.expires_at > func.statement_timestamp(),
             ApplicationSession.last_activity_at
             > func.statement_timestamp() - SESSION_LIFETIME,
-        )
+        ),
+        execution_options={"kochwiki_query_name": "Get delegated user"},
     )
