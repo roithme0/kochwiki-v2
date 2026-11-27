@@ -4,15 +4,15 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
-from app.identity.schemas.user import UserOut
 
+from app.foodstuffs.services.foodstuffs import list_foodstuffs
+from app.identity.schemas.user import UserOut
 from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
-from app.recipes.schemas.recipe import RecipeVersionOut
 from app.recipes.schemas.proposal import RecipeProposalCreate, RecipeProposalOut
+from app.recipes.schemas.recipe import RecipeVersionOut
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import discard_recipe_draft
-from app.foodstuffs.services.foodstuffs import list_foodstuffs
 
 pytestmark = pytest.mark.usefixtures("recipe_session")
 

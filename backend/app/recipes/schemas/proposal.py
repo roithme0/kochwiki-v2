@@ -2,17 +2,16 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
-from app.recipes.schemas.nutrition import NutrientResult
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.foodstuffs.models.unit import Unit
 from app.core.schemas.common import JsonDecimal, NonnegativeJsonDecimal
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffFields
 from app.recipes.config import (
     MAX_INGREDIENT_AMOUNT,
     MAX_INGREDIENT_INDEX,
 )
+from app.recipes.schemas.nutrition import NutrientResult
 from app.recipes.schemas.recipe import (
     RecipePresentationStepOut,
     RecipeVersionFields,

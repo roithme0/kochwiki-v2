@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 from collections.abc import Callable
+from datetime import UTC, datetime
 from http import HTTPStatus
 from uuid import UUID, uuid4
 
@@ -9,13 +9,13 @@ from sqlalchemy import event, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import SessionLocal
 from app.core.exceptions import ForbiddenError
 from app.identity.schemas.user import UserOut
-from app.recipes.models.recipe import RecipeVersion
 from app.images.models import ImageAsset, ImageKind
-from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.infrastructure.database.session import SessionLocal
+from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.proposal import RecipeProposalCreate
+from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
 from app.recipes.services.proposal_saves import save_recipe_proposal
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import (
@@ -42,7 +42,7 @@ def images(recipe_session: UserOut) -> tuple[UUID, UUID]:
                     width=800 + index * 200,
                     height=600,
                     sha256="a" * 64,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
             )
     return ids
@@ -226,7 +226,7 @@ def test_unknown_image_rejects_entire_save(
                     width=1,
                     height=1,
                     sha256="a" * 64,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
             )
     payload = {"name": "Must not be saved", "servings": 3, "imageId": str(unknown)}

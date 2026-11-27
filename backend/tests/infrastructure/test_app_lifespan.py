@@ -21,8 +21,10 @@ def test_lifespan_clears_proposals_when_image_storage_close_fails(
     monkeypatch.setattr(ImageStoragePool, "close", fail_close)
     monkeypatch.setattr(RecipeProposalStore, "clear", record_clear)
 
-    with pytest.raises(RuntimeError, match="image storage close failed"):
-        with TestClient(create_app()):
-            assert not cleanup_calls
+    with (
+        pytest.raises(RuntimeError, match="image storage close failed"),
+        TestClient(create_app()),
+    ):
+        assert not cleanup_calls
 
     assert cleanup_calls == ["close image storage", "clear proposals"]

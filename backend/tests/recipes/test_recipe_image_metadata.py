@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageAsset, ImageKind
 from app.images.transfers import ImageTransfers
+from app.infrastructure.database.session import SessionLocal
 from tests.images.test_image_transfers import png
 
 
@@ -36,15 +36,17 @@ def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_st
 ):
     storage = Mock()
     storage.read.return_value = png()
-    with pytest.raises(RuntimeError, match="roll back completion"):
-        with SessionLocal.begin() as session:
-            result = ImageTransfers(
-                storage, SessionLocal, kind=ImageKind.RECIPE
-            ).complete(session, uuid4())
-            session.flush()
-            with SessionLocal() as observer:
-                assert observer.get(ImageAsset, result.id) is None
-            raise RuntimeError("roll back completion")
+    with (
+        pytest.raises(RuntimeError, match="roll back completion"),
+        SessionLocal.begin() as session,
+    ):
+        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(
+            session, uuid4()
+        )
+        session.flush()
+        with SessionLocal() as observer:
+            assert observer.get(ImageAsset, result.id) is None
+        raise RuntimeError("roll back completion")
     with SessionLocal() as observer:
         assert observer.get(ImageAsset, result.id) is None
     storage.delete.assert_not_called()
@@ -74,12 +76,11 @@ def test_database_rejects_invalid_image_metadata(field: str, value: int | str) -
         width=1,
         height=1,
         sha256="a" * 64,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     setattr(record, field, value)
-    with pytest.raises(IntegrityError):
-        with SessionLocal.begin() as session:
-            session.add(record)
+    with pytest.raises(IntegrityError), SessionLocal.begin() as session:
+        session.add(record)
     with SessionLocal() as session:
         assert session.get(ImageAsset, record.id) is None
 
@@ -96,15 +97,14 @@ def test_database_rejects_duplicate_object_keys() -> None:
             width=1,
             height=1,
             sha256="a" * 64,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
         if attempt == 0:
             with SessionLocal.begin() as session:
                 session.add(record)
         else:
-            with pytest.raises(IntegrityError):
-                with SessionLocal.begin() as session:
-                    session.add(record)
+            with pytest.raises(IntegrityError), SessionLocal.begin() as session:
+                session.add(record)
     with SessionLocal() as session:
         assert len(list(session.scalars(select(ImageAsset)))) == 1
 
@@ -123,7 +123,7 @@ def test_separate_kinds_can_use_the_same_object_key() -> None:
                     width=1,
                     height=1,
                     sha256="a" * 64,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
             )
     with SessionLocal() as session:

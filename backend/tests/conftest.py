@@ -1,13 +1,14 @@
 import os
-from urllib.parse import quote
 from collections.abc import Callable
+from urllib.parse import quote
 from uuid import uuid4
 
 import pytest
-from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+
+from alembic import command
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL", "postgresql+psycopg://test:test@localhost:5433/kochwiki_test"
@@ -23,15 +24,15 @@ for variable in (
     os.environ[variable] = ""
 os.environ["OIDC_CLIENT_ID"] = "kochwiki"
 
+from app.core.config import Settings
+from app.identity import dependencies
+from app.identity.config import SESSION_COOKIE
+from app.identity.schemas.oidc import Identity
+from app.identity.schemas.user import UserOut
+from app.identity.services.sessions import establish_session
+from app.identity.services.users import map_identity
 from app.infrastructure.database.session import SessionLocal, engine
 from app.main import create_app
-from app.identity.schemas.user import UserOut
-from app.identity.schemas.oidc import Identity
-from app.identity.services.users import map_identity
-from app.identity.config import SESSION_COOKIE
-from app.identity import dependencies
-from app.identity.services.sessions import establish_session
-from app.core.config import Settings
 
 
 @pytest.fixture(scope="session", autouse=True)

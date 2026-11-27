@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from http import HTTPStatus
 from typing import Annotated
 from urllib.parse import urlsplit
@@ -40,7 +40,7 @@ def set_session_cookie(
         SESSION_COOKIE,
         secret,
         max_age=SESSION_LIFETIME_SECONDS,
-        expires=expires.astimezone(timezone.utc),
+        expires=expires.astimezone(UTC),
         path=SESSION_COOKIE_PATH,
         secure=secure,
         httponly=True,

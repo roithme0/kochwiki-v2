@@ -38,11 +38,13 @@ def test_existing_users_stop_migration_without_deletion_or_backfill(
     with engine.begin() as connection:
         connection.execute(text(OLD_USER_TABLE))
         connection.execute(text("INSERT INTO custom_user VALUES (1, 'Original user')"))
-        with Operations.context(MigrationContext.configure(connection)):
-            with pytest.raises(
+        with (
+            Operations.context(MigrationContext.configure(connection)),
+            pytest.raises(
                 RuntimeError, match="operator-controlled KochWiki database reset"
-            ):
-                user_identity_migration.upgrade()
+            ),
+        ):
+            user_identity_migration.upgrade()
         assert connection.execute(
             text("SELECT id, username FROM custom_user")
         ).all() == [(1, "Original user")]
@@ -71,10 +73,9 @@ def test_empty_old_schema_upgrades_to_required_provider_profiles(
             (1, 'Shared name', 'shared@example.invalid', 'issuer', 'first'),
             (2, 'Shared name', 'shared@example.invalid', 'issuer', 'second')
         """))
-        with pytest.raises(IntegrityError):
-            with connection.begin_nested():
-                connection.execute(text("""
-                    INSERT INTO custom_user (id, display_name, email, issuer, subject)
-                    VALUES (3, 'Different name', 'other@example.invalid', 'issuer', 'first')
-                """))
+        with pytest.raises(IntegrityError), connection.begin_nested():
+            connection.execute(text("""
+                INSERT INTO custom_user (id, display_name, email, issuer, subject)
+                VALUES (3, 'Different name', 'other@example.invalid', 'issuer', 'first')
+            """))
         assert connection.scalar(text("SELECT COUNT(*) FROM custom_user")) == 2

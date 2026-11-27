@@ -1,39 +1,38 @@
-from tests.recipes.helpers import fixture_owner_id
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from threading import Barrier
 from uuid import UUID, uuid4
 
 import pytest
-from app.foodstuffs.models.unit import Unit
 from sqlalchemy import event, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.version_state import RecipeVersionState
-from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
-from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
-from app.recipes.schemas.proposal import (
-    RecipeProposalCreate,
-    RecipeProposalOut,
-    TemporaryProposalFoodstuff,
-)
 from app.core.exceptions import ConflictError, NotFoundError
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.unit import Unit
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
 from app.foodstuffs.services.embeddings import foodstuff_refresh
 from app.foodstuffs.services.foodstuffs import (
     create_foodstuff,
     delete_foodstuff,
     update_foodstuff,
 )
-from app.recipes.services.proposal_saves import save_recipe_proposal
+from app.infrastructure.database.session import SessionLocal
+from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
+from app.recipes.models.version_state import RecipeVersionState
+from app.recipes.schemas.proposal import (
+    RecipeProposalCreate,
+    RecipeProposalOut,
+    TemporaryProposalFoodstuff,
+)
+from app.recipes.schemas.recipe import RecipeVersionOut, RecipeVersionWrite
+from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.proposal_presentations import (
     resolve_recipe_proposal_presentation,
 )
+from app.recipes.services.proposal_saves import save_recipe_proposal
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.services.embeddings import recipe_refresh
 from app.recipes.services.recipes import (
     create_recipe_draft,
     delete_recipe_lineage,
@@ -43,7 +42,8 @@ from app.recipes.services.recipes import (
     publish_recipe_draft,
     update_recipe_draft,
 )
-from tests.recipes.helpers import create_owned_recipe as create_recipe, recipe_owner_id
+from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import fixture_owner_id, recipe_owner_id
 
 
 def prepare() -> tuple[RecipeProposalStore, RecipeProposalOut, UUID, int]:

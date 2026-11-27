@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import UTC
 from decimal import Decimal
 from http import HTTPStatus
 from uuid import uuid4
@@ -201,7 +202,7 @@ def test_migrated_image_can_be_retained_but_not_newly_attached(
     client: TestClient, recipe_session: UserOut, provider_user: Callable[[str], UserOut]
 ) -> None:
     other = provider_user("Other")
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     image_id = uuid4()
     with SessionLocal.begin() as session:
@@ -216,7 +217,7 @@ def test_migrated_image_can_be_retained_but_not_newly_attached(
                 width=100,
                 height=100,
                 sha256="a" * 64,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         )
         session.flush()

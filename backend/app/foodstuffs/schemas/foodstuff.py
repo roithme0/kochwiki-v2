@@ -4,8 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.foodstuffs.models.unit import Unit
 from app.core.schemas.common import NonnegativeJsonDecimal
+from app.foodstuffs.models.unit import Unit
 
 
 class FoodstuffSummaryOut(BaseModel):
@@ -27,9 +27,9 @@ class FoodstuffSummaryOut(BaseModel):
     @field_validator("unit", mode="before")
     @classmethod
     def validate_unit_string(cls, value: object) -> str:
-        if not isinstance(value, str):
-            raise ValueError("unit must be a string")
-        return value
+        if isinstance(value, str):
+            return value
+        raise ValueError("unit must be a string")
 
 
 class FoodstuffFields(BaseModel):

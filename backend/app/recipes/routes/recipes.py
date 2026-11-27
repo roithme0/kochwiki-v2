@@ -1,18 +1,19 @@
 from collections.abc import Sequence
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import get_db, get_write_db
-from app.identity.models.user import User
-from app.identity.dependencies import require_current_user
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
     FORBIDDEN_RESPONSE,
     NOT_FOUND_AND_CONFLICT_RESPONSES,
     NOT_FOUND_RESPONSE,
 )
+from app.identity.dependencies import require_current_user
+from app.identity.models.user import User
+from app.infrastructure.database.session import get_db, get_write_db
 from app.recipes.dependencies import require_lineage_owner
 from app.recipes.schemas.recipe import (
     IngredientOut,
@@ -25,7 +26,7 @@ from app.recipes.schemas.recipe import (
 from app.recipes.services import recipes
 
 router = APIRouter(
-    dependencies=[Depends(require_current_user, scope="function")],
+    dependencies=[Depends(require_current_user)],
     responses=AUTHENTICATION_RESPONSES,
 )
 
@@ -37,15 +38,15 @@ router = APIRouter(
 )
 def resolve_recipe_presentation(
     payload: RecipePresentationResolve,
-    session: Session = Depends(get_db),
-    user: User = Depends(require_current_user, scope="function"),
+    session: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(require_current_user)],
 ) -> RecipePresentationOut:
     return recipes.resolve_recipe_presentation(session, payload, owner_id=user.id)
 
 
 @router.get("/recipes", response_model=list[RecipeVersionOut])
 def list_recipe_versions(
-    session: Session = Depends(get_db),
+    session: Annotated[Session, Depends(get_db)],
 ) -> Sequence[RecipeVersionOut]:
     return [
         recipes.recipe_version_out(version)
@@ -59,7 +60,7 @@ def list_recipe_versions(
     responses=NOT_FOUND_RESPONSE,
 )
 def get_active_recipe_version(
-    lineage_id: UUID, session: Session = Depends(get_db)
+    lineage_id: UUID, session: Annotated[Session, Depends(get_db)]
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.get_active_recipe_version(session, lineage_id)
@@ -72,7 +73,7 @@ def get_active_recipe_version(
     responses=NOT_FOUND_RESPONSE,
 )
 def get_recipe_version_by_id(
-    lineage_id: UUID, version_id: UUID, session: Session = Depends(get_db)
+    lineage_id: UUID, version_id: UUID, session: Annotated[Session, Depends(get_db)]
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.get_recipe_version_by_id(session, lineage_id, version_id)
@@ -85,7 +86,7 @@ def get_recipe_version_by_id(
     responses=NOT_FOUND_RESPONSE,
 )
 def list_historical_recipe_versions(
-    lineage_id: UUID, session: Session = Depends(get_db)
+    lineage_id: UUID, session: Annotated[Session, Depends(get_db)]
 ) -> Sequence[RecipeVersionOut]:
     return [
         recipes.recipe_version_out(version)
@@ -101,8 +102,8 @@ def list_historical_recipe_versions(
 )
 def create_recipe(
     payload: RecipeVersionWrite,
-    user: User = Depends(require_current_user, scope="function"),
-    session: Session = Depends(get_write_db, scope="function"),
+    user: Annotated[User, Depends(require_current_user)],
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.create_recipe(session, payload, owner_id=user.id)
@@ -113,12 +114,12 @@ def create_recipe(
     "/recipes/{lineage_id}/publish",
     response_model=RecipeVersionOut,
     responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def publish_active_recipe_edit(
     lineage_id: UUID,
     payload: RecipeVersionWrite,
-    session: Session = Depends(get_write_db, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.publish_active_recipe_edit(session, lineage_id, payload)
@@ -130,12 +131,12 @@ def publish_active_recipe_edit(
     response_model=RecipeVersionOut,
     status_code=status.HTTP_201_CREATED,
     responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def create_recipe_draft(
     lineage_id: UUID,
     payload: RecipeVersionWrite,
-    session: Session = Depends(get_write_db, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.create_recipe_draft(session, lineage_id, payload)
@@ -146,13 +147,13 @@ def create_recipe_draft(
     "/recipes/{lineage_id}/drafts/{version_id}",
     response_model=RecipeVersionOut,
     responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def update_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
     payload: RecipeVersionWrite,
-    session: Session = Depends(get_write_db, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.update_recipe_draft(session, lineage_id, version_id, payload)
@@ -163,12 +164,12 @@ def update_recipe_draft(
     "/recipes/{lineage_id}/drafts/{version_id}/publish",
     response_model=RecipeVersionOut,
     responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def publish_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
-    session: Session = Depends(get_write_db, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> RecipeVersionOut:
     return recipes.recipe_version_out(
         recipes.publish_recipe_draft(session, lineage_id, version_id)
@@ -179,12 +180,12 @@ def publish_recipe_draft(
     "/recipes/{lineage_id}/drafts/{version_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={**NOT_FOUND_AND_CONFLICT_RESPONSES, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def discard_recipe_draft(
     lineage_id: UUID,
     version_id: UUID,
-    session: Session = Depends(get_write_db, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> None:
     recipes.discard_recipe_draft(session, lineage_id, version_id)
 
@@ -193,16 +194,19 @@ def discard_recipe_draft(
     "/recipes/{lineage_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={**NOT_FOUND_RESPONSE, **FORBIDDEN_RESPONSE},
-    dependencies=[Depends(require_lineage_owner, scope="function")],
+    dependencies=[Depends(require_lineage_owner)],
 )
 def delete_recipe_lineage(
-    lineage_id: UUID, session: Session = Depends(get_write_db, scope="function")
+    lineage_id: UUID,
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
 ) -> None:
     recipes.delete_recipe_lineage(session, lineage_id)
 
 
 @router.get("/ingredients", response_model=list[IngredientOut])
-def list_ingredients(session: Session = Depends(get_db)) -> Sequence[IngredientOut]:
+def list_ingredients(
+    session: Annotated[Session, Depends(get_db)],
+) -> Sequence[IngredientOut]:
     return [
         recipes.ingredient_out(ingredient)
         for ingredient in recipes.list_ingredients(session)
@@ -210,5 +214,5 @@ def list_ingredients(session: Session = Depends(get_db)) -> Sequence[IngredientO
 
 
 @router.get("/steps", response_model=list[StepOut])
-def list_steps(session: Session = Depends(get_db)) -> Sequence[StepOut]:
+def list_steps(session: Annotated[Session, Depends(get_db)]) -> Sequence[StepOut]:
     return [recipes.step_out(step) for step in recipes.list_steps(session)]

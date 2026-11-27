@@ -4,8 +4,8 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, quote, urlsplit
 
 from botocore.exceptions import EndpointConnectionError
-from botocore.stub import Stubber
 from botocore.response import StreamingBody
+from botocore.stub import Stubber
 from pydantic import SecretStr, ValidationError
 
 from app.core.config import Settings

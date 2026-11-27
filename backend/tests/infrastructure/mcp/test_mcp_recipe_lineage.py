@@ -1,27 +1,26 @@
-from tests.recipes.helpers import fixture_owner_headers
-from tests.recipes.helpers import fixture_owner_id
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
 import httpx2
 import pytest
-from app.foodstuffs.models.unit import Unit
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.foodstuffs.models.unit import Unit
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.services.foodstuffs import create_foodstuff
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
 from app.recipes.models.recipe import RecipeVersion
-from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
 from app.recipes.services import recipes
-from app.foodstuffs.services.foodstuffs import create_foodstuff
 from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import fixture_owner_headers, fixture_owner_id
 
 
 def test_lineage_mcp_excludes_history_and_returns_complete_versions_without_embeddings() -> (
@@ -58,7 +57,7 @@ def test_lineage_mcp_excludes_history_and_returns_complete_versions_without_embe
         recipes.discard_recipe_draft(session, active.lineage_id, deleted_id)
         versions = [historical, active, *drafts]
         for version in versions:
-            version.last_modified = datetime(2026, 10, 8, tzinfo=timezone.utc)
+            version.last_modified = datetime(2026, 10, 8, tzinfo=UTC)
         session.flush()
         expected = RecipeLineageOut(
             recipeLineageId=active.lineage_id,
@@ -77,63 +76,62 @@ def test_lineage_mcp_excludes_history_and_returns_complete_versions_without_embe
 
     async def exercise() -> None:
         app = create_app()
-        async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
                 headers=fixture_owner_headers(),
                 transport=httpx2.ASGITransport(app=app),
                 base_url="http://localhost",
-            ) as http:
-                async with Client(
-                    streamable_http_client("http://localhost/mcp/", http_client=http)
-                ) as client:
-                    tool = next(
-                        tool
-                        for tool in (await client.list_tools()).tools
-                        if tool.name == "get_recipe_lineage"
-                    )
-                    assert tool.input_schema["required"] == ["recipe_version_id"]
-                    assert (
-                        tool.input_schema["properties"]["recipe_version_id"]["format"]
-                        == "uuid"
-                    )
-                    assert tool.annotations is not None
-                    assert tool.annotations.read_only_hint is True
-                    assert tool.annotations.destructive_hint is False
-                    assert tool.annotations.idempotent_hint is True
-                    assert tool.annotations.open_world_hint is False
-                    for anchor in anchors:
-                        result = await client.call_tool(
-                            "get_recipe_lineage", {"recipe_version_id": str(anchor)}
-                        )
-                        assert not result.is_error
-                        assert (
-                            RecipeLineageOut.model_validate(result.structured_content)
-                            == expected
-                        )
-                    result = await client.call_tool(
-                        "get_recipe_lineage", {"recipe_version_id": str(unrelated_id)}
-                    )
-                    assert not result.is_error
-                    lineage = RecipeLineageOut.model_validate(result.structured_content)
-                    assert [
-                        version.recipeVersionId for version in lineage.versions
-                    ] == [unrelated_id]
-                    for identifier in [uuid4(), deleted_id]:
-                        result = await client.call_tool(
-                            "get_recipe_lineage", {"recipe_version_id": str(identifier)}
-                        )
-                        assert result.is_error and "not found" in str(result)
-                    for arguments in [{}, {"recipe_version_id": "invalid"}]:
-                        assert (
-                            await client.call_tool("get_recipe_lineage", arguments)
-                        ).is_error
-                    with SessionLocal() as session:
-                        assert (
-                            session.scalar(
-                                select(func.count()).select_from(RecipeVersion)
-                            )
-                            == 25
-                        )
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http)
+            ) as client,
+        ):
+            tool = next(
+                tool
+                for tool in (await client.list_tools()).tools
+                if tool.name == "get_recipe_lineage"
+            )
+            assert tool.input_schema["required"] == ["recipe_version_id"]
+            assert (
+                tool.input_schema["properties"]["recipe_version_id"]["format"] == "uuid"
+            )
+            assert tool.annotations is not None
+            assert tool.annotations.read_only_hint is True
+            assert tool.annotations.destructive_hint is False
+            assert tool.annotations.idempotent_hint is True
+            assert tool.annotations.open_world_hint is False
+            for anchor in anchors:
+                result = await client.call_tool(
+                    "get_recipe_lineage", {"recipe_version_id": str(anchor)}
+                )
+                assert not result.is_error
+                assert (
+                    RecipeLineageOut.model_validate(result.structured_content)
+                    == expected
+                )
+            result = await client.call_tool(
+                "get_recipe_lineage", {"recipe_version_id": str(unrelated_id)}
+            )
+            assert not result.is_error
+            lineage = RecipeLineageOut.model_validate(result.structured_content)
+            assert [version.recipeVersionId for version in lineage.versions] == [
+                unrelated_id
+            ]
+            for identifier in [uuid4(), deleted_id]:
+                result = await client.call_tool(
+                    "get_recipe_lineage", {"recipe_version_id": str(identifier)}
+                )
+                assert result.is_error and "not found" in str(result)
+            for arguments in [{}, {"recipe_version_id": "invalid"}]:
+                assert (
+                    await client.call_tool("get_recipe_lineage", arguments)
+                ).is_error
+            with SessionLocal() as session:
+                assert (
+                    session.scalar(select(func.count()).select_from(RecipeVersion))
+                    == 25
+                )
 
     asyncio.run(exercise())
 
@@ -148,20 +146,22 @@ def test_lineage_mcp_database_failure_is_sanitized(
 
     async def exercise() -> None:
         app = create_app()
-        async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
                 headers=fixture_owner_headers(),
                 transport=httpx2.ASGITransport(app=app),
                 base_url="http://localhost",
-            ) as http:
-                async with Client(
-                    streamable_http_client("http://localhost/mcp/", http_client=http)
-                ) as client:
-                    result = await client.call_tool(
-                        "get_recipe_lineage", {"recipe_version_id": str(uuid4())}
-                    )
-                    assert result.is_error
-                    assert "Recipe lineage retrieval failed" in str(result)
-                    assert "private database details" not in str(result)
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http)
+            ) as client,
+        ):
+            result = await client.call_tool(
+                "get_recipe_lineage", {"recipe_version_id": str(uuid4())}
+            )
+            assert result.is_error
+            assert "Recipe lineage retrieval failed" in str(result)
+            assert "private database details" not in str(result)
 
     asyncio.run(exercise())

@@ -5,11 +5,12 @@ from copy import deepcopy
 from decimal import Decimal
 from types import SimpleNamespace
 
+from pydantic import ValidationError
+from pydantic_core import PydanticSerializationError
+
 from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.recipes.schemas.recipe import RecipePresentationOut, RecipePresentationResolve
-from pydantic import ValidationError
-from pydantic_core import PydanticSerializationError
 
 
 def presentation() -> dict[str, object]:
@@ -96,13 +97,13 @@ class PresentationValidationTests(unittest.TestCase):
         body.update(
             servings=100,
             preptime=1000,
-            kcal={"status": "exact", "value": Decimal("1000000")},
+            kcal={"status": "exact", "value": Decimal(1000000)},
         )
-        body["ingredients"][0].update(index=100, amount=Decimal("10000"))
+        body["ingredients"][0].update(index=100, amount=Decimal(10000))
         body["steps"][0].update(index=100, description="x" * 200)
         result = RecipePresentationOut.model_validate(body)
         self.assertEqual(result.servings, 100)
-        self.assertEqual(result.ingredients[0].amount, Decimal("10000"))
+        self.assertEqual(result.ingredients[0].amount, Decimal(10000))
         self.assertEqual(
             RecipePresentationOut.model_validate_json(result.model_dump_json()), result
         )
@@ -143,26 +144,24 @@ class PresentationValidationTests(unittest.TestCase):
             Decimal("NaN"),
             Decimal("Infinity"),
         ):
-            with self.subTest(value=value):
-                with self.assertRaises(ValidationError):
-                    RecipePresentationOut.model_validate(
-                        {**presentation(), "kcal": {"status": "exact", "value": value}}
-                    )
+            with self.subTest(value=value), self.assertRaises(ValidationError):
+                RecipePresentationOut.model_validate(
+                    {**presentation(), "kcal": {"status": "exact", "value": value}}
+                )
         for literal in ("1e309",):
             body = json.dumps(presentation()).replace(
                 '"value": 12.5', f'"value": {literal}'
             )
-            with self.subTest(json_number=literal):
-                with self.assertRaises(ValidationError):
-                    RecipePresentationOut.model_validate_json(body)
+            with self.subTest(json_number=literal), self.assertRaises(ValidationError):
+                RecipePresentationOut.model_validate_json(body)
         body = json.dumps(presentation()).replace('"value": 12.5', '"value": 1e-400')
         self.assertEqual(
-            RecipePresentationOut.model_validate_json(body).kcal.value, Decimal("0")
+            RecipePresentationOut.model_validate_json(body).kcal.value, Decimal(0)
         )
         with self.assertRaises(ValidationError):
             RecipePresentationOut.model_validate(json.loads(body, parse_float=Decimal))
         for value in (
-            Decimal("0"),
+            Decimal(0),
             Decimal("5e-324"),
             Decimal.from_float(sys.float_info.max),
             Decimal("0.12345678901234567890123456789"),
@@ -235,11 +234,13 @@ class PresentationValidationTests(unittest.TestCase):
                 {"index": 2, "amount": 2, "foodstuffId": 7},
             ],
         ):
-            with self.subTest(ingredients=ingredients):
-                with self.assertRaises(ValidationError):
-                    RecipePresentationResolve.model_validate(
-                        {**request(), "ingredients": ingredients}
-                    )
+            with (
+                self.subTest(ingredients=ingredients),
+                self.assertRaises(ValidationError),
+            ):
+                RecipePresentationResolve.model_validate(
+                    {**request(), "ingredients": ingredients}
+                )
         with self.assertRaises(ValidationError):
             RecipePresentationResolve.model_validate(
                 {
@@ -388,20 +389,24 @@ class PresentationValidationTests(unittest.TestCase):
                         },
                     }
                 ]
-                with self.subTest(field=field, value=value):
-                    with self.assertRaises(ValidationError):
-                        RecipePresentationOut.model_validate_json(json.dumps(body))
+                with (
+                    self.subTest(field=field, value=value),
+                    self.assertRaises(ValidationError),
+                ):
+                    RecipePresentationOut.model_validate_json(json.dumps(body))
         for model, factory in (
             (RecipePresentationResolve, request),
             (RecipePresentationOut, presentation),
         ):
             for field in ("ingredients", "steps"):
                 for value in ({}, "[]", None):
-                    with self.subTest(model=model.__name__, field=field, value=value):
-                        with self.assertRaises(ValidationError):
-                            model.model_validate_json(
-                                json.dumps({**factory(), field: value})
-                            )
+                    with (
+                        self.subTest(model=model.__name__, field=field, value=value),
+                        self.assertRaises(ValidationError),
+                    ):
+                        model.model_validate_json(
+                            json.dumps({**factory(), field: value})
+                        )
                 with self.assertRaises(ValidationError):
                     model.model_validate({**factory(), field: tuple(factory()[field])})
 

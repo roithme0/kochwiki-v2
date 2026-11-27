@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from io import BytesIO
 from uuid import UUID, uuid4
-from zlib import crc32, error as ZlibError
+from zlib import crc32
+from zlib import error as ZlibError
 
 from PIL import Image, UnidentifiedImageError
 from PIL.PngImagePlugin import PngImageFile
@@ -79,7 +80,7 @@ class ImageTransfers:
         width, height = self._validate(data)
         image_id = uuid4()
         object_key = f"{self._kind.value}-images/{image_id}.png"
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
         digest = sha256(data).hexdigest()
         record = ImageAsset(
             uploader_id=uploader_id,

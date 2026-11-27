@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.schemas.common import JsonDecimal, PositiveJsonDecimal
+from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.recipes.config import (
     MAX_INGREDIENT_AMOUNT,
     MAX_INGREDIENT_INDEX,
@@ -13,8 +15,6 @@ from app.recipes.config import (
     MAX_STEP_INDEX,
 )
 from app.recipes.models.version_state import RecipeVersionState
-from app.core.schemas.common import JsonDecimal, PositiveJsonDecimal
-from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
 from app.recipes.schemas.nutrition import NutrientResult
 
 

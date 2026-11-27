@@ -14,27 +14,26 @@ from app.foodstuffs.schemas.foodstuff import (
     FoodstuffSummaryOut,
     FoodstuffUpdate,
 )
-from app.foodstuffs.services import foodstuffs
 from app.foodstuffs.schemas.nutrition_enrichment import (
     FoodstuffIdentity,
     NutritionFill,
     NutritionFillResult,
 )
+from app.foodstuffs.services import foodstuffs
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.embeddings.embeddings import (
     QueryEmbeddingError,
     SemanticSearchUnavailable,
 )
+from app.infrastructure.mcp.asserted_identity import current_caller
 from app.infrastructure.mcp.errors import tool_errors
 from app.infrastructure.mcp.services import MCPServices
-from app.infrastructure.mcp.asserted_identity import current_caller
 
 
 @contextmanager
 def foodstuff_write_transaction(operation: str) -> Iterator[Session]:
-    with tool_errors("Foodstuff", operation):
-        with SessionLocal.begin() as session:
-            yield session
+    with tool_errors("Foodstuff", operation), SessionLocal.begin() as session:
+        yield session
 
 
 def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
@@ -77,11 +76,10 @@ def register_foodstuff_tools(server: MCPServer, services: MCPServices) -> None:
         Returns the complete entry with recipe version references, including other
         users' entries.
         """
-        with tool_errors("Foodstuff", "retrieval"):
-            with SessionLocal() as session:
-                return foodstuffs.foodstuff_out(
-                    foodstuffs.get_foodstuff(session, foodstuff_id)
-                )
+        with tool_errors("Foodstuff", "retrieval"), SessionLocal() as session:
+            return foodstuffs.foodstuff_out(
+                foodstuffs.get_foodstuff(session, foodstuff_id)
+            )
 
     @server.tool(
         annotations=ToolAnnotations(

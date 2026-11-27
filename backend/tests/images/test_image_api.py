@@ -11,16 +11,14 @@ from sqlalchemy import event, func, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.config import get_settings
+from app.foodstuffs.models.image_upload import FoodstuffImageUpload
 from app.foodstuffs.routes.images import (
     get_foodstuff_image_storage,
     get_foodstuff_image_transfers,
+    get_foodstuff_image_uploads,
 )
-from app.recipes.routes.images import (
-    get_recipe_image_storage,
-    get_recipe_image_transfers,
-    get_recipe_image_uploads,
-)
-from app.core.config import get_settings
+from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.identity.config import SESSION_COOKIE, SESSION_LIFETIME
 from app.identity.models.application_session import ApplicationSession
 from app.identity.schemas.user import UserOut
@@ -29,26 +27,28 @@ from app.identity.services.sessions import (
     invalidate_session,
     secret_hash,
 )
-from app.infrastructure.database.session import SessionLocal, engine
 from app.images.config import MAX_IMAGE_BYTES
 from app.images.models import ImageAsset, ImageKind
+from app.images.schemas import ImageUpload
 from app.images.transfers import (
     ImagePersistenceFailed,
     ImageTransfers,
     ImageUploadNotFound,
 )
-from app.images.schemas import ImageUpload
-from app.recipes.models.image_upload import RecipeImageUpload
-from app.foodstuffs.models.image_upload import FoodstuffImageUpload
-from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.images.uploads import ImageUploads
-from app.foodstuffs.routes.images import get_foodstuff_image_uploads
-from app.recipes.services.image_uploads import RecipeImageUploads
+from app.infrastructure.database.session import SessionLocal, engine
 from app.infrastructure.storage.storage import (
     PresignedTransfer,
     Storage,
     StorageUnavailable,
 )
+from app.recipes.models.image_upload import RecipeImageUpload
+from app.recipes.routes.images import (
+    get_recipe_image_storage,
+    get_recipe_image_transfers,
+    get_recipe_image_uploads,
+)
+from app.recipes.services.image_uploads import RecipeImageUploads
 from tests.images.test_image_transfers import png
 
 

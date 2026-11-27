@@ -6,7 +6,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.config import Settings
-from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS, PROFILE
+from app.infrastructure.embeddings.config import PROFILE, STORAGE_DIMENSIONS
 
 logger = logging.getLogger(__name__)
 

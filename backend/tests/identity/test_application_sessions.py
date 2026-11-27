@@ -1,26 +1,24 @@
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from threading import Barrier, Event
 from time import monotonic, sleep
 from urllib.parse import parse_qs, urlsplit
 
 import jwt
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, func, literal, select, text, update
 
+from app.core.config import Settings
 from app.identity import dependencies
 from app.identity.config import (
     SESSION_COOKIE,
-    SESSION_LIFETIME,
     SESSION_COOKIE_PATH,
+    SESSION_LIFETIME,
     SESSION_LIFETIME_SECONDS,
 )
-from app.core.config import Settings
-from app.infrastructure.database.session import SessionLocal
 from app.identity.models.application_session import ApplicationSession
 from app.identity.models.user import User
 from app.identity.schemas.user import UserOut
@@ -32,15 +30,18 @@ from app.identity.services.sessions import (
     invalidate_session,
     secret_hash,
 )
+from app.infrastructure.database.session import SessionLocal
 from tests.identity.test_oidc_login import (
     ISSUER,
     Provider,
     begin,
-    browser,
+    browser_fixture,
     finish,
-    provider,
-    settings,
+    provider_fixture,
+    settings_fixture,
 )
+
+__all__ = ["browser_fixture", "provider_fixture", "settings_fixture"]
 
 
 def test_session_cookie_hash_and_current_profile(
@@ -103,7 +104,7 @@ def test_activity_slides_database_and_cookie_expiry(
 ) -> None:
     assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
-    old_activity = datetime.now(timezone.utc) - timedelta(days=29)
+    old_activity = datetime.now(UTC) - timedelta(days=29)
     with SessionLocal.begin() as session:
         session.execute(
             update(ApplicationSession).values(last_activity_at=old_activity)
@@ -150,7 +151,7 @@ def test_login_cleans_expired_sessions_across_users(
         assert sorted(row.user_id for row in remaining) == [user.id for user in users]
         assert session.scalar(select(func.count()).select_from(User)) == 2
         assert all(
-            row.last_activity_at > datetime.now(timezone.utc) - timedelta(days=1)
+            row.last_activity_at > datetime.now(UTC) - timedelta(days=1)
             for row in remaining
         )
 
@@ -267,7 +268,7 @@ def test_expired_cannot_be_revived(
 ) -> None:
     assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
-    old_activity = datetime.now(timezone.utc) - timedelta(days=days)
+    old_activity = datetime.now(UTC) - timedelta(days=days)
     with SessionLocal.begin() as session:
         session.execute(
             update(ApplicationSession).values(last_activity_at=old_activity)

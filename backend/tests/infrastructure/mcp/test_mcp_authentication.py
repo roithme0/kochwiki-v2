@@ -23,7 +23,7 @@ from app.identity.models.application_session import ApplicationSession
 from app.identity.models.delegation_token import DelegationToken
 from app.identity.models.user import User
 from app.identity.schemas.user import UserOut
-from app.identity.services.delegation import MCP_AUDIENCE, issue_delegation_token
+from app.identity.services.delegation import issue_delegation_token
 from app.identity.services.sessions import establish_session, invalidate_session
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.mcp import authentication

@@ -23,24 +23,26 @@ from app.foodstuffs.services import foodstuffs
 from app.identity.schemas.user import UserOut
 from app.infrastructure.database.session import SessionLocal
 from app.main import create_app
-from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
 from app.recipes.schemas.proposal import RecipeProposalDetailsOut, RecipeProposalOut
+from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionWrite
 from app.recipes.services import recipes
 
 
 @asynccontextmanager
 async def mcp_client(headers: dict[str, str]) -> AsyncIterator[Client]:
     app = create_app()
-    async with app.router.lifespan_context(app):
-        async with httpx2.AsyncClient(
+    async with (
+        app.router.lifespan_context(app),
+        httpx2.AsyncClient(
             headers=headers,
             transport=httpx2.ASGITransport(app=app),
             base_url="http://localhost",
-        ) as http:
-            async with Client(
-                streamable_http_client("http://localhost/mcp/", http_client=http)
-            ) as client:
-                yield client
+        ) as http,
+        Client(
+            streamable_http_client("http://localhost/mcp/", http_client=http)
+        ) as client,
+    ):
+        yield client
 
 
 def test_enrichment_mcp_refreshes_historical_source_and_shared_proposal(

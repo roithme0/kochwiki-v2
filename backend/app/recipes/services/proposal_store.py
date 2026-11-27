@@ -1,13 +1,14 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import RLock
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import ConflictError, NotFoundError
 from app.foodstuffs.services.foodstuffs import owned_foodstuffs_by_id
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.proposal import (
@@ -15,7 +16,6 @@ from app.recipes.schemas.proposal import (
     RecipeProposalCreate,
     RecipeProposalOut,
 )
-from app.core.exceptions import ConflictError, NotFoundError
 from app.recipes.services.recipes import require_recipe_lineage_owner
 
 
@@ -65,7 +65,7 @@ class RecipeProposalStore:
 
         proposal = RecipeProposalOut(
             proposalId=uuid4(),
-            createdAt=datetime.now(timezone.utc),
+            createdAt=datetime.now(UTC),
             sourceRecipeVersionId=validated.sourceRecipeVersionId,
             baseProposalId=validated.baseProposalId,
             recipe=validated.recipe,

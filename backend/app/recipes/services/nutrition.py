@@ -3,17 +3,17 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
-from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.models.recipe import Ingredient
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
-from app.recipes.schemas.proposal import ResolvedProposalFoodstuffFields
+from app.recipes.models.recipe import Ingredient
 from app.recipes.schemas.nutrition import (
     ExactNutrition,
     MinimumNutrition,
     NutrientResult,
     UnknownNutrition,
 )
+from app.recipes.schemas.proposal import ResolvedProposalFoodstuffFields
 
 NutritionField = Literal["kcal", "carbs", "protein", "fat", "fiber"]
 NutritionFoodstuff = Foodstuff | FoodstuffSummaryOut | ResolvedProposalFoodstuffFields
@@ -29,7 +29,7 @@ def total_nutrition(
     ingredients: Sequence[Ingredient | ResolvedNutritionIngredient],
     attribute: NutritionField,
 ) -> NutrientResult:
-    total = Decimal("0")
+    total = Decimal(0)
     known = 0
     for ingredient in ingredients:
         value = _nutrition_value(ingredient.foodstuff, attribute)
@@ -37,7 +37,7 @@ def total_nutrition(
             continue
         known += 1
         if ingredient.foodstuff.unit in (Unit.G, Unit.ML):
-            total += ingredient.amount * value / Decimal("100")
+            total += ingredient.amount * value / Decimal(100)
         else:
             total += ingredient.amount * value
     if known == 0:

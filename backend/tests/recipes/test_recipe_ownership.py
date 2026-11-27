@@ -8,17 +8,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.identity.config import SESSION_COOKIE
 from app.identity.schemas.user import UserOut
 from app.identity.services.sessions import invalidate_session
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
-from app.recipes.services.recipes import get_recipe_lineage
-from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.schemas.proposal import RecipeProposalCreate
-from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.embedding import RecipeEmbedding
-from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.recipes.schemas.proposal import RecipeProposalCreate
+from app.recipes.services.proposal_store import RecipeProposalStore
+from app.recipes.services.recipes import get_recipe_lineage
 
 PAYLOAD = {"name": "Owned recipe", "servings": 2}
 

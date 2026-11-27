@@ -1,21 +1,21 @@
-from tests.recipes.helpers import fixture_owner_id
 import json
 import subprocess
 import sys
 from collections.abc import Callable
 
 import pytest
-from app.foodstuffs.models.unit import Unit
 
 from app.foodstuffs import semantic as foodstuff_semantic
-from app.recipes import semantic as recipe_semantic
-from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS
-from app.infrastructure.database.session import SessionLocal
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
-from app.recipes.schemas.recipe import RecipeVersionWrite
-from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.foodstuffs import create_foodstuff
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
+from app.recipes import semantic as recipe_semantic
+from app.recipes.schemas.recipe import RecipeVersionWrite
 from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import fixture_owner_id
 
 
 @pytest.mark.parametrize(

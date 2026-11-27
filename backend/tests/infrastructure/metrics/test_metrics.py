@@ -392,8 +392,10 @@ def test_unreachable_receiver_leaves_api_and_shutdown_available(
         (
             "http://user:private-password@localhost:4318/otlp/v1/metrics",
             "ERROR:",
-            "Metrics export disabled due to invalid configuration. "
-            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must be a valid HTTP(S) URL without credentials",
+            (
+                "Metrics export disabled due to invalid configuration. "
+                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must be a valid HTTP(S) URL without credentials"
+            ),
         ),
         (ENDPOINT, "INFO:", "Request duration metrics export enabled"),
     ],

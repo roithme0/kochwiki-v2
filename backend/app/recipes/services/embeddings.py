@@ -3,14 +3,14 @@ from uuid import UUID
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.infrastructure.embeddings.refresh import RefreshCoordinator
+from app.infrastructure.embeddings.service import EmbeddingService
+from app.recipes.models.embedding import RecipeEmbedding
+from app.recipes.models.recipe import RecipeVersion
 from app.recipes.models.version_state import (
     SEARCHABLE_RECIPE_STATES,
     RecipeVersionState,
 )
-from app.recipes.models.recipe import RecipeVersion
-from app.recipes.models.embedding import RecipeEmbedding
-from app.infrastructure.embeddings.refresh import RefreshCoordinator
-from app.infrastructure.embeddings.service import EmbeddingService
 
 recipe_refresh = RefreshCoordinator[UUID]("recipe_embedding_refresh", "Recipe")
 

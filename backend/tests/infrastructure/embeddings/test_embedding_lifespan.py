@@ -5,13 +5,13 @@ from threading import Thread
 import pytest
 from fastapi.testclient import TestClient
 
-from app.infrastructure.database.session import SessionLocal
-from app.main import create_app
-from app.infrastructure.mcp.services import MCPServices
-from app.infrastructure.embeddings import refresh
-from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.foodstuffs.services.embeddings import foodstuff_refresh, mark_foodstuff_refresh
 from app.foodstuffs.services.search import FoodstuffSemanticSearch
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.embeddings import refresh
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
+from app.infrastructure.mcp.services import MCPServices
+from app.main import create_app
 from app.recipes.services.search import RecipeSemanticSearch
 
 
@@ -86,6 +86,7 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(
 
     if failure == "stop":
         from uuid import UUID
+
         from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
 
         original_stop = EmbeddingRefreshWorker.stop
@@ -109,9 +110,11 @@ def test_lifespan_cleans_all_resources_on_partial_worker_failure(
     monkeypatch.setattr(MCPServices, "bind_recipe_search", bind_recipe)
     monkeypatch.setattr(Thread, "start", start)
     monkeypatch.setattr(refresh, "next_nightly", nightly)
-    with pytest.raises(RuntimeError, match=f"worker {failure} failed"):
-        with TestClient(create_app()):
-            pass
+    with (
+        pytest.raises(RuntimeError, match=f"worker {failure} failed"),
+        TestClient(create_app()),
+    ):
+        pass
     assert provider.closed
     assert bindings[0] is not None and bindings[-1] is None
     assert recipe_bindings[0] is not None and recipe_bindings[-1] is None

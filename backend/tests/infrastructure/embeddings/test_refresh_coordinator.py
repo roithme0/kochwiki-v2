@@ -2,8 +2,8 @@ from uuid import UUID
 
 import pytest
 
-from app.infrastructure.database.session import SessionLocal
 from app.foodstuffs.services.embeddings import foodstuff_refresh, mark_foodstuff_refresh
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.services.embeddings import mark_recipe_refresh, recipe_refresh
 
 

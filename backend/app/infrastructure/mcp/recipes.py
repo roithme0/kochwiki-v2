@@ -14,12 +14,12 @@ from app.infrastructure.embeddings.embeddings import (
 from app.infrastructure.mcp.asserted_identity import current_caller
 from app.infrastructure.mcp.errors import tool_errors
 from app.infrastructure.mcp.services import MCPServices
-from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut
 from app.recipes.schemas.proposal import (
     RecipeProposalCreate,
     RecipeProposalDetailsOut,
     RecipeProposalOut,
 )
+from app.recipes.schemas.recipe import RecipeLineageOut, RecipeVersionOut
 from app.recipes.services import recipes
 from app.recipes.services.proposal_presentations import (
     resolve_recipe_proposal_presentation,

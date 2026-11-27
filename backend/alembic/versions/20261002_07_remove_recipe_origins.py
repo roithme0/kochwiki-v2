@@ -6,8 +6,9 @@ Downgrade restores nullable columns only; the deleted values cannot be recovered
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
+
+from alembic import op
 
 revision: str = "20261002_07"
 down_revision: str | None = "20261001_06"

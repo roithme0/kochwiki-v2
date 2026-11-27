@@ -3,14 +3,14 @@
 import argparse
 from functools import partial
 
-from app.infrastructure.embeddings.commands import (
-    run_refresh_command,
-    run_search_command,
-)
 from app.foodstuffs.services.embeddings import FoodstuffEmbeddingService
 from app.foodstuffs.services.search import (
     FoodstuffSearchCandidate,
     FoodstuffSemanticSearch,
+)
+from app.infrastructure.embeddings.commands import (
+    run_refresh_command,
+    run_search_command,
 )
 
 

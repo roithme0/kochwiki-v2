@@ -1,9 +1,9 @@
 from collections.abc import Sequence
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import get_db, get_write_db
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
     FORBIDDEN_RESPONSE,
@@ -18,17 +18,18 @@ from app.foodstuffs.schemas.foodstuff import (
 from app.foodstuffs.services import foodstuffs
 from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
+from app.infrastructure.database.session import get_db, get_write_db
 
 router = APIRouter(
-    dependencies=[Depends(require_current_user, scope="function")],
+    dependencies=[Depends(require_current_user)],
     responses=AUTHENTICATION_RESPONSES,
 )
 
 
 @router.get("/foodstuffs", response_model=list[FoodstuffOut])
 def get_foodstuffs(
-    session: Session = Depends(get_db),
-    user: User = Depends(require_current_user, scope="function"),
+    session: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(require_current_user)],
 ) -> Sequence[FoodstuffOut]:
     return [
         foodstuffs.foodstuff_out(foodstuff)
@@ -42,7 +43,7 @@ def get_foodstuffs(
     responses=NOT_FOUND_RESPONSE,
 )
 def get_foodstuff(
-    foodstuff_id: int, session: Session = Depends(get_db)
+    foodstuff_id: int, session: Annotated[Session, Depends(get_db)]
 ) -> FoodstuffOut:
     return foodstuffs.foodstuff_out(foodstuffs.get_foodstuff(session, foodstuff_id))
 
@@ -55,8 +56,8 @@ def get_foodstuff(
 )
 def post_foodstuff(
     payload: FoodstuffCreate,
-    session: Session = Depends(get_write_db, scope="function"),
-    user: User = Depends(require_current_user, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
+    user: Annotated[User, Depends(require_current_user)],
 ) -> FoodstuffOut:
     foodstuff = foodstuffs.create_foodstuff(session, payload, owner_id=user.id)
     return foodstuffs.foodstuff_out(foodstuff)
@@ -70,8 +71,8 @@ def post_foodstuff(
 def patch_foodstuff(
     foodstuff_id: int,
     payload: FoodstuffUpdate,
-    session: Session = Depends(get_write_db, scope="function"),
-    user: User = Depends(require_current_user, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
+    user: Annotated[User, Depends(require_current_user)],
 ) -> FoodstuffOut:
     foodstuff = foodstuffs.update_foodstuff(
         session, foodstuff_id, payload, owner_id=user.id
@@ -86,7 +87,7 @@ def patch_foodstuff(
 )
 def delete_foodstuff(
     foodstuff_id: int,
-    session: Session = Depends(get_write_db, scope="function"),
-    user: User = Depends(require_current_user, scope="function"),
+    session: Annotated[Session, Depends(get_write_db, scope="function")],
+    user: Annotated[User, Depends(require_current_user)],
 ) -> None:
     foodstuffs.delete_foodstuff(session, foodstuff_id, owner_id=user.id)

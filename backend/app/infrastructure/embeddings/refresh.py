@@ -1,9 +1,9 @@
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta, timezone
-import logging
+from datetime import UTC, datetime, time, timedelta
 from threading import Condition, Lock, Thread
-from typing import Generic, TypeVar, cast
+from typing import cast
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -11,7 +11,6 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session, SessionTransaction
 
 logger = logging.getLogger(__name__)
-RefreshId = TypeVar("RefreshId", int, UUID)
 
 
 @dataclass
@@ -21,7 +20,7 @@ class RefreshReport:
     failed: int = 0
 
 
-class RefreshCoordinator(Generic[RefreshId]):
+class RefreshCoordinator[RefreshId: (int, UUID)]:
     def __init__(self, transaction_key: str, label: str) -> None:
         self.transaction_key = transaction_key
         self.label = label
@@ -66,7 +65,8 @@ class RefreshCoordinator(Generic[RefreshId]):
             for subscriber in subscribers:
                 try:
                     subscriber(record_id)
-                except Exception as error:
+                # Isolate optional service failures.
+                except Exception as error:  # noqa: BLE001
                     logger.error(
                         "Committed %s refresh scheduling failed (%s)",
                         self.label,
@@ -90,15 +90,15 @@ def next_nightly(now: datetime) -> datetime:
         target = datetime.combine(
             local.date() + timedelta(days=1), time(3), tzinfo=local.tzinfo
         )
-    return target.astimezone(timezone.utc)
+    return target.astimezone(UTC)
 
 
-class EmbeddingRefreshWorker(Generic[RefreshId]):
+class EmbeddingRefreshWorker[RefreshId: (int, UUID)]:
     def __init__(
         self,
         refresh_one: Callable[[RefreshId], str],
         sweep: Callable[[], object],
-        clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
         *,
         coordinator: RefreshCoordinator[RefreshId] | None = None,
     ) -> None:
@@ -173,7 +173,8 @@ class EmbeddingRefreshWorker(Generic[RefreshId]):
                     self.sweep()
                 elif record_id is not None:
                     self.refresh_one(record_id)
-            except Exception as error:
+            # Isolate optional service failures.
+            except Exception as error:  # noqa: BLE001
                 logger.error(
                     "Embedding background work failed (%s); skipped",
                     type(error).__name__,

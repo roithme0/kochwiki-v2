@@ -5,13 +5,13 @@ import os
 from uuid import UUID
 
 from app.core.config import Settings
-from app.infrastructure.database.session import SessionLocal
+from app.identity.services.sessions import authenticated_user
 from app.images.models import ImageAsset, ImageKind
 from app.images.transfers import ImageTransfers, ImageUploadNotFound
-from app.identity.services.sessions import authenticated_user
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.storage.storage import Storage
 from app.recipes.models.image_upload import RecipeImageUpload
 from app.recipes.services.image_uploads import RecipeImageUploads
-from app.infrastructure.storage.storage import Storage
 from tests.infrastructure.storage.verify_storage_adapter import transfer
 
 

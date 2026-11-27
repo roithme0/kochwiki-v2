@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import ClassVar
 from uuid import UUID
 
@@ -103,7 +103,7 @@ class OwnedImageUploads(ImageUploads):
             self.upload_model(
                 id=upload.id,
                 uploader_id=uploader_id,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         )
 

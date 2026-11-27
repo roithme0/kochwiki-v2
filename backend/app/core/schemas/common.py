@@ -6,11 +6,11 @@ from pydantic import BeforeValidator, Field, PlainSerializer, WithJsonSchema
 
 
 def validate_numeric_decimal(value: object) -> Decimal:
-    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
-        raise ValueError("must be a number")
-    decimal = value if isinstance(value, Decimal) else Decimal(str(value))
-    serialize_decimal(decimal)
-    return decimal
+    if not isinstance(value, bool) and isinstance(value, (int, float, Decimal)):
+        decimal = value if isinstance(value, Decimal) else Decimal(str(value))
+        serialize_decimal(decimal)
+        return decimal
+    raise ValueError("must be a number")
 
 
 def numeric_decimal_schema(schema: dict[str, object]) -> None:

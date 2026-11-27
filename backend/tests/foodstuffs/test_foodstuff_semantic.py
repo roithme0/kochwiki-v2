@@ -1,41 +1,40 @@
-from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from http import HTTPStatus
 from threading import Event
 
 import pytest
 from fastapi.testclient import TestClient
-from app.identity.schemas.user import UserOut
-from app.foodstuffs.models.unit import Unit
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.infrastructure.database.session import SessionLocal
-from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff import Foodstuff
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker, next_nightly
 from app.foodstuffs.services.embeddings import (
     FoodstuffEmbeddingService,
     foodstuff_refresh,
     source_text,
-)
-from app.foodstuffs.services.search import FoodstuffSemanticSearch
-from app.infrastructure.embeddings.embeddings import (
-    STORAGE_DIMENSIONS,
-    PROFILE,
-    EmbeddingClient,
-    QueryEmbeddingError,
-    SemanticSearchUnavailable,
 )
 from app.foodstuffs.services.foodstuffs import (
     create_foodstuff,
     delete_foodstuff,
     update_foodstuff,
 )
+from app.foodstuffs.services.search import FoodstuffSemanticSearch
+from app.identity.schemas.user import UserOut
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.embeddings.embeddings import (
+    PROFILE,
+    STORAGE_DIMENSIONS,
+    EmbeddingClient,
+    QueryEmbeddingError,
+    SemanticSearchUnavailable,
+)
+from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker, next_nightly
+from tests.recipes.helpers import fixture_owner_id
 
 
 def vector(axis: int = 0) -> list[float]:
@@ -430,7 +429,7 @@ def test_berlin_nightly_dst(now: str, expected: str) -> None:
 
 
 def test_worker_controlled_clock_no_startup_sweep_and_shutdown() -> None:
-    now = [datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)]
+    now = [datetime(2026, 10, 1, 0, 0, tzinfo=UTC)]
     swept = Event()
     refreshed = Event()
     calls: list[str] = []
@@ -449,7 +448,7 @@ def test_worker_controlled_clock_no_startup_sweep_and_shutdown() -> None:
     assert not swept.is_set()
     worker.enqueue(42)
     assert refreshed.wait(2)
-    now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=timezone.utc)
+    now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=UTC)
     worker.wake()
     assert swept.wait(2)
     worker.stop()
@@ -471,14 +470,14 @@ def test_stop_during_sweep_finishes_current_call_and_skips_remaining() -> None:
 
     provider.before_return = block
     search = service(provider)
-    now = [datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)]
+    now = [datetime(2026, 10, 1, 0, 0, tzinfo=UTC)]
     worker = EmbeddingRefreshWorker(
         search.refresh_one,
         lambda: search.refresh_all(worker.is_stopping),
         lambda: now[0],
     )
     worker.start()
-    now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=timezone.utc)
+    now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=UTC)
     worker.wake()
     assert entered.wait(2)
     from threading import Thread

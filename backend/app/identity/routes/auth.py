@@ -11,7 +11,6 @@ from app.identity.config import (
     SESSION_COOKIE,
     SESSION_COOKIE_PATH,
 )
-from app.infrastructure.database.session import SessionLocal
 from app.identity.dependencies import (
     HEADERS,
     login_service,
@@ -20,8 +19,8 @@ from app.identity.dependencies import (
     set_session_cookie,
     unauthenticated,
 )
-from app.identity.schemas.user import UserOut
 from app.identity.schemas.oidc import LogoutOut
+from app.identity.schemas.user import UserOut
 from app.identity.services.oidc import (
     LoginRejected,
     ProviderUnavailable,
@@ -33,6 +32,7 @@ from app.identity.services.sessions import (
     invalidate_session,
 )
 from app.identity.services.users import map_identity
+from app.infrastructure.database.session import SessionLocal
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 

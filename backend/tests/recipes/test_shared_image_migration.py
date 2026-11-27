@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol, cast
 from uuid import uuid4
 
@@ -31,7 +31,7 @@ def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(
     shared_image_migration: Migration,
 ) -> None:
     image_id, version_id = uuid4(), uuid4()
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
     with engine.begin() as connection:
         connection.execute(text("""
             CREATE TEMP TABLE recipe_image (
@@ -103,9 +103,11 @@ def test_existing_image_and_recipe_reference_survive_upgrade_and_downgrade(
         """),
             {"id": foodstuff_id},
         )
-        with Operations.context(MigrationContext.configure(connection)):
-            with pytest.raises(RuntimeError, match="non-recipe images exist"):
-                shared_image_migration.downgrade()
+        with (
+            Operations.context(MigrationContext.configure(connection)),
+            pytest.raises(RuntimeError, match="non-recipe images exist"),
+        ):
+            shared_image_migration.downgrade()
         connection.execute(
             text("DELETE FROM pg_temp.image_asset WHERE id = :id"), {"id": foodstuff_id}
         )

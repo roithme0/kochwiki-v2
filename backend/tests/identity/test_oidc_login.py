@@ -5,7 +5,7 @@ import logging
 import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from threading import Barrier
 from urllib.parse import parse_qs, urlsplit
@@ -19,20 +19,20 @@ from pydantic import ValidationError
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import Settings
 from app.identity import dependencies
-from app.identity.routes import auth
 from app.identity.config import LOGIN_COOKIE, LOGIN_COOKIE_PATH
 from app.identity.logging import AuthQueryFilter
-from app.core.config import Settings
-from app.infrastructure.database.session import SessionLocal
+from app.identity.models.application_session import ApplicationSession
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.models.user import User
-from app.identity.models.application_session import ApplicationSession
-from app.identity.schemas.user import UserOut
-from app.recipes.models.recipe import RecipeLineage
+from app.identity.routes import auth
 from app.identity.schemas.oidc import Identity
+from app.identity.schemas.user import UserOut
 from app.identity.services import oidc
 from app.identity.services.users import map_identity
+from app.infrastructure.database.session import SessionLocal
+from app.recipes.models.recipe import RecipeLineage
 
 ISSUER = "http://localhost:8006/realms/services"
 CALLBACK = "http://localhost:8000/api/auth/callback"
@@ -108,8 +108,8 @@ class Provider:
         raise AssertionError("Unexpected provider endpoint")
 
 
-@pytest.fixture
-def settings() -> Settings:
+@pytest.fixture(name="settings")
+def settings_fixture() -> Settings:
     return Settings(
         _env_file=None,
         oidc_issuer=ISSUER,
@@ -118,15 +118,15 @@ def settings() -> Settings:
     )
 
 
-@pytest.fixture
-def provider(monkeypatch: pytest.MonkeyPatch) -> Provider:
+@pytest.fixture(name="provider")
+def provider_fixture(monkeypatch: pytest.MonkeyPatch) -> Provider:
     instance = Provider()
     monkeypatch.setattr(oidc, "fetch", instance.fetch)
     return instance
 
 
-@pytest.fixture
-def browser(
+@pytest.fixture(name="browser")
+def browser_fixture(
     monkeypatch: pytest.MonkeyPatch, settings: Settings, provider: Provider
 ) -> Iterator[TestClient]:
     monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
@@ -337,33 +337,31 @@ def test_users_require_provider_identity(
     issuer: str | None, subject: str | None
 ) -> None:
     with SessionLocal.begin() as session:
-        with pytest.raises(IntegrityError):
-            with session.begin_nested():
-                session.add(
-                    User(
-                        display_name="Unlinked",
-                        issuer=issuer,
-                        subject=subject,
-                        email="cook@example.invalid",
-                    )
+        with pytest.raises(IntegrityError), session.begin_nested():
+            session.add(
+                User(
+                    display_name="Unlinked",
+                    issuer=issuer,
+                    subject=subject,
+                    email="cook@example.invalid",
                 )
-                session.flush()
+            )
+            session.flush()
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
 def test_users_require_email() -> None:
     with SessionLocal.begin() as session:
-        with pytest.raises(IntegrityError):
-            with session.begin_nested():
-                session.add(
-                    User(
-                        display_name="No email",
-                        issuer=ISSUER,
-                        subject="provider-user",
-                        email=None,
-                    )
+        with pytest.raises(IntegrityError), session.begin_nested():
+            session.add(
+                User(
+                    display_name="No email",
+                    issuer=ISSUER,
+                    subject="provider-user",
+                    email=None,
                 )
-                session.flush()
+            )
+            session.flush()
         assert session.scalar(select(func.count()).select_from(User)) == 0
 
 
@@ -395,7 +393,7 @@ def test_invalid_transaction_no_provider_call(
         with SessionLocal.begin() as session:
             session.execute(
                 update(LoginTransaction).values(
-                    expires_at=datetime.now(timezone.utc) - timedelta(seconds=1)
+                    expires_at=datetime.now(UTC) - timedelta(seconds=1)
                 )
             )
     else:

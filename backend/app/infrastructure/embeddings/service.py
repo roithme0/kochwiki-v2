@@ -1,20 +1,19 @@
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-import logging
 from threading import Lock
-from typing import Generic, TypeVar
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.infrastructure.embeddings.models import EmbeddingMixin
-from app.infrastructure.embeddings.refresh import RefreshId, RefreshReport
 from app.infrastructure.embeddings.embeddings import EmbeddingClient
+from app.infrastructure.embeddings.models import EmbeddingMixin
+from app.infrastructure.embeddings.refresh import RefreshReport
 
-EmbeddingRecord = TypeVar("EmbeddingRecord", bound=EmbeddingMixin)
 logger = logging.getLogger(__name__)
 
 
-class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
+class EmbeddingService[RefreshId: (int, UUID), EmbeddingRecord: EmbeddingMixin](ABC):
     label: str
 
     def __init__(
@@ -31,7 +30,8 @@ class EmbeddingService(Generic[RefreshId, EmbeddingRecord], ABC):
         with self.refresh_lock:
             try:
                 return self._refresh_one(record_id)
-            except Exception as error:
+            # Isolate optional service failures.
+            except Exception as error:  # noqa: BLE001
                 logger.error(
                     "%s %s embedding refresh failed (%s); skipped",
                     self.label,

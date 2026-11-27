@@ -137,11 +137,9 @@ class Browser:
         payload: object = json.loads(response.body)
         if not isinstance(payload, dict) or set(payload) != {"id", "display_name"}:
             raise RuntimeError("The current-user contract exposes unexpected fields.")
-        if not isinstance(payload["id"], int) or not isinstance(
-            payload["display_name"], str
-        ):
-            raise RuntimeError("Invalid current-user fields.")
-        return payload["id"], payload["display_name"]
+        if isinstance(payload["id"], int) and isinstance(payload["display_name"], str):
+            return payload["id"], payload["display_name"]
+        raise RuntimeError("Invalid current-user fields.")
 
 
 def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
