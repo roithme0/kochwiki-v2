@@ -24,7 +24,7 @@ from app.foodstuffs.services.foodstuffs import create_foodstuff
 from tests.recipes.helpers import create_owned_recipe as create_recipe
 
 
-def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings() -> (
+def test_lineage_mcp_excludes_history_and_returns_complete_versions_without_embeddings() -> (
     None
 ):
     with SessionLocal.begin() as session:
@@ -66,7 +66,9 @@ def test_lineage_mcp_returns_all_states_and_complete_versions_without_embeddings
             versions=[
                 recipes.recipe_version_out(version)
                 for version in sorted(
-                    versions, key=lambda version: version.version_id, reverse=True
+                    [active, *drafts],
+                    key=lambda version: version.version_id,
+                    reverse=True,
                 )
             ],
         )

@@ -96,7 +96,12 @@ def get_recipe_lineage(session: Session, version_id: UUID) -> RecipeLineageOut:
     )
     versions = session.scalars(
         _recipe_version_statement()
-        .where(RecipeVersion.lineage_id == lineage_id)
+        .where(
+            RecipeVersion.lineage_id == lineage_id,
+            RecipeVersion.state.in_(
+                (RecipeVersionState.ACTIVE, RecipeVersionState.DRAFT)
+            ),
+        )
         .order_by(RecipeVersion.last_modified.desc(), RecipeVersion.version_id.desc())
     ).all()
     if not versions:

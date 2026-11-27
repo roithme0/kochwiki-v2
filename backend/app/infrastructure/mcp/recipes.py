@@ -60,11 +60,12 @@ def register_recipe_tools(server: MCPServer, services: MCPServices) -> None:
             UUID, Field(description="ID of a persisted recipe version in the lineage")
         ],
     ) -> RecipeLineageOut:
-        """Retrieve the complete lineage containing the supplied recipe version.
+        """Retrieve current versions in the supplied recipe version's lineage.
 
-        Returns all active, draft and historical versions with ingredients, steps
+        Returns active and draft versions with ingredients, steps
         and per-serving nutrition, ordered by modification time then version ID,
-        both descending. Excludes unsaved proposals; unknown/deleted IDs error.
+        both descending. Historical IDs can identify a lineage, but historical
+        versions and unsaved proposals are excluded; unknown/deleted IDs error.
         Requires no embeddings.
         """
         with tool_errors("Recipe lineage", "retrieval"), SessionLocal() as session:
