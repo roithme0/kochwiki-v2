@@ -2,6 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy.orm import Session
 
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
@@ -24,7 +25,7 @@ from app.images.transfers import (
     ImageUploadNotFound,
     InvalidImage,
 )
-from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.database.session import SessionLocal, get_db
 from app.infrastructure.storage.storage import Storage, StorageUnavailable
 
 router = APIRouter(
@@ -46,7 +47,7 @@ def get_foodstuff_image_storage(request: Request) -> Storage:
 def get_foodstuff_image_transfers(
     storage: Annotated[Storage, Depends(get_foodstuff_image_storage)],
 ) -> ImageTransfers:
-    return ImageTransfers(storage, SessionLocal, kind=ImageKind.FOODSTUFF)
+    return ImageTransfers(storage, kind=ImageKind.FOODSTUFF)
 
 
 def get_foodstuff_image_uploads(
@@ -68,9 +69,10 @@ def get_foodstuff_image_uploads(
 def image_content(
     image_id: UUID,
     transfers: Annotated[ImageTransfers, Depends(get_foodstuff_image_transfers)],
+    session: Annotated[Session, Depends(get_db, scope="function")],
 ) -> Response:
     try:
-        target = transfers.content_handoff(image_id)
+        target = transfers.content_handoff(session, image_id)
     except StorageUnavailable:
         raise HTTPException(
             503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}

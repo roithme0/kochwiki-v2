@@ -79,7 +79,7 @@ def storage(client: TestClient, kind: ImageKind) -> Iterator[Mock]:
         return adapter
 
     def dependency() -> ImageTransfers:
-        return ImageTransfers(adapter, SessionLocal, kind=kind)
+        return ImageTransfers(adapter, kind=kind)
 
     upload_dependency = (
         get_recipe_image_transfers
@@ -633,7 +633,7 @@ def test_concurrent_recipe_completions_process_the_upload_once(
     upload_id = start_upload(authenticated_client, kind)
     uploads = (
         RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
-    )(ImageTransfers(storage, SessionLocal, kind=kind), SessionLocal)
+    )(ImageTransfers(storage, kind=kind), SessionLocal)
     reading, release, second_started = Event(), Event(), Event()
 
     def read(key: str, *, max_bytes: int) -> bytes:
@@ -687,7 +687,7 @@ def test_recipe_image_and_pending_upload_have_one_commit_outcome(
     sessions = sessionmaker(engine, autoflush=False, expire_on_commit=False)
     uploads = (
         RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
-    )(ImageTransfers(storage, sessions, kind=kind), sessions)
+    )(ImageTransfers(storage, kind=kind), sessions)
 
     def fail(session: Session) -> None:
         raise OperationalError("commit", None, RuntimeError("private database error"))

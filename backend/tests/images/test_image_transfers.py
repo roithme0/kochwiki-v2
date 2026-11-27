@@ -47,7 +47,7 @@ class ImageUploadTests(unittest.TestCase):
         ImageAsset.__table__.create(self.engine)
         self.addCleanup(self.engine.dispose)
         self.sessions = sessionmaker(self.engine)
-        self.transfers = ImageTransfers(self.storage, self.sessions, kind=self.kind)
+        self.transfers = ImageTransfers(self.storage, kind=self.kind)
         self.service = ImageUploads(self.transfers, self.sessions)
         self.upload_id = uuid4()
         self.temporary_key = f"{self.kind.value}-image-uploads/{self.upload_id}"

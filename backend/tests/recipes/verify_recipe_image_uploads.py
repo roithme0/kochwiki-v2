@@ -30,7 +30,7 @@ def main() -> None:
         user_id = authenticated[0].id
     storage = Storage(config, bucket=config.bucket_recipe_images)
     uploads = RecipeImageUploads(
-        ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE), SessionLocal
+        ImageTransfers(storage, kind=ImageKind.RECIPE), SessionLocal
     )
     keys: list[str] = []
     image_ids: list[UUID] = []

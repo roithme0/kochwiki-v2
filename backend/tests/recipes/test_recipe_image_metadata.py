@@ -17,7 +17,7 @@ def test_completion_commits_metadata_visible_to_another_session() -> None:
     data = png()
     storage.read.return_value = data
     with SessionLocal.begin() as session:
-        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(
+        result = ImageTransfers(storage, kind=ImageKind.RECIPE).complete(
             session, uuid4()
         )
     with SessionLocal() as session:
@@ -40,7 +40,7 @@ def test_transfers_use_the_callers_transaction_without_committing_or_cleaning_st
         pytest.raises(RuntimeError, match="roll back completion"),
         SessionLocal.begin() as session,
     ):
-        result = ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE).complete(
+        result = ImageTransfers(storage, kind=ImageKind.RECIPE).complete(
             session, uuid4()
         )
         session.flush()
