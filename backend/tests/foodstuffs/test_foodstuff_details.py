@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,7 +20,7 @@ def test_details_roundtrip_normalization_and_permissions(
             "kcal": 77,
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     food = response.json()
     path = f"/foodstuffs/{food['id']}"
     assert food["details"] == "geschält, roh"
@@ -32,7 +33,10 @@ def test_details_roundtrip_normalization_and_permissions(
         assert client.patch(path, json={"details": value}).json()["details"] is None
         assert client.patch(path, json={"details": "roh"}).json()["details"] == "roh"
     sign_in(client)
-    assert client.patch(path, json={"details": "gekocht"}).status_code == 403
+    assert (
+        client.patch(path, json={"details": "gekocht"}).status_code
+        == HTTPStatus.FORBIDDEN
+    )
     unchanged = client.get(path).json()
     assert unchanged["name"] == "Kartoffeln" and unchanged["details"] == "roh"
     assert unchanged["kcal"] == 77
@@ -49,11 +53,11 @@ def test_invalid_details_are_rejected(
         client.post(
             "/foodstuffs", json={"name": "Potato", "unit": "G", "details": value}
         ).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
     assert (
         client.patch(f"/foodstuffs/{food['id']}", json={"details": value}).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
 
 
@@ -63,36 +67,38 @@ def test_details_do_not_change_owner_name_brand_uniqueness(
     client = authenticated_client
     payload = {"name": "Kartoffeln", "brand": "Farm", "unit": "G"}
     plain = client.post("/foodstuffs", json=payload)
-    assert plain.status_code == 201
+    assert plain.status_code == HTTPStatus.CREATED
     for details in (None, "roh", "gekocht", " roh "):
         assert (
             client.post("/foodstuffs", json={**payload, "details": details}).status_code
-            == 409
+            == HTTPStatus.CONFLICT
         )
     path = f"/foodstuffs/{plain.json()['id']}"
     for details in ("roh", "gekocht", None):
-        assert client.patch(path, json={"details": details}).status_code == 200
+        assert (
+            client.patch(path, json={"details": details}).status_code == HTTPStatus.OK
+        )
     other = client.post(
         "/foodstuffs",
         json={**payload, "name": "Andere Kartoffeln", "details": "gekocht"},
     )
-    assert other.status_code == 201
+    assert other.status_code == HTTPStatus.CREATED
     assert (
         client.patch(
             f"/foodstuffs/{other.json()['id']}", json={"name": "Kartoffeln"}
         ).status_code
-        == 409
+        == HTTPStatus.CONFLICT
     )
     assert (
         client.post(
             "/foodstuffs", json={**payload, "brand": "Other", "details": "roh"}
         ).status_code
-        == 201
+        == HTTPStatus.CREATED
     )
     sign_in(client)
     assert (
         client.post("/foodstuffs", json={**payload, "details": "roh"}).status_code
-        == 201
+        == HTTPStatus.CREATED
     )
     packaged = client.post(
         "/foodstuffs", json={"name": "Hirtenkäse 45% Fett i. Tr.", "unit": "G"}

@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from http import HTTPStatus
 from uuid import UUID, uuid4
 
 import httpx2
@@ -67,7 +68,7 @@ def test_create_and_read_image(
     if choice != "omit":
         payload["imageId"] = expected
     response = client.post("/foodstuffs", json=payload)
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     saved = response.json()
     assert saved["imageId"] == expected
     assert client.get(f"/foodstuffs/{saved['id']}").json() == saved
@@ -95,11 +96,11 @@ def test_update_preserves_replaces_removes_and_retains_metadata(
             ({"imageId": str(images[0])}, str(images[0])),
         ]:
             response = client.patch(path, json=changes)
-            assert response.status_code == 200
+            assert response.status_code == HTTPStatus.OK
             assert response.json()["imageId"] == expected
             assert client.get(path).json()["imageId"] == expected
         assert refreshed == []
-        assert client.delete(path).status_code == 204
+        assert client.delete(path).status_code == HTTPStatus.NO_CONTENT
         with SessionLocal() as session:
             assert set(session.scalars(select(ImageAsset.id))) == set(images)
     finally:
@@ -178,7 +179,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
     path = f"/recipes/{recipe['recipeLineageId']}"
     assert (
         client.post(f"{path}/publish", json={"name": "Next", "servings": 1}).status_code
-        == 200
+        == HTTPStatus.OK
     )
     provider = FakeProvider()
     embeddings = service(provider)
@@ -187,7 +188,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
         client.patch(
             f"/foodstuffs/{saved['id']}", json={"imageId": str(images[1])}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
     assert embeddings.refresh_one(saved["id"]) == "skipped"
     assert len(provider.calls) == 1

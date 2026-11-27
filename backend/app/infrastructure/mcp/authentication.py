@@ -1,5 +1,6 @@
 from contextvars import ContextVar
 from dataclasses import dataclass
+from http import HTTPStatus
 
 from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
 from mcp.shared.exceptions import MCPError
@@ -53,7 +54,7 @@ class MCPAuthenticationMiddleware:
         except SQLAlchemyError:
             response = JSONResponse(
                 {"detail": "Authentication service unavailable."},
-                status_code=503,
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
                 headers={"Cache-Control": "no-store"},
             )
             await response(scope, receive, send)
@@ -61,7 +62,7 @@ class MCPAuthenticationMiddleware:
         if caller is None:
             response = JSONResponse(
                 {"detail": "Authentication required."},
-                status_code=401,
+                status_code=HTTPStatus.UNAUTHORIZED,
                 headers={
                     "Cache-Control": "no-store",
                     "WWW-Authenticate": f'Bearer realm="{MCP_AUDIENCE}"',

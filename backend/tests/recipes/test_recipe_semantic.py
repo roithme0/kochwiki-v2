@@ -2,6 +2,7 @@ from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
+from http import HTTPStatus
 from threading import Event
 from uuid import UUID
 
@@ -392,10 +393,10 @@ def test_lifespan_refresh_failure_does_not_fail_write(
         sign_in(client)
         assert (
             client.post("/recipes", json={"name": "Bad", "servings": 2}).status_code
-            == 201
+            == HTTPStatus.CREATED
         )
         assert attempted.wait(2)
-        assert client.get("/recipes").status_code == 200
+        assert client.get("/recipes").status_code == HTTPStatus.OK
     assert provider.closed
     with SessionLocal() as session:
         assert session.scalar(select(RecipeVersion)) is not None

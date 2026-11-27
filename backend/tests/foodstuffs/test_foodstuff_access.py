@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -34,7 +35,7 @@ def shared_foodstuff(authenticated_client: TestClient) -> FoodstuffOut:
     response = authenticated_client.post(
         "/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"}
     )
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     return FoodstuffOut.model_validate(response.json())
 
 
@@ -54,7 +55,7 @@ def test_missing_session_prevents_foodstuff_access_and_mutation(
         json=payload_for(method),
         headers={"X-Application-User": f"kochwiki:{recipe_session.id}"},
     )
-    assert response.status_code == 401
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {"detail": "Authentication required."}
     assert response.headers["cache-control"] == "no-store"
     assert "Max-Age=0" in response.headers["set-cookie"]
@@ -91,7 +92,9 @@ def test_other_users_can_read_but_not_mutate_foodstuffs_and_renew_sessions(
     response = client.request(
         method, path.format(foodstuff_id=shared_foodstuff.id), json=payload_for(method)
     )
-    assert response.status_code == (403 if method in {"PATCH", "DELETE"} else status)
+    assert response.status_code == (
+        HTTPStatus.FORBIDDEN if method in {"PATCH", "DELETE"} else status
+    )
     if method not in {"PATCH", "DELETE"}:
         assert response.headers["cache-control"] == "no-store"
         assert "HttpOnly" in response.headers["set-cookie"]
@@ -138,25 +141,31 @@ def test_own_mutation_retains_domain_constraints(
             ],
         },
     )
-    assert recipe.status_code == 201
+    assert recipe.status_code == HTTPStatus.CREATED
     path = f"/foodstuffs/{shared_foodstuff.id}"
-    assert client.patch(path, json={"kcal": 123}).status_code == 200
+    assert client.patch(path, json={"kcal": 123}).status_code == HTTPStatus.OK
     lineage = recipe.json()["recipeLineageId"]
     assert (
         client.get(f"/recipes/{lineage}").json()["ingredients"][0]["foodstuff"]["kcal"]
         == 123
     )
-    assert client.delete(path).status_code == 409
+    assert client.delete(path).status_code == HTTPStatus.CONFLICT
     assert (
         client.post(
             "/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"}
         ).status_code
-        == 409
+        == HTTPStatus.CONFLICT
     )
-    assert client.patch(path, json={"name": None}).status_code == 422
-    assert client.get("/foodstuffs/999").status_code == 404
-    assert client.patch("/foodstuffs/999", json={"name": "Missing"}).status_code == 404
-    assert client.delete("/foodstuffs/999").status_code == 404
+    assert (
+        client.patch(path, json={"name": None}).status_code
+        == HTTPStatus.UNPROCESSABLE_CONTENT
+    )
+    assert client.get("/foodstuffs/999").status_code == HTTPStatus.NOT_FOUND
+    assert (
+        client.patch("/foodstuffs/999", json={"name": "Missing"}).status_code
+        == HTTPStatus.NOT_FOUND
+    )
+    assert client.delete("/foodstuffs/999").status_code == HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.parametrize(("method", "path", "status"), OPERATIONS)
@@ -169,7 +178,7 @@ def test_foodstuffs_require_configured_login(
     response = client.request(
         method, path.format(foodstuff_id=1), json=payload_for(method)
     )
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
 
 @pytest.mark.parametrize(("method", "path", "status"), OPERATIONS)

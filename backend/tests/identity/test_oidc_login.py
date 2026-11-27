@@ -6,6 +6,7 @@ import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from http import HTTPStatus
 from threading import Barrier
 from urllib.parse import parse_qs, urlsplit
 
@@ -137,7 +138,7 @@ def browser(
 
 def begin(browser: TestClient, provider: Provider) -> dict[str, list[str]]:
     response = browser.get("/api/auth/login", follow_redirects=False)
-    assert response.status_code == 302
+    assert response.status_code == HTTPStatus.FOUND
     query = parse_qs(urlsplit(response.headers["location"]).query)
     provider.nonce = query["nonce"][0]
     return query
@@ -168,7 +169,9 @@ def test_login_roundtrip_and_replay(browser: TestClient, provider: Provider) -> 
         params={"state": query["state"][0], "code": "provider-code", "iss": ISSUER},
         follow_redirects=False,
     )
-    assert response.status_code == 302 and response.headers["location"] == "/"
+    assert (
+        response.status_code == HTTPStatus.FOUND and response.headers["location"] == "/"
+    )
     assert provider.token_form["client_secret"] == SECRET
     assert provider.token_form["code_verifier"] == verifier
     challenge = (
@@ -302,7 +305,7 @@ def test_user_management_is_not_exposed(
 ) -> None:
     user = sign_in(client)
     recipe = client.post("/recipes", json={"name": "Retained recipe", "servings": 1})
-    assert recipe.status_code == 201
+    assert recipe.status_code == HTTPStatus.CREATED
     if not authenticated:
         client.cookies.clear()
     for method, path in (
@@ -313,7 +316,7 @@ def test_user_management_is_not_exposed(
         ("POST", "/users"),
     ):
         response = client.request(method, path, json={"display_name": "Local override"})
-        assert response.status_code == 404
+        assert response.status_code == HTTPStatus.NOT_FOUND
         assert response.json() == {"detail": "Not Found"}
     paths = client.get("/api/openapi.json").json()["paths"]
     assert not any(path == "/users" or path.startswith("/users/") for path in paths)
@@ -398,7 +401,10 @@ def test_invalid_transaction_no_provider_call(
     else:
         parameters.append(("state", "duplicate"))
     calls = provider.calls
-    assert browser.get("/api/auth/callback", params=parameters).status_code == 400
+    assert (
+        browser.get("/api/auth/callback", params=parameters).status_code
+        == HTTPStatus.BAD_REQUEST
+    )
     assert provider.calls == calls
 
 
@@ -415,7 +421,9 @@ def test_cancellation_consumes_transaction(
             "error_description": "untrusted-html",
         },
     )
-    assert response.status_code == 400 and "cancelled" in response.text
+    assert (
+        response.status_code == HTTPStatus.BAD_REQUEST and "cancelled" in response.text
+    )
     assert "untrusted-html" not in response.text and provider.calls == calls
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(LoginTransaction)) == 0
@@ -433,9 +441,9 @@ def test_provider_failure_consumes_transaction(
 
 def test_discovery_mismatch_and_outage(browser: TestClient, provider: Provider) -> None:
     provider.discovery_issuer = "https://wrong.example"
-    assert browser.get("/api/auth/login").status_code == 503
+    assert browser.get("/api/auth/login").status_code == HTTPStatus.SERVICE_UNAVAILABLE
     provider.unavailable = True
-    assert browser.get("/api/auth/login").status_code == 503
+    assert browser.get("/api/auth/login").status_code == HTTPStatus.SERVICE_UNAVAILABLE
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(LoginTransaction)) == 0
 
@@ -588,5 +596,5 @@ def test_access_log_redacts_auth_namespace(path: str) -> None:
 
 
 def test_disabled_verification(client: TestClient) -> None:
-    assert client.get("/auth/login").status_code == 503
-    assert client.get("/auth/callback").status_code == 503
+    assert client.get("/auth/login").status_code == HTTPStatus.SERVICE_UNAVAILABLE
+    assert client.get("/auth/callback").status_code == HTTPStatus.SERVICE_UNAVAILABLE

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from collections.abc import Callable
+from http import HTTPStatus
 from uuid import UUID, uuid4
 
 import pytest
@@ -56,14 +57,14 @@ def create(client: TestClient, image_id: UUID | None) -> RecipeVersionOut:
             "imageId": str(image_id) if image_id else None,
         },
     )
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     return RecipeVersionOut.model_validate(response.json())
 
 
 @pytest.mark.usefixtures("recipe_session")
 def test_new_recipe_without_image(client: TestClient) -> None:
     response = client.post("/recipes", json={"name": "No image", "servings": 2})
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     recipe = RecipeVersionOut.model_validate(response.json())
     assert recipe.imageId is None
     assert recipe.imageDimensions is None
@@ -120,14 +121,14 @@ def test_draft_replacement_removal_and_publication_are_independent(
     replacement = client.put(
         draft_path, json={"name": "Replaced", "servings": 2, "imageId": str(images[1])}
     )
-    assert replacement.status_code == 200
+    assert replacement.status_code == HTTPStatus.OK
     assert replacement.json()["imageId"] == str(images[1])
     assert replacement.json()["imageDimensions"] == {"width": 1000, "height": 600}
     kept = client.put(draft_path, json={"name": "Kept", "servings": 2})
     assert kept.json()["imageId"] == str(images[1])
     assert client.get(path).json()["imageId"] == str(images[0])
     published = client.post(f"{draft_path}/publish")
-    assert published.status_code == 200
+    assert published.status_code == HTTPStatus.OK
     assert published.json()["imageId"] == str(images[1])
     assert client.get(f"{path}/history").json()[0]["imageId"] == str(images[0])
     assert client.get(f"{path}/history").json()[0]["imageDimensions"] == {
@@ -190,7 +191,9 @@ def test_new_version_image_choices(
     elif choice == "remove":
         payload["imageId"] = None
     response = client.post(f"{path}/{operation}", json=payload)
-    assert response.status_code == (201 if operation == "drafts" else 200)
+    assert response.status_code == (
+        HTTPStatus.CREATED if operation == "drafts" else HTTPStatus.OK
+    )
     assert response.json()["imageId"] == (None if choice == "remove" else str(expected))
     assert client.get(f"{path}/versions/{original.recipeVersionId}").json()[
         "imageId"
@@ -236,13 +239,13 @@ def test_unknown_image_rejects_entire_save(
             "draft": f"{path}/drafts",
         }[operation]
         response = client.post(endpoint, json=payload)
-    assert response.status_code == 404
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {"detail": f"Recipe image with id {unknown} not found"}
     assert client.get("/recipes").json() == before
     assert client.get(f"{path}/history").json() == []
     assert (
         client.post("/recipes", json={**payload, "imageId": "invalid"}).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
 
 
@@ -276,7 +279,7 @@ def test_foreign_or_unowned_image_rejects_entire_save(
             "draft": f"{path}/drafts",
         }[operation]
         response = client.post(endpoint, json=payload)
-    assert response.status_code == 403
+    assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.json() == {
         "detail": "Only images uploaded by the recipe owner may be attached"
     }
@@ -388,9 +391,12 @@ def test_references_protect_metadata_and_recipe_deletion_keeps_images(
         assert image is not None
         session.delete(image)
         session.flush()
-    assert client.delete(f"{path}/drafts/{draft['recipeVersionId']}").status_code == 204
+    assert (
+        client.delete(f"{path}/drafts/{draft['recipeVersionId']}").status_code
+        == HTTPStatus.NO_CONTENT
+    )
     assert client.get(path).json()["imageId"] == str(images[0])
-    assert client.delete(path).status_code == 204
+    assert client.delete(path).status_code == HTTPStatus.NO_CONTENT
     with SessionLocal() as session:
         assert set(session.scalars(select(ImageAsset.id))) == set(images)
 

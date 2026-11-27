@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, Request, Security
@@ -36,7 +37,7 @@ from app.identity.services.users import map_identity
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-def result(message: str, status: int) -> HTMLResponse:
+def result(message: str, status: HTTPStatus) -> HTMLResponse:
     return HTMLResponse(
         "<!doctype html><html lang='en'><meta charset='utf-8'><title>KochWiki login verification</title>"
         f"<h1>{message}</h1><p>KochWiki local login verification.</p></html>",
@@ -49,16 +50,21 @@ def result(message: str, status: int) -> HTMLResponse:
 def login() -> Response:
     service = login_service()
     if service is None:
-        return result("Login verification is not configured.", 503)
+        return result(
+            "Login verification is not configured.", HTTPStatus.SERVICE_UNAVAILABLE
+        )
     with SessionLocal.begin() as session:
         cleanup_expired_sessions(session)
     try:
         start = service.start()
     except ProviderUnavailable:
         return result(
-            "The identity provider is unavailable. Start a new login later.", 503
+            "The identity provider is unavailable. Start a new login later.",
+            HTTPStatus.SERVICE_UNAVAILABLE,
         )
-    response = RedirectResponse(start.url, status_code=302, headers=HEADERS)
+    response = RedirectResponse(
+        start.url, status_code=HTTPStatus.FOUND, headers=HEADERS
+    )
     response.set_cookie(
         LOGIN_COOKIE,
         start.browser_binding,
@@ -75,7 +81,9 @@ def login() -> Response:
 def callback(request: Request) -> Response:
     service = login_service()
     if service is None:
-        return result("Login verification is not configured.", 503)
+        return result(
+            "Login verification is not configured.", HTTPStatus.SERVICE_UNAVAILABLE
+        )
     response: Response
     try:
         parameters = request.query_params
@@ -92,7 +100,8 @@ def callback(request: Request) -> Response:
             raise LoginRejected()
         if "error" in parameters:
             response = result(
-                "Login was cancelled or rejected. Start a new login to try again.", 400
+                "Login was cancelled or rejected. Start a new login to try again.",
+                HTTPStatus.BAD_REQUEST,
             )
         else:
             code = parameters.get("code")
@@ -108,15 +117,19 @@ def callback(request: Request) -> Response:
                     request.cookies.get(SESSION_COOKIE),
                     completed.id_token,
                 )
-            response = RedirectResponse("/", status_code=302, headers=HEADERS)
+            response = RedirectResponse(
+                "/", status_code=HTTPStatus.FOUND, headers=HEADERS
+            )
             set_session_cookie(response, secret, expires, service.secure_cookie)
     except LoginRejected:
         response = result(
-            "Login verification failed or expired. Start a new login to try again.", 400
+            "Login verification failed or expired. Start a new login to try again.",
+            HTTPStatus.BAD_REQUEST,
         )
     except ProviderUnavailable:
         response = result(
-            "The identity provider is unavailable. Start a new login later.", 503
+            "The identity provider is unavailable. Start a new login later.",
+            HTTPStatus.SERVICE_UNAVAILABLE,
         )
     response.delete_cookie(
         LOGIN_COOKIE,
@@ -140,7 +153,9 @@ def current_user(secret: Annotated[str | None, Security(session_cookie)]) -> Res
     service = login_service()
     if service is None:
         return JSONResponse(
-            {"detail": "Login is not configured."}, status_code=503, headers=HEADERS
+            {"detail": "Login is not configured."},
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            headers=HEADERS,
         )
     with SessionLocal.begin() as session:
         authenticated = authenticated_user(session, secret)
@@ -168,7 +183,9 @@ def logout(
     service = login_service()
     if service is None:
         return JSONResponse(
-            {"detail": "Login is not configured."}, status_code=503, headers=HEADERS
+            {"detail": "Login is not configured."},
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            headers=HEADERS,
         )
     require_trusted_origin(request, service.callback_url)
     try:
@@ -178,7 +195,7 @@ def logout(
             {
                 "detail": "The identity provider is unavailable. Try signing out again later."
             },
-            status_code=503,
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
             headers=HEADERS,
         )
     with SessionLocal.begin() as session:

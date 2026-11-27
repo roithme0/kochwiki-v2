@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Callable
+from http import HTTPStatus
 from urllib.parse import quote
 from uuid import UUID, uuid4
 
@@ -166,7 +167,7 @@ def test_proposal_mcp_workflow_refinement_repeat_save_and_lifecycle(
                             "X-Application-User": "unknown:unknown",
                         },
                     )
-                    assert http_saved.status_code == 200
+                    assert http_saved.status_code == HTTPStatus.OK
                     assert http_saved.json() == draft.model_dump(mode="json")
                     with SessionLocal.begin() as session:
                         assert len(list_foodstuffs(session, owner_id=mcp_user.id)) == 2

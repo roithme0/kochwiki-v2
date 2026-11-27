@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import cast
 from uuid import uuid4
 
@@ -19,7 +20,7 @@ pytestmark = pytest.mark.usefixtures("recipe_session")
 def prepare(client: TestClient) -> RecipeProposalOut:
     store = cast(RecipeProposalStore, client.app.state.recipe_proposals)
     response = client.post("/recipes", json={"name": "Original", "servings": 1})
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     source = RecipeVersionOut.model_validate(response.json())
     with SessionLocal.begin() as session:
         return store.create(
@@ -59,7 +60,7 @@ def test_save_creates_ingredients_and_repeated_save_returns_same_draft(
     proposal = prepare(client)
     url = f"/recipe-proposals/{proposal.proposalId}/save"
     response = client.post(url)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     draft = RecipeVersionOut.model_validate(response.json())
     assert draft.state == "draft" and draft.name == "Improved"
     assert draft.ingredients[0].foodstuff.name == "Beans"
@@ -68,12 +69,18 @@ def test_save_creates_ingredients_and_repeated_save_returns_same_draft(
         assert len(list_foodstuffs(session, owner_id=recipe_session.id)) == 1
     with SessionLocal.begin() as session:
         discard_recipe_draft(session, draft.recipeLineageId, draft.recipeVersionId)
-    assert client.post(url).status_code == 404
+    assert client.post(url).status_code == HTTPStatus.NOT_FOUND
 
 
 def test_unknown_proposal_does_not_create_data(client: TestClient) -> None:
-    assert client.post(f"/recipe-proposals/{uuid4()}/save").status_code == 404
-    assert client.post("/recipe-proposals/not-a-uuid/save").status_code == 422
+    assert (
+        client.post(f"/recipe-proposals/{uuid4()}/save").status_code
+        == HTTPStatus.NOT_FOUND
+    )
+    assert (
+        client.post("/recipe-proposals/not-a-uuid/save").status_code
+        == HTTPStatus.UNPROCESSABLE_CONTENT
+    )
 
 
 def test_missing_source_fails_without_creating_temporary_foodstuffs(
@@ -85,9 +92,10 @@ def test_missing_source_fails_without_creating_temporary_foodstuffs(
         source = session.get(RecipeVersion, proposal.sourceRecipeVersionId)
         assert source is not None
         lineage_id = source.lineage_id
-    assert client.delete(f"/recipes/{lineage_id}").status_code == 204
+    assert client.delete(f"/recipes/{lineage_id}").status_code == HTTPStatus.NO_CONTENT
     assert (
-        client.post(f"/recipe-proposals/{proposal.proposalId}/save").status_code == 404
+        client.post(f"/recipe-proposals/{proposal.proposalId}/save").status_code
+        == HTTPStatus.NOT_FOUND
     )
     with SessionLocal() as session:
         assert list_foodstuffs(session, owner_id=recipe_session.id) == []

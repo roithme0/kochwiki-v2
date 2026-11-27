@@ -2,6 +2,7 @@ from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
+from http import HTTPStatus
 from threading import Event
 
 import pytest
@@ -527,9 +528,9 @@ def test_lifespan_refresh_failure_keeps_api_write_and_closes_provider(
     ) as client:
         sign_in(client)
         response = client.post("/foodstuffs", json={"name": "bad", "unit": "G"})
-        assert response.status_code == 201
+        assert response.status_code == HTTPStatus.CREATED
         assert attempted.wait(2)
-        assert client.get("/foodstuffs").status_code == 200
+        assert client.get("/foodstuffs").status_code == HTTPStatus.OK
     assert provider.closed
     with SessionLocal() as session:
         assert (

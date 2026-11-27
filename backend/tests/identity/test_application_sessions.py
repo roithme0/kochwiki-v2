@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from http import HTTPStatus
 from threading import Barrier, Event
 from time import monotonic, sleep
 from urllib.parse import parse_qs, urlsplit
@@ -51,7 +52,9 @@ def test_session_cookie_hash_and_current_profile(
         params={"state": query["state"][0], "code": "provider-code"},
         follow_redirects=False,
     )
-    assert response.status_code == 302 and response.headers["location"] == "/"
+    assert (
+        response.status_code == HTTPStatus.FOUND and response.headers["location"] == "/"
+    )
     secret = browser.cookies.get(SESSION_COOKIE)
     assert secret and len(secret) == 43 and secret not in response.text
     cookie = next(
@@ -106,7 +109,10 @@ def test_activity_slides_database_and_cookie_expiry(
             update(ApplicationSession).values(last_activity_at=old_activity)
         )
     response = browser.get("/api/auth/me")
-    assert response.status_code == 200 and browser.cookies.get(SESSION_COOKIE) == secret
+    assert (
+        response.status_code == HTTPStatus.OK
+        and browser.cookies.get(SESSION_COOKIE) == secret
+    )
     assert "expires=" in response.headers["set-cookie"].lower()
     with SessionLocal() as session:
         stored = session.scalars(select(ApplicationSession)).one()
@@ -136,7 +142,9 @@ def test_login_cleans_expired_sessions_across_users(
             )
     provider.unavailable = provider_unavailable
     response = browser.get("/api/auth/login", follow_redirects=False)
-    assert response.status_code == (503 if provider_unavailable else 302)
+    assert response.status_code == (
+        HTTPStatus.SERVICE_UNAVAILABLE if provider_unavailable else HTTPStatus.FOUND
+    )
     with SessionLocal() as session:
         remaining = session.scalars(select(ApplicationSession)).all()
         assert sorted(row.user_id for row in remaining) == [user.id for user in users]
@@ -244,7 +252,8 @@ def test_invalid_session_cleared(browser: TestClient, secret: str | None) -> Non
         )
     response = browser.get("/api/auth/me")
     assert (
-        response.status_code == 401 and response.headers["cache-control"] == "no-store"
+        response.status_code == HTTPStatus.UNAUTHORIZED
+        and response.headers["cache-control"] == "no-store"
     )
     assert (
         "Max-Age=0" in response.headers["set-cookie"]
@@ -263,7 +272,7 @@ def test_expired_cannot_be_revived(
         session.execute(
             update(ApplicationSession).values(last_activity_at=old_activity)
         )
-    assert browser.get("/api/auth/me").status_code == 401
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.UNAUTHORIZED
     assert secret is not None
     browser.cookies.set(
         SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_COOKIE_PATH
@@ -272,7 +281,7 @@ def test_expired_cannot_be_revived(
         browser.post(
             "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
     with SessionLocal() as session:
         assert session.scalars(select(ApplicationSession)).one_or_none() is None
@@ -301,13 +310,16 @@ def test_logout_csrf_rejection_preserves_session(
     response = browser.post(
         "/api/auth/logout", headers={"Origin": origin} if origin else {}
     )
-    assert response.status_code == 403 and "set-cookie" not in response.headers
+    assert (
+        response.status_code == HTTPStatus.FORBIDDEN
+        and "set-cookie" not in response.headers
+    )
     with SessionLocal() as session:
         assert (
             session.scalars(select(ApplicationSession)).one().last_activity_at
             == previous
         )
-    assert browser.get("/api/auth/me").status_code == 200
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.OK
 
 
 def test_logout_invalidates_session_and_returns_browser_provider_logout(
@@ -316,7 +328,7 @@ def test_logout_invalidates_session_and_returns_browser_provider_logout(
     assert finish(browser, begin(browser, provider)) == 302
     secret = browser.cookies.get(SESSION_COOKIE)
     calls = provider.calls
-    assert browser.get("/api/auth/logout").status_code == 405
+    assert browser.get("/api/auth/logout").status_code == HTTPStatus.METHOD_NOT_ALLOWED
     assert (
         browser.post(
             "/api/auth/logout",
@@ -325,12 +337,15 @@ def test_logout_invalidates_session_and_returns_browser_provider_logout(
                 ("Origin", "http://localhost:8000"),
             ],
         ).status_code
-        == 403
+        == HTTPStatus.FORBIDDEN
     )
     response = browser.post(
         "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
     )
-    assert response.status_code == 200 and "Max-Age=0" in response.headers["set-cookie"]
+    assert (
+        response.status_code == HTTPStatus.OK
+        and "Max-Age=0" in response.headers["set-cookie"]
+    )
     assert provider.calls == calls + 1 and SESSION_COOKIE not in browser.cookies
     target = urlsplit(response.json()["redirect_url"])
     assert target.geturl().startswith(ISSUER + "/protocol/openid-connect/logout?")
@@ -352,12 +367,12 @@ def test_logout_invalidates_session_and_returns_browser_provider_logout(
     browser.cookies.set(
         SESSION_COOKIE, secret, domain="localhost.local", path=SESSION_COOKIE_PATH
     )
-    assert browser.get("/api/auth/me").status_code == 401
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.UNAUTHORIZED
     assert (
         browser.post(
             "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
 
 
@@ -370,7 +385,7 @@ def test_login_rotates_only_after_successful_validation(
     provider.override = {"nonce": "wrong"}
     assert finish(browser, query) == 400
     assert browser.cookies.get(SESSION_COOKIE) == original
-    assert browser.get("/api/auth/me").status_code == 200
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.OK
     provider.override = {}
     assert finish(browser, begin(browser, provider)) == 302
     assert browser.cookies.get(SESSION_COOKIE) != original
@@ -380,7 +395,7 @@ def test_login_rotates_only_after_successful_validation(
     browser.cookies.set(
         SESSION_COOKIE, original, domain="localhost.local", path=SESSION_COOKIE_PATH
     )
-    assert browser.get("/api/auth/me").status_code == 401
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_https_cookie_and_default_origin_port(
@@ -409,12 +424,12 @@ def test_https_cookie_and_default_origin_port(
             if value.startswith(SESSION_COOKIE + "=")
         )
         assert "Secure" in cookie and "Domain=" not in cookie
-        assert secure_browser.get("/api/auth/me").status_code == 200
+        assert secure_browser.get("/api/auth/me").status_code == HTTPStatus.OK
         assert (
             secure_browser.post(
                 "/api/auth/logout", headers={"Origin": "https://cook.example:443"}
             ).status_code
-            == 200
+            == HTTPStatus.OK
         )
 
 
@@ -424,7 +439,7 @@ def test_user_deletion_invalidates_sessions(
     assert finish(browser, begin(browser, provider)) == 302
     with SessionLocal.begin() as session:
         session.execute(delete(User))
-    assert browser.get("/api/auth/me").status_code == 401
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.UNAUTHORIZED
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(ApplicationSession)) == 0
 
@@ -464,7 +479,7 @@ def test_stored_hash_is_not_a_session_credential(
     browser.cookies.set(
         SESSION_COOKIE, hashed, domain="localhost.local", path=SESSION_COOKIE_PATH
     )
-    assert browser.get("/api/auth/me").status_code == 401
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.UNAUTHORIZED
 
 
 @pytest.mark.parametrize(
@@ -490,9 +505,9 @@ def test_logout_provider_failure_preserves_session_for_retry(
     response = browser.post(
         "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
     )
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert "set-cookie" not in response.headers
-    assert browser.get("/api/auth/me").status_code == 200
+    assert browser.get("/api/auth/me").status_code == HTTPStatus.OK
 
 
 @pytest.mark.parametrize("legacy", [False, True])
@@ -506,7 +521,7 @@ def test_logout_without_id_token_uses_provider_confirmation(
     response = browser.post(
         "/api/auth/logout", headers={"Origin": "http://localhost:8000"}
     )
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     query = parse_qs(urlsplit(response.json()["redirect_url"]).query)
     assert "id_token_hint" not in query
     assert query["client_id"] == ["kochwiki"]

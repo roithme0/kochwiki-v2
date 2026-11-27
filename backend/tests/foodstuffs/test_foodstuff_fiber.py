@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +14,7 @@ def test_fiber_creation_updates_and_owner_permissions(
     created = client.post(
         "/foodstuffs", json={"name": "Oats", "unit": "G", "fiber": 10.125, "kcal": 370}
     )
-    assert created.status_code == 201
+    assert created.status_code == HTTPStatus.CREATED
     food = created.json()
     path = f"/foodstuffs/{food['id']}"
     assert food["fiber"] == 10.125
@@ -26,11 +27,11 @@ def test_fiber_creation_updates_and_owner_permissions(
         ({"fiber": None}, None),
     ):
         response = client.patch(path, json=changes)
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert response.json()["fiber"] == expected
         assert response.json()["kcal"] == 370
     sign_in(client)
-    assert client.patch(path, json={"fiber": 8}).status_code == 403
+    assert client.patch(path, json={"fiber": 8}).status_code == HTTPStatus.FORBIDDEN
     assert client.get(path).json()["fiber"] is None
 
 
@@ -45,9 +46,9 @@ def test_invalid_fiber_cannot_be_created_or_updated(
         client.post(
             "/foodstuffs", json={"name": "Invalid", "unit": "G", "fiber": value}
         ).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
     assert (
         client.patch(f"/foodstuffs/{food['id']}", json={"fiber": value}).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )

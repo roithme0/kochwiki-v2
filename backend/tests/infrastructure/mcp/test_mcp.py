@@ -2,6 +2,7 @@ from tests.recipes.helpers import fixture_owner_headers
 from tests.recipes.helpers import fixture_owner_id
 import asyncio
 from decimal import Decimal
+from http import HTTPStatus
 from typing import Literal
 
 import httpx2
@@ -46,7 +47,9 @@ def test_mcp_http_discovery_invocation_and_lifecycle(
                 base_url="http://localhost",
             ) as http:
                 assert (await http.get("/")).json() == {"message": "Hello World"}
-                assert (await http.get("/api/openapi.json")).status_code == 200
+                assert (
+                    await http.get("/api/openapi.json")
+                ).status_code == HTTPStatus.OK
                 async with Client(
                     streamable_http_client("http://localhost/mcp/", http_client=http),
                     mode=mode,
@@ -664,6 +667,6 @@ def test_mcp_rejects_unconfigured_host() -> None:
                     headers={"Accept": "application/json, text/event-stream"},
                     json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
                 )
-                assert response.status_code == 421
+                assert response.status_code == HTTPStatus.MISDIRECTED_REQUEST
 
     asyncio.run(exercise())
