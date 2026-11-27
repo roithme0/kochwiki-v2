@@ -87,6 +87,9 @@ Load both dashboard JSON files using the observability stack’s provisioning gu
 - [KochWiki Request Duration](../deployment/grafana/kochwiki-request-duration.json)
 - [KochWiki Request Errors](../deployment/grafana/kochwiki-request-errors.json)
 
-In Grafana, select the environment and time range. In **Request Errors**, hover over the marker in **Errors** to see counts by status code.
+In Grafana, select the environment, matched route, and time range.
+
+- In **Request Duration**, use **Average request duration by endpoint** to find slow endpoints. Check **Estimated requests** to see how much traffic each average represents.
+- In **Request Errors**, hover over the marker in **Errors** to see counts by status code.
 
 If expected traffic is missing, check the backend startup logs for the metrics export status. To verify export, send requests to a matched API route across two one-minute export cycles.

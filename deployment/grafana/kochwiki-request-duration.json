@@ -90,6 +90,80 @@
         "orientation": "vertical",
         "legend": { "showLegend": false }
       }
+    },
+    {
+      "id": 2,
+      "title": "Average request duration by endpoint",
+      "description": "Average duration and estimated request count across all HTTP statuses in the selected time range.",
+      "type": "table",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 11 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_count{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ) > 0,\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "range": false,
+          "expr": "label_join(\n  sum by (http_request_method, http_route) (\n    increase(http_server_request_duration_seconds_sum{job=\"personal/kochwiki\", deployment_environment_name=\"$environment\", deployment_environment_name!=\"\", http_route=~`${route:regex}`, http_route!=\"\", http_request_method!=\"\"}[$__range])\n  ),\n  \"endpoint\", \" \", \"http_request_method\", \"http_route\"\n)"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": { "byField": "endpoint", "mode": "inner" }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "timeSeries": false,
+            "alias": "Average duration",
+            "binary": {
+              "left": { "matcher": { "id": "byName", "options": "Value #B" } },
+              "operator": "/",
+              "right": { "matcher": { "id": "byName", "options": "Value #A" } }
+            }
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": { "include": { "names": ["endpoint", "Average duration", "Value #A"] } }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": { "endpoint": 0, "Average duration": 1, "Value #A": 2 },
+            "renameByName": { "endpoint": "Endpoint", "Value #A": "Estimated requests" }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": { "sort": [{ "field": "Average duration", "desc": true }] }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Average duration" },
+            "properties": [{ "id": "unit", "value": "s" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Estimated requests" },
+            "properties": [{ "id": "decimals", "value": 2 }]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true
+      }
     }
   ]
 }
