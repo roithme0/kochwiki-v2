@@ -6,12 +6,13 @@ Create Date: 2026-09-10
 """
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "20260910_03"
 down_revision: str | None = "20260831_02"
@@ -26,7 +27,7 @@ uuid_type = postgresql.UUID(as_uuid=True)
 
 def upgrade() -> None:
     connection = op.get_bind()
-    migration_time = datetime.now(timezone.utc)
+    migration_time = datetime.now(UTC)
 
     op.rename_table("recipe", "recipe_legacy")
     op.drop_constraint("uq_recipe_name", "recipe_legacy", type_="unique")

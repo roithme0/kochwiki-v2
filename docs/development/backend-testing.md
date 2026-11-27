@@ -37,7 +37,7 @@ Cover each outcome under its relevant condition once. An existing test, includin
 
 Place `test_<behavior_or_contract>.py` in the owning area under `backend/tests/`. Name cases for the expected outcome and condition. Reuse typed fixtures for defaults and keep inputs that determine the outcome visible in the case. Run the real code responsible for the behavior and control external dependencies at their boundary.
 
-## Format and run tests
+## Format, lint, and run tests
 
 Install the [backend development dependencies](general.md#update-the-api-contract). Format changed Python files from the **repository root**.
 
@@ -47,13 +47,23 @@ node .agents/validation/backend.mts --format
 
 Use the backend virtual environment's Black in your editor to match the pinned version and Python 3.13 settings in `backend/pyproject.toml`. The command formats staged, unstaged, and untracked changed Python files and leaves the Git index unchanged.
 
+Backend lint runs Ruff's default lint rules and the repository's AST checks. Both report findings in the same run. Run backend lint by itself from the **repository root**.
+
+```sh
+node .agents/validation/backend.mts --lint
+```
+
+The HTTP status AST check flags integer literals from 100 to 599 passed as `status_code=` or compared directly with `.status` or `.status_code`. Use the matching `http.HTTPStatus` constant, such as `HTTPStatus.NOT_FOUND`.
+
+To add an AST check, put a `*_rule.py` module in `backend/scripts/ast_checks/` and export a `check(tree: ast.Module) -> Iterable[Diagnostic]` function. Each diagnostic contains a one-based line, a one-based column, and a message. The runner parses each Python file once and passes the tree to every discovered rule.
+
 The current pytest fixtures require PostgreSQL even for individual unit tests. Use a dedicated test database because the fixtures migrate and clear it. Start the database with Docker Compose from the **repository root**.
 
 ```sh
 docker compose -f deployment/tests/docker-compose-test.yml up -d --wait db
 ```
 
-Run pytest from **backend/**. The command below runs the full suite. Pass a test file or case to run a [targeted check](general.md#validate-changes).
+Run pytest from **backend/**. The command below runs the full suite. Pass a test file or case to run a [targeted check](validation.md#tests-only).
 
 ```powershell
 .venv/Scripts/python.exe -m pytest

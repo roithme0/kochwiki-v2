@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.config import Settings
-from app.infrastructure.embeddings.config import STORAGE_DIMENSIONS, PROFILE
+from app.infrastructure.embeddings.config import PROFILE, STORAGE_DIMENSIONS
 from app.infrastructure.embeddings.embeddings import (
     EmbeddingClient,
     HTTPEmbeddingProvider,
@@ -128,11 +128,11 @@ def test_service_errors_are_not_retried_or_followed(status: int) -> None:
             headers={"Location": "http://other-service"},
         )
 
-    with httpx.Client(transport=httpx.MockTransport(send)) as http:
-        with pytest.raises(httpx.HTTPStatusError):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
-                "Soup", PROFILE
-            )
+    with (
+        httpx.Client(transport=httpx.MockTransport(send)) as http,
+        pytest.raises(httpx.HTTPStatusError),
+    ):
+        HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
     assert len(requests) == 1
 
 
@@ -147,24 +147,24 @@ def test_transport_failures_are_not_retried(
         attempts += 1
         raise failure("unavailable", request=request)
 
-    with httpx.Client(transport=httpx.MockTransport(send)) as http:
-        with pytest.raises(failure):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
-                "Soup", PROFILE
-            )
+    with (
+        httpx.Client(transport=httpx.MockTransport(send)) as http,
+        pytest.raises(failure),
+    ):
+        HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
     assert attempts == 1
 
 
 def test_invalid_json_is_rejected() -> None:
-    with httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, text="invalid")
-        )
-    ) as http:
-        with pytest.raises(ValueError):
-            HTTPEmbeddingProvider("http://ai-service", client=http).embed(
-                "Soup", PROFILE
+    with (
+        httpx.Client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text="invalid")
             )
+        ) as http,
+        pytest.raises(ValueError),
+    ):
+        HTTPEmbeddingProvider("http://ai-service", client=http).embed("Soup", PROFILE)
 
 
 def test_configuration_uses_gateway_url_and_profile(

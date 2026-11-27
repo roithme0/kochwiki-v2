@@ -310,11 +310,11 @@ def test_partial_registration_failure_leaves_no_observer_and_allows_retry(
 
     with monkeypatch.context() as patch:
         patch.setattr(event, "listen", fail_error_registration)
-        with pytest.raises(RuntimeError, match="Cannot register error listener"):
-            with observe_postgresql(pool_engine, meter):
-                pytest.fail(
-                    "The observer started with incomplete listener registration"
-                )
+        with (
+            pytest.raises(RuntimeError, match="Cannot register error listener"),
+            observe_postgresql(pool_engine, meter),
+        ):
+            pytest.fail("The observer started with incomplete listener registration")
 
     assert all(
         not event.contains(pool_engine, identifier, callback)

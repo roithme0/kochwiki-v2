@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -14,7 +14,6 @@ from sqlalchemy import delete
 from app.core.config import Settings
 from app.core.urls import validate_http_url
 from app.identity.config import LOGIN_TRANSACTION_LIFETIME_SECONDS
-from app.infrastructure.database.session import SessionLocal
 from app.identity.models.login_transaction import LoginTransaction
 from app.identity.schemas.oidc import (
     CompletedLogin,
@@ -23,6 +22,7 @@ from app.identity.schemas.oidc import (
     LoginStart,
     TokenResponse,
 )
+from app.infrastructure.database.session import SessionLocal
 
 
 class LoginRejected(Exception):
@@ -119,7 +119,7 @@ class OIDCLogin:
         metadata = self.discovery()
         state, binding = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
         nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(64)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with SessionLocal.begin() as session:
             session.execute(
                 delete(LoginTransaction).where(LoginTransaction.expires_at <= now),
@@ -167,7 +167,7 @@ class OIDCLogin:
                 .where(
                     LoginTransaction.state_hash == state_hash,
                     LoginTransaction.browser_hash == browser_hash,
-                    LoginTransaction.expires_at > datetime.now(timezone.utc),
+                    LoginTransaction.expires_at > datetime.now(UTC),
                 )
                 .returning(LoginTransaction),
                 execution_options={"kochwiki_query_name": "Consume login transaction"},

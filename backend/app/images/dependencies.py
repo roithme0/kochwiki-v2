@@ -6,8 +6,8 @@ from fastapi import HTTPException, Request
 from app.core.config import get_settings
 from app.images.models import ImageKind
 from app.images.storage import image_bucket
-from app.infrastructure.storage.storage import Storage
 from app.infrastructure.storage.config import StorageConfig
+from app.infrastructure.storage.storage import Storage
 
 
 class ImageStoragePool:

@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.embeddings.embeddings import EmbeddingClient
-
-from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.schemas.foodstuff import FoodstuffSummaryOut
-from app.infrastructure.embeddings.semantic_search import SemanticSearch
 from app.foodstuffs.services.embeddings import current_source_text
 from app.foodstuffs.services.foodstuffs import foodstuff_summary_out
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
+from app.infrastructure.embeddings.semantic_search import SemanticSearch
 
 
 @dataclass(frozen=True)

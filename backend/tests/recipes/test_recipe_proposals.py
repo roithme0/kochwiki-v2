@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import cast
 from uuid import UUID, uuid4
@@ -122,7 +122,7 @@ def test_retention_is_detached_and_creates_no_records_or_refresh_work(
     foodstuff_refresh.subscribe(refreshed_foodstuffs.append)
     recipe_refresh.subscribe(refreshed_recipes.append)
     try:
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         with SessionLocal.begin() as session:
             before_counts = counts(session)
             proposal = store.create(session, submitted, user_id=user_id)
@@ -133,8 +133,8 @@ def test_retention_is_detached_and_creates_no_records_or_refresh_work(
         recipe_refresh.unsubscribe(refreshed_recipes.append)
     assert refreshed_foodstuffs == []
     assert refreshed_recipes == []
-    assert before <= proposal.createdAt <= datetime.now(timezone.utc)
-    assert proposal.createdAt.tzinfo == timezone.utc
+    assert before <= proposal.createdAt <= datetime.now(UTC)
+    assert proposal.createdAt.tzinfo == UTC
     assert proposal.sourceRecipeVersionId == source and proposal.baseProposalId is None
     assert proposal.recipe == submitted.recipe
     retained = proposal.model_copy(deep=True)

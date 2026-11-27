@@ -86,7 +86,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_storage(self) -> "Settings":
-        self.storage_config
+        _ = self.storage_config
         return self
 
     @property

@@ -95,7 +95,7 @@ def create_metrics_provider(version: str) -> MeterProvider | None:
             resource=_metrics_resource(version, config.environment),
             views=_metrics_views(),
         )
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 - isolate optional service failures
         logger.error(
             "Metrics export disabled because exporter initialization failed (%s)",
             type(error).__name__,

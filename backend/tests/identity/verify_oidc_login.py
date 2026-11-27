@@ -5,6 +5,7 @@ import json
 import secrets
 from dataclasses import dataclass
 from html.parser import HTMLParser
+from http import HTTPStatus
 from http.cookiejar import CookieJar, DefaultCookiePolicy
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin, urlsplit
@@ -104,13 +105,19 @@ class Browser:
     def follow(self, url: str, fields: dict[str, str] | None = None) -> Response:
         for _ in range(10):
             response = self.request(url, fields)
-            if urlsplit(url).path == "/api/auth/callback" and response.status == 302:
+            if (
+                urlsplit(url).path == "/api/auth/callback"
+                and response.status == HTTPStatus.FOUND
+            ):
                 if response.location != "/":
                     raise RuntimeError(
                         "Successful callback did not redirect to the fixed home page."
                     )
                 return response
-            if response.status not in (302, 303) or not response.location:
+            if (
+                response.status not in (HTTPStatus.FOUND, HTTPStatus.SEE_OTHER)
+                or not response.location
+            ):
                 return response
             url = urljoin(url, response.location)
             fields = None
@@ -119,22 +126,20 @@ class Browser:
     def login_page(self) -> Page:
         response = self.follow(self.base_url + "/api/auth/login")
         page = Page(response.body)
-        if response.status != 200 or not page.action:
+        if response.status != HTTPStatus.OK or not page.action:
             raise RuntimeError("The hosted login form was not returned.")
         return page
 
     def current_user(self) -> tuple[int, str]:
         response = self.request(self.base_url + "/api/auth/me")
-        if response.status != 200:
+        if response.status != HTTPStatus.OK:
             raise RuntimeError("The current user could not be inspected.")
         payload: object = json.loads(response.body)
         if not isinstance(payload, dict) or set(payload) != {"id", "display_name"}:
             raise RuntimeError("The current-user contract exposes unexpected fields.")
-        if not isinstance(payload["id"], int) or not isinstance(
-            payload["display_name"], str
-        ):
-            raise RuntimeError("Invalid current-user fields.")
-        return payload["id"], payload["display_name"]
+        if isinstance(payload["id"], int) and isinstance(payload["display_name"], str):
+            return payload["id"], payload["display_name"]
+        raise RuntimeError("Invalid current-user fields.")
 
 
 def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
@@ -155,7 +160,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         f"kitchen family verification {run}",
     )
     browser = Browser(base_url, provider_url)
-    if browser.request(base_url + "/api/auth/me").status != 401:
+    if browser.request(base_url + "/api/auth/me").status != HTTPStatus.UNAUTHORIZED:
         raise RuntimeError("A fresh browser unexpectedly has an application session.")
     page = browser.login_page()
     if not page.registration:
@@ -176,7 +181,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
             display_field: "KochWiki Verification",
         },
     )
-    if registered.status != 302 or registered.location != "/":
+    if registered.status != HTTPStatus.FOUND or registered.location != "/":
         raise RuntimeError("Registration did not complete backend verification.")
     if any(cookie.name == "kochwiki_login" for cookie in browser.cookies):
         raise RuntimeError("The temporary login cookie was not cleared.")
@@ -196,7 +201,10 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         ("PATCH", f"/api/users/{user[0]}"),
         ("DELETE", f"/api/users/{user[0]}"),
     ):
-        if browser.request(base_url + path, method=method).status != 404:
+        if (
+            browser.request(base_url + path, method=method).status
+            != HTTPStatus.NOT_FOUND
+        ):
             raise RuntimeError("Local user management is still exposed.")
     print("PASS: local user management is unavailable")
 
@@ -205,13 +213,13 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
     signed_in = fresh_browser.follow(
         login.action, login.inputs | {"username": email, "password": password}
     )
-    if signed_in.status != 302 or signed_in.location != "/":
+    if signed_in.status != HTTPStatus.FOUND or signed_in.location != "/":
         raise RuntimeError("Existing-account login failed backend verification.")
     print("PASS: existing-account email/password login through a fresh browser")
     if fresh_browser.current_user() != user:
         raise RuntimeError("Repeat login changed the local user mapping.")
     reused = browser.follow(base_url + "/api/auth/login")
-    if reused.status != 302 or reused.location != "/":
+    if reused.status != HTTPStatus.FOUND or reused.location != "/":
         raise RuntimeError("An existing provider session failed verification.")
     print(
         "PASS: an existing Keycloak browser session completes a new login transaction"
@@ -235,7 +243,7 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
             display_field: "KochWiki Verification",
         },
     )
-    if duplicate.status != 302 or duplicate.location != "/":
+    if duplicate.status != HTTPStatus.FOUND or duplicate.location != "/":
         raise RuntimeError("Separate-account registration failed backend verification.")
     duplicate_user = duplicate_browser.current_user()
     if duplicate_user[0] == user[0]:
@@ -249,11 +257,11 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         browser.request(
             base_url + "/api/auth/callback?state=unknown&code=unknown"
         ).status
-        != 400
+        != HTTPStatus.BAD_REQUEST
     ):
         raise RuntimeError("An unbound callback was accepted.")
     current = browser.request(base_url + "/api/auth/me")
-    if current.status != 200 or json.loads(current.body) != {
+    if current.status != HTTPStatus.OK or json.loads(current.body) != {
         "id": user[0],
         "display_name": user[1],
     }:
@@ -272,26 +280,29 @@ def verify(base_url: str, provider_url: str, allow_user_creation: bool) -> None:
         raise RuntimeError(
             "The callback did not establish a persistent application session."
         )
-    if browser.request(base_url + "/api/auth/logout", method="POST").status != 403:
+    if (
+        browser.request(base_url + "/api/auth/logout", method="POST").status
+        != HTTPStatus.FORBIDDEN
+    ):
         raise RuntimeError("Logout accepted a request without its CSRF Origin check.")
     logout = browser.request(
         base_url + "/api/auth/logout", method="POST", headers={"Origin": base_url}
     )
-    if logout.status != 200:
+    if logout.status != HTTPStatus.OK:
         raise RuntimeError("Logout failed.")
     destination = json.loads(logout.body)["redirect_url"]
     completed_logout = browser.follow(destination)
-    if completed_logout.status != 200:
+    if completed_logout.status != HTTPStatus.OK:
         raise RuntimeError("Browser provider logout failed.")
-    if browser.request(base_url + "/api/auth/me").status != 401:
+    if browser.request(base_url + "/api/auth/me").status != HTTPStatus.UNAUTHORIZED:
         raise RuntimeError("The application session survived logout.")
     if any(cookie.name == "kochwiki_session" for cookie in browser.cookies):
         raise RuntimeError("The application session cookie survived logout.")
-    if fresh_browser.request(base_url + "/api/auth/me").status != 200:
+    if fresh_browser.request(base_url + "/api/auth/me").status != HTTPStatus.OK:
         raise RuntimeError("Logout unexpectedly invalidated another browser's session.")
     relogin = browser.follow(base_url + "/api/auth/login")
     login_page = Page(relogin.body)
-    if relogin.status != 200 or "password" not in login_page.inputs:
+    if relogin.status != HTTPStatus.OK or "password" not in login_page.inputs:
         raise RuntimeError("Keycloak reused the browser session after logout.")
     print(
         "PASS: persistent local session, private current-user contract, CSRF logout and ended Keycloak session"

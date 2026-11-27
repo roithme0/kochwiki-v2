@@ -14,8 +14,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.infrastructure.database.base import Base
 from app.foodstuffs.models.unit import Unit
+from app.infrastructure.database.base import Base
 
 if TYPE_CHECKING:
     from app.recipes.models.recipe import Ingredient

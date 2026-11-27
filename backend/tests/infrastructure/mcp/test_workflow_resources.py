@@ -4,16 +4,15 @@ from typing import Literal
 
 import httpx2
 import pytest
-
 from mcp import Client
-from mcp.server import MCPServer
 from mcp.client.streamable_http import streamable_http_client
+from mcp.server import MCPServer
 from mcp.shared.exceptions import MCPError
 from mcp.types import TextResourceContents
 
-from app.main import create_app
 from app.infrastructure.mcp.instructions import KOCHWIKI_INSTRUCTIONS
 from app.infrastructure.mcp.resources import register_workflow_resources
+from app.main import create_app
 
 
 def test_static_workflow_resources_are_discoverable_and_readable() -> None:
@@ -53,44 +52,44 @@ def test_workflow_resources_over_http_across_lifecycles(
 ) -> None:
     async def exercise() -> dict[str, str]:
         app = create_app()
-        async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
                 transport=httpx2.ASGITransport(app=app),
                 base_url="http://localhost",
-            ) as http:
-                async with Client(
-                    streamable_http_client("http://localhost/mcp/", http_client=http),
-                    mode=mode,
-                ) as client:
-                    resources = (await client.list_resources()).resources
-                    assert len(resources) == 8
-                    contents: dict[str, str] = {}
-                    for resource in resources:
-                        uri = str(resource.uri)
-                        result = await client.read_resource(uri)
-                        assert len(result.contents) == 1
-                        content = result.contents[0]
-                        assert isinstance(content, TextResourceContents)
-                        assert content.text.strip()
-                        contents[uri] = content.text
-                    assert set(contents) == {
-                        "kochwiki://reference/presentation",
-                        "kochwiki://reference/nutrition",
-                        "kochwiki://workflows/foodstuff-creation",
-                        "kochwiki://workflows/foodstuff-updates",
-                        "kochwiki://workflows/nutrition-research",
-                        "kochwiki://reference/foodstuff-units",
-                        "kochwiki://reference/foodstuff-naming",
-                        "kochwiki://workflows/recipe-updates",
-                    }
-                    with pytest.raises(MCPError):
-                        await client.read_resource("kochwiki://unknown/resource")
-                    assert not (
-                        await client.list_resource_templates()
-                    ).resource_templates
-                    assert not (await client.list_prompts()).prompts
-                    assert len((await client.list_tools()).tools) == 10
-                    return contents
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http),
+                mode=mode,
+            ) as client,
+        ):
+            resources = (await client.list_resources()).resources
+            assert len(resources) == 8
+            contents: dict[str, str] = {}
+            for resource in resources:
+                uri = str(resource.uri)
+                result = await client.read_resource(uri)
+                assert len(result.contents) == 1
+                content = result.contents[0]
+                assert isinstance(content, TextResourceContents)
+                assert content.text.strip()
+                contents[uri] = content.text
+            assert set(contents) == {
+                "kochwiki://reference/presentation",
+                "kochwiki://reference/nutrition",
+                "kochwiki://workflows/foodstuff-creation",
+                "kochwiki://workflows/foodstuff-updates",
+                "kochwiki://workflows/nutrition-research",
+                "kochwiki://reference/foodstuff-units",
+                "kochwiki://reference/foodstuff-naming",
+                "kochwiki://workflows/recipe-updates",
+            }
+            with pytest.raises(MCPError):
+                await client.read_resource("kochwiki://unknown/resource")
+            assert not (await client.list_resource_templates()).resource_templates
+            assert not (await client.list_prompts()).prompts
+            assert len((await client.list_tools()).tools) == 10
+            return contents
 
     assert asyncio.run(exercise()) == asyncio.run(exercise())
 

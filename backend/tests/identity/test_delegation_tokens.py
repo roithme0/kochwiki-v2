@@ -268,13 +268,13 @@ def test_issuance_uses_the_callers_transaction(
     browser_session: tuple[str, UserOut],
 ) -> None:
     secret, _ = browser_session
-    with pytest.raises(RuntimeError, match="roll back issuance"):
-        with SessionLocal.begin() as session:
-            issued = issue_delegation_token(
-                session, secret, lifetime=timedelta(minutes=5)
-            )
-            assert issued is not None
-            raise RuntimeError("roll back issuance")
+    with (
+        pytest.raises(RuntimeError, match="roll back issuance"),
+        SessionLocal.begin() as session,
+    ):
+        issued = issue_delegation_token(session, secret, lifetime=timedelta(minutes=5))
+        assert issued is not None
+        raise RuntimeError("roll back issuance")
     with SessionLocal() as session:
         assert delegated_user(session, issued.secret, audience=MCP_AUDIENCE) is None
         assert session.scalar(select(func.count()).select_from(DelegationToken)) == 0

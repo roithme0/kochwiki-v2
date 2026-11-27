@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  cp,
   mkdtemp,
   mkdir,
   readFile,
@@ -18,6 +19,7 @@ import {
   backendFingerprint,
   backendPython,
   formatBackend,
+  lintBackend,
   runBackendPytest,
 } from './backend.mts';
 
@@ -60,6 +62,72 @@ function format(root: string): ReturnType<typeof formatBackend> {
     python,
   );
 }
+
+void test('backend lint reports Ruff findings and discovered AST rules together', async () => {
+  const root = await fixture();
+  const cache = join(root, '.codex-validation/backend/manual');
+  const scripts = 'backend/scripts';
+  await cp(join(repository, scripts), join(root, scripts), { recursive: true });
+  await writeFile(
+    join(root, 'backend/source.py'),
+    [
+      'from http import HTTPStatus',
+      'from types import SimpleNamespace',
+      '',
+      'expires_in = 500',
+      'response = SimpleNamespace(expires_in=200, status_code=HTTPStatus.FOUND)',
+      'assert response.status in (HTTPStatus.FOUND, HTTPStatus.SEE_OTHER)',
+      'assert 99 < response.status_code < 600',
+    ].join('\n'),
+  );
+  await lintBackend(root, cache, python);
+
+  await writeFile(
+    join(root, scripts, 'ast_checks/marker_rule.py'),
+    [
+      'import ast',
+      'from collections.abc import Iterator',
+      '',
+      'from ast_checks import Diagnostic',
+      '',
+      '',
+      'def check(tree: ast.Module) -> Iterator[Diagnostic]:',
+      '    for node in ast.walk(tree):',
+      '        if isinstance(node, ast.Name) and node.id == "marker":',
+      '            yield node.lineno, node.col_offset + 1, "Found marker."',
+    ].join('\n'),
+  );
+  await writeFile(
+    join(root, 'backend/statuses.py'),
+    [
+      'respond(status_code=100)',
+      'assert response.status not in (302, 303)',
+      'assert (503 if unavailable else 200) == response.status_code',
+      'assert response.status_code == 404',
+      'respond(status_code=599)',
+      'marker = True',
+    ].join('\n'),
+  );
+  await assert.rejects(
+    lintBackend(root, cache, python),
+    /Backend Ruff lint failed[\s\S]+Backend AST lint failed/,
+  );
+  const ruff = await readFile(join(cache, 'ruff.log'), 'utf8');
+  assert.match(ruff, /backend[\\/]statuses\.py:1:1: F821 Undefined name/);
+  const lines = (await readFile(join(cache, 'lint.log'), 'utf8'))
+    .trim()
+    .split(/\r?\n/);
+  assert.deepEqual(lines, [
+    'backend/statuses.py:1:21: Use HTTPStatus.CONTINUE instead of HTTP status literal 100.',
+    'backend/statuses.py:2:32: Use HTTPStatus.FOUND instead of HTTP status literal 302.',
+    'backend/statuses.py:2:37: Use HTTPStatus.SEE_OTHER instead of HTTP status literal 303.',
+    'backend/statuses.py:3:9: Use HTTPStatus.SERVICE_UNAVAILABLE instead of HTTP status literal 503.',
+    'backend/statuses.py:3:33: Use HTTPStatus.OK instead of HTTP status literal 200.',
+    'backend/statuses.py:4:32: Use HTTPStatus.NOT_FOUND instead of HTTP status literal 404.',
+    'backend/statuses.py:5:21: Use a named status constant instead of HTTP status literal 599.',
+    'backend/statuses.py:6:1: Found marker.',
+  ]);
+});
 
 void test('Black formats staged, unstaged, renamed and untracked Python files without changing the index', async () => {
   const root = await fixture();

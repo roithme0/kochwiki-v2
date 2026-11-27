@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Generic, TypeVar
 
 from sqlalchemy.orm import Session
 
@@ -10,10 +9,8 @@ from app.infrastructure.embeddings.embeddings import (
     SemanticSearchUnavailable,
 )
 
-Candidate = TypeVar("Candidate")
 
-
-class SemanticSearch(Generic[Candidate], ABC):
+class SemanticSearch[Candidate](ABC):
     def __init__(
         self, sessions: Callable[[], Session], embeddings: EmbeddingClient
     ) -> None:
@@ -36,7 +33,7 @@ class SemanticSearch(Generic[Candidate], ABC):
             )
         try:
             vector = self.embeddings.embed(query.strip(), self.profile)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001 - isolate optional service failures
             raise QueryEmbeddingError(
                 "Query embedding failed (" + type(error).__name__ + ")"
             ) from None

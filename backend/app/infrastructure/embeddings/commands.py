@@ -1,20 +1,18 @@
-from collections.abc import Callable
 import logging
-from typing import Protocol, TypeVar
+from collections.abc import Callable
+from typing import Protocol
 
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.infrastructure.database.session import SessionLocal
-from app.infrastructure.embeddings.refresh import RefreshReport
 from app.infrastructure.embeddings.embeddings import (
     EmbeddingClient,
     QueryEmbeddingError,
     SemanticSearchUnavailable,
 )
+from app.infrastructure.embeddings.refresh import RefreshReport
 from app.infrastructure.embeddings.semantic_search import SemanticSearch
-
-Candidate = TypeVar("Candidate")
 
 
 class RefreshService(Protocol):
@@ -34,7 +32,7 @@ def run_refresh_command(
     return _run_with_embeddings(refresh)
 
 
-def run_search_command(
+def run_search_command[Candidate](
     factory: Callable[
         [Callable[[], Session], EmbeddingClient], SemanticSearch[Candidate]
     ],

@@ -7,21 +7,21 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.api.router import router
-from app.identity.logging import configure_auth_logging
 from app.core.config import get_settings
+from app.core.exceptions import DomainError
+from app.core.schemas.errors import ErrorResponse
+from app.identity.logging import configure_auth_logging
+from app.images.dependencies import ImageStoragePool
 from app.infrastructure.database.metrics import observe_postgresql
 from app.infrastructure.database.session import engine
-from app.infrastructure.mcp.server import create_mcp_server
-from app.infrastructure.metrics import create_metrics_provider, instrument_metrics
-from app.infrastructure.mcp.services import MCPServices
-from app.core.schemas.errors import ErrorResponse
 from app.infrastructure.embeddings.lifecycle import (
     embedding_refresh_workers,
     semantic_search_services,
 )
-from app.core.exceptions import DomainError
+from app.infrastructure.mcp.server import create_mcp_server
+from app.infrastructure.mcp.services import MCPServices
+from app.infrastructure.metrics import create_metrics_provider, instrument_metrics
 from app.recipes.services.proposal_store import RecipeProposalStore
-from app.images.dependencies import ImageStoragePool
 
 logger = logging.getLogger("uvicorn.error.metrics")
 
@@ -64,7 +64,8 @@ def create_app() -> FastAPI:
                     await asyncio.to_thread(
                         metrics_provider.shutdown, timeout_millis=4000
                     )
-                except Exception:
+                # Cleanup must continue after any shutdown failure.
+                except Exception:  # noqa: BLE001
                     logger.warning("Metrics shutdown failed")
             try:
                 image_storages.close()
@@ -87,14 +88,16 @@ def create_app() -> FastAPI:
     if metrics_provider is not None:
         try:
             instrument_metrics(application, metrics_provider)
-        except Exception as error:
+        # Isolate optional service failures.
+        except Exception as error:  # noqa: BLE001
             logger.error(
                 "Metrics export disabled because request instrumentation failed (%s)",
                 type(error).__name__,
             )
             try:
                 metrics_provider.shutdown(timeout_millis=4000)
-            except Exception:
+            # Cleanup must continue after any shutdown failure.
+            except Exception:  # noqa: BLE001
                 logger.warning("Metrics shutdown failed")
             metrics_provider = None
     return application

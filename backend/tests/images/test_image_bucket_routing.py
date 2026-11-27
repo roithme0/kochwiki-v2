@@ -1,4 +1,5 @@
 from contextlib import ExitStack
+from http import HTTPStatus
 from io import BytesIO
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -82,7 +83,7 @@ def test_routes_isolate_uploads_and_content_by_configured_bucket(
             )
 
             started = client.post(f"/{kind.value}-image-uploads")
-            assert started.status_code == 200
+            assert started.status_code == HTTPStatus.OK
             assert started.json()["uploadId"] == str(upload_id)
             assert (
                 urlsplit(started.json()["url"]).path
@@ -90,11 +91,11 @@ def test_routes_isolate_uploads_and_content_by_configured_bucket(
             )
 
             wrong = client.post(f"/{other.value}-image-uploads/{upload_id}/complete")
-            assert wrong.status_code == 404
+            assert wrong.status_code == HTTPStatus.NOT_FOUND
             assert wrong.json() == {"detail": "Upload has not been received"}
 
             completed = client.post(f"/{kind.value}-image-uploads/{upload_id}/complete")
-            assert completed.status_code == 200
+            assert completed.status_code == HTTPStatus.OK
             assert UUID(completed.json()["id"]) == image_id
             with SessionLocal() as session:
                 image = session.get(ImageAsset, image_id)
@@ -102,10 +103,10 @@ def test_routes_isolate_uploads_and_content_by_configured_bucket(
                 assert (image.kind, image.object_key) == (kind, permanent_key)
 
             wrong_download = client.get(f"/{other.value}-images/{image_id}/content")
-            assert wrong_download.status_code == 404
+            assert wrong_download.status_code == HTTPStatus.NOT_FOUND
             assert wrong_download.headers["cache-control"] == "no-store"
             download = client.get(f"/{kind.value}-images/{image_id}/content")
-            assert download.status_code == 200
+            assert download.status_code == HTTPStatus.OK
             handoff = download.headers["x-accel-redirect"]
             assert handoff.startswith(
                 f"/_image/example.invalid:8443?/{source_bucket}/{permanent_key}?"
@@ -115,7 +116,7 @@ def test_routes_isolate_uploads_and_content_by_configured_bucket(
                 client.post(
                     f"/{kind.value}-image-uploads/{upload_id}/complete"
                 ).status_code
-                == 404
+                == HTTPStatus.NOT_FOUND
             )
             source.assert_no_pending_responses()
             target.assert_no_pending_responses()

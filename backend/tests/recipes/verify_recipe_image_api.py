@@ -10,13 +10,13 @@ from uuid import UUID
 from app.core.config import Settings
 from app.identity.config import SESSION_COOKIE
 from app.identity.services.sessions import secret_hash
-from app.infrastructure.database.session import SessionLocal
 from app.images.models import ImageAsset
+from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.storage.storage import Storage
 from app.recipes.schemas.image import (
     RecipeImageOut,
     RecipeImageUploadOut,
 )
-from app.infrastructure.storage.storage import Storage
 
 
 def request(

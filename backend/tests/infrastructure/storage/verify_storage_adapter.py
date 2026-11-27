@@ -4,9 +4,9 @@ import base64
 import http.client
 import os
 import time
-from xml.etree import ElementTree
 from urllib.parse import urlsplit
 from uuid import uuid4
+from xml.etree import ElementTree
 
 from app.core.config import Settings
 from app.infrastructure.storage.storage import PresignedTransfer, Storage

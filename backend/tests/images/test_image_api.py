@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
 from threading import Event
 from unittest.mock import Mock
 from uuid import UUID, uuid4
@@ -10,16 +11,14 @@ from sqlalchemy import event, func, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.config import get_settings
+from app.foodstuffs.models.image_upload import FoodstuffImageUpload
 from app.foodstuffs.routes.images import (
     get_foodstuff_image_storage,
     get_foodstuff_image_transfers,
+    get_foodstuff_image_uploads,
 )
-from app.recipes.routes.images import (
-    get_recipe_image_storage,
-    get_recipe_image_transfers,
-    get_recipe_image_uploads,
-)
-from app.core.config import get_settings
+from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.identity.config import SESSION_COOKIE, SESSION_LIFETIME
 from app.identity.models.application_session import ApplicationSession
 from app.identity.schemas.user import UserOut
@@ -28,26 +27,28 @@ from app.identity.services.sessions import (
     invalidate_session,
     secret_hash,
 )
-from app.infrastructure.database.session import SessionLocal, engine
 from app.images.config import MAX_IMAGE_BYTES
 from app.images.models import ImageAsset, ImageKind
+from app.images.schemas import ImageUpload
 from app.images.transfers import (
     ImagePersistenceFailed,
     ImageTransfers,
     ImageUploadNotFound,
 )
-from app.images.schemas import ImageUpload
-from app.recipes.models.image_upload import RecipeImageUpload
-from app.foodstuffs.models.image_upload import FoodstuffImageUpload
-from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.images.uploads import ImageUploads
-from app.foodstuffs.routes.images import get_foodstuff_image_uploads
-from app.recipes.services.image_uploads import RecipeImageUploads
+from app.infrastructure.database.session import SessionLocal, engine
 from app.infrastructure.storage.storage import (
     PresignedTransfer,
     Storage,
     StorageUnavailable,
 )
+from app.recipes.models.image_upload import RecipeImageUpload
+from app.recipes.routes.images import (
+    get_recipe_image_storage,
+    get_recipe_image_transfers,
+    get_recipe_image_uploads,
+)
+from app.recipes.services.image_uploads import RecipeImageUploads
 from tests.images.test_image_transfers import png
 
 
@@ -78,7 +79,7 @@ def storage(client: TestClient, kind: ImageKind) -> Iterator[Mock]:
         return adapter
 
     def dependency() -> ImageTransfers:
-        return ImageTransfers(adapter, SessionLocal, kind=kind)
+        return ImageTransfers(adapter, kind=kind)
 
     upload_dependency = (
         get_recipe_image_transfers
@@ -108,7 +109,7 @@ def test_content_handoff_response_has_no_cache_or_cookie_headers(
     completed = client.post(f"/{kind.value}-image-uploads/{upload_id}/complete")
     image_id = completed.json()["id"]
     response = client.get(f"/{kind.value}-images/{image_id}/content")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.content == b""
     assert response.headers["x-accel-redirect"].startswith("/_image/")
     assert "cache-control" not in response.headers
@@ -119,7 +120,7 @@ def test_content_handoff_response_has_no_cache_or_cookie_headers(
 
 def start_upload(client: TestClient, kind: ImageKind) -> UUID:
     response = client.post(f"/{kind.value}-image-uploads")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     return UUID(response.json()["uploadId"])
 
 
@@ -128,14 +129,14 @@ def test_start_and_complete_persist_only_validated_metadata(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     started = client.post(f"/{kind.value}-image-uploads")
-    assert started.status_code == 200
+    assert started.status_code == HTTPStatus.OK
     body = started.json()
     assert body["method"] == "PUT"
     assert body["headers"] == {"Content-Type": "image/png"}
     assert body["expiresIn"] == 300
     storage.read.return_value = png()
     completed = client.post(f"/{kind.value}-image-uploads/{body['uploadId']}/complete")
-    assert completed.status_code == 200
+    assert completed.status_code == HTTPStatus.OK
     image = completed.json()
     assert set(image) == {"id", "contentType", "size", "width", "height", "createdAt"}
     with SessionLocal() as session:
@@ -149,14 +150,14 @@ def test_start_and_complete_persist_only_validated_metadata(
         json={"name": "Uploaded image", "servings": 2, "imageId": image["id"]},
     )
     if kind == ImageKind.RECIPE:
-        assert recipe.status_code == 201
+        assert recipe.status_code == HTTPStatus.CREATED
         assert recipe.json()["imageId"] == image["id"]
         assert (
             client.get(f"/recipes/{recipe.json()['recipeLineageId']}").json()["imageId"]
             == image["id"]
         )
     else:
-        assert recipe.status_code == 404
+        assert recipe.status_code == HTTPStatus.NOT_FOUND
     storage.read.assert_called_once()
 
 
@@ -198,7 +199,7 @@ def test_storage_errors_are_sanitized(
     }
     storage.read.side_effect = StorageUnavailable("credentials and signed URL")
     response = client.post(f"/{kind.value}-image-uploads/{upload_id}/complete")
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert response.json() == {"detail": "Image upload could not be completed"}
 
 
@@ -223,7 +224,7 @@ def test_persistence_errors_are_sanitized(client: TestClient, kind: ImageKind) -
         response = client.post(
             f"/{kind.value}-image-uploads/{start_upload(client, kind)}/complete"
         )
-        assert response.status_code == 503
+        assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
         assert response.json() == {"detail": "Image upload could not be completed"}
     finally:
         client.app.dependency_overrides.pop(upload_dependency)
@@ -244,9 +245,9 @@ def test_storage_not_configured(
     ):
         monkeypatch.setattr(get_settings(), name, None)
     response = client.post(f"/{kind.value}-image-uploads")
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     response = client.get(f"/{kind.value}-images/{uuid4()}/content")
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert response.headers["cache-control"] == "no-store"
 
 
@@ -255,7 +256,8 @@ def test_malformed_upload_id(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     assert (
-        client.post(f"/{kind.value}-image-uploads/invalid/complete").status_code == 422
+        client.post(f"/{kind.value}-image-uploads/invalid/complete").status_code
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
     storage.read.assert_not_called()
 
@@ -276,7 +278,7 @@ def test_content_uses_persisted_key_without_reading_object(
     storage.reset_mock()
     for _ in range(2):
         response = client.get(f"/{kind.value}-images/{image_id}/content")
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert (
             response.headers["x-accel-redirect"] == storage.image_handoff.return_value
         )
@@ -292,10 +294,13 @@ def test_content_missing_image_and_invalid_id(
     client: TestClient, kind: ImageKind, storage: Mock
 ) -> None:
     response = client.get(f"/{kind.value}-images/{uuid4()}/content")
-    assert response.status_code == 404
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {"detail": f"{kind.value.capitalize()} image not found"}
     assert response.headers["cache-control"] == "no-store"
-    assert client.get(f"/{kind.value}-images/invalid/content").status_code == 422
+    assert (
+        client.get(f"/{kind.value}-images/invalid/content").status_code
+        == HTTPStatus.UNPROCESSABLE_CONTENT
+    )
     storage.image_handoff.assert_not_called()
 
 
@@ -315,7 +320,7 @@ def test_content_rejects_other_kind(
             ImageKind.FOODSTUFF if kind == ImageKind.RECIPE else ImageKind.RECIPE
         )
     response = client.get(f"/{kind.value}-images/{image_id}/content")
-    assert response.status_code == 404
+    assert response.status_code == HTTPStatus.NOT_FOUND
     assert response.json() == {"detail": f"{kind.value.capitalize()} image not found"}
     assert response.headers["cache-control"] == "no-store"
     storage.image_handoff.assert_not_called()
@@ -331,7 +336,7 @@ def test_content_signing_failure_is_sanitized(
     )
     storage.image_handoff.side_effect = StorageUnavailable("credentials and signed URL")
     response = client.get(f"/{kind.value}-images/{completed.json()['id']}/content")
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert response.json() == {"detail": "Image storage is unavailable"}
     assert response.headers["cache-control"] == "no-store"
 
@@ -366,7 +371,7 @@ def test_image_operations_require_a_session_before_storage_access(
         path.format(id=uuid4()),
         headers={"X-Application-User": f"kochwiki:{user.id}"},
     )
-    assert response.status_code == 401
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {"detail": "Authentication required."}
     assert response.headers["cache-control"] == "no-store"
     assert "Max-Age=0" in response.headers["set-cookie"]
@@ -393,12 +398,12 @@ def test_image_operations_are_shared_and_renew_sessions(
 ) -> None:
     creator = sign_in(client)
     started = client.post(f"/{kind.value}-image-uploads")
-    assert started.status_code == 200
+    assert started.status_code == HTTPStatus.OK
     resource_id = UUID(started.json()["uploadId"])
     storage.read.return_value = png()
     if method == "GET":
         completed = client.post(f"/{kind.value}-image-uploads/{resource_id}/complete")
-        assert completed.status_code == 200
+        assert completed.status_code == HTTPStatus.OK
         resource_id = UUID(completed.json()["id"])
         if kind == ImageKind.RECIPE:
             recipe = client.post(
@@ -409,7 +414,7 @@ def test_image_operations_are_shared_and_renew_sessions(
                     "imageId": str(resource_id),
                 },
             )
-            assert recipe.status_code == 201
+            assert recipe.status_code == HTTPStatus.CREATED
             assert recipe.json()["ownerId"] == creator.id
     caller = sign_in(client)
     assert caller.id != creator.id
@@ -426,7 +431,7 @@ def test_image_operations_are_shared_and_renew_sessions(
     assert previous_activity is not None
     storage.reset_mock()
     response = client.request(method, path.format(id=resource_id))
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     if method == "GET":
         assert "cache-control" not in response.headers
         assert "set-cookie" not in response.headers
@@ -474,7 +479,7 @@ def test_image_operations_require_configured_login(
     path: str,
 ) -> None:
     response = client.request(method, path.format(id=uuid4()))
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert response.json() == {"detail": "Login is not configured."}
 
 
@@ -537,7 +542,9 @@ def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
     storage.reset_mock()
     path = f"/{kind.value}-image-uploads/{upload_id}/complete"
     denied = client.post(path, headers={"X-Application-User": f"kochwiki:{owner.id}"})
-    assert denied.status_code == (403 if caller == "other" else 401)
+    assert denied.status_code == (
+        HTTPStatus.FORBIDDEN if caller == "other" else HTTPStatus.UNAUTHORIZED
+    )
     assert storage.mock_calls == []
     with SessionLocal() as session:
         assert (
@@ -554,7 +561,7 @@ def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
     client.cookies.set(SESSION_COOKIE, new_secret)
     storage.read.return_value = png()
     completed = client.post(path)
-    assert completed.status_code == 200
+    assert completed.status_code == HTTPStatus.OK
     assert "HttpOnly" in completed.headers["set-cookie"]
     with SessionLocal() as session:
         image = session.get(ImageAsset, UUID(completed.json()["id"]))
@@ -567,7 +574,7 @@ def test_recipe_upload_completion_requires_owner_and_allows_a_new_owner_session(
             is None
         )
     storage.reset_mock()
-    assert client.post(path).status_code == 404
+    assert client.post(path).status_code == HTTPStatus.NOT_FOUND
     assert storage.mock_calls == []
 
 
@@ -581,7 +588,7 @@ def test_unknown_recipe_upload_is_rejected_before_storage_access(
         authenticated_client.post(
             f"/{kind.value}-image-uploads/{uuid4()}/complete"
         ).status_code
-        == 404
+        == HTTPStatus.NOT_FOUND
     )
     assert storage.mock_calls == []
 
@@ -598,7 +605,7 @@ def test_recipe_upload_can_retry_after_storage_failure_but_not_after_completion(
     path = f"/{kind.value}-image-uploads/{upload_id}/complete"
     storage.read.side_effect = StorageUnavailable("private storage error")
     failed = client.post(path)
-    assert failed.status_code == 503
+    assert failed.status_code == HTTPStatus.SERVICE_UNAVAILABLE
     assert failed.json() == {"detail": "Image upload could not be completed"}
     with SessionLocal() as session:
         pending = session.get(
@@ -610,9 +617,9 @@ def test_recipe_upload_can_retry_after_storage_failure_but_not_after_completion(
     storage.read.side_effect = None
     storage.read.return_value = png()
     storage.delete.side_effect = StorageUnavailable("cleanup failed")
-    assert client.post(path).status_code == 200
+    assert client.post(path).status_code == HTTPStatus.OK
     storage.reset_mock()
-    assert client.post(path).status_code == 404
+    assert client.post(path).status_code == HTTPStatus.NOT_FOUND
     assert storage.mock_calls == []
 
 
@@ -626,7 +633,7 @@ def test_concurrent_recipe_completions_process_the_upload_once(
     upload_id = start_upload(authenticated_client, kind)
     uploads = (
         RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
-    )(ImageTransfers(storage, SessionLocal, kind=kind), SessionLocal)
+    )(ImageTransfers(storage, kind=kind), SessionLocal)
     reading, release, second_started = Event(), Event(), Event()
 
     def read(key: str, *, max_bytes: int) -> bytes:
@@ -680,7 +687,7 @@ def test_recipe_image_and_pending_upload_have_one_commit_outcome(
     sessions = sessionmaker(engine, autoflush=False, expire_on_commit=False)
     uploads = (
         RecipeImageUploads if kind == ImageKind.RECIPE else FoodstuffImageUploads
-    )(ImageTransfers(storage, sessions, kind=kind), sessions)
+    )(ImageTransfers(storage, kind=kind), sessions)
 
     def fail(session: Session) -> None:
         raise OperationalError("commit", None, RuntimeError("private database error"))
@@ -709,13 +716,13 @@ def test_recipe_image_and_pending_upload_have_one_commit_outcome(
         )
         images = list(session.scalars(select(ImageAsset)))
         if failure_stage == "before_commit":
-            assert response.status_code == 503
+            assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
             assert response.json() == {"detail": "Image upload could not be completed"}
             assert pending is not None and pending.uploader_id == recipe_session.id
             assert images == []
             storage.delete.assert_called_once_with(storage.write.call_args.args[0])
         else:
-            assert response.status_code == 200
+            assert response.status_code == HTTPStatus.OK
             assert pending is None
             assert len(images) == 1 and images[0].uploader_id == recipe_session.id
             storage.delete.assert_called_once_with(
@@ -723,7 +730,7 @@ def test_recipe_image_and_pending_upload_have_one_commit_outcome(
             )
     storage.reset_mock()
     if failure_stage == "before_commit":
-        assert client.post(path).status_code == 200
+        assert client.post(path).status_code == HTTPStatus.OK
     else:
-        assert client.post(path).status_code == 404
+        assert client.post(path).status_code == HTTPStatus.NOT_FOUND
         assert storage.mock_calls == []

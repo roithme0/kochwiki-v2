@@ -1,10 +1,10 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import SessionLocal
 from app.identity.models.user import User
 from app.identity.schemas.oidc import Identity
 from app.identity.services.users import map_identity
+from app.infrastructure.database.session import SessionLocal
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.recipes.services.recipes import create_recipe

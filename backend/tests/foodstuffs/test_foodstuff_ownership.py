@@ -1,5 +1,7 @@
 from collections.abc import Callable
+from datetime import UTC
 from decimal import Decimal
+from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
@@ -46,14 +48,14 @@ def test_personal_catalogues_keep_foreign_recipes_readable(
     second = sign_in(client)
     assert second.id != recipe_session.id
     assert client.get("/foodstuffs").json() == []
-    assert client.get(f"/foodstuffs/{food['id']}").status_code == 200
+    assert client.get(f"/foodstuffs/{food['id']}").status_code == HTTPStatus.OK
     readable = client.get(f"/recipes/{recipe['recipeLineageId']}").json()
     assert readable["ingredients"][0]["foodstuff"]["name"] == "Oats"
     assert readable["kcal"]["value"] == 100
     own = client.post(
         "/foodstuffs", json={"name": "Oats", "brand": "Mill", "unit": "G"}
     )
-    assert own.status_code == 201 and own.json()["id"] != food["id"]
+    assert own.status_code == HTTPStatus.CREATED and own.json()["id"] != food["id"]
     assert [entry["id"] for entry in client.get("/foodstuffs").json()] == [
         own.json()["id"]
     ]
@@ -62,7 +64,7 @@ def test_personal_catalogues_keep_foreign_recipes_readable(
             "/foodstuffs",
             json={"name": "Spoof", "unit": "G", "owner_id": recipe_session.id},
         ).status_code
-        == 422
+        == HTTPStatus.UNPROCESSABLE_CONTENT
     )
 
 
@@ -100,7 +102,7 @@ def test_every_submitted_recipe_path_rejects_foreign_foodstuffs(
     result = client.request(
         "PUT" if operation == "update-draft" else "POST", paths[operation], json=body
     )
-    assert result.status_code == 403
+    assert result.status_code == HTTPStatus.FORBIDDEN
     assert client.get(base).json() == recipe
     assert client.get(f"{base}/versions/{draft['recipeVersionId']}").json() == draft
     with SessionLocal() as session:
@@ -200,7 +202,7 @@ def test_migrated_image_can_be_retained_but_not_newly_attached(
     client: TestClient, recipe_session: UserOut, provider_user: Callable[[str], UserOut]
 ) -> None:
     other = provider_user("Other")
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     image_id = uuid4()
     with SessionLocal.begin() as session:
@@ -215,7 +217,7 @@ def test_migrated_image_can_be_retained_but_not_newly_attached(
                 width=100,
                 height=100,
                 sha256="a" * 64,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
             )
         )
         session.flush()
@@ -241,16 +243,19 @@ def test_migrated_image_can_be_retained_but_not_newly_attached(
         client.patch(
             path, json={"name": "Renamed", "imageId": str(image_id)}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
     assert (
         client.post(
             "/foodstuffs", json={"name": "New", "unit": "G", "imageId": str(image_id)}
         ).status_code
-        == 403
+        == HTTPStatus.FORBIDDEN
     )
-    assert client.patch(path, json={"imageId": None}).status_code == 200
-    assert client.patch(path, json={"imageId": str(image_id)}).status_code == 403
+    assert client.patch(path, json={"imageId": None}).status_code == HTTPStatus.OK
+    assert (
+        client.patch(path, json={"imageId": str(image_id)}).status_code
+        == HTTPStatus.FORBIDDEN
+    )
     assert client.get(f"/foodstuffs/{second_id}").json()["imageId"] == str(image_id)
     with SessionLocal() as session:
         assert session.get(ImageAsset, image_id) is not None

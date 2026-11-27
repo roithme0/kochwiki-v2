@@ -1,33 +1,35 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy.orm import Session
 
-from app.images.config import IMAGE_CONTENT_TYPE
-from app.images.dependencies import image_storage
-from app.infrastructure.database.session import SessionLocal
-from app.images.models import ImageKind
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
     FORBIDDEN_RESPONSE,
     ErrorResponse,
 )
-from app.identity.dependencies import require_current_user
-from app.identity.models.user import User
-from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
 from app.foodstuffs.schemas.image import (
     FoodstuffImageOut,
     FoodstuffImageUploadOut,
 )
+from app.foodstuffs.services.image_uploads import FoodstuffImageUploads
+from app.identity.dependencies import require_current_user
+from app.identity.models.user import User
+from app.images.config import IMAGE_CONTENT_TYPE
+from app.images.dependencies import image_storage
+from app.images.models import ImageKind
 from app.images.transfers import (
     ImagePersistenceFailed,
+    ImageTransfers,
     ImageUploadNotFound,
     InvalidImage,
-    ImageTransfers,
 )
+from app.infrastructure.database.session import SessionLocal, get_db
 from app.infrastructure.storage.storage import Storage, StorageUnavailable
 
 router = APIRouter(
-    dependencies=[Depends(require_current_user, scope="function")],
+    dependencies=[Depends(require_current_user)],
     responses={
         **AUTHENTICATION_RESPONSES,
         503: {
@@ -43,13 +45,13 @@ def get_foodstuff_image_storage(request: Request) -> Storage:
 
 
 def get_foodstuff_image_transfers(
-    storage: Storage = Depends(get_foodstuff_image_storage),
+    storage: Annotated[Storage, Depends(get_foodstuff_image_storage)],
 ) -> ImageTransfers:
-    return ImageTransfers(storage, SessionLocal, kind=ImageKind.FOODSTUFF)
+    return ImageTransfers(storage, kind=ImageKind.FOODSTUFF)
 
 
 def get_foodstuff_image_uploads(
-    transfers: ImageTransfers = Depends(get_foodstuff_image_transfers),
+    transfers: Annotated[ImageTransfers, Depends(get_foodstuff_image_transfers)],
 ) -> FoodstuffImageUploads:
     return FoodstuffImageUploads(transfers, SessionLocal)
 
@@ -66,10 +68,11 @@ def get_foodstuff_image_uploads(
 )
 def image_content(
     image_id: UUID,
-    transfers: ImageTransfers = Depends(get_foodstuff_image_transfers),
+    transfers: Annotated[ImageTransfers, Depends(get_foodstuff_image_transfers)],
+    session: Annotated[Session, Depends(get_db, scope="function")],
 ) -> Response:
     try:
-        target = transfers.content_handoff(image_id)
+        target = transfers.content_handoff(session, image_id)
     except StorageUnavailable:
         raise HTTPException(
             503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
@@ -87,8 +90,8 @@ def image_content(
     responses=FORBIDDEN_RESPONSE,
 )
 def begin_upload(
-    user: User = Depends(require_current_user, scope="function"),
-    uploads: FoodstuffImageUploads = Depends(get_foodstuff_image_uploads),
+    user: Annotated[User, Depends(require_current_user)],
+    uploads: Annotated[FoodstuffImageUploads, Depends(get_foodstuff_image_uploads)],
 ) -> FoodstuffImageUploadOut:
     try:
         upload = uploads.begin(user.id)
@@ -115,8 +118,8 @@ def begin_upload(
 )
 def complete_upload(
     upload_id: UUID,
-    user: User = Depends(require_current_user, scope="function"),
-    uploads: FoodstuffImageUploads = Depends(get_foodstuff_image_uploads),
+    user: Annotated[User, Depends(require_current_user)],
+    uploads: Annotated[FoodstuffImageUploads, Depends(get_foodstuff_image_uploads)],
 ) -> FoodstuffImageOut:
     try:
         image = uploads.complete(upload_id, user.id)

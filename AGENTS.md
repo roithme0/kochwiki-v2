@@ -29,7 +29,7 @@
 
 ## Validation
 
-After edits, run applicable formatting and lint checks, then run only tests that directly cover this turn's changes. Skip tests if none are relevant. Select specific test files or cases. Leave full test groups and the full non-E2E suite to the Codex stop hook unless the user requests a broader run. See [validation commands and prerequisites](docs/development/general.md#validate-changes).
+After edits, run applicable formatting and lint checks, then run only tests that directly cover this turn's changes. Skip tests if none are relevant. Select specific test files or cases. Leave full test groups and the full non-E2E suite to the Codex stop hook unless the user requests a broader run. See [validation commands and prerequisites](docs/development/validation.md).
 
 - Format changed staged, unstaged, and untracked files within scope. Respect exclusions, leave the Git index unchanged, coordinate before formatting unrelated user edits, and review the diff. Full-backend formatting requires an explicit request.
 - Treat lint warnings as failures. Use `lint:fix` deliberately and review its diff.

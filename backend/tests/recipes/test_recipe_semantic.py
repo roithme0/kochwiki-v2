@@ -1,36 +1,33 @@
-from tests.recipes.helpers import fixture_owner_id
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+from http import HTTPStatus
 from threading import Event
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
-from app.foodstuffs.models.unit import Unit
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.infrastructure.database.session import SessionLocal
-from app.identity.schemas.user import UserOut
-from app.recipes.models.version_state import RecipeVersionState
-from app.recipes.models.recipe import RecipeVersion
-from app.recipes.models.embedding import RecipeEmbedding
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.recipes.schemas.recipe import RecipeVersionWrite
+from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
+from app.identity.schemas.user import UserOut
+from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.embeddings.embeddings import (
-    STORAGE_DIMENSIONS,
     PROFILE,
+    STORAGE_DIMENSIONS,
     EmbeddingClient,
-)
-from app.infrastructure.embeddings.embeddings import (
     QueryEmbeddingError,
     SemanticSearchUnavailable,
 )
-from app.foodstuffs.services.foodstuffs import create_foodstuff, update_foodstuff
-from app.recipes.services.embeddings import RecipeEmbeddingService, recipe_refresh
 from app.infrastructure.embeddings.refresh import EmbeddingRefreshWorker
-from app.recipes.services.search import RecipeSemanticSearch
+from app.recipes.models.embedding import RecipeEmbedding
+from app.recipes.models.recipe import RecipeVersion
+from app.recipes.models.version_state import RecipeVersionState
+from app.recipes.schemas.recipe import RecipeVersionWrite
+from app.recipes.services.embeddings import RecipeEmbeddingService, recipe_refresh
 from app.recipes.services.recipes import (
     create_recipe_draft,
     delete_recipe_lineage,
@@ -39,7 +36,9 @@ from app.recipes.services.recipes import (
     publish_recipe_draft,
     update_recipe_draft,
 )
+from app.recipes.services.search import RecipeSemanticSearch
 from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import fixture_owner_id
 
 
 def vector(axis: int = 0) -> list[float]:
@@ -392,10 +391,10 @@ def test_lifespan_refresh_failure_does_not_fail_write(
         sign_in(client)
         assert (
             client.post("/recipes", json={"name": "Bad", "servings": 2}).status_code
-            == 201
+            == HTTPStatus.CREATED
         )
         assert attempted.wait(2)
-        assert client.get("/recipes").status_code == 200
+        assert client.get("/recipes").status_code == HTTPStatus.OK
     assert provider.closed
     with SessionLocal() as session:
         assert session.scalar(select(RecipeVersion)) is not None
@@ -403,7 +402,7 @@ def test_lifespan_refresh_failure_does_not_fail_write(
 
 
 def test_recipe_worker_uuid_queue_nightly_and_shutdown() -> None:
-    now = [datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)]
+    now = [datetime(2026, 10, 1, 0, 0, tzinfo=UTC)]
     refreshed = Event()
     swept = Event()
     calls: list[UUID] = []
@@ -422,7 +421,7 @@ def test_recipe_worker_uuid_queue_nightly_and_shutdown() -> None:
         _, version_id = create()
         assert refreshed.wait(2)
         assert calls == [version_id]
-        now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=timezone.utc)
+        now[0] = datetime(2026, 10, 1, 1, 0, tzinfo=UTC)
         worker.wake()
         assert swept.wait(2)
     finally:
@@ -435,11 +434,12 @@ def test_commands_full_recipe_no_scores_and_refresh_failure_exit(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     import json
-    from app.recipes.semantic import format_candidate
+
     from app.infrastructure.embeddings.commands import (
         run_refresh_command,
         run_search_command,
     )
+    from app.recipes.semantic import format_candidate
 
     _, version_id = create()
     provider = Provider()

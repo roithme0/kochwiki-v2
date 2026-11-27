@@ -4,7 +4,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 
 from app.core.config import get_settings
-from app.infrastructure.database import models as _models
+
+# Register ORM models before accessing metadata or opening sessions.
+from app.infrastructure.database import models as _models  # noqa: F401
 from app.infrastructure.database.metrics import ObservedQueuePool
 
 settings = get_settings()
@@ -22,11 +24,11 @@ def clear_query_name_for_generated_loads(state: ORMExecuteState) -> None:
         state.update_execution_options(kochwiki_query_name=None)
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     with SessionLocal() as session:
         yield session
 
 
-def get_write_db() -> Generator[Session, None, None]:
+def get_write_db() -> Generator[Session]:
     with SessionLocal.begin() as session:
         yield session

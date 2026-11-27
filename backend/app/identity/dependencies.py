@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from http import HTTPStatus
 from typing import Annotated
 from urllib.parse import urlsplit
 
@@ -39,7 +40,7 @@ def set_session_cookie(
         SESSION_COOKIE,
         secret,
         max_age=SESSION_LIFETIME_SECONDS,
-        expires=expires.astimezone(timezone.utc),
+        expires=expires.astimezone(UTC),
         path=SESSION_COOKIE_PATH,
         secure=secure,
         httponly=True,
@@ -49,7 +50,9 @@ def set_session_cookie(
 
 def unauthenticated(secure: bool) -> JSONResponse:
     response = JSONResponse(
-        {"detail": "Authentication required."}, status_code=401, headers=HEADERS
+        {"detail": "Authentication required."},
+        status_code=HTTPStatus.UNAUTHORIZED,
+        headers=HEADERS,
     )
     response.delete_cookie(
         SESSION_COOKIE,
@@ -100,7 +103,9 @@ def require_trusted_origin(request: Request, callback_url: str) -> None:
             pass
     if not trusted:
         raise HTTPException(
-            status_code=403, detail="Untrusted request origin.", headers=HEADERS
+            status_code=HTTPStatus.FORBIDDEN,
+            detail="Untrusted request origin.",
+            headers=HEADERS,
         )
 
 
@@ -112,13 +117,15 @@ def require_current_user(
     service = login_service()
     if service is None:
         raise HTTPException(
-            status_code=503, detail="Login is not configured.", headers=HEADERS
+            status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+            detail="Login is not configured.",
+            headers=HEADERS,
         )
     with SessionLocal.begin() as session:
         authenticated = authenticated_user(session, secret)
         if authenticated is None:
             raise HTTPException(
-                status_code=401,
+                status_code=HTTPStatus.UNAUTHORIZED,
                 detail="Authentication required.",
                 headers={
                     **HEADERS,

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 from uuid import uuid4
 
 import pytest
@@ -28,7 +29,7 @@ PRESENTATION = {"servings": 2, "preptime": None, "ingredients": [], "steps": []}
 def readable_recipe(authenticated_client: TestClient) -> RecipeVersionOut:
     client = authenticated_client
     foodstuff = client.post("/foodstuffs", json={"name": "Oats", "unit": "G"})
-    assert foodstuff.status_code == 201
+    assert foodstuff.status_code == HTTPStatus.CREATED
     payload = {
         "name": "Shared recipe",
         "servings": 2,
@@ -38,11 +39,11 @@ def readable_recipe(authenticated_client: TestClient) -> RecipeVersionOut:
         "steps": [{"index": 1, "description": "Mix"}],
     }
     source = client.post("/recipes", json=payload)
-    assert source.status_code == 201
+    assert source.status_code == HTTPStatus.CREATED
     recipe = RecipeVersionOut.model_validate(source.json())
     path = f"/recipes/{recipe.recipeLineageId}"
-    assert client.post(f"{path}/drafts", json=payload).status_code == 201
-    assert client.post(f"{path}/publish", json=payload).status_code == 200
+    assert client.post(f"{path}/drafts", json=payload).status_code == HTTPStatus.CREATED
+    assert client.post(f"{path}/publish", json=payload).status_code == HTTPStatus.OK
     return recipe
 
 
@@ -63,7 +64,7 @@ def test_reads_reject_missing_session_and_spoofed_identity(
         json=PRESENTATION if method == "POST" else None,
         headers={"X-Application-User": f"kochwiki:{readable_recipe.ownerId}"},
     )
-    assert response.status_code == 401
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {"detail": "Authentication required."}
     assert response.headers["cache-control"] == "no-store"
     assert "Max-Age=0" in response.headers["set-cookie"]
@@ -94,7 +95,7 @@ def test_other_users_can_read_persisted_recipes_but_not_resolve_foreign_ingredie
             ],
         }
     expected = client.request(method, path, json=payload)
-    assert expected.status_code == 200
+    assert expected.status_code == HTTPStatus.OK
     reader = sign_in(client)
     assert reader.id != readable_recipe.ownerId
     secret = client.cookies.get(SESSION_COOKIE, path="/")
@@ -110,12 +111,12 @@ def test_other_users_can_read_persisted_recipes_but_not_resolve_foreign_ingredie
     assert previous_activity is not None
     response = client.request(method, path, json=payload)
     if method == "POST":
-        assert response.status_code == 403
+        assert response.status_code == HTTPStatus.FORBIDDEN
         assert response.json() == {
             "detail": "Only the foodstuff owner may modify or use this foodstuff"
         }
     else:
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert response.json() == expected.json()
         assert response.headers["cache-control"] == "no-store"
         assert "HttpOnly" in response.headers["set-cookie"]
@@ -138,7 +139,7 @@ def test_reads_require_configured_login(
         path.format(lineage=uuid4(), version=uuid4()),
         json=PRESENTATION if method == "POST" else None,
     )
-    assert response.status_code == 503
+    assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
 
 
 @pytest.mark.parametrize(("method", "path"), READS)

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import cast
 from uuid import UUID, uuid4
 
@@ -7,17 +8,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.foodstuffs.models.foodstuff import Foodstuff
 from app.identity.config import SESSION_COOKIE
 from app.identity.schemas.user import UserOut
 from app.identity.services.sessions import invalidate_session
 from app.infrastructure.database.session import SessionLocal
-from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
-from app.recipes.services.recipes import get_recipe_lineage
-from app.recipes.services.proposal_store import RecipeProposalStore
-from app.recipes.schemas.proposal import RecipeProposalCreate
-from app.foodstuffs.models.foodstuff import Foodstuff
 from app.recipes.models.embedding import RecipeEmbedding
-from app.foodstuffs.models.embedding import FoodstuffEmbedding
+from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.recipes.schemas.proposal import RecipeProposalCreate
+from app.recipes.services.proposal_store import RecipeProposalStore
+from app.recipes.services.recipes import get_recipe_lineage
 
 PAYLOAD = {"name": "Owned recipe", "servings": 2}
 
@@ -42,13 +43,13 @@ def test_creation_assigns_authenticated_creator(
 ) -> None:
     first = sign_in(client)
     original = client.post("/recipes", json=PAYLOAD)
-    assert original.status_code == 201
+    assert original.status_code == HTTPStatus.CREATED
     assert original.json()["ownerId"] == first.id
     assert original.headers["cache-control"] == "no-store"
     assert "HttpOnly" in original.headers["set-cookie"]
     second = sign_in(client)
     other = client.post("/recipes", json=PAYLOAD)
-    assert other.status_code == 201
+    assert other.status_code == HTTPStatus.CREATED
     assert other.json()["ownerId"] == second.id != first.id
     with SessionLocal() as session:
         for body in (original.json(), other.json()):
@@ -63,7 +64,7 @@ def test_creation_rejects_missing_session_without_creating_records(
     sign_in(client)
     client.cookies.clear()
     response = client.post("/recipes", json=PAYLOAD)
-    assert response.status_code == 401
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
     assert response.json() == {"detail": "Authentication required."}
     assert "Max-Age=0" in response.headers["set-cookie"]
     with SessionLocal() as session:
@@ -72,7 +73,10 @@ def test_creation_rejects_missing_session_without_creating_records(
 
 
 def test_creation_fails_when_login_is_not_configured(client: TestClient) -> None:
-    assert client.post("/recipes", json=PAYLOAD).status_code == 503
+    assert (
+        client.post("/recipes", json=PAYLOAD).status_code
+        == HTTPStatus.SERVICE_UNAVAILABLE
+    )
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(RecipeLineage)) == 0
 
@@ -82,7 +86,7 @@ def test_creator_cannot_be_supplied_in_recipe_content(
     authenticated_client: TestClient, field: str
 ) -> None:
     response = authenticated_client.post("/recipes", json={**PAYLOAD, field: 999})
-    assert response.status_code == 422
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_CONTENT
     with SessionLocal() as session:
         assert session.scalar(select(func.count()).select_from(RecipeLineage)) == 0
 
@@ -146,7 +150,9 @@ def test_mutations_require_live_owner_without_side_effects(
         json={**PAYLOAD, "imageId": str(uuid4())} if method != "DELETE" else None,
         headers={"X-Application-User": f"kochwiki:{owner.id}"},
     )
-    assert response.status_code == (403 if caller == "other" else 401)
+    assert response.status_code == (
+        HTTPStatus.FORBIDDEN if caller == "other" else HTTPStatus.UNAUTHORIZED
+    )
     sign_in(client)
     assert client.get("/recipes").json() == before
     assert client.get(f"{path}/history").json() == []
@@ -168,7 +174,9 @@ def test_owner_can_mutate_and_unknown_lineages_return_404(
         json=PAYLOAD if method != "DELETE" else None,
     )
     assert response.status_code == (
-        204 if method == "DELETE" else 201 if suffix == "/drafts" else 200
+        HTTPStatus.NO_CONTENT
+        if method == "DELETE"
+        else HTTPStatus.CREATED if suffix == "/drafts" else HTTPStatus.OK
     )
     assert "HttpOnly" in response.headers["set-cookie"]
     assert response.headers["cache-control"] == "no-store"
@@ -177,7 +185,7 @@ def test_owner_can_mutate_and_unknown_lineages_return_404(
         f"/recipes/{uuid4()}" + suffix.format(draft=uuid4()),
         json=PAYLOAD if method != "DELETE" else None,
     )
-    assert missing.status_code == 404
+    assert missing.status_code == HTTPStatus.NOT_FOUND
 
 
 def test_other_user_can_read_all_lineage_states(
@@ -193,7 +201,7 @@ def test_other_user_can_read_all_lineage_states(
     for version in (historical, draft, active):
         assert (
             client.get(f"{path}/versions/{version['recipeVersionId']}").status_code
-            == 200
+            == HTTPStatus.OK
         )
     assert client.get(path).json() == active
     assert len(client.get(f"{path}/history").json()) == 1
@@ -238,8 +246,8 @@ def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
         )
     path = f"/recipe-proposals/{proposal.proposalId}/save"
     if saved:
-        assert client.post(path).status_code == 200
-        assert client.post(path).status_code == 200
+        assert client.post(path).status_code == HTTPStatus.OK
+        assert client.post(path).status_code == HTTPStatus.OK
     with SessionLocal() as session:
         before = counts(session)
     if caller == "other":
@@ -249,7 +257,9 @@ def test_proposal_save_checks_owner_even_on_repeat_without_creating_foodstuffs(
     else:
         with SessionLocal.begin() as session:
             assert invalidate_session(session, secret)
-    assert client.post(path).status_code == (404 if caller == "other" else 401)
+    assert client.post(path).status_code == (
+        HTTPStatus.NOT_FOUND if caller == "other" else HTTPStatus.UNAUTHORIZED
+    )
     with SessionLocal() as session:
         assert counts(session) == before
     assert (

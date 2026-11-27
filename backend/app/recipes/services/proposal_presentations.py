@@ -4,7 +4,10 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.schemas.recipe import RecipePresentationStepOut
+from app.foodstuffs.services.foodstuffs import (
+    foodstuff_summary_out,
+    owned_foodstuffs_by_id,
+)
 from app.recipes.schemas.proposal import (
     ExistingProposalFoodstuff,
     ProposalFoodstuff,
@@ -13,10 +16,7 @@ from app.recipes.schemas.proposal import (
     ResolvedExistingProposalFoodstuff,
     ResolvedTemporaryProposalFoodstuff,
 )
-from app.foodstuffs.services.foodstuffs import (
-    foodstuff_summary_out,
-    owned_foodstuffs_by_id,
-)
+from app.recipes.schemas.recipe import RecipePresentationStepOut
 from app.recipes.services.nutrition import (
     ResolvedNutritionIngredient,
     per_serving,

@@ -4,24 +4,24 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.models.recipe import Ingredient
 from app.foodstuffs.schemas.foodstuff import (
     FoodstuffCreate,
     FoodstuffOut,
     FoodstuffSummaryOut,
     FoodstuffUpdate,
 )
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
 from app.foodstuffs.schemas.nutrition_enrichment import (
     FoodstuffIdentity,
     FoodstuffNutrient,
     NutritionFill,
     NutritionFillResult,
 )
-from app.infrastructure.database.integrity import flush_for_unique_conflict
+from app.foodstuffs.services.embeddings import mark_foodstuff_refresh
 from app.images.models import ImageAsset, ImageKind
+from app.infrastructure.database.integrity import flush_for_unique_conflict
+from app.recipes.models.recipe import Ingredient
 
 
 def foodstuff_summary_out(foodstuff: Foodstuff) -> FoodstuffSummaryOut:

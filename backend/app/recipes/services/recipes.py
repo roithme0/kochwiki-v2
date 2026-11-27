@@ -1,14 +1,19 @@
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.recipes.models.version_state import RecipeVersionState
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.foodstuffs.services.foodstuffs import (
+    foodstuff_summary_out,
+    owned_foodstuffs_by_id,
+)
 from app.images.models import ImageAsset, ImageKind
+from app.recipes.models.recipe import Ingredient, RecipeLineage, RecipeVersion, Step
+from app.recipes.models.version_state import RecipeVersionState
 from app.recipes.schemas.recipe import (
     IngredientOut,
     IngredientWrite,
@@ -22,11 +27,6 @@ from app.recipes.schemas.recipe import (
     RecipeVersionWrite,
     StepOut,
     StepWrite,
-)
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from app.foodstuffs.services.foodstuffs import (
-    foodstuff_summary_out,
-    owned_foodstuffs_by_id,
 )
 from app.recipes.services.embeddings import mark_recipe_refresh, remove_recipe_embedding
 from app.recipes.services.nutrition import (
@@ -556,4 +556,4 @@ def _new_steps(payloads: list[StepWrite]) -> list[Step]:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

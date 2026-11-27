@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from collections.abc import Callable
+from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Queue
 from socket import socket
@@ -93,14 +94,22 @@ def test_request_duration_labels_aggregate_and_exclude_non_api_routes(
                     f"/recipes/{uuid4()}?secret={private_value}",
                     headers={"X-Secret": private_value},
                 ).status_code
-                == 404
+                == HTTPStatus.NOT_FOUND
             )
-        assert client.get("/recipes/not-a-uuid").status_code == 422
-        assert client.get("/test-failure").status_code == 500
-        assert client.get("/missing-private").status_code == 404
-        assert client.get("/meta/version").status_code == 200
-        assert client.request("BREW", "/meta/version").status_code == 405
-        assert client.get("/auth/me").status_code == 200
+        assert (
+            client.get("/recipes/not-a-uuid").status_code
+            == HTTPStatus.UNPROCESSABLE_CONTENT
+        )
+        assert (
+            client.get("/test-failure").status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+        )
+        assert client.get("/missing-private").status_code == HTTPStatus.NOT_FOUND
+        assert client.get("/meta/version").status_code == HTTPStatus.OK
+        assert (
+            client.request("BREW", "/meta/version").status_code
+            == HTTPStatus.METHOD_NOT_ALLOWED
+        )
+        assert client.get("/auth/me").status_code == HTTPStatus.OK
         for path in (
             "/mcp",
             "/mcp/",
@@ -298,8 +307,8 @@ def test_periodic_otlp_exports_identify_concurrent_instances(
                 TestClient(first_app) as first_client,
                 TestClient(second_app) as second_client,
             ):
-                assert first_client.get("/meta/version").status_code == 200
-                assert second_client.get("/missing").status_code == 404
+                assert first_client.get("/meta/version").status_code == HTTPStatus.OK
+                assert second_client.get("/missing").status_code == HTTPStatus.NOT_FOUND
 
                 instances: dict[int, str] = {}
                 deadline = monotonic() + 5
@@ -370,7 +379,7 @@ def test_unreachable_receiver_leaves_api_and_shutdown_available(
         )
         start = monotonic()
         with TestClient(create_app()) as client:
-            assert client.get("/meta/version").status_code == 200
+            assert client.get("/meta/version").status_code == HTTPStatus.OK
         assert monotonic() - start < 6
 
     assert "Failed to export metrics batch" in caplog.text
@@ -383,8 +392,10 @@ def test_unreachable_receiver_leaves_api_and_shutdown_available(
         (
             "http://user:private-password@localhost:4318/otlp/v1/metrics",
             "ERROR:",
-            "Metrics export disabled due to invalid configuration. "
-            "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must be a valid HTTP(S) URL without credentials",
+            (
+                "Metrics export disabled due to invalid configuration. "
+                "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT must be a valid HTTP(S) URL without credentials"
+            ),
         ),
         (ENDPOINT, "INFO:", "Request duration metrics export enabled"),
     ],

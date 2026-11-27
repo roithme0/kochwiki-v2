@@ -1,9 +1,9 @@
 from fastapi import APIRouter
 
 from app.api import greeting, meta
-from app.identity.routes import auth
 from app.foodstuffs.routes import foodstuffs
 from app.foodstuffs.routes import images as foodstuff_images
+from app.identity.routes import auth
 from app.recipes.routes import images as recipe_images
 from app.recipes.routes import proposals, recipes
 

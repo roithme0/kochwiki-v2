@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Annotated
 
 import pytest
@@ -39,7 +40,7 @@ def test_authentication_releases_connection_before_endpoint(
     try:
         with TestClient(app, cookies=client.cookies) as browser:
             response = browser.get("/protected")
-        assert response.status_code == 200
+        assert response.status_code == HTTPStatus.OK
         assert response.json() == {
             "name": expected.display_name,
             "authenticated_name": expected.display_name,

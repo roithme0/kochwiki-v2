@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from http import HTTPStatus
 from unittest.mock import Mock
 from uuid import uuid4
 
@@ -98,9 +99,9 @@ def test_logout_accepts_additional_frontend_origin(
         client.post(
             "/auth/logout", headers={"Origin": "http://localhost:4202"}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
-    assert client.get("/recipes").status_code == 401
+    assert client.get("/recipes").status_code == HTTPStatus.UNAUTHORIZED
 
 
 @pytest.mark.parametrize(
@@ -141,7 +142,7 @@ def test_untrusted_origin_cannot_create_or_renew_session(
         json={"name": "Rejected", "servings": 1},
         headers={"Origin": origin} if origin is not None else {},
     )
-    assert response.status_code == 403
+    assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.json() == {"detail": "Untrusted request origin."}
     assert response.headers["cache-control"] == "no-store"
     assert "set-cookie" not in response.headers
@@ -151,12 +152,12 @@ def test_untrusted_origin_cannot_create_or_renew_session(
             == previous
         )
         assert session.scalar(select(func.count()).select_from(RecipeLineage)) == 0
-    assert client.get("/recipes").status_code == 200
+    assert client.get("/recipes").status_code == HTTPStatus.OK
     assert (
         client.get(
             "/recipes", headers={"Origin": "https://attacker.invalid"}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
 
 
@@ -172,7 +173,7 @@ def test_duplicate_origins_are_rejected(
             ("Origin", "http://localhost:8000"),
         ],
     )
-    assert response.status_code == 403
+    assert response.status_code == HTTPStatus.FORBIDDEN
     assert client.get("/recipes").json() == []
 
 
@@ -201,7 +202,7 @@ def test_origin_matches_configured_public_origin(
     response = client.post(
         "/recipes", json={"name": "Accepted", "servings": 1}, headers={"Origin": origin}
     )
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     assert response.json()["ownerId"] == recipe_session.id
     assert "set-cookie" in response.headers
 
@@ -283,7 +284,7 @@ def test_rejection_precedes_domain_and_storage_operations(
         json=payload,
         headers={"Origin": origin} if origin is not None else {},
     )
-    assert response.status_code == 403
+    assert response.status_code == HTTPStatus.FORBIDDEN
     assert response.json() == {"detail": "Untrusted request origin."}
     assert "set-cookie" not in response.headers
     assert storage.mock_calls == []

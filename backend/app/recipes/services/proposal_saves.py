@@ -3,16 +3,16 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.exceptions import NotFoundError
+from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
+from app.foodstuffs.services.foodstuffs import create_foodstuff
 from app.recipes.models.recipe import RecipeVersion
+from app.recipes.schemas.proposal import ExistingProposalFoodstuff, ProposalRecipe
 from app.recipes.schemas.recipe import (
     IngredientWrite,
     RecipeVersionOut,
     RecipeVersionWrite,
 )
-from app.recipes.schemas.proposal import ExistingProposalFoodstuff, ProposalRecipe
-from app.core.exceptions import NotFoundError
-from app.foodstuffs.services.foodstuffs import create_foodstuff
-from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import (
     create_recipe_draft,

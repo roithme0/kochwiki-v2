@@ -1,5 +1,6 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from http import HTTPStatus
 from uuid import UUID, uuid4
 
 import httpx2
@@ -51,7 +52,7 @@ def images(recipe_session: UserOut) -> tuple[UUID, UUID, UUID]:
                     width=100,
                     height=100,
                     sha256="a" * 64,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                 )
             )
     return ids
@@ -67,7 +68,7 @@ def test_create_and_read_image(
     if choice != "omit":
         payload["imageId"] = expected
     response = client.post("/foodstuffs", json=payload)
-    assert response.status_code == 201
+    assert response.status_code == HTTPStatus.CREATED
     saved = response.json()
     assert saved["imageId"] == expected
     assert client.get(f"/foodstuffs/{saved['id']}").json() == saved
@@ -95,11 +96,11 @@ def test_update_preserves_replaces_removes_and_retains_metadata(
             ({"imageId": str(images[0])}, str(images[0])),
         ]:
             response = client.patch(path, json=changes)
-            assert response.status_code == 200
+            assert response.status_code == HTTPStatus.OK
             assert response.json()["imageId"] == expected
             assert client.get(path).json()["imageId"] == expected
         assert refreshed == []
-        assert client.delete(path).status_code == 204
+        assert client.delete(path).status_code == HTTPStatus.NO_CONTENT
         with SessionLocal() as session:
             assert set(session.scalars(select(ImageAsset.id))) == set(images)
     finally:
@@ -178,7 +179,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
     path = f"/recipes/{recipe['recipeLineageId']}"
     assert (
         client.post(f"{path}/publish", json={"name": "Next", "servings": 1}).status_code
-        == 200
+        == HTTPStatus.OK
     )
     provider = FakeProvider()
     embeddings = service(provider)
@@ -187,7 +188,7 @@ def test_replacement_updates_historical_ingredients_and_search_without_embedding
         client.patch(
             f"/foodstuffs/{saved['id']}", json={"imageId": str(images[1])}
         ).status_code
-        == 200
+        == HTTPStatus.OK
     )
     assert embeddings.refresh_one(saved["id"]) == "skipped"
     assert len(provider.calls) == 1
@@ -287,64 +288,61 @@ def test_mcp_image_association_rules(
 
     async def exercise() -> None:
         app = create_app()
-        async with app.router.lifespan_context(app):
-            async with httpx2.AsyncClient(
+        async with (
+            app.router.lifespan_context(app),
+            httpx2.AsyncClient(
                 headers=mcp_headers,
                 transport=httpx2.ASGITransport(app=app),
                 base_url="http://localhost",
-            ) as http:
-                async with Client(
-                    streamable_http_client("http://localhost/mcp/", http_client=http)
-                ) as client:
-                    result = await client.call_tool(
+            ) as http,
+            Client(
+                streamable_http_client("http://localhost/mcp/", http_client=http)
+            ) as client,
+        ):
+            result = await client.call_tool(
+                "create_foodstuff",
+                {
+                    "foodstuff": {
+                        "name": "Carrot",
+                        "unit": "G",
+                        "imageId": str(images[0]),
+                    }
+                },
+            )
+            assert not result.is_error
+            saved = result.structured_content
+            assert saved is not None and saved["imageId"] == str(images[0])
+            for changes, expected in [
+                ({"kcal": 20}, str(images[0])),
+                ({"imageId": str(images[1])}, str(images[1])),
+                ({"imageId": None}, None),
+            ]:
+                result = await client.call_tool(
+                    "update_foodstuff",
+                    {"foodstuff_id": saved["id"], "changes": changes},
+                )
+                assert not result.is_error
+                assert result.structured_content is not None
+                assert result.structured_content["imageId"] == expected
+            for invalid in (images[2], uuid4()):
+                changes = {"name": "Changed", "imageId": str(invalid)}
+                assert (
+                    await client.call_tool(
                         "create_foodstuff",
-                        {
-                            "foodstuff": {
-                                "name": "Carrot",
-                                "unit": "G",
-                                "imageId": str(images[0]),
-                            }
-                        },
+                        {"foodstuff": {**changes, "unit": "G"}},
                     )
-                    assert not result.is_error
-                    saved = result.structured_content
-                    assert saved is not None and saved["imageId"] == str(images[0])
-                    for changes, expected in [
-                        ({"kcal": 20}, str(images[0])),
-                        ({"imageId": str(images[1])}, str(images[1])),
-                        ({"imageId": None}, None),
-                    ]:
-                        result = await client.call_tool(
-                            "update_foodstuff",
-                            {"foodstuff_id": saved["id"], "changes": changes},
-                        )
-                        assert not result.is_error
-                        assert result.structured_content is not None
-                        assert result.structured_content["imageId"] == expected
-                    for invalid in (images[2], uuid4()):
-                        changes = {"name": "Changed", "imageId": str(invalid)}
-                        assert (
-                            await client.call_tool(
-                                "create_foodstuff",
-                                {"foodstuff": {**changes, "unit": "G"}},
-                            )
-                        ).is_error
-                        assert (
-                            await client.call_tool(
-                                "update_foodstuff",
-                                {"foodstuff_id": saved["id"], "changes": changes},
-                            )
-                        ).is_error
-                    with SessionLocal() as session:
-                        persisted = foodstuffs.get_foodstuff(session, saved["id"])
-                        assert persisted.image_id is None and persisted.name == "Carrot"
-                        assert (
-                            len(
-                                foodstuffs.list_foodstuffs(
-                                    session, owner_id=mcp_user.id
-                                )
-                            )
-                            == 1
-                        )
+                ).is_error
+                assert (
+                    await client.call_tool(
+                        "update_foodstuff",
+                        {"foodstuff_id": saved["id"], "changes": changes},
+                    )
+                ).is_error
+            with SessionLocal() as session:
+                persisted = foodstuffs.get_foodstuff(session, saved["id"])
+                assert persisted.image_id is None and persisted.name == "Carrot"
+                assert (
+                    len(foodstuffs.list_foodstuffs(session, owner_id=mcp_user.id)) == 1
+                )
 
     asyncio.run(exercise())

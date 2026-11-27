@@ -127,6 +127,73 @@ export async function runBackendPytest(
   );
 }
 
+async function lintBackendAst(
+  root: string,
+  cache: string,
+  python: string,
+): Promise<void> {
+  const files = git(root, [
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "--deduplicate",
+    "-z",
+    "--",
+    "backend/",
+  ])
+    .filter((name) => name.endsWith(".py"))
+    .sort();
+  const sources = await Promise.all(
+    files.map((name) => sourcePath(root, "backend", name)),
+  );
+  await runCheck(
+    root,
+    "Backend AST lint",
+    ["-B", "-X", "utf8", "backend/scripts/lint_ast.py"],
+    join(cache, "lint.log"),
+    120_000,
+    python,
+    files.filter((_, index) => sources[index] !== null).join("\0"),
+  );
+}
+
+export async function lintBackend(
+  root: string,
+  cache: string,
+  python: string = backendPython(root),
+): Promise<void> {
+  await mkdir(cache, { recursive: true });
+  const results = await Promise.allSettled([
+    runCheck(
+      root,
+      "Backend Ruff lint",
+      [
+        "-m",
+        "ruff",
+        "check",
+        "--no-fix",
+        "--no-cache",
+        "--output-format",
+        "concise",
+        "backend",
+      ],
+      join(cache, "ruff.log"),
+      120_000,
+      python,
+    ),
+    lintBackendAst(root, cache, python),
+  ]);
+  const failures: string[] = [];
+  for (const result of results) {
+    if (result.status === "rejected") {
+      const error: unknown = result.reason;
+      failures.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+  if (failures.length) throw new Error(failures.join("\n\n"));
+}
+
 export function backendProfile(
   root: string,
   checks: Readonly<ValidationChecks> = defaultChecks,
@@ -138,7 +205,7 @@ export function backendProfile(
       formatter: "Black",
       success: "Selected backend checks passed.",
       retry:
-        "backend validation: node .agents/validation/backend.mts --format, node --test .agents/validation/shared.test.mts .agents/validation/backend.test.mts from the repository root, then .venv/Scripts/python.exe -m pytest from backend (use .venv/bin/python on Unix)",
+        "node .agents/validation/run.mts --scope backend from the repository root",
     },
     dependencies: (cache) => ({
       fingerprint: () => backendFingerprint(root),
@@ -153,6 +220,7 @@ export function backendProfile(
           ".agents/validation/",
         ]).length > 0,
       format: () => formatBackend(root, cache),
+      lint: () => lintBackend(root, cache),
       test: async () => {
         const { parseTestArguments, runTests } = await import("./test.mts");
         const args: string[] = [];
@@ -168,15 +236,31 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  if (process.argv.length !== 3 || process.argv[2] !== "--format")
-    throw new Error("Usage: node .agents/validation/backend.mts --format");
+  const command = process.argv[2];
+  if (
+    process.argv.length !== 3 ||
+    (command !== "--format" && command !== "--lint")
+  )
+    throw new Error(
+      "Usage: node .agents/validation/backend.mts --format|--lint",
+    );
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-  const result = await formatBackend(
-    root,
-    join(root, ".codex-validation/backend/manual"),
-  );
-  process.stdout.write(
-    `Checked ${result.checked.length} changed Python files; formatted ${result.formatted.length}.\n`,
-  );
-  for (const name of result.formatted) process.stdout.write(`${name}\n`);
+  const cache = join(root, ".codex-validation/backend/manual");
+  if (command === "--lint") {
+    try {
+      await lintBackend(root, cache);
+      process.stdout.write("Backend lint passed.\n");
+    } catch (error: unknown) {
+      process.stderr.write(
+        `${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      process.exitCode = 1;
+    }
+  } else {
+    const result = await formatBackend(root, cache);
+    process.stdout.write(
+      `Checked ${result.checked.length} changed Python files; formatted ${result.formatted.length}.\n`,
+    );
+    for (const name of result.formatted) process.stdout.write(`${name}\n`);
+  }
 }

@@ -5,8 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.infrastructure.storage.storage import PresignedTransfer
 from app.images.config import IMAGE_CONTENT_TYPE
+from app.infrastructure.storage.storage import PresignedTransfer
 
 
 class ImageUploadOut(BaseModel):

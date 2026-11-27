@@ -2,6 +2,7 @@ import asyncio
 import secrets
 from collections.abc import Callable
 from datetime import timedelta
+from http import HTTPStatus
 from typing import Literal
 
 import httpx2
@@ -22,7 +23,7 @@ from app.identity.models.application_session import ApplicationSession
 from app.identity.models.delegation_token import DelegationToken
 from app.identity.models.user import User
 from app.identity.schemas.user import UserOut
-from app.identity.services.delegation import MCP_AUDIENCE, issue_delegation_token
+from app.identity.services.delegation import issue_delegation_token
 from app.identity.services.sessions import establish_session, invalidate_session
 from app.infrastructure.database.session import SessionLocal
 from app.infrastructure.mcp import authentication
@@ -94,7 +95,7 @@ def test_entire_mcp_surface_requires_credentials(method: str, rpc: str) -> None:
             response = await http.request(
                 method, "/mcp/", headers=RPC_HEADERS, json={**CREATE, "method": rpc}
             )
-            assert response.status_code == 401
+            assert response.status_code == HTTPStatus.UNAUTHORIZED
             assert response.json() == {"detail": "Authentication required."}
             assert response.headers["www-authenticate"] == 'Bearer realm="kochwiki:mcp"'
             assert response.headers["cache-control"] == "no-store"
@@ -178,7 +179,7 @@ def test_invalid_credentials_cannot_invoke_tools(
             ) as http,
         ):
             response = await http.post("/mcp/", headers=headers, json=CREATE)
-            assert response.status_code == 401
+            assert response.status_code == HTTPStatus.UNAUTHORIZED
             assert (
                 token.secret not in response.text
                 and browser_secret not in response.text
@@ -210,7 +211,7 @@ def test_logout_after_discovery_blocks_later_tool_calls(
                 parent = session.scalars(select(ApplicationSession)).one()
                 session.delete(parent)
             response = await http.post("/mcp/", headers=RPC_HEADERS, json=CREATE)
-            assert response.status_code == 401
+            assert response.status_code == HTTPStatus.UNAUTHORIZED
 
     asyncio.run(exercise())
     with SessionLocal() as session:
@@ -309,7 +310,7 @@ def test_authentication_database_failure_is_closed_and_sanitized(
             ) as http,
         ):
             response = await http.post("/mcp/", headers=RPC_HEADERS, json=CREATE)
-            assert response.status_code == 503
+            assert response.status_code == HTTPStatus.SERVICE_UNAVAILABLE
             assert response.json() == {"detail": "Authentication service unavailable."}
 
     asyncio.run(exercise())

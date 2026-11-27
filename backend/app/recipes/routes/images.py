@@ -1,11 +1,9 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy.orm import Session
 
-from app.images.config import IMAGE_CONTENT_TYPE
-from app.images.dependencies import image_storage
-from app.infrastructure.database.session import SessionLocal
-from app.images.models import ImageKind
 from app.core.schemas.errors import (
     AUTHENTICATION_RESPONSES,
     FORBIDDEN_RESPONSE,
@@ -13,21 +11,25 @@ from app.core.schemas.errors import (
 )
 from app.identity.dependencies import require_current_user
 from app.identity.models.user import User
-from app.recipes.services.image_uploads import RecipeImageUploads
+from app.images.config import IMAGE_CONTENT_TYPE
+from app.images.dependencies import image_storage
+from app.images.models import ImageKind
+from app.images.transfers import (
+    ImagePersistenceFailed,
+    ImageTransfers,
+    ImageUploadNotFound,
+    InvalidImage,
+)
+from app.infrastructure.database.session import SessionLocal, get_db
+from app.infrastructure.storage.storage import Storage, StorageUnavailable
 from app.recipes.schemas.image import (
     RecipeImageOut,
     RecipeImageUploadOut,
 )
-from app.images.transfers import (
-    ImagePersistenceFailed,
-    ImageUploadNotFound,
-    InvalidImage,
-    ImageTransfers,
-)
-from app.infrastructure.storage.storage import Storage, StorageUnavailable
+from app.recipes.services.image_uploads import RecipeImageUploads
 
 router = APIRouter(
-    dependencies=[Depends(require_current_user, scope="function")],
+    dependencies=[Depends(require_current_user)],
     responses={
         **AUTHENTICATION_RESPONSES,
         503: {
@@ -43,13 +45,13 @@ def get_recipe_image_storage(request: Request) -> Storage:
 
 
 def get_recipe_image_transfers(
-    storage: Storage = Depends(get_recipe_image_storage),
+    storage: Annotated[Storage, Depends(get_recipe_image_storage)],
 ) -> ImageTransfers:
-    return ImageTransfers(storage, SessionLocal, kind=ImageKind.RECIPE)
+    return ImageTransfers(storage, kind=ImageKind.RECIPE)
 
 
 def get_recipe_image_uploads(
-    transfers: ImageTransfers = Depends(get_recipe_image_transfers),
+    transfers: Annotated[ImageTransfers, Depends(get_recipe_image_transfers)],
 ) -> RecipeImageUploads:
     return RecipeImageUploads(transfers, SessionLocal)
 
@@ -66,10 +68,11 @@ def get_recipe_image_uploads(
 )
 def image_content(
     image_id: UUID,
-    transfers: ImageTransfers = Depends(get_recipe_image_transfers),
+    transfers: Annotated[ImageTransfers, Depends(get_recipe_image_transfers)],
+    session: Annotated[Session, Depends(get_db, scope="function")],
 ) -> Response:
     try:
-        target = transfers.content_handoff(image_id)
+        target = transfers.content_handoff(session, image_id)
     except StorageUnavailable:
         raise HTTPException(
             503, "Image storage is unavailable", headers={"Cache-Control": "no-store"}
@@ -87,8 +90,8 @@ def image_content(
     responses=FORBIDDEN_RESPONSE,
 )
 def begin_upload(
-    user: User = Depends(require_current_user, scope="function"),
-    uploads: RecipeImageUploads = Depends(get_recipe_image_uploads),
+    user: Annotated[User, Depends(require_current_user)],
+    uploads: Annotated[RecipeImageUploads, Depends(get_recipe_image_uploads)],
 ) -> RecipeImageUploadOut:
     try:
         upload = uploads.begin(user.id)
@@ -115,8 +118,8 @@ def begin_upload(
 )
 def complete_upload(
     upload_id: UUID,
-    user: User = Depends(require_current_user, scope="function"),
-    uploads: RecipeImageUploads = Depends(get_recipe_image_uploads),
+    user: Annotated[User, Depends(require_current_user)],
+    uploads: Annotated[RecipeImageUploads, Depends(get_recipe_image_uploads)],
 ) -> RecipeImageOut:
     try:
         image = uploads.complete(upload_id, user.id)

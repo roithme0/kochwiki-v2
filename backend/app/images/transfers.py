@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from io import BytesIO
 from uuid import UUID, uuid4
-from zlib import crc32, error as ZlibError
+from zlib import crc32
+from zlib import error as ZlibError
 
 from PIL import Image, UnidentifiedImageError
 from PIL.PngImagePlugin import PngImageFile
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from app.images.config import IMAGE_CONTENT_TYPE, MAX_IMAGE_BYTES, MAX_IMAGE_SIDE
 from app.images.models import ImageAsset, ImageKind
@@ -40,24 +41,21 @@ class ImageTransfers:
     def __init__(
         self,
         storage: Storage,
-        sessions: sessionmaker[Session],
         *,
         kind: ImageKind,
     ) -> None:
         self._storage = storage
-        self._sessions = sessions
         self._kind = kind
 
-    def content_handoff(self, image_id: UUID) -> str | None:
-        with self._sessions() as session:
-            image = session.get(
-                ImageAsset,
-                image_id,
-                execution_options={"kochwiki_query_name": "Get image asset by ID"},
-            )
-            if image is None or image.kind != self._kind:
-                return None
-            return self._storage.image_handoff(image.object_key)
+    def content_handoff(self, session: Session, image_id: UUID) -> str | None:
+        image = session.get(
+            ImageAsset,
+            image_id,
+            execution_options={"kochwiki_query_name": "Get image asset by ID"},
+        )
+        if image is None or image.kind != self._kind:
+            return None
+        return self._storage.image_handoff(image.object_key)
 
     def begin(self) -> ImageUpload:
         upload_id = uuid4()
@@ -79,7 +77,7 @@ class ImageTransfers:
         width, height = self._validate(data)
         image_id = uuid4()
         object_key = f"{self._kind.value}-images/{image_id}.png"
-        created_at = datetime.now(timezone.utc)
+        created_at = datetime.now(UTC)
         digest = sha256(data).hexdigest()
         record = ImageAsset(
             uploader_id=uploader_id,

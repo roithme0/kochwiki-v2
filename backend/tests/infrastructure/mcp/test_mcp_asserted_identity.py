@@ -14,23 +14,22 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.applications import Starlette
 
 from app import main
-from app.foodstuffs.services.foodstuffs import list_foodstuffs
 from app.foodstuffs.models.foodstuff import Foodstuff
 from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate
-from app.foodstuffs.services.foodstuffs import create_foodstuff
-from app.infrastructure.embeddings.embeddings import EmbeddingClient
-from app.identity.schemas.user import UserOut
+from app.foodstuffs.services.foodstuffs import create_foodstuff, list_foodstuffs
 from app.identity.models.user import User
+from app.identity.schemas.user import UserOut
 from app.infrastructure.database.session import SessionLocal
+from app.infrastructure.embeddings.embeddings import EmbeddingClient
 from app.infrastructure.mcp import asserted_identity
 from app.infrastructure.mcp.asserted_identity import current_caller
 from app.infrastructure.mcp.server import create_mcp_server
 from app.infrastructure.mcp.services import MCPServices
 from app.recipes.models.recipe import RecipeVersion
 from app.recipes.schemas.proposal import RecipeProposalOut
-from tests.infrastructure.mcp.test_mcp_recipe_proposals import proposal_payload
 from tests.foodstuffs.test_foodstuff_semantic import FakeProvider, service
+from tests.infrastructure.mcp.test_mcp_recipe_proposals import proposal_payload
 
 
 def test_assertion_resolves_the_existing_issuer_subject_pair(

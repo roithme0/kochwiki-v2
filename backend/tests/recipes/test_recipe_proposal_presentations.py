@@ -1,42 +1,42 @@
-from tests.recipes.helpers import fixture_owner_id
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from app.foodstuffs.models.unit import Unit
 from sqlalchemy import func, select
 
-from app.infrastructure.database.session import SessionLocal
+from app.core.exceptions import NotFoundError
 from app.foodstuffs.models.foodstuff import Foodstuff
-from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
+from app.foodstuffs.models.unit import Unit
 from app.foodstuffs.schemas.foodstuff import FoodstuffCreate, FoodstuffUpdate
-from app.recipes.schemas.recipe import RecipeVersionWrite
+from app.foodstuffs.services.foodstuffs import (
+    create_foodstuff,
+    delete_foodstuff,
+    update_foodstuff,
+)
+from app.infrastructure.database.session import SessionLocal
+from app.recipes.models.recipe import Ingredient, RecipeVersion, Step
 from app.recipes.schemas.proposal import (
     RecipeProposalCreate,
     RecipeProposalPresentationOut,
     ResolvedExistingProposalFoodstuff,
     ResolvedTemporaryProposalFoodstuff,
 )
-from app.core.exceptions import NotFoundError
-from app.foodstuffs.services.foodstuffs import (
-    create_foodstuff,
-    delete_foodstuff,
-    update_foodstuff,
-)
+from app.recipes.schemas.recipe import RecipeVersionWrite
 from app.recipes.services.proposal_presentations import (
     resolve_recipe_proposal_presentation,
 )
 from app.recipes.services.proposal_store import RecipeProposalStore
 from app.recipes.services.recipes import delete_recipe_lineage
-from tests.recipes.helpers import create_owned_recipe as create_recipe, recipe_owner_id
+from tests.recipes.helpers import create_owned_recipe as create_recipe
+from tests.recipes.helpers import fixture_owner_id, recipe_owner_id
 
 
 @pytest.mark.parametrize(
     "unit,amount,expected",
     [
-        (Unit.G, 200, Decimal("250")),
-        (Unit.ML, 200, Decimal("250")),
-        (Unit.PIECE, 2, Decimal("250")),
+        (Unit.G, 200, Decimal(250)),
+        (Unit.ML, 200, Decimal(250)),
+        (Unit.PIECE, 2, Decimal(250)),
     ],
 )
 def test_mixed_presentation_calculates_nutrition_without_writing(
@@ -261,13 +261,15 @@ def test_current_catalogue_values_and_deleted_dependencies() -> None:
     )
     with SessionLocal.begin() as session:
         delete_foodstuff(session, foodstuff_id, owner_id=fixture_owner_id(session))
-    with SessionLocal() as session:
-        with pytest.raises(
+    with (
+        SessionLocal() as session,
+        pytest.raises(
             NotFoundError, match=f"Foodstuff with id {foodstuff_id} not found"
-        ):
-            resolve_recipe_proposal_presentation(
-                session, store, proposal.proposalId, user_id=recipe_owner_id(session)
-            )
+        ),
+    ):
+        resolve_recipe_proposal_presentation(
+            session, store, proposal.proposalId, user_id=recipe_owner_id(session)
+        )
     assert store.get(proposal.proposalId, user_id=recipe_owner_id()) == proposal
 
 
