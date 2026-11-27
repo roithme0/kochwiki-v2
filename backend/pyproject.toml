@@ -1,3 +1,6 @@
 [tool.black]
 required-version = "26.10.1"
 target-version = ["py313"]
+
+[tool.ruff]
+target-version = "py313"

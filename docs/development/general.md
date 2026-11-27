@@ -1,5 +1,6 @@
 # Development
 
+- [Validation](validation.md)
 - [Frontend testing](frontend-testing.md)
 - [Backend testing](backend-testing.md)
 - [End-to-end tests](end-to-end-tests.md)
@@ -50,19 +51,6 @@ The container has no live reload. From the **repository root**, rebuild after ba
 docker compose --env-file deployment/.env -f deployment/docker-compose-common.yml -f deployment/docker-compose-local.yml up --build -d backend
 docker compose --env-file deployment/.env -f deployment/docker-compose-common.yml -f deployment/docker-compose-local.yml logs -f backend
 ```
-
-## Validate changes
-
-Use the applicable formatting and lint commands in the testing guides, then select the test files or cases that cover your changes. From the **repository root**, choose one test group and pass its runner a filter after `--`:
-
-```sh
-node .agents/validation/test.mts --group frontend-app -- --include 'src/**/example.component.spec.ts'
-node .agents/validation/test.mts --group backend -- tests/path/test_example.py::test_case
-```
-
-Use `frontend-browser` with `--include` for browser component tests. For tooling tests, pass individual files to `node --test` from the repository root. List groups with `node .agents/validation/test.mts --list`. A group without a filter runs every test in that group. See [end-to-end tests](end-to-end-tests.md) for filtered E2E runs.
-
-For a full manual run, install [frontend dependencies and Chromium](frontend-testing.md#frontend-checks), start the [dedicated backend test database](backend-testing.md), and run `node .agents/validation/run.mts` from the repository root. It formats changed files, runs lint, checks generated contract freshness, and runs all non-E2E groups. Use `--group all` to also run [E2E](end-to-end-tests.md).
 
 ## Update the API contract
 

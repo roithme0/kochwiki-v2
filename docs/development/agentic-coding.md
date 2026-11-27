@@ -11,6 +11,6 @@ For larger changes, use `concept-creator` to explore the direction and `prepare-
 
 Follow [AGENTS.md](../../AGENTS.md#temporary-ai-artifacts) when storing temporary concepts, specs, and plans.
 
-Review and trust hooks in Codex before relying on them. When the stop hook detects changes in a validation scope, it formats and lints the applicable scopes, checks generated contract freshness, and runs the full non-E2E suite. Prepare the [validation dependencies](general.md#validate-changes) first. Logs are under `.codex-validation/` at the repository root. Update absolute paths in [.codex/hooks.json](../../.codex/hooks.json) when relocating the checkout.
+Review and trust hooks in Codex before relying on them. When the stop hook detects changes in a validation scope, it formats and lints the applicable scopes, checks generated contract freshness, and runs the full non-E2E suite. Prepare the [validation dependencies](validation.md#combined-validation) first. Logs are under `.codex-validation/` at the repository root. Update absolute paths in [.codex/hooks.json](../../.codex/hooks.json) when relocating the checkout.
 
 Use `/skills` and `/hooks` to inspect them in the Codex CLI; see the [official command reference](https://learn.chatgpt.com/docs/developer-commands).
